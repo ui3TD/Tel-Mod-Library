@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Get the current directory
-parent_directory=$(pwd)
+parent_directory=$(pwd)/mods
 
 # Loop through each directory (excluding "dll" and ".vs")
 for directory in "$parent_directory"/*; do

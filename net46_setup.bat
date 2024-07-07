@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 rem Get the current directory
-set "parentDirectory=%cd%"
+set "parentDirectory=%cd%\mods"
 
 rem Loop through each directory (excluding "dll" and ".vs")
 for /D %%d in ("%parentDirectory%\*") do (

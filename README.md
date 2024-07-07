@@ -1,4 +1,4 @@
-# Tel-Mod-Library
+# Tel Mod Library
 
 Library of mods for Idol Manager
 
@@ -33,7 +33,7 @@ Library of mods for Idol Manager
 
 To compile this project, follow these steps:
 
-1. **Pre-requisites:** .NET Framework 4.6 and UnityEngine 2019.4.23 libraries.
+1. **Get Pre-requisites:** .NET Framework 4.6 and UnityEngine 2019.4.23 libraries.
 
 2. **Configure Directories:** Set directories of `ModOutputDir` and `dllDir`
 

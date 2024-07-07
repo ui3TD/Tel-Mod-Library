@@ -33,9 +33,11 @@ Library of mods for Idol Manager
 
 To compile this project, follow these steps:
 
-1. **Get Pre-requisites:** .NET Framework 4.6 and UnityEngine 2019.4.23 libraries.
+1. **Get Pre-requisites:** 
+   - .NET Framework 4.6: [https://www.nuget.org/packages/Microsoft.NETFramework.ReferenceAssemblies.net46](https://www.nuget.org/packages/Microsoft.NETFramework.ReferenceAssemblies.net46)
+   - UnityEngine 2019.4.23 libraries: [https://nuget.bepinex.dev/packages/unityengine.modules/2019.4.23](https://nuget.bepinex.dev/packages/unityengine.modules/2019.4.23)
 
-2. **Configure Directories:** Set directories of `ModOutputDir` and `dllDir`
+2. **Configure Directories:** Set directories of `ModOutputDir` and `dllDir` in `Directory.Build.props`
 
 3. **Build**
 

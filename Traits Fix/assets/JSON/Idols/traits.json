@@ -1,0 +1,126 @@
+[
+	{
+		type: 			"Clumsy",
+		title: 			"Clumsy",
+		intro:			"intro_clumsy",
+		description:	"-30 to dance, +30 to comedy in group activities"
+	},
+	{
+		type: 			"Annoying",
+		title: 			"Annoying",
+		intro:			"intro_annoying",
+		description:	"When hosting shows, other hosts consume 1.2x more stamina",
+		positive:		false
+	},
+	{
+		type: 			"Misandry",
+		title: 			"Misandry",
+		intro:			"intro_misandry",
+		description:	"Interacts poorly with male fans (20% chance for a negative opinion after handshakes)",
+		positive:		false
+	},
+	{
+		type: 			"Indiscreet",
+		title: 			"Indiscreet",
+		intro:			"intro_indiscreet",
+		description:	"Can't keep a secret (prone to leak dating scandals to the public)",
+		positive:		false
+	},
+	{
+		type: 			"Maternal",
+		title: 			"Maternal",
+		intro:			"intro_maternal",
+		description:	"Gets along better with younger girls"
+	},
+	{
+		type: 			"Precocious",
+		title: 			"Precocious",
+		intro:			"intro_precocious",
+		description:	"Gets along better with older girls"
+	},
+	{
+		type: 			"Underdog",
+		title: 			"Underdog",
+		intro:			"intro_underdog",
+		description:	"+20 to all stats if latest single didn't top the chart"
+	},
+	{
+		type: 			"Defeatist",
+		title: 			"Defeatist",
+		intro:			"intro_defeatist",
+		description:	"-20 to all stats if latest single didn't top the chart",
+		positive:		false
+	},
+	{
+		type: 			"Worrier",
+		title: 			"Worrier",
+		intro:			"intro_worrier",
+		description:	"-20 to all stats when group has scandal points",
+		positive:		false
+	},
+	{
+		type: 			"Arrogant",
+		title: 			"Arrogant",
+		intro:			"intro_arrogant",
+		description:	"Becomes less likable after centering a single",
+		positive:		false
+	},
+	{
+		type: 			"Complacent",
+		title: 			"Complacent",
+		intro:			"intro_complacent",
+		description:	"-20 to performance stats after centering a single",
+		positive:		false
+	},
+	{
+		type: 			"Lone_Wolf",
+		title: 			"Lone Wolf",
+		intro:			"intro_lone_wolf",
+		description:	"+40 bonus to all stats when hosting a show alone"
+	},
+	{
+		type: 			"Anxiety",
+		title: 			"Anxiety",
+		intro:			"intro_anxiety",
+		description:	"-10 reduction in all stats when a big event is in production",
+		positive:		false
+	},
+	{
+		type: 			"Live_fast",
+		title: 			"Live fast",
+		intro:			"intro_live_fast",
+		description:	"Doubles stat loss due to aging",
+		positive:		false
+	},
+	{
+		type: 			"Forgiving",
+		title: 			"Forgiving",
+		intro:			"intro_forgiving",
+		description:	"Doesn't hold a grudge (never has negative relationships)"
+	},
+	{
+		type: 			"Trendy",
+		title: 			"Trendy",
+		intro:			"intro_trendy",
+		description:	"1.5x appeal for teens and young adults, 0.5x appeal for adults"
+	},
+	{
+		type: 			"Perfectionist",
+		title: 			"Perfectionist",
+		intro:			"intro_perfectionist",
+		description:	"-20 to mental stamina when an event goes poorly (tour <80% attendance or concert <100% hype)",
+		positive:		false
+	},
+	{
+		type: 			"Photogenic",
+		title: 			"Photogenic",
+		intro:			"intro_photogenic",
+		description:	"+100% bonus to photoshoot payments"
+	},
+	{
+		type: 			"Meme_queen",
+		title: 			"Meme queen",
+		intro:			"intro_meme_queen",
+		description:	"Increase in success rate of viral marketing and +10 to all stats for online content"
+	}
+]

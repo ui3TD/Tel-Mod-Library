@@ -1,0 +1,22 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Completely revamps the game balance of fans and makes the game way more challenging! Fan attrition is introduced as a churn rate, and there are new viable ways to grow fans.
+
+You lose fans every day! You have to keep your groups active to grow. At 100k fans, you can expect a fan churn rate of 2% per month in Normal mode and 5% per month in Unfair mode unless you take measures to grow.
+
+Also comes with a makeover to the fan tooltip.
+
+Here are the rebalancing tweaks to give you more viable ways of attracting fans in the end-game:
+
+[h3]Shows are worth it![/h3]
+- Show MC fame points give a BIG boost to new fans, especially at high fame so that MCs have much more value late game.
+- Audience of TV and Radio shows decrease with fatigue so you're more motivated to update them or create new shows. New fan contribution to audience decreases proportional to fatigue squared. In Normal mode you get 50% audience at 100% fatigue, but in Unfair you get 20% audience at 100% fatigue. Internet shows aren't affected.
+
+[h3]Risky marketing is more enticing[/h3]
+- Fake Scandal crit success bonus increased significantly so that it's more enticing. It is the fastest single marketing method to grow fans.
+- Single PVs have success chances increased by 33% so that they are more reliable in mid to late game but the crit success bonus has decreased to balance it.
+
+[h3]Businesses are a viable strat for end game[/h3]
+- Drama business proposals get over 3x the fans so they are more competitive with other methods of gaining fans.
+- Drama and Ad business proposals have their max base stamina reduced to 20 at high levels so it's easier to micromanage stamina.

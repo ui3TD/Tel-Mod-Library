@@ -1,0 +1,18 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+World Tours replaced by National Tours.
+
+Also replaces event and story dialogue to make sense with a National Tour.
+
+v2.0 of this mod has been revamped to be dependent on IM-HarmonyIntegration. If you've been using the old version, please revert all game files back to their original.
+
+[h3]Why these prefectures?[/h3]
+I wanted to preserve the original costs and regional discounts. Where there were costly distant countries in the World Tour, there are costly distant prefectures in the National Tour. Where there were regional discounts in the World Tour, there are regional discounts in the National Tour.
+
+Regions:
+- Hokkaido + Tohoku
+- Kanto + Hokuriku
+- Kansai + Chugoku + Shikoku
+- Kyushu
+- Okinawa

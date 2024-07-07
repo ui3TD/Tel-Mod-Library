@@ -1,0 +1,19 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Do you want to edit another mod's JSON files?
+Or maybe you want to translate some JSON files from a mod into a different language?
+This mod helps you decide when your mod's JSON files load, so you can make them load after the mod you want to change.
+
+This mod allows modders to adjust the JSON load order of their mods with respect to other mods. Just add a JSONLoadOrder attribute to info.json. The default JSONLoadOrder number is 0. Lower numbers load early, and higher numbers load late.
+
+Example info.json for a mod that loads late:
+[code]{
+  "Title": "JSON Load Order Tool",
+  "Description": "Allows modders to adjust the JSON load order of their mod. Just add a JSONLoadOrder attribute to info.json. Default JSONLoadOrder number is 0. Lower numbers load early, and higher numbers load late.",
+  "Author": "Tel",
+  "Version": "1.0",
+  "Tags": ["modding"],
+  "HarmonyID": "com.tel.jsonloadorder",
+  "JSONLoadOrder": 100
+}[/code]

@@ -1,0 +1,10 @@
+[
+	{
+		id: "THEATER__ATTENDANCE_TIP",
+		text: "Average for performances in the last 7 days. Decreases if there hasn't been a single in the past 30 days."
+	},{
+		id: "THEATER__STREAMING_TIP",
+		text: "Your fans can subscribe to your streaming service and watch performances for a monthly fee\n\nYou will gain or lose subscribers every day. Fans decide whether they want to subscribe or not based on the last 30 days. Main factors that affect this are:\n- Subscription price\n- Hardcore fans are easier to get than casual fans\n- Adult fans are easier to get than teens\n- Casual fans are not interested in manzai\n- Number of day offs in a month\n- Whether the group has released a new single in the past 30 days\n\nYou won't have more subscribers than fans. Most of the subscription revenue is paid to the service provider so you only receive a fraction."
+	}
+
+]

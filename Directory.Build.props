@@ -1,0 +1,44 @@
+<Project>
+	<PropertyGroup>
+		<!--<ModOutputDir>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDir>-->
+		<ModOutputDir>$(SolutionDir)\..\Mods</ModOutputDir>
+		<dllDir>$(SolutionDir)\..\dll</dllDir>
+		
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<LangVersion>latest</LangVersion>
+		<TargetFramework>net46</TargetFramework>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Reference Include="Assembly-CSharp">
+			<HintPath>$(dllDir)\Assembly-CSharp.dll</HintPath>
+		</Reference>
+		<Reference Include="Assembly-CSharp-firstpass">
+			<HintPath>$(dllDir)\Assembly-CSharp-firstpass.dll</HintPath>
+		</Reference>
+		<Reference Include="Harmony">
+			<HintPath>$(dllDir)\0Harmony.dll</HintPath>
+		</Reference>
+		<Reference Include="UnityEngine.UI">
+			<HintPath>$(dllDir)\UnityEngine.UI.dll</HintPath>
+		</Reference>
+		<Reference Include="Unity.TextMeshPro">
+			<HintPath>$(dllDir)\Unity.TextMeshPro.dll</HintPath>
+		</Reference>
+		<Reference Include="DOTween">
+			<HintPath>$(dllDir)\DOTween.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+
+	<Target Name="CleanModOutputDir" BeforeTargets="Clean">
+		<RemoveDir Directories="$(ModOutputDir)/$(ModName)" Condition="Exists('$(ModOutputDir)/$(ModName)')" />
+	</Target>
+	
+
+	<Target Name="PostBuild" AfterTargets="Build">
+		<MakeDir Directories="$(ModOutputDir)\$(ModName)" Condition="!Exists('$(ModOutputDir)\$(ModName)')" />
+		<Exec Command="copy /Y &quot;$(TargetDir)$(AssemblyName).dll&quot; &quot;$(ModOutputDir)\$(ModName)\$(AssemblyName).dll&quot;" />
+		<Exec Command="xcopy /Y /E /I &quot;assets&quot; &quot;$(ModOutputDir)\$(ModName)&quot;" />
+	</Target>
+
+</Project>

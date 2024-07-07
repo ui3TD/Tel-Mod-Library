@@ -1,0 +1,6 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+[h3]World Tour stamina cost matters[/h3]
+- World tours are limited to 100 stamina so you can't go to all the countries at once.
+- World tours give 3.5x more fans to compensate for stamina limitation.

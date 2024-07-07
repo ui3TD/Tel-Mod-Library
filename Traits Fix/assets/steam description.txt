@@ -1,0 +1,28 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Many of the traits in game don't work. This mod fixes that!
+
+Let me know of any bugs.
+
+[h3]Trait fixes:[/h3]
+- Stat changes are not displayed on the profile cards, but are calculated when creating Shows, Concerts, Business Proposals, and Singles.
+- Live Fast: double the rate of stat decreases after their peak age, both in random decreases and on birthdays.
+- Trendy: 1.5x the appeal to non-adults and 0.5x the appeal to adults.
+- Anxiety: -10 to all stats when a special event is waiting.
+- Clumsy: +30 to funny and -30 to dance.
+- Complacent: -20 to vocal and dance if they were center in the latest single.
+- Worrier: -20 to all stats when there are scandal points.
+- Defeatist: -20 to all stats if the latest single does not top the charts. The modifier lasts until the next single release.
+- Underdog: +20 to all stats if the latest single does not top the charts. The modifier lasts until the next single release.
+- Lone Wolf: +40 to all stats when they are the only one assigned to a show.
+- Photogenic: +100% to photoshoots before other modifiers.
+- Maternal: positive relationships with those younger than them by default and these relationships develop naturally 4x faster.
+- Precocious: positive relationships with those older than them by default and these relationships develop naturally 4x faster.
+- Arrogant: all relationships naturally rapidly decrease after they center a single until the next single release.
+- Forgiving: will never dislike or hate any other girls.
+- Meme Queen: +10 to all stats for internet shows and get +10% success rate and +5% crit success rate when participating in viral marketing campaigns (does not stack).
+- Annoying: causes other members to spend 1.2x physical stamina in shows.
+- Misandry: 20% chance of receiving bad opinions from Male fans when participating in a single with handshakes.
+- Perfectionist: -20 to mental stamina when world tours end with less than 80% attendance, or when they participate in concerts with less than 100% hype.
+- Indiscreet: girls in dating relationships unknown to the player have a 2% chance of having the relationship revealed each week. The girls revealed to be dating lose 30 mental stamina. If the group forbids dating then a scandal point is added for each girl.

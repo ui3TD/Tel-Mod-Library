@@ -1,0 +1,667 @@
+[
+{
+    "id": "onions_10",
+    "title": "",
+    "description": "@actor_0@ mentioned during a livestream that she occasionally eats raw green onions as a snack.  Now, all of her social media posts are filled with comments from people saying 'stinky breath' and pictures of onions.\n\nWhat's the best way to respond to this?",
+    "image": "onion_incident.png",
+    "random": true,
+    "actors": [
+    {
+        "name": "@actor_0@",
+        "type": "idol",
+        "conditions": []
+    }],
+    "conditions": [
+    {
+        "parameter": "fans_total",
+        "formula": "> 1000"
+    },
+    {
+        "parameter": "streaming",
+        "formula": "streaming_no_restrictions",
+		"target": "policy"
+    }],
+    "effects": [],
+    "options": [
+    {
+        "text": "Ignore the trolls",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "meta",
+            "parameter": "trigger_event",
+            "formula": "onions_20 7"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "param mentalStamina",
+            "formula": "-10"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "variable",
+            "formula": "onions"
+        }],
+        "SNS": [
+        {
+            "poster": "M_HC_YA",
+            "text": "They say an apple a day will keep the doctor away...turns out if you're @actor_0@ an onion a day will keep everyone away"
+        }],
+        "result":
+        {
+            "description": "Maybe if these people don't get a reaction, they'll get tired and stop.",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Have @actor_0@ block anyone who responds with onion pictures",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "add_opinion",
+            "formula": "HC=-1"
+        }],
+        "SNS": [
+        {
+            "poster": "M_HC_T",
+            "text": "LOL!  @actor_0@ just blocked me for onionposting"
+        },
+        {
+            "poster": "M_C_YA",
+            "text": "You can't just talk about \"onionposting\" like people are going to know that's a thing"
+        },
+        {
+            "poster": "F_C_T",
+            "text": "@actor_0@ is just talking about onions to hide the fact that she's having a secret love affair with a leek. You can't silence the truth!"
+        }],
+        "result":
+        {
+            "description": "Hopefully that will get the point across.",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Have @actor_0@ stay off social media for a few days",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "param mentalStamina",
+            "formula": "10"
+        }],
+        "SNS": [
+        {
+            "poster": "F_HC_T",
+            "text": "Been awhile since @actor_0@ has been active...hope she's not dead."
+        },
+        {
+            "poster": "F_C_A",
+            "text": "@actor_0@ hasn't posted in awhile.  Is she on social media probation or something?"
+        }],
+        "result":
+        {
+            "description": "It's probably best to lay low and wait for this whole thing to blow over.",
+            "delay": 0
+        }
+    }]
+},
+{
+    "id": "punchy",
+    "title": "",
+    "description": "[actor_0:full] just said during a livestream event that she sometimes fantasizes about punching other group members. The stream has been taken down, but fans have already clipped the remark and are sharing it on social media!",
+    "image": "livestream.png",
+    "random": true,
+    "actors": [
+    {
+        "name": "@actor_0@",
+        "type": "idol",
+        "conditions": [
+        {
+            "parameter": "mental_stamina",
+            "formula": "< 40"
+        }]
+    }],
+    "conditions": [
+    {
+        "parameter": "streaming",
+        "formula": "streaming_controlled",
+		"target": "policy"
+    }],
+    "effects": [],
+    "options": [
+    {
+        "text": "Put [actor_0:full] on probation and have her record an apology video",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "friendship",
+            "formula": "- 3"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "param mentalStamina",
+            "formula": "-20"
+        },
+        {
+            "target": "resource",
+            "parameter": "scandalPoints",
+            "formula": "1"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "add_opinion",
+            "formula": "C=-2 HC=-2"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "add_fans",
+            "formula": "C=-2 HC=-2"
+        }],
+        "SNS": [
+        {
+            "poster": "M_HC_T",
+            "text": "is anyone actually buying the fake-ass apology video that [actor_0] put out? full damage control mode is so obvious"
+        }],
+        "result":
+        {
+            "description": "",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Claim [actor_0:full]'s comment was a joke and say her remarks were taken out of context",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "influence",
+            "formula": "+ 3"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "add_opinion",
+            "formula": "C=-1 HC=-1"
+        }],
+        "SNS": [
+        {
+            "poster": "F_C_YA",
+            "text": "lol @ all the people taking [actor_0]'s remarks seriously...don't people know the meaning of the word \"joke?\""
+        },
+        {
+            "poster": "F_HC_T",
+            "text": "if [actor_0] says she was \"joking\" when she said she wanted to punch her fellow group members, then i'm \"joking\" when I say i want to punch her in the face"
+        }],
+        "result":
+        {
+            "description": "",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Ignore the matter",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "resource",
+            "parameter": "scandalPoints",
+            "formula": "1"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "add_opinion",
+            "formula": "C=-2 HC=-2"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "add_fans",
+            "formula": "C=-2 HC=-1"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "influence",
+            "formula": "+ 2"
+        }],
+        "SNS": [
+        {
+            "poster": "F_HC_YA",
+            "text": "can't believe that there are actually people still defending [actor_0] after what she said on stream."
+        },
+        {
+            "poster": "M_HC_YA",
+            "text": "wow [actor_0] actually says she wants to punch her group mates? what a bitch. can't wait to see her go down even further in the rankings"
+        }],
+        "result":
+        {
+            "description": "",
+            "delay": 0
+        }
+    }]
+},
+{
+    "id": "trolls_in_livestream_comments",
+    "title": "",
+    "description": "There have been a large number of complaints by fans on social media about the amount of rude comments by trolls in @actor_0@'s livestreams. However, viewership of her streams has also increased at the same time.\n\nShould something be done about this?",
+    "image": "livestream.png",
+    "random": true,
+    "actors": [
+    {
+        "name": "@actor_0@",
+        "type": "idol",
+        "conditions": []
+    }],
+    "conditions": [
+    {
+        "parameter": "streaming",
+        "formula": "streaming_no_restrictions",
+		"target": "policy"
+    }],
+    "effects": [],
+    "options": [
+    {
+        "text": "Do nothing",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "add_fans",
+            "formula": "C=1 HC=2"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "param mentalStamina",
+            "formula": "-40"
+        }],
+        "SNS": [
+        {
+            "poster": "F_HC_YA",
+            "text": "[actor_0]'s livestreams are fun, but trying to read through the comments is just nasty."
+        },
+        {
+            "poster": "M_HC_YA",
+            "text": "I've stopped looking at the chat box during streams, tbh. Can't even comment without getting a stupid reply from a troll."
+        },
+        {
+            "poster": "F_HC_YA",
+            "text": "Yeah, it's a dumpster fire. I hope [groupname] fixes moderating soon."
+        },
+        {
+            "poster": "M_HC_YA",
+            "text": "Or the trolls eventually get bored."
+        }],
+        "result":
+        {
+            "description": "The number of obnixious comments increases, but so does the viewership. Maybe some people enjoy the game of arguing with strangers online. And if they're going to do it in a place that makes @actor_0@'s streams look more popular, all the better, right?",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Disable comments",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "add_fans",
+            "formula": "C=-1 HC=-2"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "param mentalStamina",
+            "formula": "20"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "influence",
+            "formula": "+ 1"
+        }],
+        "SNS": [
+        {
+            "poster": "M_HC_YA",
+            "text": "This is how you let the trolls win. Not a good look for [actor_0] or [groupname]."
+        },
+        {
+            "poster": "M_HC_T",
+            "text": "|This is why we can't have nice things."
+        }],
+        "result":
+        {
+            "description": "After the disabling of the chat window, most of the discussion seems to move to other SNS platforms. However, @actor_0@'s viewership and stream income takes a slight dip as a result.",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Hire more moderators",
+        "tooltip": "-[yen]10,000",
+        "effects": [
+        {
+            "target": "resource",
+            "parameter": "money",
+            "formula": "-10000"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "add_fans",
+            "formula": "HC=-1"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "param mentalStamina",
+            "formula": "20"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "influence",
+            "formula": "+ 2"
+        }],
+        "SNS": [
+        {
+            "poster": "M_HC_T",
+            "text": "Praise [groupname]!"
+        },
+        {
+            "poster": "F_HC_T",
+            "text": "gg, mods. Thumbs up."
+        },
+        {
+            "poster": "M_C_T",
+            "text": "|Is it just me, or is the chat on [actor_0]'s livestream was way less lively than it used to be?"
+        }],
+        "result":
+        {
+            "description": "After looking around, you find a suitable moderator and hire them to delete spam and give warnings to rude commenters. Blocking accounts that go against the stream's guidelines noticeably decrease the amount of trolling during livestreams, and most of those who stay unbanned seem appreciative.",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Encourage @actor_0@ to acknowledge the trolls",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "add_fans",
+            "formula": "C=2 HC=4"
+        },
+        {
+            "target": "resource",
+            "parameter": "scandalPoints",
+            "formula": "1"
+        }],
+        "SNS": [],
+        "result":
+        {
+            "description": "@actor_0@ seems to balk at the idea first, but after spending an hour replying to trollish comments on livestream, her viewership numbers shoot through the roof. By the end of the livestream, the comments have turned from savage to teasing, and @actor_0@ seems comfortable teasing right back.",
+            "delay": 0
+        }
+    }]
+},
+{
+    "id": "stream_rant",
+    "title": "",
+    "description": "Recently, @actor_0@ started playing video games on a popular streaming site. During her latest stream, she was brigaded by trolls from a rather unsavory part of the internet. Amid the spam of insults, @actor_0@ lost her cool and gave an angry rant, exclaiming, \"I can't believe this! My audience is disrespecting me like this, even though I waste my time gracing these losers with my presence!\"\n\nThe entire speech was clipped and is being spread around to various social media sites, with some of the so-called \"losers\" none too happy about the insults @actor_0@ chose to level at them.",
+    "image": "livestream.png",
+    "random": true,
+    "actors": [
+    {
+        "name": "@actor_0@",
+        "type": "idol",
+        "conditions": []
+    }],
+    "conditions": [
+    {
+        "parameter": "streaming",
+        "formula": "streaming_no_restrictions",
+		"target": "policy"
+    }],
+    "effects": [],
+    "options": [
+    {
+        "text": "Have @actor_0@ apologize and ban her from streaming further",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "add_fans",
+            "formula": "HC=-1"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "param mentalStamina",
+            "formula": "-50"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "friendship",
+            "formula": "- 2"
+        },
+        {
+            "target": "resource",
+            "parameter": "scandalPoints",
+            "formula": "1"
+        }],
+        "SNS": [
+        {
+            "poster": "M_HC_T",
+            "text": "I forgive [actor_0]. It was the trolls fault anyway"
+        },
+        {
+            "poster": "M_HC_YA",
+            "text": "It must've been so hard for her to have to put up with being disrespected like that :("
+        }],
+        "result":
+        {
+            "description": "@actor_0@ writes an apology on her personal social media, stating that she'll be taking a step back from the internet in general for a while as she thinks on her actions, and announces the official closure of her streaming account. Thankfully, she agrees that this is the correct course of action and the controversy seems to die down afterward.",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Publicly reprimand @actor_0@ and ban her from public appearances for awhile",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "add_fans",
+            "formula": "HC=-2"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "param mentalStamina",
+            "formula": "-80"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "friendship",
+            "formula": "- 4"
+        },
+        {
+            "target": "resource",
+            "parameter": "scandalPoints",
+            "formula": "2"
+        }],
+        "SNS": [
+        {
+            "poster": "M_C_T",
+            "text": "I kind of feel awful... I used to be a fan of [actor_0], but then she went OFF THE WALL!"
+        },
+        {
+            "poster": "F_C_A",
+            "text": "I mean, we all have our moments, but damn, she really went off!"
+        }],
+        "result":
+        {
+            "description": "[groupname] publicly states that @actor_0@'s on-stream remarks do not reflect the values or culture of [groupname], and specifically notes that her behavior is unacceptable",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Defend @actor_0@'s remarks",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "group",
+            "parameter": "add_fans",
+            "formula": "HC=-2"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "friendship",
+            "formula": "+ 2"
+        },
+        {
+            "target": "@actor_0@",
+            "parameter": "influence",
+            "formula": "+ 4"
+        },
+        {
+            "target": "resource",
+            "parameter": "scandalPoints",
+            "formula": "3"
+        }],
+        "SNS": [],
+        "result":
+        {
+            "description": "@actor_0@ did lose her temper on stream, but she didn't throw the first punch: if trolls don't want to be 'belittled,' they should play nice to start with.\n\nThat's the sentiment expressed in the announcement that gets sent out from the official [groupname] account, defending @actor_0@ for her actions. The reaction is split: some continue to criticize @actor_0@ for her outburst, but others are sympathetic, noting that she should have the right to defend herself in the face of trolls.\n\nThe public statement has the effect of redirecting most of the vitriol away from @actor_0@ and toward the official group account for defending her. @actor_0@ seems appreciative to no longer be the one at the center of the controversy.",
+            "delay": 0
+        }
+    }]
+},
+{
+    "id": "inappropriate_language",
+    "title": "",
+    "description": "During a recent livestream, [actor_0] played a video game from an American company that was suggested to her by viewers. The game is set in the United States, and includes some English language dialog that, while accurate to the period and setting of the game, generally isn't accepted in polite society.\n\n[actor_0], not being familiar with English, mimicked some of the dialog spoken by the game's characters during the livestream. However, after seeing several clips of the livestream circulating with comments by foreign viewers and learning the meaning of some of the words she repeated, [actor_0] is starting to worry that perhaps an apology is in order.",
+    "image": "livestream.png",
+    "random": true,
+    "actors": [
+    {
+        "name": "@actor_0@",
+        "type": "idol",
+        "conditions": []
+    }],
+    "conditions": [
+    {
+        "parameter": "streaming",
+        "formula": "streaming_no_restrictions",
+		"target": "policy"
+    }],
+    "effects": [],
+    "options": [
+    {
+        "text": "Do nothing",
+        "tooltip": "",
+        "effects": [],
+        "SNS": [],
+        "result":
+        {
+            "description": "[actor_0] and [groupname] say nothing to acknowledge the incident. Actually, it turns out to not be much of an 'incident' at all.\n\nApparently, the game [actor_0] was playing is popular among streamers, and she's not the only Japanese streamer to have repeated some of the game's colorful language without understanding its meaning. Clips of her livestream begin appear in compilation videos of other streamers experiencing the same moment, and knowing that she wasn't the only one to have this experience  seems to reassure [actor_0] that international fans don't seem too bothered.",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Have [groupname] issue an official apology on behalf of [actor_0]",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "group",
+            "parameter": "add_fans",
+            "formula": "HC=-1"
+        }],
+        "SNS": [],
+        "result":
+        {
+            "description": "The apology goes out via the company's official channels, and the backlash is swift. However, the fans' protests are directed not at [actor_0]'s livestream moment, but the company's apology.\n\nApparently, the game [actor_0] was playing is popular among streamers, and she's not the only Japanese streamer to have repeated some of the game's colorful language without understanding its meaning. Clips of her livestream begin to appear in compilation videos of other streamers experiencing the same moment, and knowing that she wasn't the only one to have this experience seems to reassure [actor_0] that international fans don't seem too bothered.",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Have [actor_0] offer a personal apology to her viewers",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "add_fans",
+            "formula": "HC=1"
+        }],
+        "SNS": [],
+        "result":
+        {
+            "description": "[actor_0] posts a message apologizing for repeating 'offensive' words and insists with vehemence that she repeated the words without knowing their meaning, and that the language in the game doesn't reflect her thoughts and opinions. The main reaction to her apology seems to be amusement, with many considering her reaction to be 'over-the-top' and 'totally unnecessary.'\n\nApparently, the game [actor_0] was playing is popular among streamers, and she's not the only Japanese streamer to have repeated some of the game's colorful language without understanding its meaning. Clips of her livestream begin appear in compilation videos of other streamers experiencing the same moment, and knowing that she wasn't the only one to have this experience  seems to reassure [actor_0] that international fans don't seem too bothered. In fact, the popularity of these clips seems to be getting [actor_0] even more attention than usual from international fans.",
+            "delay": 0
+        }
+    }]
+},
+{
+    "id": "stamp_act",
+    "title": "",
+    "description": "@actor_0@ offhandedly mentioned on a stream that she was interested in the idea of collecting postage stamps. Apparently this prompted one enthusiastic fan to send a collection of rare stamps to @actor_0@ in hopes of encouraging her stamp-collecting enthusiasm.\n\nAccording to a stamp-appraising site, the collection of stamps that the fan sent is apparently worth [yen]50,000. @actor_0@ seems uncomfortable accepting the gift, since she wasn't really serious about getting into stamp collecting to begin with.",
+    "image": "apology.png",
+    "random": true,
+    "actors": [
+    {
+        "name": "@actor_0@",
+        "type": "idol",
+        "conditions": []
+    }],
+    "conditions": [
+    {
+        "parameter": "streaming",
+        "formula": "streaming_controlled",
+		"target": "policy"
+    }],
+    "effects": [],
+    "options": [
+    {
+        "text": "Sell the stamps",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "resource",
+            "parameter": "money",
+            "formula": "50000"
+        }],
+        "SNS": [],
+        "result":
+        {
+            "description": "@actor_0@ didn't want to keep the gift to begin with, so that means the agency can keep the money, right?",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Sell the stamps",
+        "tooltip": "",
+        "effects": [],
+        "SNS": [],
+        "result":
+        {
+            "description": "You take the stamps to a dealer who specializes in that sort of thing, but apparently the rare stamps were fake! Maybe this fan thought sending a counterfeit of a rare gift would be a way to get some attention from @actor_0@?",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Have @actor_0@ publicly thank the fan and announce that she's starting a stamp collection",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "@actor_0@",
+            "parameter": "add_fans",
+            "formula": "HC=1"
+        }],
+        "SNS": [],
+        "result":
+        {
+            "description": "Hours after @actor_0@ posts a picture of herself holding the start of her new stamp collection, several fans announce that they'll be sending their stamp collections to her as well. Apparently a lot of people had old collections lying around collecting dust.\n\n@actor_0@ isn't too enthusiastic about the idea of jumping into a new hobby, but at least the influx of stamps sent in by fans means she won't have to spend any of her own money to acquire more stamps.",
+            "delay": 0
+        }
+    },
+    {
+        "text": "Politely refuse the gift and mail it back",
+        "tooltip": "",
+        "effects": [],
+        "SNS": [],
+        "result":
+        {
+            "description": "@actor_0@ packages the stamp collection with a hand-written note thanking the fan for his enthusiastic support, but telling him that she can't in good conscience accept the gift considering its value.\n\nA response comes back, this time from the fan's mother, thanking @actor_0@ for returning the stamp collection, as it was a gift she'd received from her father. Apparently the fan was a teenager who decided to send @actor_0@ a family heirloom!",
+            "delay": 0
+        }
+    }]
+}
+]

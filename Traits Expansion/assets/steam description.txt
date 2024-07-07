@@ -1,0 +1,58 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+A bunch of new traits that expand upon the existing set of traits. They affect stats, appeal, businesses, special events and more. Also includes the appropriate greetings when joining the group.
+
+[h3]Stat-changing Traits[/h3]
+- Perfect Pitch: +50 to vocal
+- Tone Deaf: -30 to vocal
+- Beauty Guru: +30 to pretty
+- Mensa Member: +50 to smart
+- Well Endowed: +30 to sexy
+- Homely: -10 to pretty, cute, sexy and cool
+
+[h3]Appeal-changing Traits[/h3]
+- Fashionista: +20% appeal to females
+- Flirty: +20% appeal to males
+- Idol Otaku: +20% appeal to hardcore
+
+[h3]Business-related Traits[/h3]
+- Thespian: -50% stamina for dramas
+- Wooden Acting: -50% rewards for dramas
+- Quick Wit: +50% rewards for variety shows
+
+[h3]Special Event-related Traits[/h3]
+- Cult Leader: +50% votes in elections
+- Stage Fright: -30 mental stamina each time she's MCing or centering in a concert
+- Aerophobia: -50 mental stamina when going on world tour
+- Polyglot: 20% more fans in world tours
+
+[h3]Other Traits[/h3]
+- Old Money: No negative effects of low salary (no reduction of mental, or penalty to graduation date)
+- Sadistic: Doubles the amount of mental stamina damage from bullying
+- Job Hopper: Plans to graduate within a year
+- Reckless: Is 3x more likely to get injured, and can get injured if stamina is less than 60.
+
+[h3]Trait Types and Numbers[/h3]
+Perfect_Pitch = 2801
+Polyglot = 2802
+Old_Money = 2803
+Beauty_Guru = 2804
+Mensa_Member = 2805
+Quick_Wit = 2806
+Fashionista = 2807
+Flirty = 2808
+Well_Endowed = 2809
+Idol_Otaku = 2810
+Wooden_Acting = 2811
+Sadistic = 2812
+Reckless = 2813
+Job_Hopper = 2814
+Aerophobia = 2815
+Stage_Fright = 2816
+Cult_Leader = 2817
+Tone_Deaf = 2818
+Homely = 2819
+Thespian = 2820
+
+Use the types for unique idol params.json files, and use the numbers for editing save files.

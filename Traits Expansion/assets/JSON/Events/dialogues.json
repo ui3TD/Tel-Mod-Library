@@ -1,0 +1,934 @@
+[
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_perfect_pitch",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hi, I'm [girl_1]! I'm thrilled to be a part of [groupname]! I promise to bring harmony and precision to every performance.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_044_Greeting2"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_polyglot",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Bonjour à tous! Je suis ravie de rejoindre [groupname]! J'ai hâte de partager notre musique avec le monde entier!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_045_Greeting3"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_old_money",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Salary? Oh, darling, I'm beyond the realm of such trivial figures. My passion for performance knows no price tag!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_015_Fun3"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_beauty_guru",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Well, well, look who just got a beauty upgrade! Brace yourselves, because I'm about to contour this group to perfection!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_016_Fun4"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_mensa_member",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Greetings, fellow members! Let our shared intellect and passion fuel our journey towards extraordinary performances.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_062_Hustle"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_quick_wit",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hey, I'm [girl_1]! Sorry about that joke earlier. Didn't mean to offend anyone. Let's focus on the fun ahead, shall we?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_003_Joy3"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_fashionista",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hey there, it's [girl_1]! I couldn't help but notice your style... Hmm, let's just say we might need to schedule a fashion intervention. Don't worry, I'll be your stylish savior!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_016_Fun4"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_flirty",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":2,
+            "type":"check",
+            "val":"",
+            "actor":"girl_1",
+            "effect":[
+               
+            ],
+            "requirements":[
+               {
+                  "target":"meta",
+                  "parameter":"player_gender",
+                  "formula":"m"
+               }
+            ],
+            "script":[
+               {
+                  "id":4,
+                  "type":"message",
+                  "val":"Hey there, handsome! Looks like luck brought us together. I'm [girl_1], and I must say, you're looking absolutely charming today. Care to be my partner in this exciting idol journey?",
+                  "actor":"girl_1",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_016_Fun4"
+               }
+            ]
+         },
+         {
+            "id":3,
+            "type":"check",
+            "val":"",
+            "actor":"girl_1",
+            "effect":[
+               
+            ],
+            "requirements":[
+               {
+                  "target":"meta",
+                  "parameter":"player_gender",
+                  "formula":"f"
+               }
+            ],
+            "script":[
+               {
+                  "id":5,
+                  "type":"message",
+                  "val":"Well, hello there, gorgeous! I'm [girl_1], and let me tell you, your style is on point. Being in your presence is like a breath of fresh air.",
+                  "actor":"girl_1",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_016_Fun4"
+               }
+            ]
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_well_endowed",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hi, I'm [girl_1]. It's great to meet you. I have a small worry about costume sizes, but don't worry, I'll make it work. Excited to be part of [groupname]!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol01_037_Worried3"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_idol_otaku",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Um, h-hello! I-I'm [girl_1]. Oh wow, it's such an honor to meet you, and be a part of [groupname]. I've been a huge fan for so long, and now being here feels like a dream come true.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_024_Surprise2"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_wooden_acting",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hey boss! Please send the acting gigs my way. They say I have a flair for stillness on stage, like a living statue!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_039_Calling2"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_sadistic",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hi there, I'm [girl_1]. Excited to be a part of [groupname]! I'll do my best to support everyone. After all, it's important to bring out the best in each other, don't you think?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_001_Joy1"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_reckless",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hey there, I'm [girl_1]. Ready to dive into the excitement? Let's chase thrills, conquer stages, and... um, avoid any bruises along the way. Trust me, I've got this!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_062_Hustle"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_job_hopper",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hello, I'm [girl_1]. It's a pleasure to be a part of [groupname]. I'm eager to embrace new opportunities and bring my diverse experiences to the table.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_043_Greeting1"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_aerophobia",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Um, h-hi, I'm [girl_1]. So happy to be here with [groupname]! You know, when it comes to tours and, uh, flying... I-I must admit, I feel more comfortable staying closer to home.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_035_Worried1"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_stage_fright",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Um, h-hi there, I'm [girl_1]. It's, um, great to be part of [groupname]. Funny thing is, I have this, uh, slight case of stage fright... but hey, I believe facing our fears makes us stronger, right?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_036_Worried2"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_cult_leader",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hey there, it's just me, [girl_1]. So, um, I guess I call my fans the Lollipop Legion, but it's no big deal, really. They're just a small, dedicated group who happens to support me in everything I do. I mean, it's not like we're some kind of cult or anything, ha-ha!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_045_Greeting3"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_tone_deaf",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hey there! I'm here to rock the stage with my one-of-a-kind singing style. Brace yourself for a performance that'll leave you speechless!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_062_Hustle"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_homely",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Hi... um, I'm [girl_1]. Just wanted to, uh, say thanks for having me in [groupname]. I'll do my best, even if I'm not... you know, the flashiest. Thank you for, um, having me.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_019_Thanks3"
+         }
+      ]
+   },
+   {
+      "latestID":1,
+      "parent":null,
+      "type":"introduction",
+      "id":"intro_thespian",
+      "location":"none",
+      "music":"default",
+      "random":true,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"girl_1",
+            "posX":0,
+            "facingRight":false,
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl_1",
+            "val":"Behold my presence, a vessel of dramatic prowess, where stage and screen intertwine in a tapestry of emotions. Together, let our destinies merge and let the curtains of life unfurl.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_044_Greeting2"
+         }
+      ]
+   }
+]

@@ -1,0 +1,78 @@
+[
+	{
+		id: "CHURN",
+		text: "Churn Rate"
+	},{
+		id: "TIP__OF_TOTAL",
+		text: "of Total"
+	},{
+		id: "TIP__AD",
+		text: "Ad Contracts"
+	},{
+		id: "TIP__DRAMA",
+		text: "Drama Contracts"
+	},{
+		id: "TIP__TV",
+		text: "TV Shows"
+	},{
+		id: "TIP__INTERNET",
+		text: "Internet Shows"
+	},{
+		id: "TIP__RADIO",
+		text: "Radio Shows"
+	},{
+		id: "TIP__RADIO",
+		text: "Radio Shows"
+	},{
+		id: "TIP__TRENDING",
+		text: "Trending Multiplier"
+	},{
+		id: "TIP__NONE",
+		text: "None"
+	},{
+		id: "TIP__DAYS_LEFT",
+		text: "days left"
+	},{
+		id: "TIP__DAY_LEFT",
+		text: "day left"
+	},{
+		id: "NOTIF__TRENDING",
+		text: "@ is going viral on social media!"
+	},{
+		id: "NOTIF__TRENDING_DAYS",
+		text: "@ days of bonus fans from singles, shows, businesses and tours"
+	},{
+		id: "NOTIF__CRISIS",
+		text: "@ is getting negative press!"
+	},{
+		id: "NOTIF__CRISIS_DAYS",
+		text: "@ days of penalty to churn rate"
+	},{
+		id: "TREND__GENRE",
+		text: "Last TV show: "
+	},{
+		id: "TREND__GENRE_NEVER",
+		text: "Last TV show: {green}N/A{/color}"
+	},{
+		id: "TREND__MEDIUM",
+		text: "Up to 15% chance of trending based on days since your last TV show, cast fame, mc fame and genre level"
+	},{
+		id: "TREND__SINGLE_SUCCESS",
+		text: "Chance to go viral: {green}@%{/color}"
+	},{
+		id: "TREND__SINGLE_FAIL",
+		text: "Chance for bad press: {red}@%{/color}"
+	},{
+		id: "TREND__SINGLE_DESC",
+		text: "Can change depending on the single's genre, lyrics and choreography trend rankings."
+	},{
+		id: "ONE_DAY_AGO",
+		text: "1 day ago"
+	},{
+		id: "THEATER__FANS_LIKE",
+		text: "@1\nfans like @2's theater schedule"
+	},{
+		id: "THEATER__FANS_DISLIKE",
+		text: "@1\nfans dislike @2's theater schedule"
+	}
+]

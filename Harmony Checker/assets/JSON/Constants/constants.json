@@ -1,0 +1,10 @@
+[
+	{
+		id: "MM_MODS",
+		text: "Mods [IM-HI not installed]"
+	},
+	{
+		id: "IMHI_INSTALLED",
+		text: "Mods [IM-HI installed]"
+	}
+]

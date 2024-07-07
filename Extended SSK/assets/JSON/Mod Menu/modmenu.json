@@ -1,0 +1,16 @@
+[
+	{
+		"type": "slider",
+		"varID": "ExtendedSSK_Limit",
+		"labelID": "EXTENDEDSSK__MODMENU__LIMIT",
+		"minValue": 5,
+		"maxValue": 200,
+		"defaultValue": 64,
+		"ignore": false
+	},
+	{
+		"type": "text",
+		"labelID": "EXTENDEDSSK__MODMENU__WARNING",
+		"ignore": false
+	}
+]

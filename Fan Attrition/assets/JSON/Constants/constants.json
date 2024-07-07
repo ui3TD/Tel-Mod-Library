@@ -1,0 +1,34 @@
+[
+	{
+		id: "MARKETING__LEWD_PV_DESCRIPTION",
+		text: "Cost per CD: {cost_CD}{linebreak}Effect: Increase in sales and new fans\n\nCritical Success\nMale: {crit_succ_effect}\nHardcore: {crit_succ_effect_secondary}\n\nSuccess\nMale: {succ_effect}\nHardcore: {succ_effect_secondary}\n\nFailure\nFemale: {fail_effect}\nCasual: {fail_effect_secondary}\n\nCritical Failure\nFemale: {crit_fail_effect}\nCasual: {crit_fail_effect_secondary}{linebreak}Success rate is equal to formation's average {green}sexy</color> and {green}cute</color> stats"
+	},{
+		id: "MARKETING__EDGY_PV_DESCRIPTION",
+		text: "Cost per CD: {cost_CD}{linebreak}Effect: Increase in sales and new fans\n\nCritical Success\nTeen: {crit_succ_effect}\nFemale: {crit_succ_effect_secondary}\n\nSuccess\nTeen: {succ_effect}\nFemale: {succ_effect_secondary}\n\nFailure\nAdult: {fail_effect}\nYoung-Adult: {fail_effect_secondary}\n\nCritical Failure\nAdult: {crit_fail_effect}\nYoung-Adult: {crit_fail_effect_secondary}{linebreak}Success rate is equal to formation's average {green}cool</color> and {green}funny</color> stats"
+	},{
+		id: "MARKETING__ARTSY_PV_DESCRIPTION",
+		text: "Cost per CD: {cost_CD}{linebreak}Effect: Increase in sales and new fans\n\nCritical Success\nAdult: {crit_succ_effect}\nFemale: {crit_succ_effect_secondary}\n\nSuccess\nAdult: {succ_effect}\nFemale: {succ_effect_secondary}\n\nFailure\nTeen: {fail_effect}\nMale: {fail_effect_secondary}\n\nCritical Failure\nTeen: {crit_fail_effect}\nMale: {crit_fail_effect_secondary}{linebreak}Success rate is equal to formation's average {green}pretty</color> and {green}smart</color> stats"
+	},{
+		id: "CHURN",
+		text: "Churn Rate"
+	},{
+		id: "TIP__OF_TOTAL",
+		text: "of Total"
+	},{
+		id: "TIP__AD",
+		text: "Ad Contracts"
+	},{
+		id: "TIP__DRAMA",
+		text: "Drama Contracts"
+	},{
+		id: "TIP__TV",
+		text: "TV Shows"
+	},{
+		id: "TIP__INTERNET",
+		text: "Internet Shows"
+	},{
+		id: "TIP__RADIO",
+		text: "Radio Shows"
+	}
+
+]

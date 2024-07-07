@@ -1,0 +1,130 @@
+[
+	{
+		type: 			"Perfect_Pitch",
+		title: 			"Perfect Pitch",
+		intro:			"intro_perfect_pitch",
+		description:	"+50 bonus to Vocals"
+	},
+	{
+		type: 			"Polyglot",
+		title: 			"Polyglot",
+		intro:			"intro_polyglot",
+		description:	"20% more fans when going on tour"
+	},
+	{
+		type: 			"Old_Money",
+		title: 			"Old Money",
+		intro:			"intro_old_money",
+		description:	"So wealthy that salary doesn't matter"
+	},
+	{
+		type: 			"Beauty_Guru",
+		title: 			"Beauty Guru",
+		intro:			"intro_beauty_guru",
+		description:	"+30 bonus to Pretty"
+	},
+	{
+		type: 			"Mensa_Member",
+		title: 			"Mensa Member",
+		intro:			"intro_mensa_member",
+		description:	"+50 bonus to Smart"
+	},
+	{
+		type: 			"Quick_Wit",
+		title: 			"Quick Wit",
+		intro:			"intro_quick_wit",
+		description:	"+50% bonus to variety shows"
+	},
+	{
+		type: 			"Fashionista",
+		title: 			"Fashionista",
+		intro:			"intro_fashionista",
+		description:	"+20% bonus appeal for Females"
+	},
+	{
+		type: 			"Flirty",
+		title: 			"Flirty",
+		intro:			"intro_flirty",
+		description:	"+20% bonus appeal for Males"
+	},
+	{
+		type: 			"Well_Endowed",
+		title: 			"Well Endowed",
+		intro:			"intro_well_endowed",
+		description:	"+30 bonus to Sexy"
+	},
+	{
+		type: 			"Idol_Otaku",
+		title: 			"Idol Otaku",
+		intro:			"intro_idol_otaku",
+		description:	"+20% bonus appeal for Hardcore"
+	},
+	{
+		type: 			"Wooden_Acting",
+		title: 			"Wooden Acting",
+		intro:			"intro_wooden_acting",
+		description:	"-20% penalty to drama businesses",
+		positive:		false
+	},
+	{
+		type: 			"Sadistic",
+		title: 			"Sadistic",
+		intro:			"intro_sadistic",
+		description:	"Bully victims lose 2x the mental stamina",
+		positive:		false
+	},
+	{
+		type: 			"Reckless",
+		title: 			"Reckless",
+		intro:			"intro_reckless",
+		description:	"3x more prone to injury",
+		positive:		false
+	},
+	{
+		type: 			"Job_Hopper",
+		title: 			"Job Hopper",
+		intro:			"intro_job_hopper",
+		description:	"Plans to graduate soon after joining",
+		positive:		false
+	},
+	{
+		type: 			"Aerophobia",
+		title: 			"Aerophobia",
+		intro:			"intro_aerophobia",
+		description:	"-50 mental stamina after a tour",
+		positive:		false
+	},
+	{
+		type: 			"Stage_Fright",
+		title: 			"Stage Fright",
+		intro:			"intro_stage_fright",
+		description:	"-30 mental stamina after centering or MCing in concerts",
+		positive:		false
+	},
+	{
+		type: 			"Cult_Leader",
+		title: 			"Cult Leader",
+		intro:			"intro_cult_leader",
+		description:	"Rallies her fans for +50% votes in Elections"
+	},
+	{
+		type: 			"Tone_Deaf",
+		title: 			"Tone-deaf",
+		intro:			"intro_tone_deaf",
+		description:	"-30 penalty to vocals",
+		positive:		false
+	},
+	{
+		type: 			"Homely",
+		title: 			"Homely",
+		intro:			"intro_homely",
+		description:	"-10 penalty to all visual stats",
+		positive:		false
+	},
+	{
+		type: 			"Thespian",
+		title: 			"Thespian",
+		intro:			"intro_thespian",
+		description:	"-50% stamina cost for Drama business proposals"
+	}
+]

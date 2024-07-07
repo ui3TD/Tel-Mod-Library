@@ -1,0 +1,8 @@
+{
+  "Title": "Traits Expansion",
+  "Description": "A bunch of new traits that expand upon the existing set of traits. They affect stats, appeal, businesses, special events and more.",
+  "Author": "Tel",
+  "Version": "1.0",
+  "Tags": ["gameplay"],
+  "HarmonyID": "com.tel.traitsexpansion"
+}

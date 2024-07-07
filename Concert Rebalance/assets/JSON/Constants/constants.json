@@ -1,0 +1,10 @@
+[
+	{
+		id: "CONCERT__VENUE_UNLOCK",
+		text: "Sell out a "
+	},{
+		id: "CONCERT__VENUE_UNLOCK_2",
+		text: " concert with a profit to unlock this venue"
+	}
+
+]

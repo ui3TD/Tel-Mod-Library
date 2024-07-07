@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<AssemblyName>com.tel.sistergroups</AssemblyName>
+		<ModName>More Sister Groups</ModName>
+		<Description>Idol Manager Mod</Description>
+		<Version>1.0.0</Version>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net46" Version="1.0.3">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="UnityEngine.Modules" Version="2019.4.23" IncludeAssets="compile" />
+	</ItemGroup>
+
+</Project>

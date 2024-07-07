@@ -1,0 +1,11 @@
+[
+	{
+		id: "EXTENDEDSSK__MODMENU__LIMIT",
+		text: "Election Maximum Ranking"
+	},
+	{
+		id: "EXTENDEDSSK__MODMENU__WARNING",
+		text: "Warning: A large number of rankings may cause elections to take a long time to complete."
+	}
+
+]

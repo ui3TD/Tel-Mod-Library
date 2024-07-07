@@ -1,0 +1,8 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Press '4' or click the fast-forward button twice to speed up time 5x faster!
+
+Use the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url] to customise the speed.
+
+[url=https://github.com/ui3TD/IM-FastForward]source code[/url] and instructions on how to make your own mods like this.

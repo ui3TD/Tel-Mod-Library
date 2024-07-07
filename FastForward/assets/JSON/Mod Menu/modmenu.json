@@ -1,0 +1,11 @@
+[
+	{
+		"type": "slider",
+		"varID": "FastForward_Multiplier",
+		"labelID": "FASTFORWARD__MODMENU__MULT",
+		"minValue": 1,
+		"maxValue": 20,
+		"defaultValue": 5,
+		"ignore": false
+	}
+]

@@ -1,0 +1,13 @@
+[
+	{
+		id: "UNFAIR_PLUS__ACTIVITIES__INTERNETSHOW",
+		text: "Run 6 episodes of an internet show"
+	},{
+		id: "UNFAIR_PLUS__ACTIVITIES__RADIOSHOW",
+		text: "Run 6 episodes of a radio show"
+	},{
+		id: "UNFAIR_PLUS__ACTIVITIES__TVSHOW",
+		text: "Run 6 episodes of a TV show"
+	}
+
+]

@@ -1,0 +1,8 @@
+{
+  "Title": "National Tour",
+  "Description": "Replaces World Tours with National Tours.",
+  "Author": "Tel",
+  "Version": "2.0",
+  "Tags": ["gameplay"],
+  "HarmonyID": "com.tel.nationaltour"
+}

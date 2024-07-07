@@ -1,0 +1,28 @@
+[
+{
+    "id": "story_chapter_3_aya_tour",
+    "title": "",
+    "description": "It seems like Aya Naya's daily coverage of the [groupname] national tour attracted some new fans. Though, it looks like most of the people who followed her daily vlogs were more interested in seeing her visiting tourist sites than learning anything about [groupname]...",
+    "image": "aya_vacation.png",
+    "random": false,
+    "actors": [],
+    "conditions": [],
+    "effects": [],
+    "options": [
+    {
+        "text": "Okay...",
+        "tooltip": "",
+        "effects": [
+        {
+            "target": "group",
+            "parameter": "add_fans",
+            "formula": "C=1"
+        }],
+        "SNS": [],
+        "result":
+        {
+            "description": "",
+            "delay": 0
+        }
+    }]
+}]

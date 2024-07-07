@@ -1,0 +1,10 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+
+The criteria for promotion tiers increased to be more challenging.
+
+- Promotion lvl 3 requires 6 episodes of an internet show instead of just 1
+- Promotion lvl 4 requires 6 episodes of a radio show instead of just 1, and peak internet show audience of 6000 instead of 1000
+- Promotion lvl 6 requires 6 episodes of a TV show instead of just 1
+- Promotion lvl 9 requires 3 idols with 9 fame instead of 5 fame

@@ -1,0 +1,130 @@
+[
+	{
+		id: "MBTI__TITLE_ISTJ",
+		text: "ISTJ"
+	},
+	{
+		id: "MBTI__DESC_ISTJ",
+		text: "-10% chance of concerts accidents"
+	},
+	{
+		id: "MBTI__TITLE_ISTP",
+		text: "ISTP"
+	},
+	{
+		id: "MBTI__DESC_ISTP",
+		text: "-50% chance of failing to solve concert accidents"
+	},
+	{
+		id: "MBTI__TITLE_ISFJ",
+		text: "ISFJ"
+	},
+	{
+		id: "MBTI__DESC_ISFJ",
+		text: "10% greater increase in producer influence"
+	},
+	{
+		id: "MBTI__TITLE_ISFP",
+		text: "ISFP"
+	},
+	{
+		id: "MBTI__DESC_ISFP",
+		text: "10% appeal bonus to hardcore"
+	},
+	{
+		id: "MBTI__TITLE_INFJ",
+		text: "INFJ"
+	},
+	{
+		id: "MBTI__DESC_INFJ",
+		text: "+5 bonus to stats in media shows"
+	},
+	{
+		id: "MBTI__TITLE_INFP",
+		text: "INFP"
+	},
+	{
+		id: "MBTI__DESC_INFP",
+		text: "Fans buy 10% more handshakes"
+	},
+	{
+		id: "MBTI__TITLE_INTJ",
+		text: "INTJ"
+	},
+	{
+		id: "MBTI__DESC_INTJ",
+		text: "Smartness increases faster with age"
+	},
+	{
+		id: "MBTI__TITLE_INTP",
+		text: "INTP"
+	},
+	{
+		id: "MBTI__DESC_INTP",
+		text: "Cafe dishes stay novel for longer"
+	},
+	{
+		id: "MBTI__TITLE_ESTP",
+		text: "ESTP"
+	},
+	{
+		id: "MBTI__DESC_ESTP",
+		text: "+5 to all stats when using risky marketing"
+	},
+	{
+		id: "MBTI__TITLE_ESTJ",
+		text: "ESTJ"
+	},
+	{
+		id: "MBTI__DESC_ESTJ",
+		text: "20% less training time"
+	},
+	{
+		id: "MBTI__TITLE_ESFP",
+		text: "ESFP"
+	},
+	{
+		id: "MBTI__DESC_ESFP",
+		text: "5% sales boost in theater"
+	},
+	{
+		id: "MBTI__TITLE_ESFJ",
+		text: "ESFJ"
+	},
+	{
+		id: "MBTI__DESC_ESFJ",
+		text: "+5 increase in team chemistry"
+	},
+	{
+		id: "MBTI__TITLE_ENFP",
+		text: "ENFP"
+	},
+	{
+		id: "MBTI__DESC_ENFP",
+		text: "-10% stamina of new business proposals"
+	},
+	{
+		id: "MBTI__TITLE_ENFJ",
+		text: "ENFJ"
+	},
+	{
+		id: "MBTI__DESC_ENFJ",
+		text: "20% increase in Election votes"
+	},
+	{
+		id: "MBTI__TITLE_ENTP",
+		text: "ENTP"
+	},
+	{
+		id: "MBTI__DESC_ENTP",
+		text: "+5 to all stats if she has scandal points"
+	},
+	{
+		id: "MBTI__TITLE_ENTJ",
+		text: "ENTJ"
+	},
+	{
+		id: "MBTI__DESC_ENTJ",
+		text: "+5 to all stats when pushed"
+	}
+]

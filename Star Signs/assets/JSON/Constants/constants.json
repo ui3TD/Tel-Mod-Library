@@ -1,0 +1,98 @@
+[
+	{
+		id: "STARSIGN__TITLE_ARIES",
+		text: "Aries"
+	},
+	{
+		id: "STARSIGN__DESC_ARIES",
+		text: "More friendly if she is pushed due to competitive nature"
+	},
+	{
+		id: "STARSIGN__TITLE_TAURUS",
+		text: "Taurus"
+	},
+	{
+		id: "STARSIGN__DESC_TAURUS",
+		text: "Maintains stable relationships that fluctuate less"
+	},
+	{
+		id: "STARSIGN__TITLE_GEMINI",
+		text: "Gemini"
+	},
+	{
+		id: "STARSIGN__DESC_GEMINI",
+		text: "Dual nature makes relationships fluctuate more"
+	},
+	{
+		id: "STARSIGN__TITLE_CANCER",
+		text: "Cancer"
+	},
+	{
+		id: "STARSIGN__DESC_CANCER",
+		text: "Protective nature increases relationship with clique members"
+	},
+	{
+		id: "STARSIGN__TITLE_LEO",
+		text: "Leo"
+	},
+	{
+		id: "STARSIGN__DESC_LEO",
+		text: "Often becomes a clique leader"
+	},
+	{
+		id: "STARSIGN__TITLE_VIRGO",
+		text: "Virgo"
+	},
+	{
+		id: "STARSIGN__DESC_VIRGO",
+		text: "Perfectionist with more respect for skilled girls"
+	},
+	{
+		id: "STARSIGN__TITLE_LIBRA",
+		text: "Libra"
+	},
+	{
+		id: "STARSIGN__DESC_LIBRA",
+		text: "Sense of justice increases relationship with bullied girls"
+	},
+	{
+		id: "STARSIGN__TITLE_SCORPIO",
+		text: "Scorpio"
+	},
+	{
+		id: "STARSIGN__DESC_SCORPIO",
+		text: "Free thinking and less susceptible to being bullied"
+	},
+	{
+		id: "STARSIGN__TITLE_SAGITTARIUS",
+		text: "Sagittarius"
+	},
+	{
+		id: "STARSIGN__DESC_SAGITTARIUS",
+		text: "Meshes well with scandalous girls"
+	},
+	{
+		id: "STARSIGN__TITLE_CAPRICORN",
+		text: "Capricorn"
+	},
+	{
+		id: "STARSIGN__DESC_CAPRICORN",
+		text: "Meshes well with serious girls who don't date"
+	},
+	{
+		id: "STARSIGN__TITLE_AQUARIUS",
+		text: "Aquarius"
+	},
+	{
+		id: "STARSIGN__DESC_AQUARIUS",
+		text: "Independent and less jealous of pushed girls"
+	},
+	{
+		id: "STARSIGN__TITLE_PISCES",
+		text: "Pisces"
+	},
+	{
+		id: "STARSIGN__DESC_PISCES",
+		text: "Tends to get along well with others"
+	}
+]

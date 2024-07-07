@@ -1,0 +1,9 @@
+{
+  "Title": "JSON Load Order",
+  "Description": "Allows modders to adjust the JSON load order of their mods. Just add a JSONLoadOrder attribute to info.json. Default JSONLoadOrder number is 0. Lower numbers load early, and higher numbers load late.",
+  "Author": "Tel",
+  "Version": "1.0",
+  "Tags": ["modding"],
+  "HarmonyID": "com.tel.jsonloadorder",
+  "JSONLoadOrder": 100
+}

@@ -1,0 +1,80 @@
+[
+	{
+		id: "AUDITIONAGELIMIT__MODMENU__MIN",
+		text: "Minimum Age"
+	},
+	{
+		id: "AUDITIONAGELIMIT__MODMENU__MAX",
+		text: "Maximum Age"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__CUTE",
+		text: "Cute Priority"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__COOL",
+		text: "Cool Priority"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__SEXY",
+		text: "Sexy Priority"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__PRETTY",
+		text: "Pretty Priority"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__VOCAL",
+		text: "Vocal Priority"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__DANCE",
+		text: "Dance Priority"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__FUNNY",
+		text: "Funny Priority"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__SMART",
+		text: "Smart Priority"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__BICHANCE",
+		text: "Percent Chance to be Bisexual"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__GAYCHANCE",
+		text: "Percent Chance to be Lesbian"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__COUNT",
+		text: "Number of Candidates"
+	},
+	{
+		id: "CUSTOMAUDITION__MODMENU__EXPLAIN",
+		text: "Warning: It may take time to generate a large number of candidates."
+	},
+	
+	{
+		id: "AGELIMIT__SAVE",
+		text: "Set Age Limits"
+	},
+	{
+		id: "AGELIMIT__DEFAULT",
+		text: "Use Default"
+	},
+	{
+		id: "AGELIMIT__INPUT_FIELD",
+		text: "Enter Age Limits: @1 - @2"
+	},
+	{
+		id: "AGELIMIT__TOOLTIP",
+		text: "Input must be formatted: 12 - 23\nMaximum age must be greater than minimum age\nAges must be greater than 0"
+	},
+	{
+		id: "AUDITIONAGELIMIT__MODMENU__TOGGLE",
+		text: "Ask for Age Limits each Audition"
+	},
+
+]

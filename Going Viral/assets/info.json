@@ -1,0 +1,8 @@
+{
+  "Title": "Going Viral",
+  "Description": "Introduces a trending mechanism. You have a small chance to go viral and become trending, which doubles your fan growth.",
+  "Author": "Tel",
+  "Version": "1.0",
+  "Tags": ["gameplay"],
+  "HarmonyID": "com.tel.goingviral"
+}

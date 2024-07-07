@@ -1,0 +1,11 @@
+{
+    "Title": "IM-HarmonyIntegration Plugin",
+    "Description": "This mod checks if you have IM-HarmonyIntegration (IM-HI) installed. If it is not installed, please visit the IM-HarmonyIntegration github page for instructions.",
+    "Author": "Tel, Shelon",
+    "Version": "1.0",
+    "Tags": [
+        "example", 
+        "patches"
+    ],
+  "HarmonyID": "com.tel.harmonychecker"
+}

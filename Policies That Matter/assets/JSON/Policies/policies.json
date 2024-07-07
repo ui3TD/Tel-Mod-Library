@@ -1,0 +1,400 @@
+[
+
+	{
+		Type: "business",
+		Title: "Business Proposals",
+		Tooltip: "Select which type of business proposals you want to get 2.5x more often"
+	},
+
+	{
+		Type: "business",
+		Value: "business_neutral",
+		Title: "Neutral",
+		Selected: true
+	},{
+		Type: "business",
+		Value: "business_photoshoot",
+		Title: "Photoshoot"
+	},{
+		Type: "business",
+		Value: "business_ad",
+		Title: "Advertisement"
+	},{
+		Type: "business",
+		Value: "business_variety",
+		Title: "Variety Show"
+	},{
+		Type: "business",
+		Value: "business_drama",
+		Title: "TV Drama"
+	},
+
+
+
+	{
+		Type: "vibe",
+		Title: "Vibe",
+		Tooltip: "1.25x bonus to the selected stat or 1.05x bonus to all of these stats if Neutral is selected{separator}Get business proposals with this stat 3.5x more often"
+	},
+
+	{
+		Type: "vibe",
+		Value: "vibe_neutral",
+
+		Title: "Neutral",
+		Selected: true
+	},{
+		Type: "vibe",
+		Value: "vibe_cute",
+		Title: "Cute"
+	},{
+		Type: "vibe",
+		Value: "vibe_cool",
+		Title: "Cool"
+	},{
+		Type: "vibe",
+		Value: "vibe_sexy",
+		Title: "Sexy"
+	},{
+		Type: "vibe",
+		Value: "vibe_pretty",
+		Title: "Pretty"
+	},{
+		Type: "vibe",
+		Value: "vibe_funny",
+		Title: "Funny"
+	},{
+		Type: "vibe",
+		Value: "vibe_smart",
+		Title: "Smart"
+	},
+
+
+	{
+		Type: "image",
+		Title: "Image",
+		Tooltip: ""
+	},
+
+	{
+		Type: "image",
+		Value: "image_orthodox",
+		Title: "Orthodox",
+		Tooltip: "+15 appeal to male and older fans{separator}Scandals are more damaging",
+		Cost: 6
+	},{
+		Type: "image",
+		Value: "image_neutral",
+		Title: "Neutral",
+		Tooltip: "",
+		Selected: true,
+		Cost: 6
+	},{
+		Type: "image",
+		Value: "image_rebellious",
+		Title: "Rebellious",
+		Tooltip: "+15 appeal to female and teens, but -40 appeal to adults{separator}Scandals are much less damaging{separator}Business proposals are on average 20% smaller in stamina and reward",
+		Cost: 6
+	},
+
+
+	{
+		Type: "training",
+		Title: "Auto Practice: Phys. Stamina Limit",
+		Tooltip: "Idols with physical stamina under the limit won't be picked up for auto practice"
+	},
+
+	{
+		Type: "training",
+		Value: "training_stop_at_80",
+		Title: "Limit: 80pt"
+	},{
+		Type: "training",
+		Value: "training_stop_at_50",
+		Title: "Limit: 50pt"
+	},{
+		Type: "training",
+		Value: "training_stop_at_20",
+		Title: "Limit: 20pt",
+		Selected: true
+	},{
+		Type: "training",
+		Value: "training_stop_at_0",
+		Title: "Limit: 5pt"
+	},{
+		Type: "training",
+		Value: "training_ignore_stamina",
+		Title: "No limit"
+	},
+
+	{
+		Type: "auto_training_max",
+		Title: "Auto Practice: Max Value",
+		Tooltip: "Idols won't be picked up for auto practice if their stat's value is bigger than the limit. Use this if you want idols to train their weak stats."
+	},{
+		Type: "auto_training_max",
+		Value: "auto_training_max_20",
+		Title: "Limit: 20pt"
+	},{
+		Type: "auto_training_max",
+		Value: "auto_training_max_50",
+		Title: "Limit: 50pt"
+	},{
+		Type: "auto_training_max",
+		Value: "auto_training_max_80",
+		Title: "Limit: 80pt"
+	},{
+		Type: "auto_training_max",
+		Value: "auto_training_max_100",
+		Title: "No limit",
+		Selected: true
+	},
+
+	{
+		Type: "auto_training_min",
+		Title: "Auto Practice: Min Value",
+		Tooltip: "Idols won't be picked up for auto practice if their stat's value is smaller than the limit. Use this if you want idols to train their strong stats."
+	},{
+		Type: "auto_training_min",
+		Value: "auto_training_min_20",
+		Title: "Limit: 20pt"
+	},{
+		Type: "auto_training_min",
+		Value: "auto_training_min_50",
+		Title: "Limit: 50pt"
+	},{
+		Type: "auto_training_min",
+		Value: "auto_training_min_80",
+		Title: "Limit: 80pt"
+	},{
+		Type: "auto_training_min",
+		Value: "auto_training_min_0",
+		Title: "No limit",
+		Selected: true
+	},
+
+	{
+		Type: "background_check",
+		Title: "Background Check",
+		Tooltip: ""
+	},
+
+	{
+		Type: "background_check",
+		Value: "background_check_no_check",
+		Title: "No Check",
+		Selected: true,
+		Cost: 1
+	},{
+		Type: "background_check",
+		Value: "background_check_basic",
+		Title: "Basic",
+		Cost: 1,
+		Tooltip: "Auditions are 20% more expensive, but recruits are 80% less likely to have negative traits"
+	},{
+		Type: "background_check",
+		Value: "background_check_extensive",
+		Title: "Extensive",
+		Cost: 1,
+		Tooltip: "Auditions are 50% more expensive, but recruits are guaranteed to have positive traits"
+	},
+
+
+	{
+		Type: "security",
+		Title: "Security",
+		Tooltip: ""
+	},
+
+	{
+		Type: "security",
+		Value: "security_relaxed",
+		Title: "Relaxed",
+		Cost: 1,
+		Tooltip: "Handshake events are 50% more appealing to fans, but idols spend 50% more stamina{separator}Concerts have 25% more hype, but consume 50% more stamina"
+	},{
+		Type: "security",
+		Value: "security_normal",
+		Title: "Normal",
+		Cost: 1,
+		Selected: true,
+		Tooltip: ""
+	},{
+		Type: "security",
+		Value: "security_restrictive",
+		Title: "Restrictive",
+		Cost: 1,
+		Tooltip: "Handshake events are 20% less appealing to fans, but idols spend 25% less stamina{separator}Concerts have 25% less hype, but consume 30% less stamina"
+	},
+
+
+	{
+		Type: "social_media",
+		Title: "Social Media",
+		Tooltip: ""
+	},
+
+	{
+		Type: "social_media",
+		Value: "social_media_forbidden",
+		Title: "Forbidden",
+		Cost: 1,
+		Tooltip: "No social media related scandals"
+	},{
+		Type: "social_media",
+		Value: "social_media_premoderated",
+		Title: "Premoderated",
+		Cost: 1,
+		Selected: true,
+		Tooltip: "Social media related scandals can occur{separator}All idols have 10% chance of gaining 2 to 22 fans each Monday depending on fame{separator}All idols have 10% chance to lose about 10 mental stamina points each Monday"
+	},{
+		Type: "social_media",
+		Value: "social_media_no_restrictions",
+		Title: "No Restrictions",
+		Cost: 1,
+		Tooltip: "Social media related scandals can occur{separator}All idols have 10% chance of gaining 10 to 110 fans each Monday depending on fame{separator}All idols have 10% chance to lose about 20 mental stamina points each Monday"
+	},
+
+
+	{
+		Type: "streaming",
+		Title: "Streaming",
+		Tooltip: ""
+	},
+
+	{
+		Type: "streaming",
+		Value: "streaming_forbidden",
+		Title: "Forbidden",
+		Cost: 1,
+		Tooltip: "No streaming related scandals"
+	},{
+		Type: "streaming",
+		Value: "streaming_controlled",
+		Title: "Controlled",
+		Cost: 1,
+		Selected: true,
+		Tooltip: "Low chance of streaming related scandals{separator}All idols have 5% chance to earn a random amount of money each Monday{separator}All idols have 5% chance to lose about 5 mental stamina points each Monday"
+	},{
+		Type: "streaming",
+		Value: "streaming_no_restrictions",
+		Title: "No Restrictions",
+		Cost: 1,
+		Tooltip: "High chance of streaming related scandals{separator}All idols have 5% chance to earn a random amount of money each Monday{separator}All idols have 10% chance to earn a random amount of fame points{separator}All idols have 5% chance to lose about 10 mental stamina points each Monday"
+	},
+
+
+	{
+		Type: "dating",
+		Title: "Dating",
+		Tooltip: ""
+	},
+
+	{
+		Type: "dating",
+		Value: "dating_forbidden",
+		Title: "Forbidden",
+		Cost: 1,
+		Tooltip: "+15 bonus to hardcore appeal{separator}-15 penalty to casual appeal{separator}All idols over 16 have 10% chance to lose 10 mental stamina points each Monday{separator}All idols over 18 will move their graduation date 2 days sooner every week{separator}-0.5% to chance of idols to start dating each week{separator}Scandals are more damaging{separator}0 influence cost to force idols to break up"
+	},{
+		Type: "dating",
+		Value: "dating_ambiguous",
+		Title: "Ambiguous",
+		Cost: 1,
+		Selected: true,
+		Tooltip: "All idols over 16 have 10% chance to lose 5 mental stamina points each Monday{separator}All idols over 18 will move their graduation date 2 days sooner every week{separator}-0.2% to chance of idols to start dating each week{separator}2 influence cost to force idols to break up, and friendship damaged if there hasn't been a scandal"
+	},{
+		Type: "dating",
+		Value: "dating_allowed",
+		Title: "No Restrictions",
+		Cost: 1,
+		Tooltip: "+15 bonus to casual appeal{separator}-30 penalty to hardcore appeal{separator}Higher chance of dating related scandals{separator}Scandals are less damaging{separator}5 influence cost and friendship damaged to force idols to break up{separator}Player can attempt to flirt multiple times without complete rejection"
+	},
+
+
+	{
+		Type: "performances",
+		Title: "Performances",
+		Tooltip: ""
+	},
+
+	{
+		Type: "performances",
+		Value: "performances_energy",
+		Title: "Energy and Enthusiasm",
+		Cost: 1,
+		Tooltip: "15 bonus to hardcore appeal{separator}Performances take 1.3x more stamina, but make 1.5x more money"
+	},{
+		Type: "performances",
+		Value: "performances_neutral",
+		Title: "Balance and Moderation",
+		Cost: 1,
+		Selected: true,
+		Tooltip: ""
+	},{
+		Type: "performances",
+		Value: "performances_quality",
+		Title: "Quality and Polish",
+		Cost: 1,
+		Tooltip: "15 bonus to casual appeal{separator}Training takes 1.3x more stamina and takes 0.5 mental stamina per week, but progresses 2x faster"
+	},
+
+
+	{
+		Type: "skirts",
+		Title: "Skirts",
+		Tooltip: ""
+	},
+
+	{
+		Type: "skirts",
+		Value: "skirts_short",
+		Title: "Short skirts, no safety shorts",
+		Cost: 1,
+		Tooltip: "+30 bonus to hardcore appeal{separator}-15 penalty to casual appeal"
+	},{
+		Type: "skirts",
+		Value: "skirts_safety_shorts",
+		Title: "Short skirts with safety shorts",
+		Cost: 1,
+		Selected: true,
+		Tooltip: "+15 bonus to hardcore appeal"
+	},{
+		Type: "skirts",
+		Value: "skirts_long_skirts",
+		Title: "Long Skirts",
+		Cost: 1,
+		Tooltip: "+15 bonus to female and hardcore appeal{separator}-15 penalty to male appeal"
+	},{
+		Type: "skirts",
+		Value: "skirts_pants",
+		Title: "Pants",
+		Cost: 1,
+		Tooltip: "+15 bonus to male and casual appeal{separator}-15 penalty to hardcore appeal"
+	},
+
+
+	{
+		Type: "salary",
+		Title: "Idol Salaries",
+		Tooltip: ""
+	},
+
+	{
+		Type: "salary",
+		Value: "salary_manual",
+		Title: "Manual",
+		Selected: true,
+		Tooltip: "Idol salaries don't change automatically"
+	},{
+		Type: "salary",
+		Value: "salary_low",
+		Title: "Auto: keep salaries low",
+		Tooltip: "Automatically update salaries every Monday, try to keep idol satisfaction at 50%"
+	},{
+		Type: "salary",
+		Value: "salary_satisfied",
+		Title: "Auto: keep idols satisfied",
+		Tooltip: "Automatically update salaries every Monday, try to keep idol satisfaction at 150%"
+	}
+]

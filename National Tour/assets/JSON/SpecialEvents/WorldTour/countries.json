@@ -1,0 +1,48 @@
+[
+	{  "type": "china",  "area": "asia",  "cost": 45300,  "ticketPrice": 2245 },
+	{  "type": "southKorea",  "area": "asia",  "cost": 15100,  "ticketPrice": 4339 },
+	{  "type": "india",  "area": "asia",  "cost": 75500,  "ticketPrice": 1286 },
+	{  "type": "thailand",  "area": "asia",  "cost": 52850,  "ticketPrice": 1925 },
+	{  "type": "philippines",  "area": "asia",  "cost": 46810,  "ticketPrice": 1468 },
+	{  "type": "indonesia",  "area": "asia",  "cost": 52850,  "ticketPrice": 1582 },
+	{  "type": "australia",  "area": "asia",  "cost": 105700,  "ticketPrice": 4817 },
+
+	{  "type": "southAfrica",  "area": "africa",  "cost": 135900,  "ticketPrice": 1828 },
+
+	{  "type": "canada",  "area": "namerica",  "cost": 196300,  "ticketPrice": 5734 },
+	{  "type": "US",  "area": "namerica",  "cost": 151000,  "ticketPrice": 7271 },
+
+	{  "type": "brazil",  "area": "samerica",  "cost": 151000,  "ticketPrice": 2510 },
+	{  "type": "argentina",  "area": "samerica",  "cost": 196300,  "ticketPrice": 2903 },
+
+	{  "type": "UK",  "area": "europe",  "cost": 135900,  "ticketPrice": 5174 },
+	{  "type": "france",  "area": "europe",  "cost": 90600,  "ticketPrice": 5123 },
+	{  "type": "germany",  "area": "europe",  "cost": 120800,  "ticketPrice": 5500 },
+	{  "type": "italy",  "area": "europe",  "cost": 120800,  "ticketPrice": 4400 },
+	{  "type": "spain",  "area": "europe",  "cost": 75500,  "ticketPrice": 4094 },
+	{  "type": "russia",  "area": "europe",  "cost": 108720,  "ticketPrice": 2577 },
+	
+	
+	{  "type": "saitama",  "area": "asia",  "cost": 45300,  "ticketPrice": 2245 },
+	{  "type": "kanagawa",  "area": "asia",  "cost": 15100,  "ticketPrice": 4339 },
+	{  "type": "niigata",  "area": "asia",  "cost": 75500,  "ticketPrice": 1286 },
+	{  "type": "aichi",  "area": "asia",  "cost": 52850,  "ticketPrice": 1925 },
+	{  "type": "chiba",  "area": "asia",  "cost": 46810,  "ticketPrice": 1468 },
+	{  "type": "shizuoka",  "area": "asia",  "cost": 52850,  "ticketPrice": 1582 },
+	{  "type": "ishikawa",  "area": "asia",  "cost": 105700,  "ticketPrice": 4817 },
+
+	{  "type": "okinawa",  "area": "africa",  "cost": 135900,  "ticketPrice": 1828 },
+
+	{  "type": "hokkaido",  "area": "namerica",  "cost": 196300,  "ticketPrice": 5734 },
+	{  "type": "miyagi",  "area": "namerica",  "cost": 151000,  "ticketPrice": 7271 },
+
+	{  "type": "fukuoka",  "area": "samerica",  "cost": 151000,  "ticketPrice": 2510 },
+	{  "type": "kumamoto",  "area": "samerica",  "cost": 196300,  "ticketPrice": 2903 },
+
+	{  "type": "ehime",  "area": "europe",  "cost": 135900,  "ticketPrice": 5174 },
+	{  "type": "osaka",  "area": "europe",  "cost": 90600,  "ticketPrice": 5123 },
+	{  "type": "okayama",  "area": "europe",  "cost": 120800,  "ticketPrice": 5500 },
+	{  "type": "hiroshima",  "area": "europe",  "cost": 120800,  "ticketPrice": 4400 },
+	{  "type": "hyogo",  "area": "europe",  "cost": 75500,  "ticketPrice": 4094 },
+	{  "type": "kyoto",  "area": "europe",  "cost": 108720,  "ticketPrice": 2577 }
+]

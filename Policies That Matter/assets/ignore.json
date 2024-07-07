@@ -1,0 +1,4 @@
+{
+	"Ignore_Idol_Portraits": false,
+	"Ignore_Files": ["Policies\\policies", "Policies/policies"]
+}

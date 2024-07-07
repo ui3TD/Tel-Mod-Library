@@ -1,0 +1,13 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Adds hotkeys for the main menu based on the home row of the keyboard.
+
+A - Idols
+S - Staff
+D - Activities
+F - Singles
+G - Media
+H - Special Events
+J - Research
+K - Policies

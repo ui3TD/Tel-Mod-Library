@@ -1,0 +1,8 @@
+{
+  "Title": "MBTI Personalities",
+  "Description": "Randomly assigns MBTI types to girls, which have minor gameplay effects.",
+  "Author": "Tel",
+  "Version": "1.0",
+  "Tags": ["gameplay"],
+  "HarmonyID": "com.tel.mbtipersonalities"
+}

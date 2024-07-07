@@ -1,0 +1,14 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Update v2: This mod now requires the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url]
+
+This mod was formerly called "Audition Age Limits".
+
+Using the ModMenu menu, you will be able to customise:
+[list]
+[*][b]Age limits[/b]: Only idols within the desired age range will be selected. Does not apply to unique idols.
+[*][b]Prioritised Skills[/b]: The higher the prioritisation, the higher the chance that the skill will be the girl's best skill.
+[*][b]Sexual Orientation[/b]: Increase to make girls easier to date if you are female or decrease to reduce in-group dating.
+[*][b]Number of Candidates[/b]: Have any number of candidates per audition. Click and drag to scroll through cards in the audition.
+[/list]

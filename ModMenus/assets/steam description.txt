@@ -1,0 +1,88 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+ModMenus provides a UI menu to manage the settings of other mods.
+
+Try one of these mods to see it in action:
+[list]
+[*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2990120915]Targeted Auditions[/url] (formerly called Audition Age Limits)
+[*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2982223743]Extended SSK[/url]
+[*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2976136928]FastForward[/url]
+[/list]
+
+[h2]For Modders[/h2]
+ModMenus reads "JSON/Mod Menu/modmenu.json" to generate UI elements.
+
+Supported UI elements include text, sliders, checkboxes, and dropdown menus.
+
+[h3]type: text[/h3]
+[code]
+{
+	"type": "text",
+	"labelID": "CUSTOMAUDITION__MODMENU__EXPLAIN"
+}
+[/code]
+
+[b]labelID[/b]: ID for text defined in "Constants/constant.json"
+
+[h3]type: slider[/h3]
+[code]
+{
+	"type": "slider",
+	"varID": "CustomAudition_Count",
+	"labelID": "CUSTOMAUDITION__MODMENU__COUNT",
+	"minValue": 1,
+	"maxValue": 25,
+	"defaultValue": 5
+}
+[/code]
+
+Slider elements output an integer as a string to an in-game variable.
+
+[b]varID[/b]: ID for the in-game variable storing the value
+[b]labelID[/b]: ID for text defined in "JSON/Constants/constant.json"
+[b]minValue[/b] and [b]maxValue[/b]: Optional integers. Default range: 0 to 100
+[b]defaultValue[/b]: Optional integer. Default: midpoint of range
+
+[h3]type: checkbox[/h3]
+[code]
+{
+	"type": "checkbox",
+	"varID": "AuditionAgeLimit_TogglePopup",
+	"labelID": "AUDITIONAGELIMIT__MODMENU__TOGGLE",
+	"defaultValue": false
+}
+[/code]
+
+Checkbox elements output "1" or "0" as a string to an in-game variable, representing true or false.
+
+[b]varID[/b]: ID for the in-game variable storing the value
+[b]labelID[/b]: ID for text defined in "JSON/Constants/constant.json"
+[b]defaultValue[/b]: Optional boolean. Default: false
+
+[h3]type: dropdown[/h3]
+[code]
+{
+	"type": "dropdown",
+	"varID": "AuditionAgeLimit_TogglePopup",
+	"labelID": "AUDITIONAGELIMIT__MODMENU__TOGGLE",
+	"itemIDList": ["YES", "NO"],
+	"defaultValue": 0
+}
+[/code]
+
+Dropdown elements output an index (0, 1, 2, etc.) as a string to an in-game variable, corresponding to the selected item's position.
+
+[b]varID[/b]: ID for the in-game variable storing the value
+[b]labelID[/b]: ID for text defined in "JSON/Constants/constant.json"
+[b]itemIDList[/b]: Required array of strings. Each string is the ID for text defined in "JSON/Constants/constant.json"
+[b]defaultValue[/b]: Optional integer. Default: 0
+
+[h3]Tips[/h3]
+[list]
+[*]Retrieve values using variables.Get(varID), where varID is the element's varID.
+[*]Implement null checks for variables.Get(varID) to handle cases where ModMenus is not installed.
+[*]To add vertical spacing, use a text element with an empty labelID ("").
+[*]Always define text in constant.json for translation support. If absolutely necessary, ModMenus can handle raw text from labelID or itemIDList fields.
+[*]For testing, add '"ignore": true' to any element to exclude it from parsing.
+[/list]

@@ -1,0 +1,30 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Adds a new "Trending" game mechanic. It simulates the group going viral by adding a bonus to new fans when the group is trending. If you have the Fan Attrition mod, the group can get negative press and the fan churn rate will increase.
+
+Recommended to play along with the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2977860713]Fan Attrition mod[/mod]!
+
+[h3]Gameplay Effects[/h3]
+- Now, the game is much more dynamic. You'll have to act fast to take advantage of when you're going viral.
+- Now, you have to choose carefully between catering to existing fan opinion, or following the trends!
+- With the Fan Attrition mod, your fan count, especially of casual fans, will fluctuate a lot more. You'll have to work hard to counteract the effects of negative publicity.
+
+[h3]General Game Changes[/h3]
+- Overhauled fan growth so that there is a 3x chance that new fans will be casual fans.
+- Changed fan growth to not consider fan opinion.
+- Overhauled fan loss so that fan opinion is a major factor.
+- Overhauled fan loss so that fans with low appeal and opinion will be more easily lost.
+- Overhauled fan loss so that casual fans are 3x more easily lost in general.
+
+Hint: Improve fan opinion by accepting business proposals featuring skills that appeal to your target audience, and releasing singles and shows for your target audience.
+
+[h3]How to Trigger Trending[/h3]
+- When a single's marketing critically succeeds, there is a chance of trending. This chance increases with the popularity of the genre, choreo and lyrics on the charts. Keep track of the trending genres to maximize your chances!
+- When a TV show is released, there is a chance of trending after the first week. This chance increases with the number of days since the launch of a tv show with the same genre. Mix up your TV show genres to maximize your chances!
+- When a single's marketing critically fails, there is a chance of getting negative press and a trending penalty (only if you're using the Fan Attrition mod).
+- When you get a scandal point, there is a chance of getting negative press and a trending penalty (only if you're using the Fan Attrition mod).
+
+[h3]Effects of Trending[/h3]
+- When you're trending, all singles, shows, business proposals and tours get a multiplier to the total number of new fans. These new fans will be mainly casual fans.
+- When you're negatively trending, a multiplier is added to fan churn as a penalty (only if you're using the Fan Attrition mod).

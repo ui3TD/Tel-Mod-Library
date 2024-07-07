@@ -1,0 +1,22 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Adds zodiac signs based on the girl's birthday for some flavor and minor effects to girls' relationships.
+
+[h3]Gameplay Effects[/h3]
+Aries: 20% bonus to relationships when she's pushed
+Taurus: Relationships fluctuate 20% less
+Gemini: Relationships fluctuate 20% more
+Cancer: Relationships improve 10% more with her clique
+Leo: +10 bonus to smart and funny when choosing clique leader
+Virgo: Relationships improve 10% more with girls with >70 average skill
+Libra: Relationships improve 20% more with bullied girls
+Scorpio: 20% less chance of being bullied
+Sagittarius: Relationships improve 20% more with scandal girls
+Capricorn: Relationships improve 20% more with girls who don't date
+Aquarius: 20% less penalty to relationship if pushed girl has less skills than her
+Pisces: All relationships improve 10% more
+
+[h3]Unique Idols[/h3]
+You can make unique idols have a specific zodiac star sign by adding a line in params.json like so:
+"starsign": "Capricorn"

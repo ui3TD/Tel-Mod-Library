@@ -1,0 +1,39 @@
+﻿[
+	{
+		"id": 0,
+		"title": "No Host",
+		"cost": 0,
+		"fame": 0,
+		"description": "Hosts raise the fame level of the show and the number of new fans.\nThe higher this level is, the bigger your initial audience is and the more fame points you get per episode.{linebreak}Salary: {cost} /w\nNew Fans: {green}+0%</color>"
+	},{
+		"id": 1,
+		"title": "Newcomer",
+		"cost": 10000,
+		"fame": 2,
+		"description": "Hosts raise the fame level of the show and the number of new fans. \nThe higher this level is, the bigger your initial audience is and the more fame points you get per episode.{linebreak}Salary: {cost} /w\nNew Fans: {green}+40%</color>"
+	},{
+		"id": 2,
+		"title": "Seasoned",
+		"cost": 30000,
+		"fame": 4,
+		"description": "Hosts raise the fame level of the show and the number of new fans.\nThe higher this level is, the bigger your initial audience is and the more fame points you get per episode.{linebreak}Salary: {cost} /w\nNew Fan Bonus: {green}+160%</color>\n"
+	},{
+		"id": 3,
+		"title": "Trendy",
+		"cost": 100000,
+		"fame": 6,
+		"description": "Hosts raise the fame level of the show and the number of new fans.\nThe higher this level is, the bigger your initial audience is and the more fame points you get per episode.{linebreak}Salary: {cost} /w\nNew Fan Bonus: {green}+360%</color>"
+	},{
+		"id": 4,
+		"title": "Veteran",
+		"cost": 1000000,
+		"fame": 8,
+		"description": "Hosts raise the fame level of the show and the number of new fans.\nThe higher this level is, the bigger your initial audience is and the more fame points you get per episode.{linebreak}Salary: {cost} /w\nNew Fan Bonus: {green}+640%</color>"
+	},{
+		"id": 5,
+		"title": "Legend",
+		"cost": 10000000,
+		"fame": 10,
+		"description": "Hosts raise the fame level of the show and the number of new fans.\nThe higher this level is, the bigger your initial audience is and the more fame points you get per episode.{linebreak}Salary: {cost} /w\nNew Fan Bonus: {green}+1500%</color>"
+	}
+]

@@ -1,0 +1,10 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Rebalances concerts to make things more challenging.
+
+[h3]Details[/h3]
+- Concert revenue formula rebalanced so it approaches zero with high ticket prices.
+- Concert venues can only be unlocked if you've sold out the previous venue with a profit.
+- Concert Club venue had its hype multiplier reduced. Previously, clubs had higher hype than other venues.
+- In Unfair, Tokyo Coliseum is increased to 50,000 capacity, but has its base cost increased to 200,000,000 for more endgame challenge.

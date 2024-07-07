@@ -1,0 +1,45 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+NOT COMPATIBLE with mods that change policies or policy tooltips.
+
+Makes policies have more impact on gameplay. Take care to manage the mental stamina! There is no longer just a carefree way to remove scandal points.
+
+Hint: Mental stamina regenerates at a rate of 0.5 per week.
+
+[h3]Changes[/h3]
+
+Performance:
+- Energetic: 1.5x increase in performance profit to counteract the major disadvantage of increased stamina.
+- Quality: -0.5 mental stamina each week when training, to add complexity to mental stamina management.
+- Quality: 2x training speed to balance the increased training costs.
+
+Background Check:
+- Extensive: 100% for positive trait
+
+Image:
+- Rebellious: -40 appeal to adult, otherwise it had no downside.
+
+Dating:
+- Allowed: -25 appeal to hardcore otherwise it had little downside.
+- Ambiguous: 10% chance for -5 mental each week after turning 16
+- Forbidden: 10% chance for -10 mental each week after turning 16
+
+Streaming:
+- Controlled: 5% chance for -5 mental each week
+- No Restrictions: 5% chance for -10 mental each week
+- No Restrictions: 5% chance to get money each week
+
+Social Media:
+- Controlled: 10% chance for -10 mental each week
+- Controlled: 10% chance for 22 fans/week/girl/fame
+- No Restrictions: 10% chance for -20 mental each week
+- No Restrictions: 10% chance for 110 fans/week/girl/fame
+
+Security:
+- Relaxed: 1.5x concert stamina
+- Relaxed: 1.25x concert hype
+- Relaxed: 1.5x appeal of handshakes
+- Restrictive: 0.7x concert stamina
+- Restrictive: 0.75x concert hype
+- Restrictive: 0.8x appeal of handshakes

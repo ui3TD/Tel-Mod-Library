@@ -1,0 +1,10 @@
+{
+    "Title": "ModMenus",
+    "Description": "ModMenus provides a UI menu to manage the settings of other mods",
+    "Author": "Tel",
+    "Version": "1.0",
+    "Tags": [
+        "modding"
+    ],
+  "HarmonyID": "com.tel.modmenus"
+}

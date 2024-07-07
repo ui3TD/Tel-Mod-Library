@@ -1,0 +1,13 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Idols will demand fair wages! Brand new staff cannot be blamed for scandals!
+
+[h3]Idol Salaries[/h3]
+- 20000 yen/wk is the expected starting salary for 100% satisfaction.
+- 20000 yen/wk is the default starting salary.
+- In Unfair, idols at 10 fame will expect at least 10% of their earnings as salary so that the endgame is more challenging.
+- In Unfair and Normal mode, penalty for low salary satisfaction increased 10x. Each day, if satisfaction gets under 50%, the graduation date moves closer by 10 days. If under 20% then 30 days.
+
+[h3]Staff Rights[/h3]
+- Staff cannot be fired using scandal points within the first month so that you can't just hire and immediately fire staff to get rid of points.

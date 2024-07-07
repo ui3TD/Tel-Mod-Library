@@ -1,0 +1,4595 @@
+[
+   {
+      "latestID":15,
+      "parent":null,
+      "type":"dialogue",
+      "id":"story_chapter_3_aya_favors",
+      "location":"none",
+      "music":"aya_theme",
+      "random":false,
+      "conditions":[
+         
+      ],
+      "actors":[
+         {
+            "type":"story",
+            "tag":"story_aya",
+            "conditions":[
+               
+            ]
+         }
+      ],
+      "setup":[
+         {
+            "tag":"story_aya",
+            "posX":0,
+            "facing":"default",
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         null,
+         null,
+         {
+            "id":0,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Hey, thanks for the chance to interview [aya_single_center]. I think it really made my story about [aya_genre] come together!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_044_Greeting2"
+         },
+         {
+            "id":1,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Well, I'd really like the opportunity to do some real gonzo journalism.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":2,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Like, what would it be like to travel with a group that tours across the nation?",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"change_sprite",
+                  "formula":"surprised"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":3,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I've always wanted to visit Osaka",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"change_sprite",
+                  "formula":"happy"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_102"
+         },
+         {
+            "id":4,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"and Matsushima",
+            "effect":[
+               {
+                  "target":"meta",
+                  "parameter":"continue",
+                  "formula":""
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_103"
+         },
+         {
+            "id":5,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"and Miyajima...",
+            "effect":[
+               {
+                  "target":"meta",
+                  "parameter":"continue",
+                  "formula":""
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_104"
+         },
+         null,
+         {
+            "id":6,
+            "type":"choice",
+            "actor":null,
+            "val":"It sounds like you just want a vacation",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":7,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Haha, guilty as charged!",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"default"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_013_Fun1"
+               },
+               {
+                  "id":8,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"But if I make a story about it, then it means all of my travel expenses become business expenses.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"surprised"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":9,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Much better for accounting if I can make it a work trip, don't you think?",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"suspicious"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":10,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"And besides, it would be a fun story. I could do daily vlogs with girls on the airplane, that sort of thing.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"happy"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_014_Fun2"
+               }
+            ]
+         },
+         {
+            "id":11,
+            "type":"choice",
+            "actor":null,
+            "val":"We could arrange that",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":12,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Great! Let me know when you decide to embark on this national tour.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_023_Surprise1"
+               }
+            ]
+         },
+         {
+            "id":13,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"No pressure or anything. This could happen, you know, whenever.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"change_sprite",
+                  "formula":"default"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_052_Negation1"
+         },
+         {
+            "id":14,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I know you're not about to announce a big tour just so that I can go see the Glico man. But hey, when you do, give me a call, alright?",
+            "effect":[
+               {
+                  "target":"meta",
+                  "parameter":"add_task",
+                  "formula":"ch3_aya_2"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_030_Compliment2"
+         }
+      ]
+   },
+   {
+      "latestID":103,
+      "parent":null,
+      "type":"dialogue",
+      "id":"story_chapter_5_45_aya",
+      "location":"hotel_aya",
+      "music":"aya_theme",
+      "random":false,
+      "conditions":[
+         
+      ],
+      "actors":[
+         {
+            "type":"story",
+            "tag":"story_aya",
+            "conditions":[
+               
+            ]
+         }
+      ],
+      "setup":[
+         {
+            "tag":"story_aya",
+            "posX":0,
+            "facing":"default",
+            "startHidden":false,
+            "sprite":"default"
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         null,
+         null,
+         {
+            "id":0,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Hey, I take it you're looking forward to tomorrow night.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_043_Greeting1"
+         },
+         {
+            "id":1,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Big performance and all that.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":2,
+            "type":"choice",
+            "actor":null,
+            "val":"I'm looking forward to it",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":3,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Same here!",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"happy"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_051_Affirmation3"
+               }
+            ]
+         },
+         {
+            "id":4,
+            "type":"choice",
+            "actor":null,
+            "val":"I'm just eager for it to be over",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":5,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"I wonder if you'll be saying that once it's over.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"surprised"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_039_Calling2"
+               }
+            ]
+         },
+         {
+            "id":6,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"So, I'm not sure if you know, but I recently started doing a show where I do long-form interviews.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"change_sprite",
+                  "formula":"default"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":7,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I've talked to several people involved in the Summer Games already.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":8,
+            "type":"choice",
+            "actor":null,
+            "val":"I saw your interview with the skateboarder",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":9,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Yeah, that one really took off.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"intence"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_049_Affirmation1"
+               }
+            ]
+         },
+         {
+            "id":10,
+            "type":"choice",
+            "actor":null,
+            "val":"How's that going?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":11,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Pretty well! I did an interview a couple days ago that really took off.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"happy"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_015_Fun3"
+               }
+            ]
+         },
+         {
+            "id":12,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Anyway, given that my interview has focused on the Summer Games, getting an interview with you would be a hell of a get, considering your involvement with the competition.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"change_sprite",
+                  "formula":"default"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":13,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Plus, I've been meaning to catch up with you. And I thought doing that with the camera running would make for some great content.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_014_Fun2"
+         },
+         {
+            "id":14,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Is that something you'd be okay with?",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"change_sprite",
+                  "formula":"surprised"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":15,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I give my subjects final cut.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"change_sprite",
+                  "formula":"default"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":16,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"So, if you say something you regret, or inadvertently let something slip, we can cut it out.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":17,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"What do you say? How about an interview?",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"change_sprite",
+                  "formula":"suspicious"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_037_Worried3"
+         },
+         {
+            "id":18,
+            "type":"choice",
+            "actor":null,
+            "val":"That's fine",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":19,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Great.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"happy"
+                     },
+                     {
+                        "target":"story_aya",
+                        "parameter":"emotion",
+                        "formula":"happy"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_019_Thanks3"
+               },
+               {
+                  "id":20,
+                  "type":"message",
+                  "actor":null,
+                  "val":"\"Aya reaches into her bag and pulls out a fold-out tripod, then places it off to the side.\"",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":21,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Alright, we're live. Feel free to ignore the camera.",
+                  "effect":[
+                     {
+                        "target":"meta",
+                        "parameter":"set_cg",
+                        "formula":"p aya_interview_m_p aya_interview_f_p"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_013_Fun1"
+               },
+               {
+                  "id":22,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"And like I said, this is more a free-flowing conversation than an interview.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":23,
+            "type":"choice",
+            "actor":null,
+            "val":"Please don't record our conversation",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":24,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"That's alright.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"surprised"
+                     },
+                     {
+                        "target":"meta",
+                        "parameter":"set_variable",
+                        "formula":"dont_record = true"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_014_Fun2"
+               },
+               {
+                  "id":25,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"I can get why you wouldn't want to have a personal one-on-one conversation in front of the camera while we're just catching up.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":26,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"But after this whole thing is over, you owe me an actual interview, okay? We can do it on your schedule.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"happy"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":27,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Anyway, I'm personally more interested in just checking in with you for my own curiosity.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"change_sprite",
+                        "formula":"default"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":28,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"If the world can't listen in, that's fine with me.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":29,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"And I'd also like to fill you in on what I'm doing.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_037_Worried3"
+               },
+               {
+                  "id":30,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Who knows, after I explain myself, you might change your mind.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":31,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"There's something I've been meaning to ask you.",
+            "effect":[
+               {
+                  "target":"meta",
+                  "parameter":"set_cg",
+                  "formula":"p aya_interview_m_p aya_interview_f_p"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":32,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"When you talk to people from the press — people like me, for example — how do you view those interactions? Do you see them as more adversarial, or collaborative?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":33,
+            "type":"choice",
+            "actor":null,
+            "val":"Adversarial",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":34,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"I can see where you're coming from.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"popup_left",
+                        "formula":"default surprised none none"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_035_Worried1"
+               },
+               {
+                  "id":35,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"There's that old saying by a writer from England who said that journalism is printing what someone else doesn't want published, and everything else is just public relations.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":36,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"So if a journalist is doing their job, they're probably in the business of exposing things that you don't want exposed.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"popup_left",
+                        "formula":"surprised suspicious_af none none"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":37,
+            "type":"choice",
+            "actor":null,
+            "val":"Collaborative",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":38,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"I've always felt the same way, too.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"popup_left",
+                        "formula":"default happy none none"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_049_Affirmation1"
+               },
+               {
+                  "id":39,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"There's a reason that people willingly talk to the press: they want to communicate information to the public.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":40,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"People like you have things to say, and people like me have ways to say it.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":41,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"When I accompanied you on [groupname]'s tour, I told you that I got into journalism as a way of seeking attention and getting a reaction from the world.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_014_Fun2"
+         },
+         {
+            "id":42,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Because that was my goal, I spent a lot of time thinking that it was my job to tell people things.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":43,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"The only other mode I had was the brief moments when I would go learning things, solely for the sake of being able to talk about them to an audience.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":44,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"But recently, I've undertaken a different sort of experiment.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":45,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I'm starting to think that my job isn't to say things, but to listen.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_013_Fun1"
+         },
+         {
+            "id":46,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"As it turns out, people are fascinating, if you only give them the chance.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"default surprised none none"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":47,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"So, I'm trying to learn how to listen.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":48,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"For this project, my job isn't really to tell stories as much as it is to allow other people to tell their stories.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":49,
+            "type":"choice",
+            "actor":null,
+            "val":"That makes your job easier",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":50,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"That's what I thought at first.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_039_Calling2"
+               },
+               {
+                  "id":51,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"But I was coming from a world where my only job was to get a reaction.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":52,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"If I touched a nerve, I considered it a success.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":53,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"There were no wrong answers, except the boring ones.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_035_Worried1"
+               },
+               {
+                  "id":54,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"But when your job is getting other people to tell their story, there's a way to fail at that.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":55,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"You have to find a way to approach the interview that allows for that.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":56,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"I've come from a world where there are no wrong answers, and entered a world where there are lots of wrong questions.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":57,
+            "type":"choice",
+            "actor":null,
+            "val":"That makes your job a lot harder",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":58,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"It is!",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"popup_left",
+                        "formula":"default intence none none"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_050_Affirmation2"
+               },
+               {
+                  "id":59,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"When you're writing the story yourself, you have complete control.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":60,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"When I was writing for blogs, I could crank out 500 words on anything. There were no wrong answers.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_035_Worried1"
+               },
+               {
+                  "id":61,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"But when I'm interviewing someone, I've come to realize that there are wrong questions.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":62,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Sometimes, it's obvious.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":63,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"When you ask the question that makes someone immediately bored because you asked them the question that they've already gotten a dozen times in a dozen different interviews, you know on some level that you could have done better.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":64,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"But simply wanting to do better is only the first step. The next step is practice.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":65,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"That's what I'm doing now.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":66,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Who knows, maybe this little experiment will become something else.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_014_Fun2"
+         },
+         {
+            "id":67,
+            "type":"check",
+            "actor":null,
+            "val":"?? If the player told aya not to record earlier",
+            "effect":[
+               
+            ],
+            "requirements":[
+               {
+                  "target":"meta",
+                  "parameter":"variable",
+                  "formula":"dont_record == true"
+               }
+            ],
+            "script":[
+               {
+                  "id":68,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"That's what this little project is.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_037_Worried3"
+               },
+               {
+                  "id":69,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"I'm pilot-testing something new to see if it works for the public and works for me.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":70,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"So, what do you say? Let's do an interview.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":71,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"If you want to treat it like any other interview and give canned answers, you can do that.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":72,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"But if you want to actually be honest, I'm here to help you tell your story.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_014_Fun2"
+               },
+               {
+                  "id":73,
+                  "type":"message",
+                  "actor":null,
+                  "val":"\"Aya reaches into her bag and pulls out a fold-out tripod, then places it off to the side.\"",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":74,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"I know it's a low fidelity solution, but it works.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"popup_left",
+                        "formula":"default happy none none"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":75,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Here's a real question that I have for you. When I'm doing a story, whose interests do you think should take priority?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_037_Worried3"
+         },
+         {
+            "id":76,
+            "type":"choice",
+            "actor":null,
+            "val":"The subject",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":77,
+            "type":"choice",
+            "actor":null,
+            "val":"The audience",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":78,
+            "type":"choice",
+            "actor":null,
+            "val":"Yourself",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":79,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"That's interesting. And when you're running [groupname], whose interests do you put front and center?",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"default surprised none none"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_014_Fun2"
+         },
+         {
+            "id":80,
+            "type":"choice",
+            "actor":null,
+            "val":"The members of [groupname]",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":81,
+            "type":"choice",
+            "actor":null,
+            "val":"The fans",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":82,
+            "type":"choice",
+            "actor":null,
+            "val":"Myself",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":83,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"That feels like a big admission to make. Can you explain why you take that approach? What's that answer based on?",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"default suspicious none none"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_039_Calling2"
+         },
+         {
+            "id":84,
+            "type":"choice",
+            "actor":null,
+            "val":"It's based on what will benefit the most people in the long term",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":85,
+            "type":"choice",
+            "actor":null,
+            "val":"It's based on what will benefit the people who are closest to me",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":86,
+            "type":"choice",
+            "actor":null,
+            "val":"It's based on what will let me sleep at night",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":87,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I see.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_013_Fun1"
+         },
+         {
+            "id":88,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"This is a big moment for [groupname].",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":89,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"You're on top of the world, and now would be a time when I imagine a lot of people would look at the opportunities around them and consider whether to start something new.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":90,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Have you thought about what you'll do after tomorrow night's performance?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":91,
+            "type":"choice",
+            "actor":null,
+            "val":"I'm committed to staying with [groupname]",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":92,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"I see.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_013_Fun1"
+               }
+            ]
+         },
+         {
+            "id":93,
+            "type":"choice",
+            "actor":null,
+            "val":"I'm thinking of starting over with a new group",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":94,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"You've already done a lot for [groupname]. I don't think most of the fans have thought much about what new leadership would mean.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_013_Fun1"
+               }
+            ]
+         },
+         {
+            "id":95,
+            "type":"choice",
+            "actor":null,
+            "val":"I might move onto something else entirely.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":96,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"I'm looking forward to finding out what that is.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_013_Fun1"
+               }
+            ]
+         },
+         {
+            "id":97,
+            "type":"choice",
+            "actor":null,
+            "val":"I haven't decided",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":98,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"That, in itself, is a bit revealing, don't you think?",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_039_Calling2"
+               }
+            ]
+         },
+         {
+            "id":99,
+            "type":"message",
+            "actor":null,
+            "val":"\"...\"",
+            "effect":[
+               {
+                  "target":"meta",
+                  "parameter":"set_bg",
+                  "formula":"hotel_aya"
+               },
+               {
+                  "target":"story_aya",
+                  "parameter":"sprite",
+                  "formula":"fade_in"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":100,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Thanks for taking the time to answer my questions.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"change_sprite",
+                  "formula":"default"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":101,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"And may I say...",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":102,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"good luck with tomorrow night's performance.",
+            "effect":[
+               {
+                  "target":"meta",
+                  "parameter":"continue",
+                  "formula":""
+               },
+               {
+                  "target":"story_aya",
+                  "parameter":"change_sprite",
+                  "formula":"happy"
+               },
+               {
+                  "target":"meta",
+                  "parameter":"add_task_continue",
+                  "formula":"story_chapter_5_50_finale 1"
+               },
+               {
+                  "target":"meta",
+                  "parameter":"set_variable",
+                  "formula":"FINALE_AYA = true"
+               },
+               {
+                  "target":"meta",
+                  "parameter":"achievement",
+                  "formula":"ACH_AYA"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_119"
+         }
+      ]
+   },
+   {
+      "latestID":41,
+      "parent":null,
+      "type":"dialogue",
+      "id":"world_traveler",
+      "location":"break_room",
+      "music":"rush",
+      "random":false,
+      "conditions":[
+         
+      ],
+      "actors":[
+         {
+            "type":"idol",
+            "tag":"girl1",
+            "conditions":[
+               
+            ]
+         },
+         {
+            "type":"idol",
+            "tag":"girl2",
+            "conditions":[
+               
+            ]
+         },
+         {
+            "type":"staff",
+            "tag":"dance",
+            "conditions":[
+               {
+                  "parameter":"type_dance",
+                  "formula":"true"
+               }
+            ]
+         }
+      ],
+      "setup":[
+         {
+            "tag":"girl1",
+            "posX":-3,
+            "facing":"default",
+            "startHidden":false,
+            "facingRight":true
+         },
+         {
+            "tag":"girl2",
+            "posX":4,
+            "facing":"default",
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         null,
+         null,
+         {
+            "id":0,
+            "type":"message",
+            "actor":"girl1",
+            "val":"Isn't it so amazing that we got to go on a national concert tour?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_013_Fun1"
+         },
+         {
+            "id":1,
+            "type":"message",
+            "actor":"girl2",
+            "val":"I know!",
+            "effect":[
+               {
+                  "target":"girl2",
+                  "parameter":"shake",
+                  "formula":"excitement"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_049_Affirmation1"
+         },
+         {
+            "id":2,
+            "type":"message",
+            "actor":"girl2",
+            "val":"When my performing career started, I never imagined that it would end with me going all over the nation to perform for audiences of fans.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":3,
+            "type":"message",
+            "actor":"girl2",
+            "val":"I didn't even realize that we had such a widespread audience!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":4,
+            "type":"message",
+            "actor":"girl1",
+            "val":"I guess the distance doesn't stop people from appreciating good music.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_014_Fun2"
+         },
+         {
+            "id":5,
+            "type":"message",
+            "actor":"girl2",
+            "val":"Or dancing.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_049_Affirmation1"
+         },
+         {
+            "id":6,
+            "type":"message",
+            "actor":"girl1",
+            "val":"It was great to see the response from all the fans, but I was also really happy that everyone back home was so supportive!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_013_Fun1"
+         },
+         {
+            "id":7,
+            "type":"message",
+            "actor":"girl2",
+            "val":"Why was that a surprise?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_027_Question2"
+         },
+         {
+            "id":8,
+            "type":"message",
+            "actor":"girl1",
+            "val":"Hmm. I guess I kind of wondered if fans would be bothered that we were touring elsewhere.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_049_Affirmation1"
+         },
+         {
+            "id":9,
+            "type":"message",
+            "actor":"girl1",
+            "val":"Maybe it's irrational, but I guess I was worried that they might feel betrayed that we were performing for a different audience or something.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":10,
+            "type":"message",
+            "actor":"girl1",
+            "val":"After all, they're the ones who built us up to the point where we could be nationally recognized in the first place.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":11,
+            "type":"message",
+            "actor":"girl2",
+            "val":"I don't think most people feel that way. When you're a fan of something or someone, you want them to succeed, right? Everyone I saw was really supportive.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_035_Worried1"
+         },
+         {
+            "id":12,
+            "type":"message",
+            "actor":"girl1",
+            "val":"Yeah, I was relieved to see that. I guess I was worried for nothing.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_049_Affirmation1"
+         },
+         {
+            "id":13,
+            "type":"message",
+            "actor":"girl2",
+            "val":"There are also a lot of fans who like it when people that they follow travel across the country, because it gives them the chance to vicariously experience what it's like to travel.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_014_Fun2"
+         },
+         {
+            "id":14,
+            "type":"message",
+            "actor":"girl2",
+            "val":"After all, whenever we post photos online, fans get to have a little taste of what it's like to visit other places. I think they like that aspect as well.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":15,
+            "type":"message",
+            "actor":"girl1",
+            "val":"I never thought about it that way!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_013_Fun1"
+         },
+         {
+            "id":16,
+            "type":"message",
+            "actor":"girl1",
+            "val":"Even if you never get to travel, following the journey of someone who does travel does give you some of the feelings of getting to experience the interesting parts of other places.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":17,
+            "type":"message",
+            "actor":"girl2",
+            "val":"Yeah!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_049_Affirmation1"
+         },
+         {
+            "id":18,
+            "type":"message",
+            "actor":"girl1",
+            "val":"You know, I never really understood the appeal of travel blogs, but now that I think about it, maybe I should start.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_036_Worried2"
+         },
+         {
+            "id":19,
+            "type":"message",
+            "actor":"girl1",
+            "val":"Even if I never intend to travel to certain places, it could be a way for me to get a tiny bit of the experience of going there myself.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":20,
+            "type":"message",
+            "actor":"girl2",
+            "val":"And who knows, if you fall in love with the place, you might end up making it one of your next travel destinations.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_014_Fun2"
+         },
+         {
+            "id":21,
+            "type":"message",
+            "actor":"girl1",
+            "val":"Maybe. But I think I'm a bit of a homebody at heart.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_035_Worried1"
+         },
+         {
+            "id":22,
+            "type":"message",
+            "actor":"girl1",
+            "val":"Getting to experience the country was fun, but I enjoy the comforts of home too much to become a frequent traveler.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":23,
+            "type":"message",
+            "actor":"girl2",
+            "val":"Yeah, I can see that. I guess vicariously living through someone else's travel experiences is a more comfortable way to experience the world.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_013_Fun1"
+         },
+         {
+            "id":24,
+            "type":"message",
+            "actor":"girl2",
+            "val":"I'd still rather visit those places myself, though.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":25,
+            "type":"message",
+            "actor":"girl2",
+            "val":"I'd rather experience everything first-hand instead of having to rely on seeing through someone else's eyes.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":26,
+            "type":"message",
+            "actor":"girl2",
+            "val":"And if I see someone else's travel photos, it just makes me more excited to go there myself.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":27,
+            "type":"message",
+            "actor":null,
+            "val":"[girl1] notices you listening and smiles.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":28,
+            "type":"message",
+            "actor":"girl1",
+            "val":"Oh, [player:polite]! [girl2:casual] and I were just discussing travel.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_024_Surprise2"
+         },
+         {
+            "id":29,
+            "type":"message",
+            "actor":"girl2",
+            "val":"Say, [player:polite]. Do you have a wanderlust like I do? Or do you prefer to stay at home?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_004_Joy4"
+         },
+         {
+            "id":30,
+            "type":"choice",
+            "actor":null,
+            "val":"I'm a homebody at heart",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":31,
+                  "type":"message",
+                  "actor":"girl1",
+                  "val":"Hehe! Me too!",
+                  "effect":[
+                     {
+                        "target":"girl1",
+                        "parameter":"friendship",
+                        "formula":"+ 1"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_013_Fun1"
+               },
+               {
+                  "id":32,
+                  "type":"message",
+                  "actor":"girl1",
+                  "val":"I'm glad I'm not the only one who prefers to stay at home where things are familiar and comfortable.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               null
+            ]
+         },
+         {
+            "id":33,
+            "type":"choice",
+            "actor":null,
+            "val":"I'm a wanderer at heart",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":34,
+                  "type":"message",
+                  "actor":"girl2",
+                  "val":"Ah, a [player:manwoman] after my own heart.",
+                  "effect":[
+                     {
+                        "target":"girl2",
+                        "parameter":"friendship",
+                        "formula":"+ 1"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_014_Fun2"
+               },
+               {
+                  "id":35,
+                  "type":"message",
+                  "actor":"girl2",
+                  "val":"Even if circumstances don't always permit, people like you and I will always long to experience the new.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               null
+            ]
+         },
+         {
+            "id":36,
+            "type":"message",
+            "actor":"girl1",
+            "val":"Ah, I just remembered, I have an appointment with [dance:polite] coming up.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_020_Apology1"
+         },
+         {
+            "id":37,
+            "type":"message",
+            "actor":"girl2",
+            "val":"Alright, see you later!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_047_Greeting5"
+         },
+         null,
+         {
+            "id":38,
+            "type":"message",
+            "actor":null,
+            "val":"...",
+            "effect":[
+               {
+                  "target":"girl1",
+                  "parameter":"sprite",
+                  "formula":"fade_out"
+               },
+               {
+                  "target":"girl2",
+                  "parameter":"sprite",
+                  "formula":"fade_out"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":39,
+            "type":"message",
+            "actor":null,
+            "val":"Listening to their conversation gave you some new ideas for [color=blue]travel shows</color>.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":40,
+            "type":"message",
+            "actor":null,
+            "val":"[color=blue]Research level increased</color>",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         }
+      ]
+   },
+   {
+      "latestID":162,
+      "parent":null,
+      "type":"dialogue",
+      "id":"date_fun_50_walk",
+      "location":"residential",
+      "music":"tsundere_love",
+      "random":false,
+      "conditions":[
+         
+      ],
+      "actors":[
+         {
+            "type":"idol",
+            "tag":"g",
+            "conditions":[
+               
+            ]
+         }
+      ],
+      "setup":[
+         {
+            "tag":"g",
+            "posX":0,
+            "facing":"default",
+            "startHidden":false
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         null,
+         null,
+         {
+            "id":0,
+            "type":"message",
+            "actor":"g",
+            "val":"I'm glad that we're going for a walk in a quiet residential area, [player:casual].",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":1,
+            "type":"message",
+            "actor":"g",
+            "val":"What a fun place for a date!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_014_Fun2"
+         },
+         {
+            "id":2,
+            "type":"choice",
+            "actor":null,
+            "val":"'Fun' isn't the word I use",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":3,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"Hmm. I guess most people probably feel the same way.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_036_Worried2"
+               },
+               {
+                  "id":4,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"This isn't the kind of place where most people normally come to have fun.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":5,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"But I'm not like most people!",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":6,
+            "type":"choice",
+            "actor":null,
+            "val":"Do you really mean that?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":7,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"Yeah. Sorry, did I sound sarcastic when I said it?",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_026_Question1"
+               },
+               {
+                  "id":8,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"I guess this isn't most people's idea of a rip-roaring good time, but I'm certainly ready to enjoy myself!",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":9,
+            "type":"message",
+            "actor":"g",
+            "val":"Technically we're out in public, but I don't think there's any chance of us running into someone who might recognize us.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":10,
+            "type":"message",
+            "actor":"g",
+            "val":"So in a way, it's sort of like having a private date even though we're out in public.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_014_Fun2"
+         },
+         {
+            "id":11,
+            "type":"message",
+            "actor":"g",
+            "val":"That's not something you can take for granted when you're a public personality and have to worry about how you're seen in public.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":12,
+            "type":"message",
+            "actor":"g",
+            "val":"But more than that, I just like coming to places that make me feel nostalgic for my childhood, and places like this have that sort of effect on me.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_036_Worried2"
+         },
+         {
+            "id":13,
+            "type":"message",
+            "actor":"g",
+            "val":"I live closer to the city now, but I grew up in a residential area that didn't look so different from this one.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":14,
+            "type":"message",
+            "actor":"g",
+            "val":"Just seeing empty streets and rows of houses like this is sometimes enough to take me back.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":15,
+            "type":"message",
+            "actor":"g",
+            "val":"It's unfamiliar, yet it feels familiar.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":16,
+            "type":"message",
+            "actor":"g",
+            "val":"And it's almost like I get to see the world again through a child's eyes. The world was so full of possibility back then.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":17,
+            "type":"message",
+            "actor":"g",
+            "val":"And in a way, it's still full of possibility now.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_014_Fun2"
+         },
+         {
+            "id":18,
+            "type":"message",
+            "actor":"g",
+            "val":"Back when I was a kid, every day could hold a new experience.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":19,
+            "type":"message",
+            "actor":"g",
+            "val":"Even if I was experiencing something that felt normal or ordinary to someone else, like a park, or a public piece of art,",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":20,
+            "type":"message",
+            "actor":"g",
+            "val":"Back then I had no context for what was rare and what was ordinary.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":21,
+            "type":"message",
+            "actor":"g",
+            "val":"Almost everything felt new and novel.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":22,
+            "type":"message",
+            "actor":"g",
+            "val":"My favorite was whenever I got to discover a new breed of dog.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":23,
+            "type":"message",
+            "actor":"g",
+            "val":"The first time I saw someone walking a Saint Bernard in public, I practically went ballistic.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":24,
+            "type":"message",
+            "actor":"g",
+            "val":"It was so huge!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_013_Fun1"
+         },
+         {
+            "id":25,
+            "type":"message",
+            "actor":"g",
+            "val":"And I remember the first time I saw a pomerianian.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":26,
+            "type":"message",
+            "actor":"g",
+            "val":"It was so tiny!!!",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":27,
+            "type":"message",
+            "actor":"g",
+            "val":"That's what I love about walking around in neighborhoods like this. You never know what you're going to encounter.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":28,
+            "type":"choice",
+            "actor":null,
+            "val":"You could have a similar experience downtown",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":29,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"Nah, that's different.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_014_Fun2"
+               }
+            ]
+         },
+         {
+            "id":30,
+            "type":"choice",
+            "actor":null,
+            "val":"I bet there's a lot more novelty in other parts of the city",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":31,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"Yeah, but the fact that places like this are so 'ordinary' is what makes the novelty more novel by comparison.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_036_Worried2"
+               },
+               {
+                  "id":32,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"It's sort of like how you need to have a bright light in order to be able to see a dark shadow.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":33,
+            "type":"message",
+            "actor":"g",
+            "val":"It's more...unexpected novelty, I guess.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":34,
+            "type":"message",
+            "actor":"g",
+            "val":"I like the idea of finding something unusual in a place where you wouldn't expect.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":35,
+            "type":"message",
+            "actor":"g",
+            "val":"If you walk around a shopping district, all you see are signs that are trying to catch your eye.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":36,
+            "type":"message",
+            "actor":"g",
+            "val":"They're trying to surprise you. Every advertisement is tempting you with novelty.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":37,
+            "type":"message",
+            "actor":"g",
+            "val":"And that kind of ruins the joy of novelty, because if you're expecting it, it's not really novelty, is it?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_039_Calling2"
+         },
+         {
+            "id":38,
+            "type":"message",
+            "actor":"g",
+            "val":"You almost have to be on your guard against novelty in a place like that.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":39,
+            "type":"message",
+            "actor":"g",
+            "val":"So, as much as the surprise of something unexpected is what I enjoy about walks,",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":40,
+            "type":"message",
+            "actor":"g",
+            "val":"The paradox of it all is that I actually don't always expect to encounter something new and unexpected.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":41,
+            "type":"message",
+            "actor":"g",
+            "val":"The fact that this might be a perfectly ordinary walk is what makes the possibility of surprise more exciting.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":42,
+            "type":"message",
+            "actor":"g",
+            "val":"You can't just novelty for novelty's sake.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":43,
+            "type":"message",
+            "actor":"g",
+            "val":"Ironically, things like capsule machines that seemed specifically designed for the purpose of dispensing novelty were one of the things I grew tired of fastest when I was a kid.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_036_Worried2"
+         },
+         {
+            "id":44,
+            "type":"choice",
+            "actor":null,
+            "val":"What about that crane machine at the arcade?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":45,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"That's different, [player:casual]! That's a game of skill.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_054_Negation3"
+               },
+               {
+                  "id":46,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"It's like watching a game of baseball: you never know what's going to happen at each at-bat.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":47,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"But there's no skill involved with spending money on gachapon!",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":48,
+            "type":"choice",
+            "actor":null,
+            "val":"That gachapon business model is pretty popular, though",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":49,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"Yeah, you're right. I kind of wish it wasn't, though.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_033_Shocked2"
+               }
+            ]
+         },
+         {
+            "id":50,
+            "type":"message",
+            "actor":"g",
+            "val":"I think those random capsules exist for the sake of people who have forgotten how to have fun.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":51,
+            "type":"message",
+            "actor":"g",
+            "val":"There are people who can look at all of the simple experiences life has to offer, and they're unable to find the joy in it.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":52,
+            "type":"message",
+            "actor":"g",
+            "val":"So they go to a place where they think that they'll just be able to insert money to receive joy, instead of trying to find someone to go on a pleasant walk with.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":53,
+            "type":"message",
+            "actor":null,
+            "val":"[g] grabs your arm and snuggles up against your shoulder.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":54,
+            "type":"message",
+            "actor":"g",
+            "val":"Then again, I did get pretty lucky in finding you.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_013_Fun1"
+         },
+         {
+            "id":55,
+            "type":"message",
+            "actor":"g",
+            "val":"Finding joy in the simple things gets way easier when you have someone that you can share the experience with.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":56,
+            "type":"message",
+            "actor":"g",
+            "val":"It's one of those things where sharing something with someone means you wind up with more of it, not less of it.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":57,
+            "type":"message",
+            "actor":"g",
+            "val":"In a way, human beings are the ultimate novelty-dispensers.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_035_Worried1"
+         },
+         {
+            "id":58,
+            "type":"message",
+            "actor":"g",
+            "val":"When you're with a group of friends, you never know when someone might be about to crack a joke that makes everyone laugh.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":59,
+            "type":"message",
+            "actor":"g",
+            "val":"Or, someone could do or say something that makes everyone cringe, too.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":60,
+            "type":"message",
+            "actor":"g",
+            "val":"Anything could happen.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_035_Worried1"
+         },
+         {
+            "id":61,
+            "type":"message",
+            "actor":"g",
+            "val":"Humans have a remarkable capability for spontaneity, and that increases exponentially when you put a bunch of them together in the same setting.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":62,
+            "type":"message",
+            "actor":"g",
+            "val":"And yet it always seems to work best with people you know.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":63,
+            "type":"message",
+            "actor":"g",
+            "val":"When you get to know your friends well,",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":64,
+            "type":"message",
+            "actor":"g",
+            "val":"That's exactly when you get lulled into the comfortable familiarity that makes it so much more exciting when someone does or says something unexpected.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":65,
+            "type":"message",
+            "actor":"g",
+            "val":"In a way, your friends have a capacity to surprise you in a way that strangers don't.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":66,
+            "type":"message",
+            "actor":"g",
+            "val":"Maybe the people who spend all day putting money into gacha machines are doing it because they don't have any people that they get to spend time with regularly.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_036_Worried2"
+         },
+         {
+            "id":67,
+            "type":"message",
+            "actor":"g",
+            "val":"They have no friends to inject spontaneity into their lives,",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":68,
+            "type":"message",
+            "actor":"g",
+            "val":"So instead they find comfort in pieces of technology that are specifically designed to give them a surprising-yet-predictable outcome.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":69,
+            "type":"choice",
+            "actor":null,
+            "val":"That's kind of mean",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":70,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"Oh, did I sound like I was insulting people like that? I didn't mean it that way.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_024_Surprise2"
+               }
+            ]
+         },
+         {
+            "id":71,
+            "type":"choice",
+            "actor":null,
+            "val":"You make it sound like an unhealthy habit",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":72,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"I mean, maybe that's the case.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_035_Worried1"
+               },
+               {
+                  "id":73,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"When you hear about people who spend thousands of dollars on their gacha pursuits, that's doesn't seem healthy, right?",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":74,
+            "type":"message",
+            "actor":"g",
+            "val":"I mostly just meant it as an observation.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":75,
+            "type":"message",
+            "actor":"g",
+            "val":"I'm sure that there are people who just occasionally indulge in gacha pulls, or have integrated it into their life in a way that's healthy.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_036_Worried2"
+         },
+         {
+            "id":76,
+            "type":"message",
+            "actor":"g",
+            "val":"But when you look at people who spend huge amounts of money on those things, doesn't it feel like they're trying to use it to patch a hole deep inside of them,",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_039_Calling2"
+         },
+         {
+            "id":77,
+            "type":"message",
+            "actor":"g",
+            "val":"Trying to meet some deep need that they aren't able to satisfy through human connection?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":78,
+            "type":"message",
+            "actor":"g",
+            "val":"If people are pulling the handle of that gambling machine because they're bored, I guess it's better than if they're pulling the handle because they're lonely.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":79,
+            "type":"message",
+            "actor":"g",
+            "val":"Then again, I'm not sure that those are such different concepts.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":80,
+            "type":"message",
+            "actor":"g",
+            "val":"When I was a kid, I used to think that the worst thing you could ever be was bored.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":81,
+            "type":"message",
+            "actor":"g",
+            "val":"I was always looking for something to do.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":82,
+            "type":"message",
+            "actor":"g",
+            "val":"I'd bug my mother in the kitchen, or get one of my parents to take me on shopping trips, just so I'd have something to occupy my attention.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":83,
+            "type":"message",
+            "actor":"g",
+            "val":"But more and more, I've come to realize that what I really thought of as 'boredom' was actually loneliness.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_035_Worried1"
+         },
+         {
+            "id":84,
+            "type":"message",
+            "actor":"g",
+            "val":"When you're around someone whose company you enjoy, nothing is ever boring, even if it's a chore like cooking or shopping for groceries.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":85,
+            "type":"message",
+            "actor":"g",
+            "val":"Or, it can be something simple, like walking around in a residential neighborhood.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":86,
+            "type":"message",
+            "actor":null,
+            "val":"[g] grins and squeezes your arm.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":87,
+            "type":"message",
+            "actor":"g",
+            "val":"Maybe that's the real reason I'm glad we came here.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_013_Fun1"
+         },
+         {
+            "id":88,
+            "type":"message",
+            "actor":"g",
+            "val":"Because if we can just go for a walk and enjoy each other's company, then it means that the thing we're really enjoying is each other's company.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":89,
+            "type":"message",
+            "actor":"g",
+            "val":"It proves that we don't need some amusement park attraction or some piece of entertainment to have fun together.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":90,
+            "type":"message",
+            "actor":"g",
+            "val":"It makes what we have together feel more real.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":91,
+            "type":"check",
+            "actor":null,
+            "val":"?? if she had a dating history that was known to the player at any point before (regardless of whether it resulted in scandal or not)",
+            "effect":[
+               
+            ],
+            "requirements":[
+               {
+                  "target":"g",
+                  "parameter":"dating_history",
+                  "formula":"used_goods"
+               }
+            ],
+            "script":[
+               {
+                  "id":92,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"Believe me, I know how easy it can be to get sucked into a whirlwind romance.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_014_Fun2"
+               },
+               {
+                  "id":93,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"You start talking to someone who says all the right things, and takes you to all the right places to really sweep you off your feet.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":94,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"It's seductive, in more ways than one. It's even fun to experience.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":95,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"But what's really special is when you can find someone who can make you feel a certain kind of way, even in the moments that you wouldn't expect to be exciting.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":96,
+            "type":"message",
+            "actor":"g",
+            "val":"Do you know what I mean? I've sometimes run into people who have the attitude that 'life is an adventure.'",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":97,
+            "type":"message",
+            "actor":"g",
+            "val":"I used to think that meant that they favored a lifestyle that focused on going to exotic places, or experiencing a variety of things,",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_036_Worried2"
+         },
+         {
+            "id":98,
+            "type":"message",
+            "actor":"g",
+            "val":"But I've come to realize that it's more about attitude than anything else.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":99,
+            "type":"message",
+            "actor":"g",
+            "val":"Even when those people do travel to exotic places, it seems like the biggest benefit of travel isn't the fact that you got to take a vacation from home,",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":100,
+            "type":"message",
+            "actor":"g",
+            "val":"But the fact that the experiences you have during your travels give you a new perspective on how you see your home.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":101,
+            "type":"message",
+            "actor":"g",
+            "val":"Take this street, for example. In a lot of other countries, the streets of a residential neighborhood wouldn't look like this.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":102,
+            "type":"check",
+            "actor":null,
+            "val":"?? if the idol group has gone on a tour",
+            "effect":[
+               
+            ],
+            "requirements":[
+               {
+                  "target":"stats",
+                  "parameter":"world_tour",
+                  "formula":"> 1"
+               }
+            ],
+            "script":[
+               {
+                  "id":103,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"You know, when I look at other countries, one of the things I notice is that their cities seem designed to accommodate more cars.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Idol_036_Worried2"
+               }
+            ]
+         },
+         {
+            "id":104,
+            "type":"check",
+            "actor":null,
+            "val":"?? if the idol group hasn't gone on a tour yet",
+            "effect":[
+               
+            ],
+            "requirements":[
+               {
+                  "target":"stats",
+                  "parameter":"world_tour",
+                  "formula":"< 1"
+               }
+            ],
+            "script":[
+               {
+                  "id":105,
+                  "type":"message",
+                  "actor":"g",
+                  "val":"You know, when I look at photographs of other countries, one of the things I notice is that their cities seem designed to accommodate more cars.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":106,
+            "type":"message",
+            "actor":"g",
+            "val":"In countries like the US, the streets are lined with parked cars.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":107,
+            "type":"message",
+            "actor":"g",
+            "val":"Just empty cars, out there on the street as people walk by, on practical every road in the city or in the suburbs.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":108,
+            "type":"message",
+            "actor":"g",
+            "val":"And that means that the streets have to be wider for there to be two lanes of cars,",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":109,
+            "type":"message",
+            "actor":"g",
+            "val":"Which means that the city blocks are further apart,",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_035_Worried1"
+         },
+         {
+            "id":110,
+            "type":"message",
+            "actor":"g",
+            "val":"Which makes the residential areas feel less intimate.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":111,
+            "type":"message",
+            "actor":"g",
+            "val":"Now, when I walk through a residential neighborhood like this, I notice the way that the homes are all close together.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":112,
+            "type":"message",
+            "actor":"g",
+            "val":"That's something I'm able to notice, because I've seen that in other countries, people are literally more distant from their neighbors.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Idol_036_Worried2"
+         },
+         {
+            "id":113,
+            "type":"message",
+            "actor":"g",
+            "val":"It's given me much appreciation for places like this.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":114,
+            "type":"message",
+            "actor":"g",
+            "val":"More and more, I'm starting to think that the secret to having a fun life isn't to replace the boring parts with fun things.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":115,
+            "type":"message",
+            "actor":"g",
+            "val":"I think the real secret is to find something, or someone, who makes the 'boring' parts fun.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":116,
+            "type":"message",
+            "actor":"g",
+            "val":"Some people might think that just going for a walk is boring, but I'm glad I got to do it with you.",
+            "effect":[
+               {
+                  "target":"dating",
+                  "parameter":"after_second_date",
+                  "formula":"3"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         }
+      ]
+   }
+]

@@ -1,0 +1,82 @@
+[
+	{
+		id: "CHINA",
+		text: "Saitama"
+	},{
+		id: "SOUTH_KOREA",
+		text: "Kanagawa"
+	},{
+		id: "INDIA",
+		text: "Niigata"
+	},{
+		id: "THAILAND",
+		text: "Aichi"
+	},{
+		id: "PHILIPPINES",
+		text: "Chiba"
+	},{
+		id: "INDONESIA",
+		text: "Shizuoka"
+	},{
+		id: "AUSTRALIA",
+		text: "Ishikawa"
+	},{
+		id: "SOUTH_AFRICA",
+		text: "Okinawa"
+	},{
+		id: "CANADA",
+		text: "Hokkaido"
+	},{
+		id: "USA",
+		text: "Miyagi"
+	},{
+		id: "BRAZIL",
+		text: "Fukuoka"
+	},{
+		id: "ARGENTINA",
+		text: "Kumamoto"
+	},{
+		id: "UK",
+		text: "Ehime"
+	},{
+		id: "FRANCE",
+		text: "Osaka"
+	},{
+		id: "GERMANY",
+		text: "Okayama"
+	},{
+		id: "ITALY",
+		text: "Hiroshima"
+	},{
+		id: "SPAIN",
+		text: "Hyogo"
+	},{
+		id: "RUSSIA",
+		text: "Kyoto"
+	},{
+		id: "ACTIVITIES__WORLDTOUR",
+		text: "[National Tour] Top prefecture level"
+	},{
+		id: "ACTIVITIES__TOUREVERY",
+		text: "Give a concert in every prefecture"
+	},{
+		id: "SEVENT__NATIONAL_TOUR",
+		text: "National Tour"
+	},{
+		id: "SEVENT__NATIONAL_TOUR_DESC",
+		text: "Select the prefectures you want to perform in and choose a type of venue.  Venue sizes range from small clubs (1 star) to big arenas.\n\nPerforming a concert in a prefecture's largest venue will unlock a bigger venue for your next tour, but only if you fill at least 80% of the venue.\n\nConcert attendance depends on your group's fame level, production staffers' skill, and prefecture's fan fatigue.\n\nProduction costs and ticket prices vary by prefecture.\n\nTour multiple prefectures within the same region to save on travel expenses."
+	},{
+		id: "TOUR__COUNTRIES",
+		text: "Prefectures"
+	},{
+	    id: "AWARDS__MOST_PROLIFIC_GROUP_NOM_REQ",
+	    text: "Total sum of released singles, concerts, national tours and elections is at least @"
+	},{
+	    id: "AWARDS__MOST_PROLIFIC_GROUP_NOM_REWARD",
+	    text: "Production costs of singles, concerts, elections and national tours are @ lower"
+	},
+	{
+		id: "TASK__CH3_AYA_2",
+		text: "Go on a national tour and visit Miyagi, Osaka and Hiroshima"
+	}
+]

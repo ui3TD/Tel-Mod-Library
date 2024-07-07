@@ -1,0 +1,8 @@
+{
+  "Title": "Never Graduate",
+  "Description": "This makes the game never check for graduations, unless the girl is fired.",
+  "Author": "Tel",
+  "Version": "1.0",
+  "Tags": ["gameplay"],
+  "HarmonyID": "com.tel.nevergraduate"
+}

@@ -1,0 +1,36 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Randomly assigns MBTI types to girls, which have minor gameplay effects. They're like mini traits.
+
+!! New update changes save file editing (see below) !!
+
+[h3]Gameplay Effects[/h3]
+- ISTJ: Detail-oriented: -10% chance of concert accidents
+- ISTP: Problemsolver: -50% chance of failing to solve concert accidents
+- ISFJ: Loyal: 10% greater increase in producer influence
+- ISFP: Uniqueness: 10% appeal bonus to hardcore
+- INFJ: Public Advocate: +5 bonus to all stats in shows
+- INFP: Empathetic: Fans buy 10% more handshakes
+- INTJ: Analytical: Smartness increases with age at 2x rate
+- INTP: Inventive: Novelty of cafe dishes decreases at 50% speed
+- ESTP: Risk-taking: +5 to all stats when using risky marketing
+- ESTJ: Dedicated: 20% less training time
+- ESFP: Entertainer: 5% sales boost in theater
+- ESFJ: Community-minded: +5 increase in team chemistry
+- ENFP: Diverse Work: -10% stamina of new business proposals
+- ENFJ: Charismatic: 20% increase in election votes
+- ENTP: Rebellious: +5 to all stats if she has scandal points
+- ENTJ: Driven: +5 to all stats when the girl is pushed
+
+[h3]Save File Editing[/h3]
+This mod writes the MBTI to the "Variables" parameter of each girl in the save file. To edit the MBTI find the "Variables" parameter. It should look like something this:
+[code]"Variables": [
+    "ENFJ"
+],[/code]
+
+The old _mbti.json files are now obsolete and are safe to delete.
+
+[h3]Unique Idols[/h3]
+You can make unique idols have a specific MBTI type by adding a line in params.json like so:
+"mbti": "INTJ"

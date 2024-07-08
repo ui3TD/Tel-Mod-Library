@@ -934,6 +934,10 @@ namespace MBTIPersonalities
                 mbti = GenerateMBTI(girls);
                 CreateMBTIData(girls, mbti);
             }
+            else
+            {
+                mbti = mbtiData.mbti;
+            }
 
             return mbti;
 

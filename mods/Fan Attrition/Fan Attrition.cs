@@ -63,10 +63,10 @@ namespace FanAttrition
         {
             if (__this.mc != null)
             {
-                float mcCoeff = Mathf.Max(1f, 1f + __this.mc.fame * __this.mc.fame / maxFame);
-                if (__this.mc.fame >= maxFame)
+                float mcCoeff = Mathf.Max(1f, 1f + __this.mc.fame * __this.mc.fame / 10);
+                if (__this.mc.fame >= 10)
                 {
-                    mcCoeff += maxMCFameBonus;
+                    mcCoeff += MC_MAX_FAME_BONUS;
                 }
                 num6 = Mathf.RoundToInt(num6 * mcCoeff);
             }
@@ -75,8 +75,6 @@ namespace FanAttrition
             return num6;
         }
 
-        private const float maxFame = 10f;
-        private const float maxMCFameBonus = 5f;
     }
 
     /// <summary>
@@ -128,18 +126,16 @@ namespace FanAttrition
         {
             if (staticVars.IsHard())
             {
-                num2 *= 1f - __this.GetFatigue() * __this.GetFatigue() / fatigueCoeffHard;
+                num2 *= 1f - __this.GetFatigue() * __this.GetFatigue() / SHOW_FATIGUE_COEFF_HARD;
             }
             else if (staticVars.IsNormal())
             {
-                num2 *= 1f - __this.GetFatigue() * __this.GetFatigue() / fatigueCoeffNormal;
+                num2 *= 1f - __this.GetFatigue() * __this.GetFatigue() / SHOW_FATIGUE_COEFF_NORMAL;
             }
 
             return num2;
         }
 
-        private const float fatigueCoeffHard = 12500f;
-        private const float fatigueCoeffNormal = 20000f;
     }
 
     /// <summary>
@@ -190,16 +186,13 @@ namespace FanAttrition
         {
             return Result switch
             {
-                Single_Marketing_Roll._result.success => paramValue * (1 - successCritCoeff),
-                Single_Marketing_Roll._result.success_crit => paramValue * successCritCoeff,
-                Single_Marketing_Roll._result.fail_crit => (100f - paramValue) * failCritCoeff,
-                Single_Marketing_Roll._result.fail => 100f * (1 - failCritCoeff) - paramValue * (1 - failCritCoeff),
+                Single_Marketing_Roll._result.success => paramValue * (1 - MARK_SUCCESSCRIT_COEFF),
+                Single_Marketing_Roll._result.success_crit => paramValue * MARK_SUCCESSCRIT_COEFF,
+                Single_Marketing_Roll._result.fail_crit => (100f - paramValue) * MARK_FAIL_CRIT_COEFF,
+                Single_Marketing_Roll._result.fail => (100f - paramValue) * (1 - MARK_FAIL_CRIT_COEFF),
                 _ => 0f
             };
         }
-
-        private const float successCritCoeff = 0.1f;
-        private const float failCritCoeff = 0.1f;
     }
 
     /// <summary>
@@ -225,28 +218,21 @@ namespace FanAttrition
             {
                 if (!Secondary)
                 {
-                    __result = fakeScandalBase + Level * fakeScandalScaling;
+                    __result = FAKESCANDAL_MOD_BASE + Level * FAKESCANDAL_MOD_SCALING;
                 }
             }
             else if (__instance.Special_Type == singles._param._special_type.edgy_pv || __instance.Special_Type == singles._param._special_type.lewd_pv || __instance.Special_Type == singles._param._special_type.artsy_pv)
             {
                 if (!Secondary)
                 {
-                    __result = PVPrimaryBase + Level * PVPrimaryScaling;
+                    __result = PVPRIMARY_MOD_BASE + Level * PVPRIMARY_MOD_SCALING;
                 }
                 else
                 {
-                    __result = PVSecondaryBase + Level * PVSecondaryScaling;
+                    __result = PVSECONDARY_MOD_BASE + Level * PVSECONDARY_MOD_SCALING;
                 }
             }
         }
-
-        private const float fakeScandalBase = 100f;
-        private const float fakeScandalScaling = 290f;
-        private const float PVPrimaryBase = 100f;
-        private const float PVPrimaryScaling = 80f;
-        private const float PVSecondaryBase = 50f;
-        private const float PVSecondaryScaling = 30f;
     }
 
 
@@ -349,11 +335,11 @@ namespace FanAttrition
         {
             if (resources.FansChange < 0)
             {
-                return Language.Data["CHURN"] + ": " + ExtensionMethods.color(ExtensionMethods.formatNumber(resources.FansChange * 7) + " " + Language.Data["PER_WEEK"], mainScript.red);
+                return Language.Data[CHURNRATE_LABEL] + ": " + ExtensionMethods.color(ExtensionMethods.formatNumber(resources.FansChange * 7) + " " + Language.Data["PER_WEEK"], mainScript.red);
             }
             else
             {
-                return Language.Data["CHURN"] + ": " + 0 + " " + Language.Data["PER_WEEK"];
+                return Language.Data[CHURNRATE_LABEL] + ": " + 0 + " " + Language.Data["PER_WEEK"];
             }
         }
 
@@ -435,7 +421,7 @@ namespace FanAttrition
                 }
             }
 
-            return resources.GetFanTitle(FanType) + ": " + ratioStr + " " + Language.Data["TIP__OF_TOTAL"] + " (" + appealStr + " " + Language.Data["TIP__APPEAL"] + ")";
+            return resources.GetFanTitle(FanType) + ": " + ratioStr + " " + Language.Data[TOOLTIP_OFTOTAL_LABEL] + " (" + appealStr + " " + Language.Data["TIP__APPEAL"] + ")";
         }
 
         /// <summary>
@@ -453,7 +439,7 @@ namespace FanAttrition
                 {
                     fanStr = ExtensionMethods.color("+" + ExtensionMethods.formatNumber(adFans) + " " + Language.Data["PER_WEEK"], mainScript.green);
                 }
-                return Language.Data["TIP__AD"] + ": " + fanStr;
+                return Language.Data[TOOLTIP_AD_LABEL] + ": " + fanStr;
             }
             else if (Type == business._type.tv_drama)
             {
@@ -461,7 +447,7 @@ namespace FanAttrition
                 {
                     fanStr = ExtensionMethods.color("+" + ExtensionMethods.formatNumber(dramaFans) + " " + Language.Data["PER_WEEK"], mainScript.green);
                 }
-                return Language.Data["TIP__DRAMA"] + ": " + fanStr;
+                return Language.Data[TOOLTIP_DRAMA_LABEL] + ": " + fanStr;
             }
             return "";
         }
@@ -481,7 +467,7 @@ namespace FanAttrition
                 {
                     fanStr = ExtensionMethods.color("+" + ExtensionMethods.formatNumber(tvFans) + " " + Language.Data["PER_WEEK"], mainScript.green);
                 }
-                return Language.Data["TIP__TV"] + ": " + fanStr;
+                return Language.Data[TOOLTIP_TV_LABEL] + ": " + fanStr;
             }
             else if (Type == Shows._param._media_type.internet)
             {
@@ -489,7 +475,7 @@ namespace FanAttrition
                 {
                     fanStr = ExtensionMethods.color("+" + ExtensionMethods.formatNumber(netFans) + " " + Language.Data["PER_WEEK"], mainScript.green);
                 }
-                return Language.Data["TIP__INTERNET"] + ": " + fanStr;
+                return Language.Data[TOOLTIP_INTERNET_LABEL] + ": " + fanStr;
             }
             else if (Type == Shows._param._media_type.radio)
             {
@@ -497,7 +483,7 @@ namespace FanAttrition
                 {
                     fanStr = ExtensionMethods.color("+" + ExtensionMethods.formatNumber(radioFans) + " " + Language.Data["PER_WEEK"], mainScript.green);
                 }
-                return Language.Data["TIP__RADIO"] + ": " + fanStr;
+                return Language.Data[TOOLTIP_RADIO_LABEL] + ": " + fanStr;
             }
             return "";
         }
@@ -596,12 +582,32 @@ namespace FanAttrition
         public static long netFans = 0;
         public static long cafeFans = 0;
 
-        private const float churnPowerHard = 0.83f;
-        private const float churnCoeffHard = 0.012f;
-        private const float churnOffsetHard = 2f;
-        private const float churnPowerNormal = 0.75f;
-        private const float churnCoeffNormal = 0.012f;
-        private const float churnOffsetNormal = 0f;
+        private const float CHURN_POWER_HARD = 0.83f;
+        private const float CHURN_COEFF_HARD = 0.012f;
+        private const float CHURN_OFFSET_HARD = 2f;
+        private const float CHURN_POWER_NORMAL = 0.75f;
+        private const float CHURN_COEFF_NORMAL = 0.012f;
+        private const float CHURN_OFFSET_NORMAL = 0f;
+
+        public const float MC_MAX_FAME_BONUS = 5f;
+        public const float SHOW_FATIGUE_COEFF_HARD = 12500f;
+        public const float SHOW_FATIGUE_COEFF_NORMAL = 20000f;
+        public const float MARK_SUCCESSCRIT_COEFF = 0.1f;
+        public const float MARK_FAIL_CRIT_COEFF = 0.1f;
+        public const float FAKESCANDAL_MOD_BASE = 100f;
+        public const float FAKESCANDAL_MOD_SCALING = 290f;
+        public const float PVPRIMARY_MOD_BASE = 100f;
+        public const float PVPRIMARY_MOD_SCALING = 80f;
+        public const float PVSECONDARY_MOD_BASE = 50f;
+        public const float PVSECONDARY_MOD_SCALING = 30f;
+
+        public const string CHURNRATE_LABEL = "CHURN";
+        public const string TOOLTIP_OFTOTAL_LABEL = "TIP__OF_TOTAL";
+        public const string TOOLTIP_AD_LABEL = "TIP__AD";
+        public const string TOOLTIP_DRAMA_LABEL = "TIP__DRAMA";
+        public const string TOOLTIP_TV_LABEL = "TIP__TV";
+        public const string TOOLTIP_INTERNET_LABEL = "TIP__INTERNET";
+        public const string TOOLTIP_RADIO_LABEL = "TIP__RADIO";
 
         /// <summary>
         /// Applies daily fan churn based on game difficulty.
@@ -618,8 +624,8 @@ namespace FanAttrition
 
             float churn = staticVars.PlayerData.Difficulty switch
             {
-                staticVars._playerData._difficulty.hard => Mathf.Pow(fansTotal, churnPowerHard) * churnCoeffHard + churnOffsetHard,
-                staticVars._playerData._difficulty.normal => Mathf.Pow(fansTotal, churnPowerNormal) * churnCoeffNormal + churnOffsetNormal,
+                staticVars._playerData._difficulty.hard => Mathf.Pow(fansTotal, CHURN_POWER_HARD) * CHURN_COEFF_HARD + CHURN_OFFSET_HARD,
+                staticVars._playerData._difficulty.normal => Mathf.Pow(fansTotal, CHURN_POWER_NORMAL) * CHURN_COEFF_NORMAL + CHURN_OFFSET_NORMAL,
                 _ => 0f
             };
 

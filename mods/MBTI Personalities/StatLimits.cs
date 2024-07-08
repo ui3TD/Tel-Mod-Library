@@ -12,7 +12,6 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            // Girls with Photogenic trait have +100% to photoshoots
             float output = __result;
             if (output > 20f)
             {
@@ -55,8 +54,6 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref data_girls.girls.param __result)
         {
-
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             if (__result.val < 0f)
             {
                 __result.val = 0f;
@@ -77,7 +74,6 @@ namespace MBTI_Personalities
         public static void Postfix(ref data_girls.girls.param __result)
         {
 
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             if (__result.val < 0f)
             {
                 __result.val = 0f;
@@ -97,7 +93,6 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref int __result)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             int output = __result;
 
             if (output < 0)

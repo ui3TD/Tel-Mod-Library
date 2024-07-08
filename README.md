@@ -2,7 +2,8 @@
 
 Library of mods for Idol Manager
 
-## Mods Included
+<details>
+<summary><h2 style="display: inline-block;">Mods Included (click to expand)</h2></summary>
 
 * Concert Rebalance
 * Effortless Training
@@ -28,6 +29,8 @@ Library of mods for Idol Manager
 * Traits Fix
 * Unofficial Patch
 * Worker Rights
+</details>
+
 
 ## Build Instructions
 

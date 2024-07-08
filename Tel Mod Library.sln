@@ -10,8 +10,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E9A6A57B-64B2-4022-9C36-43D16C40EA0B}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
-		net46_setup.bat = net46_setup.bat
 		Directory.Build.props = Directory.Build.props
+		net46_setup.bat = net46_setup.bat
 		net46_setup.sh = net46_setup.sh
 	EndProjectSection
 EndProject
@@ -84,7 +84,6 @@ Global
 		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A5CC6962-D24E-448A-B022-9DD0237C6AB9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A5CC6962-D24E-448A-B022-9DD0237C6AB9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A5CC6962-D24E-448A-B022-9DD0237C6AB9}.Release|Any CPU.ActiveCfg = Release|Any CPU

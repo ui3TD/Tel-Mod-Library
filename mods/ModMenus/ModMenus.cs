@@ -40,51 +40,59 @@ namespace ModMenus
         {
             Transform settingsPanelTransform = Camera.main.GetComponent<mainScript>().Data.GetComponent<Tabs_Manager>().GetTab(Tabs_Manager._tab._type.settings).Tab.transform.Find("ScrollRect").Find("Container");
             GameObject mainMenuButton = settingsPanelTransform.Find("Main Menu").gameObject;
-            GameObject modMenuButton = CloneButton(mainMenuButton, settingsPanelTransform, "ModMenuButton", "MODMENU__BUTTON_LABEL", false, false);
+            GameObject modMenuButton = CloneButton(mainMenuButton, settingsPanelTransform, BUTTON_OBJ_NAME, BUTTON_LABEL, false, false);
             modMenuButton.transform.SetSiblingIndex(settingsPanelTransform.childCount - 2);
             modMenuButton.GetComponent<Button>().onClick.AddListener(() =>
             {
                 PopupManager.OpenPopup((PopupManager._type)999);
             });
-
         }
     }
-
-    //[HarmonyPatch(typeof(MainMenu_Buttons_Controller), "Start")]
-    //public class MainMenu_Buttons_Controller_Start
-    //{
-    //    static void Postfix(MainMenu_Buttons_Controller __instance)
-    //    {
-    //        GameObject modMenuButton = GenerateMenuButton(__instance.ContinueButton);
-
-    //        // Add the new onClick listener
-    //        modMenuButton.GetComponent<Button>().onClick.AddListener(() =>
-    //        {
-    //            PopupManager.OpenPopup((PopupManager._type)999);
-    //        });
-    //    }
-    //}
 
     /// <summary>
     /// Utility class containing methods for creating and managing mod menu elements.
     /// </summary>
     class ModMenusUtils
     {
-        //public static GameObject GenerateMenuButton(GameObject continueButton)
-        //{
-        //    Transform ButtonsLayout = continueButton.transform.parent;
+        public const string BUTTON_LABEL = "MODMENU__BUTTON_LABEL";
+        public const string APPLY_LABEL = "APPLY";
+        public const string CANCEL_LABEL = "CANCEL";
 
-        //    // Create new button from clone
-        //    GameObject modMenuButton = CloneButton(continueButton, ButtonsLayout, "ModMenuButton", "MODMENU__BUTTON_LABEL", new Color(0.8f, 0.8f, 0.2f, 1f), false, true);
+        public const int MENUITEM_HEIGHT = 40;
+        public const int MENUITEM_SPACING = 20;
 
-        //    modMenuButton.AddComponent<LayoutElement>().ignoreLayout = true;
+        public const float TEXT_SIZE = 15;
+        public const float TITLE_SIZE = 20;
 
-        //    RectTransform modMenuButtonRect = modMenuButton.GetComponent<RectTransform>();
-        //    SetRectTransform(modMenuButtonRect, Vector2.one, Vector2.one, Vector2.zero, Vector2.zero, Vector2.one);
-        //    modMenuButtonRect.sizeDelta = new Vector2(240, 40);
+        public const string JSON_FILE = "modmenu.json";
+        public const string JSON_DIR = "Mod Menu";
+        public const string JSON_FIELD_VARID = "varID";
+        public const string JSON_FIELD_LABELID = "labelID";
+        public const string JSON_FIELD_TYPE = "type";
+        public const string JSON_FIELD_DEF = "defaultValue";
+        public const string JSON_FIELD_MIN = "minValue";
+        public const string JSON_FIELD_MAX = "maxValue";
+        public const string JSON_FIELD_IGNORE = "ignore";
+        public const string JSON_FIELD_LIST = "itemIDList";
+        public const string JSON_TYPE_TEXT = "text";
+        public const string JSON_TYPE_DROPDOWN = "dropdown";
+        public const string JSON_TYPE_SLIDER = "slider";
+        public const string JSON_TYPE_CHECKBOX = "checkbox";
 
-        //    return modMenuButton;
-        //}
+
+        public const string BUTTON_OBJ_NAME = "ModMenuButton";
+        public const string POPUP_OBJ_NAME = "ModMenu";
+        public const string APPLYBUTTON_OBJ_NAME = "ModMenuApply";
+        public const string CANCELBUTTON_OBJ_NAME = "ModMenuCancel";
+        public const string MENU_TEXT_OBJ_NAME = "ModMenuText";
+        public const string MENU_SLIDER_OBJ_NAME = "ModMenuSlider";
+        public const string MENU_CHECKBOX_OBJ_NAME = "ModMenuCheckbox";
+        public const string MENU_DROPDOWN_OBJ_NAME = "ModMenuDropdown";
+        public const string MENUCONTENT_OBJ_NAME = "MenuContainer";
+        public const string SCROLLHANDLE_OBJ_NAME = "VerticalHandle";
+        public const string SCROLLBAR_OBJ_NAME = "VerticalScrollBar";
+        public const string SCROLLRECT_OBJ_NAME = "ScrollContainer";
+        public const string VIEWPORT_OBJ_NAME = "Viewport";
 
         /// <summary>
         /// Generates the main mod menu popup.
@@ -101,7 +109,7 @@ namespace ModMenus
             GameObject originalModMenuObj = mainPopupManager.GetByType(PopupManager._type.settings_difficulty).obj;
             GameObject modMenuObj = UnityEngine.Object.Instantiate(originalModMenuObj);
             modMenuObj.transform.SetParent(originalModMenuObj.transform.parent, false);
-            modMenuObj.name = "ModMenu";
+            modMenuObj.name = POPUP_OBJ_NAME;
 
             // Remove old child objects
             Transform panelTransform = modMenuObj.transform.Find("Panel");
@@ -115,8 +123,8 @@ namespace ModMenus
             // Replace buttons
             GameObject oldApplyButton = modMenuObj.transform.Find("Apply").gameObject;
             GameObject oldCancelButton = modMenuObj.transform.Find("Cancel").gameObject;
-            GameObject applyButton = CloneButton(oldApplyButton, oldApplyButton.transform.parent, "modMenuApply", "APPLY", new Color(0.2f, 0.7f, 0.2f), true);
-            GameObject cancelButton = CloneButton(oldCancelButton, oldCancelButton.transform.parent, "modMenuCancel", "CANCEL", true);
+            GameObject applyButton = CloneButton(oldApplyButton, oldApplyButton.transform.parent, APPLYBUTTON_OBJ_NAME, APPLY_LABEL, new Color(0.2f, 0.7f, 0.2f), true);
+            GameObject cancelButton = CloneButton(oldCancelButton, oldCancelButton.transform.parent, CANCELBUTTON_OBJ_NAME, CANCEL_LABEL, true);
 
             // Attach custom component to Panel
             ModMenuManager panelModMenuManager = panelTransform.gameObject.AddComponent<ModMenuManager>();
@@ -150,7 +158,7 @@ namespace ModMenus
         public static void AddMenuItems(Transform parentTransform)
         {
 
-            string relativePath = Path.Combine("JSON", "Mod Menu", "modmenu.json");
+            string relativePath = Path.Combine("JSON", JSON_DIR, JSON_FILE);
             string filepath;
             if (relativePath[0].ToString() == "/")
             {
@@ -179,65 +187,65 @@ namespace ModMenus
                 for (int i = jsonArray.Count - 1; i >= 0; i--)
                 {
                     JSONNode item = jsonArray[i];
-                    if (string.IsNullOrEmpty(item["type"]) || string.IsNullOrEmpty(item["labelID"]) || item["ignore"].AsBool) continue;
+                    if (string.IsNullOrEmpty(item[JSON_FIELD_TYPE]) || string.IsNullOrEmpty(item[JSON_FIELD_LABELID]) || item[JSON_FIELD_IGNORE].AsBool) continue;
 
-                    string type = item["type"];
-                    string label = item["labelID"];
+                    string type = item[JSON_FIELD_TYPE];
+                    string label = item[JSON_FIELD_LABELID];
                     string id;
 
                     switch (type)
                     {
-                        case "text":
-                            AddMenuText(label, parentTransform, 15, mainScript.blue32, TextAlignmentOptions.Left);
+                        case JSON_TYPE_TEXT:
+                            AddMenuText(label, parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
                             break;
 
-                        case "slider":
-                            if (string.IsNullOrEmpty(item["varID"])) 
+                        case JSON_TYPE_SLIDER:
+                            if (string.IsNullOrEmpty(item[JSON_FIELD_VARID])) 
                                 continue;
 
-                            id = item["varID"];
+                            id = item[JSON_FIELD_VARID];
                             float minValue = 0;
                             float maxValue = 100;
-                            if (!string.IsNullOrEmpty(item["minValue"]) && !string.IsNullOrEmpty(item["maxValue"]))
+                            if (!string.IsNullOrEmpty(item[JSON_FIELD_MIN]) && !string.IsNullOrEmpty(item[JSON_FIELD_MAX]))
                             {
-                                minValue = item["minValue"].AsFloat;
-                                maxValue = item["maxValue"].AsFloat;
+                                minValue = item[JSON_FIELD_MIN].AsFloat;
+                                maxValue = item[JSON_FIELD_MAX].AsFloat;
                             }
                             float defaultFloat = maxValue + minValue / 2;
-                            if (!string.IsNullOrEmpty(item["defaultValue"]))
+                            if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
                             {
-                                defaultFloat = item["defaultValue"].AsFloat;
+                                defaultFloat = item[JSON_FIELD_DEF].AsFloat;
                             }
 
                             AddMenuSlider(id, label, minValue, maxValue, defaultFloat, parentTransform);
                             break;
 
-                        case "checkbox":
-                            if (string.IsNullOrEmpty(item["varID"])) 
+                        case JSON_TYPE_CHECKBOX:
+                            if (string.IsNullOrEmpty(item[JSON_FIELD_VARID])) 
                                 continue;
 
-                            id = item["varID"];
+                            id = item[JSON_FIELD_VARID];
                             bool defaultBool = false;
-                            if (!string.IsNullOrEmpty(item["defaultValue"]))
+                            if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
                             {
-                                defaultBool = item["defaultValue"].AsBool;
+                                defaultBool = item[JSON_FIELD_DEF].AsBool;
                             }
 
                             AddMenuCheckbox(id, label, defaultBool, parentTransform);
                             break;
 
-                        case "dropdown":
-                            if (string.IsNullOrEmpty(item["varID"]) || string.IsNullOrEmpty(item["itemIDList"].ToString()) || item["itemIDList"].AsArray == null) 
+                        case JSON_TYPE_DROPDOWN:
+                            if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]) || string.IsNullOrEmpty(item[JSON_FIELD_LIST].ToString()) || item[JSON_FIELD_LIST].AsArray == null) 
                                 continue;
 
-                            id = item["varID"];
+                            id = item[JSON_FIELD_VARID];
                             int defaultSelect = 0;
-                            if (!string.IsNullOrEmpty(item["defaultValue"]))
+                            if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
                             {
-                                defaultSelect = item["defaultValue"].AsInt;
+                                defaultSelect = item[JSON_FIELD_DEF].AsInt;
                             }
 
-                            JSONArray jsonArrayItems = item["itemIDList"].AsArray;
+                            JSONArray jsonArrayItems = item[JSON_FIELD_LIST].AsArray;
                             string[] itemList = new string[jsonArrayItems.Count];
                             for (int j = 0; j < jsonArrayItems.Count; j++)
                             {
@@ -254,7 +262,7 @@ namespace ModMenus
                     }
                 }
 
-                AddMenuText(mod.ModName, parentTransform, 20, mainScript.black32, TextAlignmentOptions.Center);
+                AddMenuText(mod.ModName, parentTransform, TITLE_SIZE, mainScript.black32, TextAlignmentOptions.Center);
                 
             }
 
@@ -283,7 +291,7 @@ namespace ModMenus
             string text = Language.Data.TryGetValue(textID, out string tx) ? tx : textID;
 
             // Create contents to fill container
-            GameObject menuTextObj = new("ModMenuText_" + textID, typeof(RectTransform), typeof(TextMeshProUGUI));
+            GameObject menuTextObj = new(MENU_TEXT_OBJ_NAME + "_" + textID, typeof(RectTransform), typeof(TextMeshProUGUI));
             menuTextObj.transform.SetParent(parentTransform, false);
 
 
@@ -329,7 +337,7 @@ namespace ModMenus
             RectTransform modSliderRect = modSlider.GetComponent<RectTransform>();
             SetRectTransform(modSliderRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             modSliderRect.sizeDelta = new Vector2(400f, 40f);
-            modSlider.name = "ModMenuSlider_" + varID;
+            modSlider.name = MENU_SLIDER_OBJ_NAME + "_" + varID;
 
             // Configure Settings_Slider
             Settings_Slider modSliderSettingsSlider = modSlider.GetComponent<Settings_Slider>();
@@ -350,7 +358,6 @@ namespace ModMenus
 
             // Set slider size and pos
             RectTransform SliderRect = modSlider.transform.Find("Slider").GetComponent<RectTransform>();
-            //SliderRect.pivot = new Vector2(0.5f, 0.5f);
             SetRectTransform(SliderRect, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), Vector2.zero, new Vector2(0, -50));
             SliderRect.sizeDelta = new Vector2(20f, 400f);
 
@@ -379,7 +386,7 @@ namespace ModMenus
             RectTransform modCheckboxRect = modCheckbox.GetComponent<RectTransform>();
             SetRectTransform(modCheckboxRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             modCheckboxRect.sizeDelta = new Vector2(400f, 40f);
-            modCheckbox.name = "ModMenuCheckbox_" + varID;
+            modCheckbox.name = MENU_CHECKBOX_OBJ_NAME + "_" + varID;
 
             // Configure Checkbox_Text
             Checkbox_Text modCheckboxCheck = modCheckbox.GetComponent<Checkbox_Text>();
@@ -423,7 +430,7 @@ namespace ModMenus
             RectTransform modDropdownRect = modDropdown.GetComponent<RectTransform>();
             SetRectTransform(modDropdownRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             modDropdownRect.sizeDelta = new Vector2(400f, 60f);
-            modDropdown.name = "ModMenuDropdown_" + varID;
+            modDropdown.name = MENU_DROPDOWN_OBJ_NAME + "_" + varID;
 
             // Configure label text
             modDropdown.GetComponentInChildren<Lang_Button>().Constant = labelID;
@@ -461,9 +468,8 @@ namespace ModMenus
         /// <returns>The GameObject representing the content container of the scroll area.</returns>
         public static GameObject GenerateScrollArea(Transform parentTransform)
         {
-
             // Create container to control layout
-            GameObject menuContentContainer = new("MenuContainer", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter), typeof(CanvasGroup));
+            GameObject menuContentContainer = new(MENUCONTENT_OBJ_NAME, typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter), typeof(CanvasGroup));
 
             // Set container alignment
             RectTransform menuContentRect = menuContentContainer.GetComponent<RectTransform>();
@@ -478,10 +484,10 @@ namespace ModMenus
             menuContentLayoutGroup.startAxis = GridLayoutGroup.Axis.Vertical;
             menuContentLayoutGroup.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
             menuContentLayoutGroup.constraintCount = 1;
-            menuContentLayoutGroup.spacing = new Vector2(0, 10);
+            menuContentLayoutGroup.spacing = new Vector2(0, MENUITEM_SPACING);
 
             // Create the handle for the scrollbar
-            GameObject vHandle = new("VerticalHandle", typeof(RectTransform), typeof(Image));
+            GameObject vHandle = new(SCROLLHANDLE_OBJ_NAME, typeof(RectTransform), typeof(Image));
 
             // Align handle
             RectTransform handleRect = vHandle.GetComponent<RectTransform>();
@@ -492,7 +498,7 @@ namespace ModMenus
             handleImage.color = new Color(0.5f, 0.5f, 0.5f, 0.6f);
 
             // Create the vertical scroll bar
-            GameObject verticalScrollBar = new("VerticalScrollBar", typeof(RectTransform), typeof(Scrollbar));
+            GameObject verticalScrollBar = new(SCROLLBAR_OBJ_NAME, typeof(RectTransform), typeof(Scrollbar));
 
             // Align vertical scroll bar
             RectTransform vScrollbarRect = verticalScrollBar.GetComponent<RectTransform>();
@@ -510,7 +516,7 @@ namespace ModMenus
             vScrollbar.handleRect = handleRect;
 
             // Create ScrollRect container and attach to panel
-            GameObject scrollContainer = new("ScrollContainer", typeof(RectTransform), typeof(ScrollRect));
+            GameObject scrollContainer = new(SCROLLRECT_OBJ_NAME, typeof(RectTransform), typeof(ScrollRect));
 
             // Set scrollRect object alignment
             RectTransform scrollRectTransform = scrollContainer.GetComponent<RectTransform>();
@@ -518,7 +524,7 @@ namespace ModMenus
             scrollRectTransform.sizeDelta = new Vector2(-20, -20); // padding
             
             // Create view area and attach to scrollrect container
-            GameObject viewport = new("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+            GameObject viewport = new(VIEWPORT_OBJ_NAME, typeof(RectTransform), typeof(Image), typeof(Mask));
             viewport.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.01f); // Make the viewport transparent
 
             // Set view area alignment
@@ -547,7 +553,7 @@ namespace ModMenus
             verticalScrollBar.transform.SetParent(scrollContainer.transform, false);  // Scroll container > scroll bar
             vHandle.transform.SetParent(verticalScrollBar.transform, false); // scroll bar > handle
 
-            menuContentLayoutGroup.cellSize = new Vector2(viewportTransform.rect.width, 40);
+            menuContentLayoutGroup.cellSize = new Vector2(viewportTransform.rect.width, MENUITEM_HEIGHT);
 
             return menuContentContainer;
         }
@@ -637,88 +643,6 @@ namespace ModMenus
             rt.offsetMin = offsetMin;
             rt.offsetMax = offsetMax;
         }
-
-        //public static void ProbeGameObject(GameObject gameObject)
-        //{
-        //    Debug.Log("Probing Object: " + gameObject.name);
-
-        //    Component[] comps = gameObject.GetComponentsInChildren<Component>();
-
-        //    string compName;
-        //    string prefix;
-        //    string suffix;
-        //    foreach (Component comp in comps)
-        //    {
-        //        prefix = "";
-        //        suffix = "";
-        //        compName = comp.GetType().Name;
-
-        //        if (comp is RectTransform rt)
-        //        {
-        //            suffix = " (" + rt.rect.width + " x " + rt.rect.height + ")";
-        //        }
-        //        if (comp is CanvasGroup cg)
-        //        {
-        //            suffix = " (alpha: " + cg.alpha + ")";
-        //        }
-        //        if (comp is TextMeshProUGUI tmp)
-        //        {
-        //            suffix = " (" + tmp.text + ")";
-        //        }
-        //        if (comp is Text tx)
-        //        {
-        //            suffix = " (" + tx.text + ")";
-        //        }
-        //        if (comp is Lang_Button lb)
-        //        {
-        //            suffix = " (" + lb.Constant + ")";
-        //        }
-        //        if (comp is Image im)
-        //        {
-        //            Sprite sprite = im.sprite;
-        //            suffix = " (";
-        //            if (sprite != null)
-        //            {
-        //                suffix += "sprite: " + sprite.name + ", ";
-        //            }
-        //            suffix += im.color.ToString();
-        //            suffix += ")";
-        //        }
-        //        if (comp is RawImage ri)
-        //        {
-        //            Texture texture = ri.texture;
-        //            if (texture != null)
-        //            {
-        //                suffix = " (texture: " + texture.name + ")";
-        //            }
-        //        }
-        //        if (comp is Button btn)
-        //        {
-        //            int eventCount = btn.onClick.GetPersistentEventCount();
-        //            if (eventCount > 0)
-        //            {
-        //                suffix = " (" + btn.onClick.GetPersistentTarget(0).GetType().Name + "." + btn.onClick.GetPersistentMethodName(0);
-
-        //                int i = 1;
-        //                while (i < eventCount)
-        //                {
-        //                    suffix += ", " + btn.onClick.GetPersistentTarget(i).GetType().Name + "." + btn.onClick.GetPersistentMethodName(i);
-        //                    i++;
-        //                }
-        //                suffix += ")";
-        //            }
-        //        }
-
-        //        Transform trans = comp.gameObject.transform;
-        //        while (trans != null)
-        //        {
-        //            prefix = trans.gameObject.name + ":" + prefix;
-        //            trans = trans.parent;
-        //        }
-        //        Debug.Log(prefix + compName + suffix);
-
-        //    }
-        //}
 
 
         /// <summary>

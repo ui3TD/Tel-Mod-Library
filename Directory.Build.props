@@ -1,7 +1,7 @@
 <Project>
 	<PropertyGroup>
-		<!--<ModOutputDir>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDir>-->
-		<ModOutputDir>$(SolutionDir)\..\Mods</ModOutputDir>
+		<ModOutputDir>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDir>
+		<!--<ModOutputDir>$(SolutionDir)\..\Mods</ModOutputDir>-->
 		<dllDir>$(SolutionDir)\..\dll</dllDir>
 		
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>

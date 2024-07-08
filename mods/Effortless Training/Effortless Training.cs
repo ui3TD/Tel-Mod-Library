@@ -15,7 +15,7 @@ namespace EffortlessTraining
     [HarmonyPatch(typeof(agency._room), "DoGirlTraining")]
     public class agency__room_DoGirlTraining
     {
-        private const float dailyTrainingCost = 1f;
+        private const float DAILY_TRAINING_COST = 1f;
 
         /// <summary>
         /// Transpiler method to modify the IL code of the DoGirlTraining method.
@@ -30,7 +30,7 @@ namespace EffortlessTraining
             {
                 if (instructionList[i].opcode == OpCodes.Ldc_R4 && (float)instructionList[i].operand == 3f && instructionList[i + 1].opcode == OpCodes.Ldc_R4 && (float)instructionList[i+1].operand == 1440f)
                 {
-                    instructionList[i].operand = dailyTrainingCost;
+                    instructionList[i].operand = DAILY_TRAINING_COST;
                     break;
                 }
             }

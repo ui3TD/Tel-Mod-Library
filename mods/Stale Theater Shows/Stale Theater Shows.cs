@@ -5,9 +5,29 @@ using System.Reflection;
 using System.Linq;
 using System.Collections.Generic;
 using System.Reflection.Emit;
+using static StaleTheater.StaleTheater;
 
 namespace StaleTheater
 {
+    public class StaleTheater
+    {
+        public const float DECAYTIME_HARD = 183f;
+        public const float DECAYTIME_NORMAL = 366f;
+        public const float STREAM_PENALTY_HARD = 0.9f;
+        public const float STREAM_PENALTY_NORMAL = 0.7f;
+
+        public const float THEATER_EVERYONE = 0.3f;
+        public const float THEATER_CASUAL = 0.65f;
+        public const float THEATER_HC = 1f;
+        public const float THEATER_ADULT = 0.95f;
+        public const float THEATER_YA = 0.95f;
+        public const float THEATER_TEEN = 0.9f;
+        public const float THEATER_GENDER = 0.75f;
+
+        public const float MANZAI_EVERYONE = 0.2f;
+        public const float MANZAI_NONHC_COEFF = 0.75f;
+        public const float MANZAI_STAM_COEFF = 0.5f;
+    }
 
     // Theater show sales and subscriptions start to decay after 30 days
     [HarmonyPatch(typeof(Theaters._theater), "GetPriceCoeff")]
@@ -16,36 +36,37 @@ namespace StaleTheater
         public static void Postfix(int Price, Theaters._theater __instance, ref float __result)
         {
             float output = __result;
-            if (Price <= 30000 && !staticVars.IsEasy())
+            if (Price > 30000 || staticVars.IsEasy())
+                return;
+
+            int daysSinceSingle;
+            LinearFunction._function linear = new();
+            if(singles.GetLatestReleasedSingle(false, __instance.GetGroup()) != null)
             {
-                int daysSinceSingle;
-                LinearFunction._function linear = new LinearFunction._function();
-                if(singles.GetLatestReleasedSingle(false, __instance.GetGroup()) != null)
+                daysSinceSingle = (staticVars.dateTime - singles.GetLatestReleasedSingle(false, __instance.GetGroup()).ReleaseData.ReleaseDate).Days;
+            }
+            else
+            {
+                daysSinceSingle = __instance.GetGroup().GetDaysSinceCreation();
+            }
+            if (daysSinceSingle > 30)
+            {
+                if (staticVars.IsHard())
                 {
-                    daysSinceSingle = (staticVars.dateTime - singles.GetLatestReleasedSingle(false, __instance.GetGroup()).ReleaseData.ReleaseDate).Days;
+                    linear.Init(30f, 1f, DECAYTIME_HARD, 0.1f);
+                    output *= linear.GetY(daysSinceSingle);
                 }
-                else
+                else if(staticVars.IsNormal())
                 {
-                    daysSinceSingle = __instance.GetGroup().GetDaysSinceCreation();
-                }
-                if (daysSinceSingle > 30)
-                {
-                    if (staticVars.IsHard())
-                    {
-                        linear.Init(30f, 1f, 183f, 0.1f);
-                        output *= linear.GetY((float)daysSinceSingle);
-                    }
-                    else if(staticVars.IsNormal())
-                    {
-                        linear.Init(30f, 1f, 366f, 0.1f);
-                        output *= linear.GetY((float)daysSinceSingle);
-                    }
-                }
-                if (output < 0.001f)
-                {
-                    output = 0.001f;
+                    linear.Init(30f, 1f, DECAYTIME_NORMAL, 0.1f);
+                    output *= linear.GetY(daysSinceSingle);
                 }
             }
+            if (output < 0.001f)
+            {
+                output = 0.001f;
+            }
+
             __result = output;
         }
     }
@@ -58,11 +79,11 @@ namespace StaleTheater
         {
             if (staticVars.IsHard())
             {
-                __result = (long)Mathf.Round(__result * 0.1f);
+                __result = Mathf.RoundToInt(__result * (1 - STREAM_PENALTY_HARD));
             }
             else if(staticVars.IsNormal())
             {
-                __result = (long)Mathf.Round(__result * 0.3f);
+                __result = Mathf.RoundToInt(__result * (1 - STREAM_PENALTY_NORMAL));
             }
         }
     }
@@ -71,77 +92,9 @@ namespace StaleTheater
     [HarmonyPatch(typeof(Theaters._theater), "GetNumberOfVisitors")]
     public class Theaters__theater_GetNumberOfVisitors
     {
-        //public static void Postfix(ref int __result, Theaters._theater __instance)
-        //{
-
-        //    if (__instance.Ticket_Price <= 40000)
-        //    {
-        //        float multiplier = 1;
-        //        Groups._group group = __instance.GetGroup();
-        //        Theaters._theater._schedule schedule = __instance.GetSchedule();
-        //        long fans;
-        //        if (schedule.FanType_Everyone)
-        //        {
-        //            fans = (long)group.GetFansOfType(null);
-        //        }
-        //        else
-        //        {
-        //            fans = (long)group.GetFansOfType(new resources.fanType?(schedule.FanType));
-        //        }
-        //        if (schedule.FanType_Everyone && __instance.Doing_Now == Theaters._theater._schedule._type.manzai)
-        //        {
-        //            multiplier = 0.2f;
-        //        }
-        //        else if (schedule.FanType_Everyone)
-        //        {
-        //            multiplier = 0.3f;
-        //        }
-        //        else if (schedule.FanType == resources.fanType.casual)
-        //        {
-        //            multiplier = 0.65f;
-        //        }
-        //        else if (schedule.FanType == resources.fanType.adult || schedule.FanType == resources.fanType.youngAdult)
-        //        {
-        //            multiplier = 0.95f;
-        //        }
-        //        else if (schedule.FanType == resources.fanType.teen)
-        //        {
-        //            multiplier = 0.9f;
-        //        }
-        //        else if (schedule.FanType != resources.fanType.hardcore)
-        //        {
-        //            multiplier = 0.75f;
-        //        }
-        //        if (!schedule.FanType_Everyone && __instance.Doing_Now == Theaters._theater._schedule._type.manzai && schedule.FanType != resources.fanType.hardcore)
-        //        {
-        //            multiplier *= 0.75f;
-        //        }
-        //        if (__instance.Doing_Now == Theaters._theater._schedule._type.manzai)
-        //        {
-        //            multiplier /= 2f;
-        //        }
-        //        var GetPriceCoeff = __instance.GetType().GetMethod("GetPriceCoeff", BindingFlags.NonPublic | BindingFlags.Instance);
-        //        multiplier *= (float)GetPriceCoeff.Invoke(__instance, new object[] { __instance.Ticket_Price });
-        //        fans = (long)Mathf.Round((float)fans * multiplier);
-        //        LinearFunction._function function = new LinearFunction._function();
-        //        function.Init(0f, 0f, 20000f, 100f);
-        //        int attendees = Mathf.RoundToInt(function.GetY((float)fans));
-        //        if (attendees > __instance.GetCapacity())
-        //        {
-        //            __result = __instance.GetCapacity();
-        //            return;
-        //        }
-        //        if (attendees < 0)
-        //        {
-        //            __result = 0;
-        //            return;
-        //        }
-        //        __result = attendees;
-        //    }
-        //}
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            List<CodeInstruction> instructionList = new List<CodeInstruction>(instructions);
+            List<CodeInstruction> instructionList = new(instructions);
 
             int index = -1;
             for (int i = 0; i < instructionList.Count; i++)
@@ -168,40 +121,40 @@ namespace StaleTheater
 
         public static float Infix(Theaters._theater __this)
         {
-            float multiplier = 1;
+            float multiplier;
             Theaters._theater._schedule schedule = __this.GetSchedule();
-            if (schedule.FanType_Everyone && __this.Doing_Now == Theaters._theater._schedule._type.manzai)
+
+            if (schedule.FanType_Everyone)
             {
-                multiplier = 0.2f;
+                multiplier = THEATER_EVERYONE;
             }
-            else if (schedule.FanType_Everyone)
+            else
             {
-                multiplier = 0.3f;
+                multiplier = schedule.FanType switch
+                {
+                    resources.fanType.casual => THEATER_CASUAL,
+                    resources.fanType.hardcore => THEATER_HC,
+                    resources.fanType.adult => THEATER_ADULT,
+                    resources.fanType.youngAdult => THEATER_YA,
+                    resources.fanType.teen => THEATER_TEEN,
+                    _ => THEATER_GENDER
+                };
+
             }
-            else if (schedule.FanType == resources.fanType.casual)
-            {
-                multiplier = 0.65f;
-            }
-            else if (schedule.FanType == resources.fanType.adult || schedule.FanType == resources.fanType.youngAdult)
-            {
-                multiplier = 0.95f;
-            }
-            else if (schedule.FanType == resources.fanType.teen)
-            {
-                multiplier = 0.9f;
-            }
-            else if (schedule.FanType != resources.fanType.hardcore)
-            {
-                multiplier = 0.75f;
-            }
-            if (!schedule.FanType_Everyone && __this.Doing_Now == Theaters._theater._schedule._type.manzai && schedule.FanType != resources.fanType.hardcore)
-            {
-                multiplier *= 0.75f;
-            }
+
             if (__this.Doing_Now == Theaters._theater._schedule._type.manzai)
             {
-                multiplier /= 2f;
+                if (schedule.FanType_Everyone)
+                {
+                    multiplier = MANZAI_EVERYONE;
+                }
+                else if (schedule.FanType != resources.fanType.hardcore)
+                {
+                    multiplier *= MANZAI_NONHC_COEFF;
+                }
+                multiplier *= MANZAI_STAM_COEFF;
             }
+
             return multiplier;
         }
     }

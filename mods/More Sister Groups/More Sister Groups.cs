@@ -1,22 +1,22 @@
 ﻿using HarmonyLib;
-using System;
 using UnityEngine;
-using System.Reflection;
 using System.Collections.Generic;
+using static SisterGroups.Utility;
 
 namespace SisterGroups
 {
 
-    //fan gain from sister groups reduced 3x
+    //fan gain from sister groups reduced 5x
     [HarmonyPatch(typeof(Groups._group), "GetNewFansPerSingle")]
     public class Groups__group_GetNewFansPerSingle
     {
         public static void Postfix(ref int __result, Groups._group __instance)
         {
-            if(staticVars.IsHard())
-            {
-                __result = Mathf.RoundToInt((float)__result / 50 * Math.Min(10, __instance.GetGirls().Count));
-            }
+            if (!staticVars.IsHard())
+                return;
+
+            __result = Mathf.RoundToInt(__result / FAN_PENALTY / MEMBER_PENALTY_THR * Mathf.Min(MEMBER_PENALTY_THR, __instance.GetGirls().Count));
+
         }
     }
 
@@ -36,16 +36,14 @@ namespace SisterGroups
     [HarmonyPatch(typeof(singles), "AddOpinion")]
     public class singles_AddOpinion
     {
-        public static bool Prefix(singles._single single)
+        public static void Prefix(singles._single single)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            Utility.groupSales = single.GetGroup();
-            return true;
+            groupSales = single.GetGroup();
         }
 
         public static void Postfix()
         {
-            Utility.groupSales = null;
+            groupSales = null;
         }
     }
 
@@ -53,16 +51,14 @@ namespace SisterGroups
     [HarmonyPatch(typeof(singles), "GenerateSales")]
     public class singles_GenerateSales
     {
-        public static bool Prefix(singles._single single)
+        public static void Prefix(singles._single single)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            Utility.groupSales = single.GetGroup();
-            return true;
+            groupSales = single.GetGroup();
         }
 
         public static void Postfix()
         {
-            Utility.groupSales = null;
+            groupSales = null;
         }
     }
 
@@ -72,16 +68,18 @@ namespace SisterGroups
     {
         public static void Postfix(int count, ref List<singles._single> __result)
         {
-            if(Utility.groupSales != null)
-            {
-                //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-                __result = Utility.GetLatestReleasedSingles(count, Utility.groupSales);
-            }
+            if (groupSales == null)
+                return;
+
+            __result = GetLatestReleasedSingles(count, groupSales);
         }
     }
 
     public class Utility
     {
+        public const float FAN_PENALTY = 5;
+        public const float MEMBER_PENALTY_THR = 10;
+
         public static Groups._group groupSales = null;
 
         // This method gets latest released singles of a given group. It is based on singles.GetReleasedSingles(int count)
@@ -89,9 +87,8 @@ namespace SisterGroups
         public static List<singles._single> GetLatestReleasedSingles(int count, Groups._group group = null)
         {
             if (group == null)
-            {
                 return singles.GetLatestReleasedSingles(count);
-            }
+
             List<singles._single> latestReleasedSingles = new();
             for (int i = singles.Singles.Count - 1; i >= 0; i--)
             {

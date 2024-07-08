@@ -5,12 +5,12 @@ NOT COMPATIBLE with mods that change policies or policy tooltips.
 
 Makes policies have more impact on gameplay. Take care to manage the mental stamina! There is no longer just a carefree way to remove scandal points.
 
-Hint: Mental stamina regenerates at a rate of 0.5 per week.
+Hint: Mental stamina regenerates at a rate of 0.5 per day or 3.5 per week.
 
 [h3]Changes[/h3]
 
 Performance:
-- Energetic: 1.5x increase in performance profit to counteract the major disadvantage of increased stamina.
+- Energetic: 1.5x increase in performance profit to balance out the major disadvantage of increased stamina.
 - Quality: -0.5 mental stamina each week when training, to add complexity to mental stamina management.
 - Quality: 2x training speed to balance the increased training costs.
 

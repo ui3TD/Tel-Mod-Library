@@ -2,9 +2,17 @@
 using System;
 using UnityEngine;
 using System.Reflection;
+using static TourStamina.TourStamina;
 
 namespace TourStamina
 {
+    public class TourStamina
+    {
+        public const float TOUR_FAN_COEFF = 3.5f;
+        public const int TOUR_STAM_CAP = 100;
+
+        public const string TOUR_STAM_TOOLTIP_ID = "TOUR__STAMINACAP";
+    }
 
     // World tours give 3.5x more fans
     [HarmonyPatch(typeof(SEvent_Tour.tour), "GetNewFansByAttendance")]
@@ -12,7 +20,7 @@ namespace TourStamina
     {
         public static void Postfix(ref int __result)
         {
-            __result = Mathf.RoundToInt(__result * 3.5f);
+            __result = Mathf.RoundToInt(__result * TOUR_FAN_COEFF);
         }
     }
 
@@ -26,7 +34,7 @@ namespace TourStamina
             if (country == null)
             {
                 int staminaCost = __instance.Stamina + Country.GetStaminaCost();
-                if (staminaCost > 100)
+                if (staminaCost > TOUR_STAM_CAP)
                 {
                     return false;
                 }
@@ -35,26 +43,24 @@ namespace TourStamina
         }
     }
 
-    // World tours are limited to 100 stamina
+    // Set tooltip if at max stamina
     [HarmonyPatch(typeof(Tour_Star), "SetTooltip")]
     public class Tour_Star_SetTooltip
     {
-        public static bool Prefix(Tour_Star __instance, ref string __state)
+        public static bool Prefix(ref string __state, Tour_Country ___TourCountry)
         {
             __state = Language.Data["STAMINA"];
 
-            Tour_Country TourCountry = Traverse.Create(__instance).Field("TourCountry").GetValue() as Tour_Country;
-
-            SEvent_Tour.country country = TourCountry.Country;
-            SEvent_Tour.tour tour = TourCountry.TourPopup.Tour;
-            if (country.GetStaminaCost() + tour.Stamina > 100 && tour.GetCountry(country) == null)
+            SEvent_Tour.country country = ___TourCountry.Country;
+            SEvent_Tour.tour tour = ___TourCountry.TourPopup.Tour;
+            if (country.GetStaminaCost() + tour.Stamina > TOUR_STAM_CAP && tour.GetCountry(country) == null)
             {
-                Language.Data["STAMINA"] = string.Concat(new object[]
+                Language.Data["STAMINA"] = string.Concat(new string[]
                 {
                     "<color=",
                     mainScript.red,
                     ">",
-                    Language.Data["TOUR__STAMINACAP"],
+                    Language.Data[TOUR_STAM_TOOLTIP_ID],
                     "</color>\n",
                     Language.Data["STAMINA"]
                 });
@@ -69,7 +75,7 @@ namespace TourStamina
         }
     }
 
-    // World tours are limited to 100 stamina
+    // Update UI on click
     [HarmonyPatch(typeof(Tour_Country), "OnClick")]
     public class Tour_Country_OnClick
     {

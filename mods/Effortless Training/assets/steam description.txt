@@ -2,3 +2,5 @@
 Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
 
 Training costs way too much stamina. This mod makes it so vocal/dance stamina cost is reduced to 1 pt/day so that it's more worth it.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

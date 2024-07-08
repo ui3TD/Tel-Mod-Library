@@ -23,3 +23,5 @@ Also recommended mods by magier:
 - Fixed event and dialogue checks for Influence to check for Influence instead of Friendship
 - Fixed display for Stamina cost of Performances to be correct for "Energetic" performance policy
 - Fixed event and dialogue checks for having a staffer of a specific type
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

@@ -17,3 +17,5 @@ Example info.json for a mod that loads late:
   "HarmonyID": "com.tel.jsonloadorder",
   "JSONLoadOrder": 100
 }[/code]
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

@@ -12,3 +12,5 @@ Using the ModMenu menu, you will be able to customise:
 [*][b]Sexual Orientation[/b]: Increase to make girls easier to date if you are female or decrease to reduce in-group dating.
 [*][b]Number of Candidates[/b]: Have any number of candidates per audition. Click and drag to scroll through cards in the audition.
 [/list]
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

@@ -56,3 +56,5 @@ Homely = 2819
 Thespian = 2820
 
 Use the types for unique idol params.json files, and use the numbers for editing save files.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

@@ -26,3 +26,5 @@ Let me know of any bugs.
 - Misandry: 20% chance of receiving bad opinions from Male fans when participating in a single with handshakes.
 - Perfectionist: -20 to mental stamina when world tours end with less than 80% attendance, or when they participate in concerts with less than 100% hype.
 - Indiscreet: girls in dating relationships unknown to the player have a 2% chance of having the relationship revealed each week. The girls revealed to be dating lose 30 mental stamina. If the group forbids dating then a scandal point is added for each girl.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

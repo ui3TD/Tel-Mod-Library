@@ -8,3 +8,5 @@ Rebalances concerts to make things more challenging.
 - Concert venues can only be unlocked if you've sold out the previous venue with a profit.
 - Concert Club venue had its hype multiplier reduced. Previously, clubs had higher hype than other venues.
 - In Unfair, Tokyo Coliseum is increased to 50,000 capacity, but has its base cost increased to 200,000,000 for more endgame challenge.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

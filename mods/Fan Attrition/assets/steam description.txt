@@ -20,3 +20,5 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 [h3]Businesses are a viable strat for end game[/h3]
 - Drama business proposals get over 3x the fans so they are more competitive with other methods of gaining fans.
 - Drama and Ad business proposals have their max base stamina reduced to 20 at high levels so it's easier to micromanage stamina.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

@@ -20,3 +20,5 @@ Pisces: All relationships improve 10% more
 [h3]Unique Idols[/h3]
 You can make unique idols have a specific zodiac star sign by adding a line in params.json like so:
 "starsign": "Capricorn"
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

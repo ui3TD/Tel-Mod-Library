@@ -6,3 +6,5 @@ Extends elections to 64 ranks.
 Use the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url] to customise the number of rankings.
 
 Warning: this can make elections go on for a long time.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

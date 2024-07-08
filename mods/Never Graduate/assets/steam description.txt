@@ -2,3 +2,6 @@
 Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
 
 This makes the game never check for graduations, unless the girl is fired.
+
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

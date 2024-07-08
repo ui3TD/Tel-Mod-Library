@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Reflection;
 using static StarSigns.StarSigns;
-using static data_girls;
 
 namespace StarSigns
 {
@@ -19,15 +18,17 @@ namespace StarSigns
         [HarmonyPriority(Priority.LowerThanNormal)]
         public static void Postfix(Profile_Popup __instance)
         {
-            StarSigns.Zodiac zodiac = StarSigns.GetGirlZodiac(__instance.Girl);
-            if(zodiac != StarSigns.Zodiac.None)
-            {
-                string txt = "\n" + ExtensionMethods.color(Language.Data["STARSIGN__TITLE_" + zodiac.ToString().ToUpper()] + ": ", mainScript.blue) + Language.Data["STARSIGN__DESC_" + zodiac.ToString().ToUpper()];
+            Zodiac zodiac = GetGirlZodiac(__instance.Girl);
+            if (zodiac == Zodiac.None)
+                return;
 
-                __instance.Extras_Container.transform.Find("Text(Clone)").GetComponent<TextMeshProUGUI>().text += txt;
-                __instance.Extras_Container.transform.Find("Text(Clone)").GetComponent<TextMeshProUGUI>().text = __instance.Extras_Container.transform.Find("Text(Clone)").GetComponent<TextMeshProUGUI>().text.Replace(mainScript.blue, mainScript.black);
-                LayoutRebuilder.ForceRebuildLayoutImmediate(__instance.Extras_Container.GetComponent<RectTransform>());
-            }
+            string txt = "\n" + ExtensionMethods.color(Language.Data[CONSTANT_SIGN_PREFIX + zodiac.ToString().ToUpper()] + ": ", mainScript.blue) + Language.Data[CONSTANT_DESC_PREFIX + zodiac.ToString().ToUpper()];
+
+            TextMeshProUGUI textComponent = __instance.Extras_Container.transform.Find("Text(Clone)").GetComponent<TextMeshProUGUI>();
+            textComponent.text += txt;
+            textComponent.text = textComponent.text.Replace(mainScript.blue, mainScript.black);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(__instance.Extras_Container.GetComponent<RectTransform>());
+
         }
     }
 
@@ -38,13 +39,13 @@ namespace StarSigns
     {
         public static void Postfix(ref Audition_Data_Card __instance)
         {
-            StarSigns.Zodiac zodiac = StarSigns.GetGirlZodiac(__instance.Girl.girl);
-            if (zodiac != StarSigns.Zodiac.None)
-            {
-                string txt = " (" + Language.Data["STARSIGN__TITLE_" + zodiac.ToString().ToUpper()] + ")";
+            Zodiac zodiac = GetGirlZodiac(__instance.Girl.girl);
+            if (zodiac == Zodiac.None)
+                return;
 
-                __instance.Age.GetComponent<TextMeshProUGUI>().text += txt;
-            }
+            string txt = " (" + Language.Data[CONSTANT_SIGN_PREFIX + zodiac.ToString().ToUpper()] + ")";
+
+            __instance.Age.GetComponent<TextMeshProUGUI>().text += txt;
         }
     }
 
@@ -54,13 +55,13 @@ namespace StarSigns
     {
         public static void Postfix(ref Audition_Data_Card __instance)
         {
-            StarSigns.Zodiac zodiac = StarSigns.GetGirlZodiac(__instance.Girl.girl);
-            if (zodiac != StarSigns.Zodiac.None)
-            {
-                string txt = " (" + Language.Data["STARSIGN__TITLE_" + zodiac.ToString().ToUpper()] + ")";
+            Zodiac zodiac = GetGirlZodiac(__instance.Girl.girl);
+            if (zodiac != Zodiac.None)
+                return;
 
-                __instance.Age.GetComponent<TextMeshProUGUI>().text += txt;
-            }
+            string txt = " (" + Language.Data[CONSTANT_SIGN_PREFIX + zodiac.ToString().ToUpper()] + ")";
+
+            __instance.Age.GetComponent<TextMeshProUGUI>().text += txt;
         }
     }
 
@@ -74,96 +75,57 @@ namespace StarSigns
             foreach (Relationships._relationship relationship in Relationships.RelationshipsData)
             {
                 if(relationship.Girls[0] == relationship.Girls[1])
+                    continue;
+
+                Zodiac zodiac0 = GetGirlZodiac(relationship.Girls[0]);
+                Zodiac zodiac1 = GetGirlZodiac(relationship.Girls[1]);
+
+                if(CheckZodiacBonus(relationship, zodiac0, relationship.Girls[1], relationship.Girls[0]))
                 {
-                    return;
+                    relationship.Add(0.05f);
                 }
-                StarSigns.Zodiac zodiac0 = StarSigns.GetGirlZodiac(relationship.Girls[0]);
-                StarSigns.Zodiac zodiac1 = StarSigns.GetGirlZodiac(relationship.Girls[1]);
-                if (zodiac0 == StarSigns.Zodiac.Cancer || zodiac1 == StarSigns.Zodiac.Cancer)
+                if (CheckZodiacBonus(relationship, zodiac1, relationship.Girls[0], relationship.Girls[1]))
                 {
-                    if(relationship.IsSameClique() && mainScript.chance(10))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac0 == StarSigns.Zodiac.Pisces || zodiac1 == StarSigns.Zodiac.Pisces)
-                {
-                    if (mainScript.chance(10))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac0 == StarSigns.Zodiac.Virgo)
-                {
-                    if (relationship.Girls[1].getAverageParam() > 70 && mainScript.chance(10))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac1 == StarSigns.Zodiac.Virgo)
-                {
-                    if (relationship.Girls[0].getAverageParam() > 70 && mainScript.chance(10))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac1 == StarSigns.Zodiac.Libra)
-                {
-                    if (Relationships.IsBullied(relationship.Girls[0]) && mainScript.chance(20))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac0 == StarSigns.Zodiac.Libra)
-                {
-                    if (Relationships.IsBullied(relationship.Girls[1]) && mainScript.chance(20))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac1 == StarSigns.Zodiac.Sagittarius)
-                {
-                    if (relationship.Girls[0].GetScandalPoints() > 0 && mainScript.chance(20))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac0 == StarSigns.Zodiac.Sagittarius)
-                {
-                    if (relationship.Girls[1].GetScandalPoints() > 0 && mainScript.chance(20))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac1 == StarSigns.Zodiac.Capricorn)
-                {
-                    if (relationship.Girls[0].DatingData.Partner_Status == girls._dating_data._partner_status.free && mainScript.chance(20))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac0 == StarSigns.Zodiac.Capricorn)
-                {
-                    if (relationship.Girls[1].DatingData.Partner_Status == girls._dating_data._partner_status.free && mainScript.chance(20))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac1 == StarSigns.Zodiac.Aries)
-                {
-                    if (relationship.Girls[1].Is_Pushed() && mainScript.chance(20))
-                    {
-                        relationship.Add(0.1f);
-                    }
-                }
-                else if (zodiac0 == StarSigns.Zodiac.Aries)
-                {
-                    if (relationship.Girls[0].Is_Pushed() && mainScript.chance(20))
-                    {
-                        relationship.Add(0.1f);
-                    }
+                    relationship.Add(0.05f);
                 }
             }
+
+        }
+
+        private static bool CheckZodiacBonus(Relationships._relationship relationship, Zodiac zodiac, data_girls.girls otherGirl, data_girls.girls thisGirl)
+        {
+            switch (zodiac)
+            {
+                case Zodiac.Cancer:
+                    if (relationship.IsSameClique() && mainScript.chance(CANCER_REL_CHANCE))
+                        return true;
+                    break;
+                case Zodiac.Pisces:
+                    if (mainScript.chance(PISCES_REL_CHANCE))
+                        return true;
+                    break;
+                case Zodiac.Virgo:
+                    if (otherGirl.getAverageParam() > VIRGO_SKILL_THR && mainScript.chance(VIRGO_REL_CHANCE))
+                        return true;
+                    break;
+                case Zodiac.Libra:
+                    if (Relationships.IsBullied(otherGirl) && mainScript.chance(LIBRA_REL_CHANCE))
+                        return true;
+                    break;
+                case Zodiac.Sagittarius:
+                    if (otherGirl.GetScandalPoints() > 0 && mainScript.chance(SAGG_REL_CHANCE))
+                        return true;
+                    break;
+                case Zodiac.Capricorn:
+                    if (otherGirl.DatingData.Partner_Status == data_girls.girls._dating_data._partner_status.free && mainScript.chance(CAPR_REL_CHANCE))
+                        return true;
+                    break;
+                case Zodiac.Aries:
+                    if (thisGirl.Is_Pushed() && mainScript.chance(ARIES_REL_CHANCE))
+                        return true;
+                    break;
+            }
+            return false;
         }
     }
 
@@ -172,19 +134,18 @@ namespace StarSigns
     [HarmonyPatch(typeof(Relationships._relationship), "Add")]
     public class Relationships__relationship_Add
     {
-        public static bool Prefix(Relationships._relationship __instance, ref float val)
+        public static void Prefix(Relationships._relationship __instance, ref float val)
         {
-            StarSigns.Zodiac zodiac0 = StarSigns.GetGirlZodiac(__instance.Girls[0]);
-            StarSigns.Zodiac zodiac1 = StarSigns.GetGirlZodiac(__instance.Girls[1]);
-            if (zodiac0 == StarSigns.Zodiac.Taurus || zodiac1 == StarSigns.Zodiac.Taurus)
+            Zodiac zodiac0 = GetGirlZodiac(__instance.Girls[0]);
+            Zodiac zodiac1 = GetGirlZodiac(__instance.Girls[1]);
+            if (zodiac0 == Zodiac.Taurus || zodiac1 == Zodiac.Taurus)
             {
-                val *= 0.8f;
+                val *= TAURUS_REL_COEFF;
             }
-            else if (zodiac0 == StarSigns.Zodiac.Gemini || zodiac1 == StarSigns.Zodiac.Gemini)
+            if (zodiac0 == Zodiac.Gemini || zodiac1 == Zodiac.Gemini)
             {
-                val *= 1.2f;
+                val *= GEMINI_REL_COEFF;
             }
-            return true;
         }
     }
 
@@ -192,15 +153,14 @@ namespace StarSigns
     [HarmonyPatch(typeof(Relationships._clique), "UpdateLeader")]
     public class Relationships__clique_UpdateLeader
     {
-        public static bool Prefix()
+        public static void Prefix()
         {
-            StarSigns.patchGetVal = true;
-            return true;
+            patchGetVal = true;
         }
 
         public static void Postfix()
         {
-            StarSigns.patchGetVal = false;
+            patchGetVal = false;
         }
     }
 
@@ -210,14 +170,13 @@ namespace StarSigns
     {
         public static void Postfix(ref float __result, data_girls.girls.param __instance)
         {
-            if (StarSigns.patchGetVal)
+            if (!patchGetVal)
+                return;
+
+            Zodiac zodiac = GetGirlZodiac(__instance.Parent);
+            if(zodiac == Zodiac.Leo && (__instance.type == data_girls._paramType.funny || __instance.type == data_girls._paramType.smart))
             {
-                //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-                StarSigns.Zodiac zodiac = StarSigns.GetGirlZodiac(__instance.Parent);
-                if(zodiac == StarSigns.Zodiac.Leo && (__instance.type == data_girls._paramType.funny || __instance.type == data_girls._paramType.smart))
-                {
-                    __result += 10;
-                }
+                __result += LEO_LEADER_BONUS;
             }
         }
     }
@@ -228,14 +187,13 @@ namespace StarSigns
     {
         public static bool Prefix(data_girls.girls Girl)
         {
-            StarSigns.Zodiac zodiac = StarSigns.GetGirlZodiac(Girl);
-            if(zodiac == StarSigns.Zodiac.Scorpio)
-            {
-                if(mainScript.chance(20))
-                {
-                    return false;
-                }
-            }
+            Zodiac zodiac = GetGirlZodiac(Girl);
+            if (zodiac != Zodiac.Scorpio)
+                return true;
+
+            if(mainScript.chance(SCORP_BULLY_BONUS))
+                return false;
+
             return true;
         }
     }
@@ -244,34 +202,31 @@ namespace StarSigns
     [HarmonyPatch(typeof(Pushes), "OnNewDay")]
     public class Pushes_OnNewDay
     {
-        public static bool Prefix()
+        public static void Prefix()
         {
-            StarSigns.patchAddRelationship = true;
-            return true;
+            patchAddRelationship = true;
         }
 
         public static void Postfix()
         {
-            StarSigns.patchAddRelationship = false;
+            patchAddRelationship = false;
         }
     }
 
-    // apply leader bonus to Leo
+    // apply aquarius bonus
     [HarmonyPatch(typeof(data_girls.girls), "AddRelationship")]
     public class data_girls_girls_AddRelationship
     {
-        public static bool Prefix(data_girls.girls __instance, ref float val)
+        public static void Prefix(data_girls.girls __instance, ref float val)
         {
-            if (StarSigns.patchAddRelationship)
-            {
-                //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-                StarSigns.Zodiac zodiac = StarSigns.GetGirlZodiac(__instance);
-                if (zodiac == StarSigns.Zodiac.Aquarius)
-                {
-                    val *= 0.8f;
-                }
-            }
-            return true;
+            if (!patchAddRelationship)
+                return;
+
+            Zodiac zodiac = GetGirlZodiac(__instance);
+            if (zodiac != Zodiac.Aquarius)
+                return;
+
+            val *= AQUA_REL_COEFF;
         }
     }
 
@@ -315,22 +270,21 @@ namespace StarSigns
         public static void Infix(JSONNode jsonnode, data_girls_textures._textureAsset textureAsset)
         {
             if (jsonnode["starsign"] == null)
-            {
                 return;
-            }
+
             string zodiacStr = jsonnode["starsign"];
             if (!Enum.TryParse(zodiacStr, true, out Zodiac tryZodiac))
             {
                 tryZodiac = Zodiac.None;
             }
-            StarSigns.ZodiacTextureData zodiacTextureData = new()
+            ZodiacTextureData zodiacTextureData = new()
             {
                 ModName = textureAsset.ModName,
                 body_id = textureAsset.body_id,
                 zodiac = tryZodiac
             };
 
-            StarSigns.ZodiacTextureReferenceList.Add(zodiacTextureData);
+            ZodiacTextureReferenceList.Add(zodiacTextureData);
         }
     }
 
@@ -340,28 +294,33 @@ namespace StarSigns
     {
         public static void Postfix(ref data_girls.girls __result, bool genTextures)
         {
-            if (genTextures)
+            if (!genTextures)
+                return;
+
+            foreach (ZodiacTextureData data in ZodiacTextureReferenceList)
             {
-                foreach (StarSigns.ZodiacTextureData data in StarSigns.ZodiacTextureReferenceList)
+                if (__result.textureAssets == null || __result.textureAssets.Count == 0)
+                    continue;
+
+                data_girls_textures._textureAsset asset = __result.textureAssets[0].asset;
+
+                if (asset != null && asset.ModName == data.ModName && asset.body_id == data.body_id)
                 {
-                    if (__result.textureAssets.Count != 0 && __result.textureAssets[0].asset != null && __result.textureAssets[0].asset.ModName == data.ModName && __result.textureAssets[0].asset.body_id == data.body_id)
+                    if (asset.Age > 0)
                     {
-                        if (__result.textureAssets[0].asset.Age != 0)
+                        while (DateToZodiac(__result.birthday) != data.zodiac)
                         {
-                            while (StarSigns.DateToZodiac(__result.birthday) != data.zodiac)
-                            {
-                                __result.birthday = staticVars.dateTime.AddYears(-__result.textureAssets[0].asset.Age).AddMonths(-UnityEngine.Random.Range(0, 11)).AddDays((double)(-(double)UnityEngine.Random.Range(0, 25)));
-                            }
+                            __result.birthday = staticVars.dateTime.AddYears(-asset.Age).AddMonths(-UnityEngine.Random.Range(0, 11)).AddDays(-(double)UnityEngine.Random.Range(0, 25));
                         }
-                        else
-                        {
-                            while (StarSigns.DateToZodiac(__result.birthday) != data.zodiac)
-                            {
-                                __result.GenerateBirthday();
-                            }
-                        }
-                        break;
                     }
+                    else
+                    {
+                        while (DateToZodiac(__result.birthday) != data.zodiac)
+                        {
+                            __result.GenerateBirthday();
+                        }
+                    }
+                    break;
                 }
             }
         }
@@ -369,6 +328,23 @@ namespace StarSigns
 
     public class StarSigns
     {
+        public const string CONSTANT_SIGN_PREFIX = "STARSIGN__TITLE_";
+        public const string CONSTANT_DESC_PREFIX = "STARSIGN__DESC_";
+
+        public const int CANCER_REL_CHANCE = 10;
+        public const int PISCES_REL_CHANCE = 10;
+        public const int VIRGO_REL_CHANCE = 10;
+        public const int VIRGO_SKILL_THR = 70;
+        public const int LIBRA_REL_CHANCE = 20;
+        public const int SAGG_REL_CHANCE = 20;
+        public const int CAPR_REL_CHANCE = 20;
+        public const int ARIES_REL_CHANCE = 20;
+        public const float TAURUS_REL_COEFF = 0.8f;
+        public const float GEMINI_REL_COEFF = 1.2f;
+        public const int SCORP_BULLY_BONUS = 20;
+        public const float LEO_LEADER_BONUS = 10;
+        public const float AQUA_REL_COEFF = 0.8f;
+
         public static bool patchGetVal = false;
         public static bool patchAddRelationship = false;
 
@@ -390,121 +366,34 @@ namespace StarSigns
 
         public static Zodiac DateToZodiac(DateTime date)
         {
-            int mo = date.Month;
-            int d = date.Day;
+            int month = date.Month;
+            int day = date.Day;
 
-            switch(mo)
+            var zodiacDates = new[]
             {
-                case 1:
-                    if(d < 20)
-                    {
-                        return Zodiac.Capricorn;
-                    }
-                    else
-                    {
-                        return Zodiac.Aquarius;
-                    }
-                case 2:
-                    if (d < 19)
-                    {
-                        return Zodiac.Aquarius;
-                    }
-                    else
-                    {
-                        return Zodiac.Pisces;
-                    }
-                case 3:
-                    if (d < 21)
-                    {
-                        return Zodiac.Pisces;
-                    }
-                    else
-                    {
-                        return Zodiac.Aries;
-                    }
-                case 4:
-                    if (d < 20)
-                    {
-                        return Zodiac.Aries;
-                    }
-                    else
-                    {
-                        return Zodiac.Taurus;
-                    }
-                case 5:
-                    if (d < 21)
-                    {
-                        return Zodiac.Taurus;
-                    }
-                    else
-                    {
-                        return Zodiac.Gemini;
-                    }
-                case 6:
-                    if (d < 22)
-                    {
-                        return Zodiac.Gemini;
-                    }
-                    else
-                    {
-                        return Zodiac.Cancer;
-                    }
-                case 7:
-                    if (d < 23)
-                    {
-                        return Zodiac.Cancer;
-                    }
-                    else
-                    {
-                        return Zodiac.Leo;
-                    }
-                case 8:
-                    if (d < 23)
-                    {
-                        return Zodiac.Leo;
-                    }
-                    else
-                    {
-                        return Zodiac.Virgo;
-                    }
-                case 9:
-                    if (d < 23)
-                    {
-                        return Zodiac.Virgo;
-                    }
-                    else
-                    {
-                        return Zodiac.Libra;
-                    }
-                case 10:
-                    if (d < 24)
-                    {
-                        return Zodiac.Libra;
-                    }
-                    else
-                    {
-                        return Zodiac.Scorpio;
-                    }
-                case 11:
-                    if (d < 22)
-                    {
-                        return Zodiac.Scorpio;
-                    }
-                    else
-                    {
-                        return Zodiac.Sagittarius;
-                    }
-                case 12:
-                    if (d < 22)
-                    {
-                        return Zodiac.Sagittarius;
-                    }
-                    else
-                    {
-                        return Zodiac.Capricorn;
-                    }
-                default:
-                    break;
+                new { Month = 1, Day = 19, Sign = Zodiac.Capricorn },
+                new { Month = 2, Day = 18, Sign = Zodiac.Aquarius },
+                new { Month = 3, Day = 20, Sign = Zodiac.Pisces },
+                new { Month = 4, Day = 19, Sign = Zodiac.Aries },
+                new { Month = 5, Day = 20, Sign = Zodiac.Taurus },
+                new { Month = 6, Day = 21, Sign = Zodiac.Gemini },
+                new { Month = 7, Day = 22, Sign = Zodiac.Cancer },
+                new { Month = 8, Day = 22, Sign = Zodiac.Leo },
+                new { Month = 9, Day = 22, Sign = Zodiac.Virgo },
+                new { Month = 10, Day = 23, Sign = Zodiac.Libra },
+                new { Month = 11, Day = 21, Sign = Zodiac.Scorpio },
+                new { Month = 12, Day = 21, Sign = Zodiac.Sagittarius },
+                new { Month = 1, Day = 19, Sign = Zodiac.Capricorn },
+            };
+
+
+            for (int i = 1; i < zodiacDates.Length - 1; i++)
+            {
+                if ((month == zodiacDates[i].Month && day <= zodiacDates[i].Day) ||
+                    (month == zodiacDates[i - 1].Month && day > zodiacDates[i - 1].Day))
+                {
+                    return zodiacDates[i].Sign;
+                }
             }
 
             return Zodiac.None;
@@ -517,7 +406,7 @@ namespace StarSigns
             Taurus,         // Relationships develop 20% slower
             Gemini,         // Relationships develop 20% faster
             Cancer,         // Relationships improve 10% more within clique
-            Leo,            // +40 bonus to being clique leader
+            Leo,            // +20 bonus to being clique leader
             Virgo,          // Relationships improve 10% more with skilled girls
             Libra,          // Relationships improve 20% more with bullied girls
             Scorpio,        // 20% less chance of being bullied

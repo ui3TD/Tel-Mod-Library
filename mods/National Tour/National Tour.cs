@@ -3,10 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using DG.Tweening;
-using SimpleJSON;
-using System;
 using static NationalTour.Utility;
 
 namespace NationalTour
@@ -23,12 +20,10 @@ namespace NationalTour
 
             Tour_Country[] componentsInChildren = __instance.CountriesContainer.transform.GetComponentsInChildren<Tour_Country>();
 
-            for (int i = 0; i < tourLocations.Count; i++)
+            foreach(Tour_Country country in componentsInChildren)
             {
-                componentsInChildren[i].CountryType = (SEvent_Tour._country)tourLocations[componentsInChildren[i].CountryType];
-                componentsInChildren[i].UpdateData();
+                country.transform.position = locationDict.TryGetValue(tourLocations[country.CountryType], out Vector3 v) ? v : country.transform.position;
 
-                componentsInChildren[i].transform.position = locationDict.TryGetValue((Prefectures)componentsInChildren[i].CountryType, out Vector3 v) ? v : componentsInChildren[i].transform.position;
             }
         }
     }
@@ -59,30 +54,30 @@ namespace NationalTour
     }
 
     // Load countries
-    [HarmonyPatch(typeof(SEvent_Tour.country), "Set")]
-    public class SEvent_Tour_country_Set
-    {
-        public static bool Prefix(SEvent_Tour.country __instance, JSONNode data)
-        {
-            if(Enum.TryParse(data["type"], true, out Prefectures result))
-            {
-                __instance.Type = (SEvent_Tour._country)result;
+    //[HarmonyPatch(typeof(SEvent_Tour.country), "Set")]
+    //public class SEvent_Tour_country_Set
+    //{
+    //    public static bool Prefix(SEvent_Tour.country __instance, JSONNode data)
+    //    {
+    //        if(Enum.TryParse(data["type"], true, out Prefectures result))
+    //        {
+    //            __instance.Type = (SEvent_Tour._country)result;
 
-                var GetArea = typeof(SEvent_Tour).GetMethod("GetArea", BindingFlags.NonPublic | BindingFlags.Static);
-                __instance.Area = (SEvent_Tour._area)GetArea.Invoke(null, new object[] { (SEvent_Tour._areaType)Enum.Parse(typeof(SEvent_Tour._areaType), data["area"]) });
-                __instance.Cost = data["cost"].AsInt;
-                __instance.TicketPrice = data["ticketPrice"].AsInt;
-                if (data["level"] == null)
-                {
-                    __instance.Level = 1;
-                    return false;
-                }
-                __instance.Level = data["level"].AsInt;
-                return false;
-            }
-            return true;
-        }
-    }
+    //            var GetArea = typeof(SEvent_Tour).GetMethod("GetArea", BindingFlags.NonPublic | BindingFlags.Static);
+    //            __instance.Area = (SEvent_Tour._area)GetArea.Invoke(null, new object[] { (SEvent_Tour._areaType)Enum.Parse(typeof(SEvent_Tour._areaType), data["area"]) });
+    //            __instance.Cost = data["cost"].AsInt;
+    //            __instance.TicketPrice = data["ticketPrice"].AsInt;
+    //            if (data["level"] == null)
+    //            {
+    //                __instance.Level = 1;
+    //                return false;
+    //            }
+    //            __instance.Level = data["level"].AsInt;
+    //            return false;
+    //        }
+    //        return true;
+    //    }
+    //}
 
 
     // Load assets
@@ -113,8 +108,6 @@ namespace NationalTour
             World_tour_def_tex = IMG2Sprite.instance.LoadTexture(path_World_tour_def);
             World_tour_def_BG = IMG2Sprite.instance.LoadNewSprite(path_World_tour_def_BG, 100f);
             TOUR_map_2 = IMG2Sprite.instance.LoadNewSprite(path_TOUR_map_2, 100f);
-
-
         }
     }
 

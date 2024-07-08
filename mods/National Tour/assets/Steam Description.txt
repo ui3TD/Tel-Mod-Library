@@ -16,3 +16,5 @@ Regions:
 - Kansai + Chugoku + Shikoku
 - Kyushu
 - Okinawa
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

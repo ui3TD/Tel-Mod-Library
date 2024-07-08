@@ -11,3 +11,5 @@ Idols will demand fair wages! Brand new staff cannot be blamed for scandals!
 
 [h3]Staff Rights[/h3]
 - Staff cannot be fired using scandal points within the first month so that you can't just hire and immediately fire staff to get rid of points.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

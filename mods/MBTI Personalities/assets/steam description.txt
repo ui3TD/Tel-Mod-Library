@@ -34,3 +34,5 @@ The old _mbti.json files are now obsolete and are safe to delete.
 [h3]Unique Idols[/h3]
 You can make unique idols have a specific MBTI type by adding a line in params.json like so:
 "mbti": "INTJ"
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

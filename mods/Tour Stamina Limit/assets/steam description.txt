@@ -4,3 +4,5 @@ Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyInt
 [h3]World Tour stamina cost matters[/h3]
 - World tours are limited to 100 stamina so you can't go to all the countries at once.
 - World tours give 3.5x more fans to compensate for stamina limitation.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

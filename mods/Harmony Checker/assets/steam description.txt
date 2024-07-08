@@ -6,3 +6,5 @@ You must install the IM-HI plugin manually. Follow the instructions at this link
 
 [h2]For Modders[/h2]
 See [b][url=https://github.com/ui3TD/IM-FastForward]IM-FastForward[/url][/b] for an example and tutorial for creating compatible mods.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

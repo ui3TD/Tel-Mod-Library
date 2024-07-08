@@ -43,3 +43,5 @@ Security:
 - Restrictive: 0.7x concert stamina
 - Restrictive: 0.75x concert hype
 - Restrictive: 0.8x appeal of handshakes
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

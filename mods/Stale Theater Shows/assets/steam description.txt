@@ -8,3 +8,5 @@ Rebalances the theater. Theater shows go stale over time. Release a single every
 - Theater subscription revenue decreased by 70% in Normal mode and 90% in Unfair mode. Most of the revenue goes to the streaming service provider.
 - Theater attendance for Manzais halved to scale with stamina cost compared to performances.
 - Theater attendance increased when the show targets 'everyone', 'casual' or specific age groups to be balanced.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

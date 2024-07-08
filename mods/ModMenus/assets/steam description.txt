@@ -86,3 +86,5 @@ Dropdown elements output an index (0, 1, 2, etc.) as a string to an in-game vari
 [*]Always define text in constant.json for translation support. If absolutely necessary, ModMenus can handle raw text from labelID or itemIDList fields.
 [*]For testing, add '"ignore": true' to any element to exclude it from parsing.
 [/list]
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

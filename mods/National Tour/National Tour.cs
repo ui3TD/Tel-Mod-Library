@@ -53,32 +53,6 @@ namespace NationalTour
         }
     }
 
-    // Load countries
-    //[HarmonyPatch(typeof(SEvent_Tour.country), "Set")]
-    //public class SEvent_Tour_country_Set
-    //{
-    //    public static bool Prefix(SEvent_Tour.country __instance, JSONNode data)
-    //    {
-    //        if(Enum.TryParse(data["type"], true, out Prefectures result))
-    //        {
-    //            __instance.Type = (SEvent_Tour._country)result;
-
-    //            var GetArea = typeof(SEvent_Tour).GetMethod("GetArea", BindingFlags.NonPublic | BindingFlags.Static);
-    //            __instance.Area = (SEvent_Tour._area)GetArea.Invoke(null, new object[] { (SEvent_Tour._areaType)Enum.Parse(typeof(SEvent_Tour._areaType), data["area"]) });
-    //            __instance.Cost = data["cost"].AsInt;
-    //            __instance.TicketPrice = data["ticketPrice"].AsInt;
-    //            if (data["level"] == null)
-    //            {
-    //                __instance.Level = 1;
-    //                return false;
-    //            }
-    //            __instance.Level = data["level"].AsInt;
-    //            return false;
-    //        }
-    //        return true;
-    //    }
-    //}
-
 
     // Load assets
     [HarmonyPatch(typeof(mainScript), "Start")]

@@ -60,10 +60,10 @@
 		id: "ACTIVITIES__TOUREVERY",
 		text: "Give a concert in every prefecture"
 	},{
-		id: "SEVENT__NATIONAL_TOUR",
+		id: "SEVENT__WORLD_TOUR",
 		text: "National Tour"
 	},{
-		id: "SEVENT__NATIONAL_TOUR_DESC",
+		id: "SEVENT__WORLD_TOUR_DESC",
 		text: "Select the prefectures you want to perform in and choose a type of venue.  Venue sizes range from small clubs (1 star) to big arenas.\n\nPerforming a concert in a prefecture's largest venue will unlock a bigger venue for your next tour, but only if you fill at least 80% of the venue.\n\nConcert attendance depends on your group's fame level, production staffers' skill, and prefecture's fan fatigue.\n\nProduction costs and ticket prices vary by prefecture.\n\nTour multiple prefectures within the same region to save on travel expenses."
 	},{
 		id: "TOUR__COUNTRIES",

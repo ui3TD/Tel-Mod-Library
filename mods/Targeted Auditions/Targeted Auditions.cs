@@ -10,7 +10,6 @@ using static CustomAuditions.CustomAuditions;
 namespace CustomAuditions
 {
 
-
     /// <summary>
     /// Patches the Popup_Audition class to allow scrolling cards in the audition popup.
     /// </summary>
@@ -45,7 +44,7 @@ namespace CustomAuditions
                 return;
 
             // Create ScrollRect container and attach to panel
-            GameObject scrollContainer = new("ScrollContainer", typeof(RectTransform), typeof(ScrollRect));
+            GameObject scrollContainer = new(AUD_SCROLLRECT_NAME, typeof(RectTransform), typeof(ScrollRect));
             RectTransform scrollRectTransform = scrollContainer.GetComponent<RectTransform>();
             SetRectTransform(scrollRectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
@@ -80,35 +79,35 @@ namespace CustomAuditions
         public static void Prefix(Auditions __instance)
         {
             // Set audition age limits (only if popup is not used)
-            bool toggle = int.Parse(variables.Get("AuditionAgeLimit_TogglePopup") ?? "0") == 1;
+            bool toggle = int.Parse(variables.Get(VARID_AGELIMIT_POPUP_TOGGLE) ?? DEF_AGELIMIT_POPUP_TOGGLE) == 1;
             if (!toggle)
             {
-                minAge = int.Parse(variables.Get("AuditionAgeLimit_MinAge") ?? "12");
-                maxAge = int.Parse(variables.Get("AuditionAgeLimit_MaxAge") ?? "23");
+                minAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MINAGE_STR);
+                maxAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MAXAGE_STR);
                 if (maxAge < minAge)
                 {
                     // swap values
-                    maxAge = int.Parse(variables.Get("AuditionAgeLimit_MinAge") ?? "23");
-                    minAge = int.Parse(variables.Get("AuditionAgeLimit_MaxAge") ?? "12");
+                    maxAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MAXAGE_STR);
+                    minAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MINAGE_STR);
 
                     // correct default variables
                     defaultMaxAge = maxAge;
                     defaultMinAge = minAge;
-                    variables.Set("AuditionAgeLimit_MaxAge", maxAge.ToString());
-                    variables.Set("AuditionAgeLimit_MaxAge", minAge.ToString());
+                    variables.Set(VARID_MAXAGE, maxAge.ToString());
+                    variables.Set(VARID_MINAGE, minAge.ToString());
                 }
             }
 
             // Set sexual orientation
-            float varLesbian = float.Parse(variables.Get("CustomAudition_Gay") ?? "7");
-            float varBi = float.Parse(variables.Get("CustomAudition_Bi") ?? "14");
+            float varLesbian = float.Parse(variables.Get(VARID_LESCHANCE) ?? DEF_CHANCE_LES_STR);
+            float varBi = float.Parse(variables.Get(VARID_BICHANCE) ?? DEF_CHANCE_BI_STR);
 
             if (varLesbian + varBi > 100)
             {
                 varLesbian = Mathf.Floor(varLesbian / (varLesbian + varBi) * 100);
                 varBi = 100 - varLesbian;
-                variables.Set("CustomAudition_Gay", varLesbian.ToString());
-                variables.Set("CustomAudition_Bi", varBi.ToString());
+                variables.Set(VARID_LESCHANCE, varLesbian.ToString());
+                variables.Set(VARID_BICHANCE, varBi.ToString());
             }
             chanceLesbian = (int)varLesbian;
             chanceBi = (int)Mathf.Floor(varBi / (100 - chanceLesbian) * 100);
@@ -117,12 +116,12 @@ namespace CustomAuditions
             // Set stat priorities
             foreach (data_girls._paramType param in paramTypes)
             {
-                int value = int.Parse(variables.Get($"CustomAudition_Prio_{param}") ?? "50");
+                int value = int.Parse(variables.Get($"{VARID_PRIO_PREFIX}{param}") ?? DEF_PRIO);
                 priorityDict[param] = value;
             }
 
             // Set girl count
-            __instance.NumberOfGirls = int.Parse(variables.Get("CustomAudition_Count") ?? "5");
+            __instance.NumberOfGirls = int.Parse(variables.Get(VARID_COUNT) ?? DEF_COUNT);
 
 
         }
@@ -255,20 +254,20 @@ namespace CustomAuditions
         /// </summary>
         public static void Postfix()
         {
-            bool toggle = int.Parse(variables.Get("AuditionAgeLimit_TogglePopup") ?? "0") == 1;
+            bool toggle = int.Parse(variables.Get(VARID_AGELIMIT_POPUP_TOGGLE) ?? DEF_AGELIMIT_POPUP_TOGGLE) == 1;
             if (toggle)
             {
-                defaultMinAge = int.Parse(variables.Get("AuditionAgeLimit_MinAge") ?? "12");
-                defaultMaxAge = int.Parse(variables.Get("AuditionAgeLimit_MaxAge") ?? "23");
+                defaultMinAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MINAGE_STR);
+                defaultMaxAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MAXAGE_STR);
                 if (defaultMaxAge < defaultMinAge)
                 {
                     // swap values
-                    defaultMaxAge = int.Parse(variables.Get("AuditionAgeLimit_MinAge") ?? "23");
-                    defaultMinAge = int.Parse(variables.Get("AuditionAgeLimit_MaxAge") ?? "12");
+                    defaultMaxAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MAXAGE_STR);
+                    defaultMinAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MINAGE_STR);
 
                     // correct variables
-                    variables.Set("AuditionAgeLimit_MaxAge", maxAge.ToString());
-                    variables.Set("AuditionAgeLimit_MaxAge", minAge.ToString());
+                    variables.Set(VARID_MAXAGE, maxAge.ToString());
+                    variables.Set(VARID_MINAGE, minAge.ToString());
                 }
                 agePopup = true;
                 Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>().Open(PopupManager._type.staff_nickname, true);
@@ -276,4 +275,112 @@ namespace CustomAuditions
         }
     }
 
+    /// <summary>
+    /// Contains utility methods and variables for custom auditions.
+    /// </summary>
+    class CustomAuditions
+    {
+        public const string DEF_MINAGE_STR = "12";
+        public const string DEF_MAXAGE_STR = "12";
+        public const string DEF_CHANCE_LES_STR = "7";
+        public const string DEF_CHANCE_BI_STR = "14";
+        public const string DEF_PRIO = "50";
+        public const string DEF_COUNT = "50";
+
+        public const string VARID_MINAGE = "AuditionAgeLimit_MinAge";
+        public const string VARID_MAXAGE = "AuditionAgeLimit_MaxAge";
+        public const string VARID_BICHANCE = "CustomAudition_Bi";
+        public const string VARID_LESCHANCE = "CustomAudition_Gay";
+        public const string VARID_PRIO_PREFIX = "CustomAudition_Prio_";
+        public const string VARID_COUNT = "CustomAudition_Count";
+
+
+        public const string AUD_SCROLLRECT_NAME = "ScrollContainer";
+
+        public const string VARID_AGELIMIT_POPUP_TOGGLE = "AuditionAgeLimit_TogglePopup";
+        public const string DEF_AGELIMIT_POPUP_TOGGLE = "0";
+
+        public static int defaultMinAge = 12;
+        public static int defaultMaxAge = 23;
+        public static int minAge = defaultMinAge;
+        public static int maxAge = defaultMaxAge;
+
+        public static int chanceLesbian = 7;
+        public static int chanceBi = 14;
+
+        public static bool agePopup = false;
+        public static bool inputValid = false;
+
+        /// <summary>
+        /// Parses the age range string and sets the minAge and maxAge values.
+        /// </summary>
+        /// <param name="ageRange">The age range string to parse.</param>
+        public static void ParseAgeRange(string ageRange)
+        {
+            if (IsInputValid(ageRange))
+            {
+                string[] ageLimits = ageRange.Split('-');
+                minAge = int.Parse(ageLimits[0].Trim());
+                maxAge = int.Parse(ageLimits[1].Trim());
+            }
+            else
+            {
+                minAge = defaultMinAge;
+                maxAge = defaultMaxAge;
+            }
+        }
+
+        /// <summary>
+        /// Validates the input age range string.
+        /// </summary>
+        /// <param name="ageRange">The age range string to validate.</param>
+        /// <returns>True if the input is valid, false otherwise.</returns>
+        public static bool IsInputValid(string ageRange)
+        {
+
+            string[] ageLimits = ageRange.Split('-');
+
+            if (ageLimits == null || ageLimits.Length != 2)
+            {
+                return false;
+            }
+
+            if (!int.TryParse(ageLimits[0].Trim(), out int min))
+            {
+                return false;
+            }
+            if (!int.TryParse(ageLimits[1].Trim(), out int max))
+            {
+                return false;
+            }
+
+            if (max < 1 || min < 1)
+            {
+                return false;
+            }
+
+            if (max < min)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+
+        public static List<data_girls._paramType> paramTypes = new()
+        {
+            data_girls._paramType.cute,
+            data_girls._paramType.cool,
+            data_girls._paramType.sexy,
+            data_girls._paramType.pretty,
+            data_girls._paramType.vocal,
+            data_girls._paramType.dance,
+            data_girls._paramType.funny,
+            data_girls._paramType.smart
+        };
+
+        public static Dictionary<data_girls._paramType, int> priorityDict = new();
+
+    }
 }

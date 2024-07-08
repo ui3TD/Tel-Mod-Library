@@ -7,11 +7,11 @@ namespace ConcertRebalance
 {
     public class ConcertRebalance
     {
-        public const float priceScalingBase = 1.0001f;
-        public const float attendanceMultiplierBase = 4.99f;
-        public const float attendanceMultiplierHard = 7.85f;
-        public const int coliseumCapacityHard = 50000;
-        public const int coliseumPriceHard = 200000000;
+        public const float PRICE_SCALING_BASE = 1.0001f;
+        public const float ATTENDANCE_MULT_BASE = 4.99f;
+        public const float ATTENDANCE_MULT_HARD = 7.85f;
+        public const int DOME_CAPACITY_HARD = 50000;
+        public const int DOME_PRICE_HARD = 200000000;
 
     }
 
@@ -32,17 +32,17 @@ namespace ConcertRebalance
 
             int ticketPriceFactor = __instance.TicketPrice;
             int basePriceThreshold = 10000;
-            float attendanceMultiplier = attendanceMultiplierBase;
+            float attendanceMultiplier = ATTENDANCE_MULT_BASE;
             if (staticVars.IsHard())
             {
                 ticketPriceFactor *= 3;
                 basePriceThreshold = 6000;
-                attendanceMultiplier = attendanceMultiplierHard;
+                attendanceMultiplier = ATTENDANCE_MULT_HARD;
             }
 
             if (ticketPriceFactor >= 3000 && ticketPriceFactor > basePriceThreshold)
             {
-                calculatedAttendance = attendanceMultiplier * Mathf.Pow(priceScalingBase, -(float)ticketPriceFactor + basePriceThreshold) / 100f;
+                calculatedAttendance = attendanceMultiplier * Mathf.Pow(PRICE_SCALING_BASE, -(float)ticketPriceFactor + basePriceThreshold) / 100f;
             }
 
             __result = calculatedAttendance;
@@ -140,7 +140,7 @@ namespace ConcertRebalance
         {
             if (staticVars.IsHard() && val == SEvent_Concerts._venue.tokyoColiseum)
             {
-                __result = coliseumCapacityHard;
+                __result = DOME_CAPACITY_HARD;
             }
         }
     }
@@ -160,7 +160,7 @@ namespace ConcertRebalance
         {
             if (staticVars.IsHard() && val == SEvent_Concerts._venue.tokyoColiseum)
             {
-                __result = coliseumPriceHard;
+                __result = DOME_PRICE_HARD;
             }
         }
     }

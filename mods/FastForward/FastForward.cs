@@ -7,8 +7,8 @@ namespace FastForward
 {
     public class FastForward
     {
-        public const string varID = "FastForward_Multiplier";
-        public const string defaultMultStr = "5";
+        public const string VARID = "FastForward_Multiplier";
+        public const string DEFAULT_VAR = "5";
     }
 
     /// <summary>
@@ -24,7 +24,7 @@ namespace FastForward
         /// <returns>Boolean indicating whether the original method should be executed.</returns>
         public static bool Prefix(TimeControlButton __instance)
         {
-            double mult = double.Parse(variables.Get(varID) ?? defaultMultStr);
+            double mult = double.Parse(variables.Get(VARID) ?? DEFAULT_VAR);
             double speed = 200 * mult;
 
             if (__instance.Type != mainScript._time_state.fast || staticVars.timeState != mainScript._time_state.fast || staticVars.dateTimeAddMinutesPerSecond == speed)
@@ -54,7 +54,7 @@ namespace FastForward
 
             if (Input.GetKeyDown(KeyCode.Alpha4))
             {
-                double mult = double.Parse(variables.Get(varID) ?? defaultMultStr);
+                double mult = double.Parse(variables.Get(VARID) ?? DEFAULT_VAR);
                 double speed = 200 * mult;
                 Camera.main.GetComponent<mainScript>().Time_SetState(mainScript._time_state.fast);
                 staticVars.dateTimeAddMinutesPerSecond = speed;

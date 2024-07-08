@@ -10,7 +10,7 @@ namespace JSONLoadOrder
 {
     public class ModLoadOrder
     {
-        public const string loadOrderFieldID = "JSONLoadOrder";
+        public const string LOADORDER_JSON_FIELD = "JSONLoadOrder";
 
         public static Dictionary<string, int> modOrders = new();
     }
@@ -30,7 +30,7 @@ namespace JSONLoadOrder
 
                 string modInfoFile = Path.Combine(modDir.TrimEnd(new char[] { Path.DirectorySeparatorChar }), "info.json");
                 JSONNode modInfo = mainScript.ProcessInboundData(File.ReadAllText(modInfoFile));
-                string orderStr = modInfo[loadOrderFieldID];
+                string orderStr = modInfo[LOADORDER_JSON_FIELD];
 
                 modOrders[mod.ModName] = 0;
 

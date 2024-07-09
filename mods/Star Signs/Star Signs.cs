@@ -388,7 +388,6 @@ namespace StarSigns
 
             for (int i = 1; i < zodiacDates.Length; i++)
             {
-                Debug.Log("Checking month: " + zodiacDates[i].Month);
                 if ((month == zodiacDates[i].Month && day <= zodiacDates[i].Day) ||
                     (month == zodiacDates[i - 1].Month && day > zodiacDates[i - 1].Day))
                 {

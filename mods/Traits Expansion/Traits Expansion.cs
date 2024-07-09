@@ -370,15 +370,16 @@ namespace TraitsExpansion
     }
 
 
-    //[HarmonyPatch(typeof(Profile_Popup), "RenderTab_Extras")]
-    //public class Profile_Popup_RenderTab_Extras
-    //{
+    [HarmonyPatch(typeof(Profile_Popup), "RenderTab_Extras")]
+    public class Profile_Popup_RenderTab_Extras
+    {
 
-    //    public static void Postfix(Profile_Popup __instance)
-    //    {
-    //        traits._trait trait = __instance.Girl.GetTrait();
-    //    }
-    //}
+        public static void Postfix(Profile_Popup __instance)
+        {
+            traits._trait trait = __instance.Girl.GetTrait();
+            Debug.Log(trait.Type.ToString());
+        }
+    }
 
     // Apply traits to businesses
     [HarmonyPatch(typeof(business._proposal), "GetGirlCoeff")]

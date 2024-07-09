@@ -9,15 +9,12 @@ namespace GoingViral
     [HarmonyPatch(typeof(Show_Popup), "SetParam")]
     public class Show_Popup_SetParam
     {
-        public static void Postfix(Show_Popup __instance, Show_Popup_Param_Button._type type)
+        public static void Postfix(Show_Popup __instance, Show_Popup_Param_Button._type type, Shows._param ___medium, Shows._param ___genre)
         {
             if (type != Show_Popup_Param_Button._type.medium)
-            {
                 return;
-            }
 
-            Shows._param medium = Traverse.Create(__instance).Field("medium").GetValue() as Shows._param;
-            if (medium.media_type == Shows._param._media_type.tv)
+            if (___medium.media_type == Shows._param._media_type.tv)
             {
                 Show_Popup_Param_Button[] buttons = __instance.Grid_Genre.GetComponentsInChildren<Show_Popup_Param_Button>();
                 foreach (Show_Popup_Param_Button button in buttons)
@@ -26,8 +23,7 @@ namespace GoingViral
                     DateTime? lastShowDate = null;
                     foreach (Shows._show show in Shows.shows)
                     {
-                        Shows._param genre = Traverse.Create(__instance).Field("genre").GetValue() as Shows._param;
-                        if (show.LaunchDate != null && show.medium.media_type == Shows._param._media_type.tv && show.genre.id == genre.id)
+                        if (show.LaunchDate != null && show.medium.media_type == Shows._param._media_type.tv && show.genre.id == ___genre.id)
                         {
                             if (lastShowDate == null || show.LaunchDate > (lastShowDate ?? staticVars.dateTime))
                             {

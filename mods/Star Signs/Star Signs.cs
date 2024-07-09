@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Reflection;
 using static StarSigns.StarSigns;
-using static UnityEngine.UIElements.StyleVariableResolver;
 
 namespace StarSigns
 {

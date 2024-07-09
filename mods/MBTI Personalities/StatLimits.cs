@@ -1,6 +1,8 @@
 ﻿using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 namespace MBTI_Personalities
 {
@@ -12,16 +14,7 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            float output = __result;
-            if (output > 20f)
-            {
-                output = 20f;
-            }
-            else if (output < 0f)
-            {
-                output = 0f;
-            }
-            __result = output;
+            __result = Mathf.Max(0, Mathf.Min(20, __result));
         }
     }
 
@@ -33,16 +26,7 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            float output = __result;
-            if (output < 0)
-            {
-                output = 0;
-            }
-            else if (output > 100)
-            {
-                output = 100;
-            }
-            __result = output;
+            __result = Mathf.Max(0, Mathf.Min(100, __result));
         }
     }
 
@@ -54,15 +38,7 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref data_girls.girls.param __result)
         {
-            if (__result.val < 0f)
-            {
-                __result.val = 0f;
-            }
-            else if (__result.val > 100f)
-            {
-                __result.val = 100f;
-            }
-
+            __result.val = Mathf.Max(0, Mathf.Min(100, __result.val));
         }
     }
 
@@ -73,16 +49,7 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref data_girls.girls.param __result)
         {
-
-            if (__result.val < 0f)
-            {
-                __result.val = 0f;
-            }
-            else if (__result.val > 100f)
-            {
-                __result.val = 100f;
-            }
-
+            __result.val = Mathf.Max(0, Mathf.Min(100, __result.val));
         }
     }
 
@@ -93,18 +60,7 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref int __result)
         {
-            int output = __result;
-
-            if (output < 0)
-            {
-                output = 0;
-            }
-            else if (output > 100)
-            {
-                output = 100;
-            }
-            __result = output;
-
+            __result = Math.Max(0, Math.Min(100, __result));
         }
     }
 
@@ -116,19 +72,7 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref int __result)
         {
-            int output = __result;
-
-            if (output < 0)
-            {
-                output = 0;
-            }
-            else if (output > 100)
-            {
-                output = 100;
-            }
-
-
-            __result = output;
+            __result = Math.Max(0, Math.Min(100, __result));
         }
     }
 
@@ -137,21 +81,9 @@ namespace MBTI_Personalities
     public class Show_Popup_AddCastParam_Limits
     {
         [HarmonyPriority(Priority.Last)]
-        public static void Postfix(ref Show_Popup __instance)
+        public static void Postfix(ref List<data_girls.girls.param> ___girlParams)
         {
-            List<data_girls.girls.param> girlParams = Traverse.Create(__instance).Field("girlParams").GetValue() as List<data_girls.girls.param>;
-
-            float val = girlParams.Last().val;
-            if (val > 100)
-            {
-                val = 100;
-            }
-            else if (val < 0)
-            {
-                val = 0;
-            }
-            girlParams.Last().val = val;
-            Traverse.Create(__instance).Field("girlParams").SetValue(girlParams);
+            ___girlParams.Last().val = Mathf.Max(0, Mathf.Min(100, ___girlParams.Last().val));
         }
     }
 
@@ -162,16 +94,7 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref Shows._show __instance)
         {
-            float val = __instance.girlParams.Last().val;
-            if (val > 100)
-            {
-                val = 100;
-            }
-            else if (val < 0)
-            {
-                val = 0;
-            }
-            __instance.girlParams.Last().val = val;
+            __instance.girlParams.Last().val = Mathf.Max(0, Mathf.Min(100, __instance.girlParams.Last().val));
         }
     }
 
@@ -182,14 +105,7 @@ namespace MBTI_Personalities
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            if (__result > 100)
-            {
-                __result = 100;
-            }
-            else if (__result < 0)
-            {
-                __result = 0;
-            }
+            __result = Mathf.Max(0, Mathf.Min(100, __result));
         }
     }
 }

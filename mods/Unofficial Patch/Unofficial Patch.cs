@@ -15,15 +15,12 @@ namespace UnofficialPatch
     {
 
         // Fixed fan pie charts so that it is correct
-        public static void Postfix(Profile_Fans_Pies __instance)
+        public static void Postfix(Profile_Fans_Pies __instance, data_girls.girls ___Girl)
         {
-            //NotificationManager.AddNotification("postfix applied", mainScript.green32, NotificationManager._notification._type.other);
-            data_girls.girls Girl = Traverse.Create(__instance).Field("Girl").GetValue() as data_girls.girls;
+            if (___Girl.GetFans_Total() == 0L)
+                return;
 
-            if (Girl.GetFans_Total(null) != 0L)
-            {
-                __instance.Fans_Pie_Adult.GetComponent<Image>().fillAmount += __instance.Fans_Pie_YA.GetComponent<Image>().fillAmount - __instance.Fans_Pie_Teen.GetComponent<Image>().fillAmount;
-            }
+            __instance.Fans_Pie_Adult.GetComponent<Image>().fillAmount += __instance.Fans_Pie_YA.GetComponent<Image>().fillAmount - __instance.Fans_Pie_Teen.GetComponent<Image>().fillAmount;
         }
 
     }
@@ -34,13 +31,10 @@ namespace UnofficialPatch
         // Fixed tour revenue text color to consider savings
         public static void Postfix(ref Tour_New_Popup __instance)
         {
-            //NotificationManager.AddNotification("postfix applied", mainScript.green32, NotificationManager._notification._type.other);
+            if (__instance.Tour.ExpectedRevenue <= __instance.Tour.ProductionCost - __instance.Tour.Saving)
+                return;
 
-            if (__instance.Tour.ExpectedRevenue > __instance.Tour.ProductionCost - __instance.Tour.Saving)
-            {
-                ExtensionMethods.SetColor(__instance.ExpectedRevenue, mainScript.green32);
-            }
-
+            ExtensionMethods.SetColor(__instance.ExpectedRevenue, mainScript.green32);
         }
     }
 
@@ -139,22 +133,22 @@ namespace UnofficialPatch
             }
             if (__instance.Stats.Count < 7)
             {
-                num2 = (float)__instance.Stats.Count;
+                num2 = __instance.Stats.Count;
             }
             int num3 = __instance.Stats.Count - 1;
             int num4 = 0;
-            while ((float)num3 >= (float)__instance.Stats.Count - num2)
+            while (num3 >= __instance.Stats.Count - num2)
             {
                 if (__instance.Stats[num3].Schedule.Type != Theaters._theater._schedule._type.day_off)
                 {
-                    num += (float)__instance.Stats[num3].Attendance;
+                    num += __instance.Stats[num3].Attendance;
                     num4++;
                 }
                 num3--;
             }
             if (num4 != 0)
             {
-                num /= (float)num4;
+                num /= num4;
             }
             __result = Mathf.RoundToInt(num);
         }
@@ -176,22 +170,22 @@ namespace UnofficialPatch
             }
             if (__instance.Stats.Count < 7)
             {
-                num2 = (float)__instance.Stats.Count;
+                num2 = __instance.Stats.Count;
             }
             int num3 = __instance.Stats.Count - 1;
             int num4 = 0;
-            while ((float)num3 >= (float)__instance.Stats.Count - num2)
+            while (num3 >= __instance.Stats.Count - num2)
             {
                 if (__instance.Stats[num3].Schedule.Type != Theaters._theater._schedule._type.day_off)
                 {
-                    num += (float)__instance.Stats[num3].Revenue;
+                    num += __instance.Stats[num3].Revenue;
                     num4++;
                 }
                 num3--;
             }
             if (num4 != 0)
             {
-                num /= (float)num4;
+                num /= num4;
             }
             __result = Mathf.RoundToInt(num);
         }
@@ -257,24 +251,6 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), "GetRevenue")]
     public class SEvent_Concerts__concert__projectedValues_GetRevenue
     {
-        //public static void Postfix(ref long __result, SEvent_Concerts._concert._projectedValues __instance)
-        //{
-        //    long output = __result;
-
-        //    float hype = __instance.GetHype() * 100f;
-        //    if (hype > 100f)
-        //    {
-        //        float num;
-        //        float num2 = hype - 100f;
-        //        LinearFunction._function function = new LinearFunction._function();
-        //        function.Init(0f, 50f, 100f, 25f);
-        //        float num3 = function.GetY(num2) / 100f;
-        //        num = num2 * num3 + 100f;
-        //        output = (long)Mathf.Round(output / hype * num);
-        //    }
-
-        //    __result = output;
-        //}
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             List<CodeInstruction> instructionList = new List<CodeInstruction>(instructions);
@@ -327,72 +303,6 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(singles._single), "SenbatsuCalcParam")]
     public class singles__single_SenbatsuCalcParam
     {
-        //public static void Postfix(Groups._group Group, singles._single __instance, ref data_girls.girls.param __result )
-        //{
-        //    Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-        //    if (Group == null)
-        //    {
-        //        Group = __instance.GetGroup();
-        //    }
-        //    int num = Group.GetNumberOfNonGraduatedGirls();
-        //    if (Group.IsMain())
-        //    {
-        //        foreach (Groups._group group in Groups.Groups_)
-        //        {
-        //            if (group != Group)
-        //            {
-        //                num += group.GetNumberOfNonGraduatedGirls();
-        //            }
-        //        }
-        //    }
-        //    float num2_orig = 5;
-        //    float num2 = 5;
-        //    if (num == 0)
-        //    {
-        //        return;
-        //    }
-        //    else if (num == 1)
-        //    {
-        //        return;
-        //    }
-        //    else if (num <= 3)
-        //    {
-        //        num2_orig = 2;
-        //        num2 = 1 + (num - 1) / 2;
-        //    }
-        //    else if (num <= 6)
-        //    {
-        //        num2_orig = 3;
-        //        num2 = 2 + (num - 3) / 3;
-        //    }
-        //    else if (num <= 10)
-        //    {
-        //        num2_orig = 4;
-        //        num2 = 3 + (num - 6) / 4;
-        //    }
-        //    else if (num <= 15)
-        //    {
-        //        num2_orig = 5;
-        //        num2 = 3 + (num - 10) / 5;
-        //    }
-        //    float num3 = 100f / num2;
-        //    float num3_orig = 100f / num2_orig;
-        //    float coeff = num3 / num3_orig;
-
-        //    float val_capped = __result.val * coeff;
-        //    if (val_capped > 100f)
-        //    {
-        //        val_capped = 100f;
-        //    }
-        //    data_girls.girls.param output = new data_girls.girls.param
-        //    {
-        //        type = __result.type,
-        //        val = val_capped
-        //    };
-        //    __result = output;
-        //}
-
-
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             List<CodeInstruction> instructionList = new List<CodeInstruction>(instructions);
@@ -419,8 +329,6 @@ namespace UnofficialPatch
 
         public static float Infix(int num)
         {
-            //singles._single s = Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>().GetByType(PopupManager._type.single_senbatsu).obj.GetComponent<SinglePopup_Senbatsu>().single;
-            //Debug.Log("Tranpiler Injection: " + num.ToString() + ", " + x.ToString());
             float num2 = 5;
             if (num == 0)
             {
@@ -455,85 +363,6 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(data_girls.girls), "GetPartnerString")]
     public class data_girls_girls_GetPartnerString
     {
-        //public static void Postfix(ref string __result, data_girls.girls __instance)
-        //{
-        //    string output = __result;
-        //    if (!__instance.Is_AOC())
-        //    {
-        //        string text = "";
-        //        if (!__instance.DatingData.Is_Partner_Status_Known)
-        //        {
-        //            text += Language.Data["PROFILE__DATING_UNKNOWN"];
-        //        }
-        //        else if (__instance.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.free)
-        //        {
-        //            text += Language.Data["PROFILE__DATING_NOT_DATING"];
-        //        }
-        //        else if (__instance.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.taken_idol)
-        //        {
-        //            data_girls.girls girlfriend = __instance.GetGirlfriend();
-        //            if (girlfriend != null)
-        //            {
-        //                text += Language.Insert("PROFILE__DATING_IDOL", new string[]
-        //                {
-        //            girlfriend.GetName(true)
-        //                });
-        //            }
-        //            else
-        //            {
-        //                text += Language.Data["PROFILE__DATING_IDOL_UNKNOWN"];
-        //            }
-        //        }
-        //        else if (__instance.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.taken_outside_bf)
-        //        {
-        //            text += Language.Data["PROFILE__DATING_HAS_BF"];
-        //        }
-        //        else if (__instance.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.taken_outside_gf)
-        //        {
-        //            text += Language.Data["PROFILE__DATING_HAS_GF"];
-        //        }
-        //        else if (__instance.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.taken_player)
-        //        {
-        //            text += Language.Data["PROFILE__DATING_YOU"];
-        //        }
-        //        text += "\n";
-        //        if (__instance.DatingData.Is_Sexuality_Known)
-        //        {
-        //            if (__instance.sexuality == data_girls.girls._sexuality.straight)
-        //            {
-        //                text += Language.Data["PROFILE__DATING_STRAIGHT"];
-        //            }
-        //            else if (__instance.sexuality == data_girls.girls._sexuality.lesbian)
-        //            {
-        //                text += Language.Data["PROFILE__DATING_LESBIAN"];
-        //            }
-        //            else
-        //            {
-        //                text += Language.Data["PROFILE__DATING_BI"];
-        //            }
-        //        }
-        //        else
-        //        {
-        //            text += Language.Data["PROFILE__DATING_PREF_UNKNOWN"];
-        //        }
-        //        if (__instance.DatingData.Previous_Attempt != Date_Flirt._flirt._category.NONE && __instance.DatingData.Partner_Status_Known_To_Player != data_girls.girls._dating_data._partner_status.taken_player)
-        //        {
-        //            text += "\n";
-        //            if (__instance.DatingData.Is_Uninterested || (__instance.DatingData.Is_Sexuality_Known && !Date_Flirt.IsCompatibleSexuality(__instance)))
-        //            {
-        //                text += Language.Data["PROFILE__DATING_NOT_INTERESTED"];
-        //            }
-        //            else
-        //            {
-        //                text += Language.Data["PROFILE__DATING_INTERESTED"];
-        //            }
-        //        }
-        //        output = text;
-        //    }
-        //    __result = output;
-        //}
-
-
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             List<CodeInstruction> instructionList = new List<CodeInstruction>(instructions);
@@ -650,25 +479,26 @@ namespace UnofficialPatch
     {
         public static void Postfix(string parameter, string formula, ref bool __result)
         {
-            if (parameter == "staff")
+            if (parameter != "staff")
+                return;
+
+            if (formula == "vocal" && staff.CountStaffersOfType(agency._type.recordingStudio) > 0)
             {
-                if (formula == "vocal" && staff.CountStaffersOfType(agency._type.recordingStudio) > 0)
-                {
-                    __result = true;
-                }
-                else if(formula == "dance" && staff.CountStaffersOfType(agency._type.danceStudio) > 0)
-                {
-                    __result = true;
-                }
-                else if(formula == "office" && staff.CountStaffersOfType(agency._type.office) > 0)
-                {
-                    __result = true;
-                }
-                else if(formula == "style" && staff.CountStaffersOfType(agency._type.dressingRoom) > 0)
-                {
-                    __result = true;
-                }
+                __result = true;
             }
+            else if(formula == "dance" && staff.CountStaffersOfType(agency._type.danceStudio) > 0)
+            {
+                __result = true;
+            }
+            else if(formula == "office" && staff.CountStaffersOfType(agency._type.office) > 0)
+            {
+                __result = true;
+            }
+            else if(formula == "style" && staff.CountStaffersOfType(agency._type.dressingRoom) > 0)
+            {
+                __result = true;
+            }
+
             
         }
     }

@@ -383,12 +383,12 @@ namespace StarSigns
                 new { Month = 10, Day = 23, Sign = Zodiac.Libra },
                 new { Month = 11, Day = 21, Sign = Zodiac.Scorpio },
                 new { Month = 12, Day = 21, Sign = Zodiac.Sagittarius },
-                new { Month = 1, Day = 19, Sign = Zodiac.Capricorn },
             };
 
 
-            for (int i = 1; i < zodiacDates.Length - 1; i++)
+            for (int i = 1; i < zodiacDates.Length; i++)
             {
+                Debug.Log("Checking month: " + zodiacDates[i].Month);
                 if ((month == zodiacDates[i].Month && day <= zodiacDates[i].Day) ||
                     (month == zodiacDates[i - 1].Month && day > zodiacDates[i - 1].Day))
                 {
@@ -396,7 +396,7 @@ namespace StarSigns
                 }
             }
 
-            return Zodiac.None;
+            return Zodiac.Capricorn;
         }
 
         public enum Zodiac

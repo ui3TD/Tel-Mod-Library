@@ -128,9 +128,8 @@ namespace UnofficialPatch
             float num = 0f;
             float num2 = 7f;
             if (__instance.Stats.Count == 0)
-            {
-                __result = 0;
-            }
+                return;
+
             if (__instance.Stats.Count < 7)
             {
                 num2 = __instance.Stats.Count;
@@ -164,10 +163,8 @@ namespace UnofficialPatch
             float num = 0f;
             float num2 = 7f;
             if (__instance.Stats.Count == 0)
-            {
-                __result = 0;
                 return;
-            }
+
             if (__instance.Stats.Count < 7)
             {
                 num2 = __instance.Stats.Count;
@@ -239,11 +236,11 @@ namespace UnofficialPatch
     {
         public static void Postfix(ref Relationships._relationship __instance)
         {
-            if (__instance.Dating)
-            {
-                __instance.Girls[0].DatingData.Is_Partner_Status_Known = false;
-                __instance.Girls[1].DatingData.Is_Partner_Status_Known = false;
-            }
+            if (!__instance.Dating)
+                return;
+
+            __instance.Girls[0].DatingData.Is_Partner_Status_Known = false;
+            __instance.Girls[1].DatingData.Is_Partner_Status_Known = false;
         }
     }
 
@@ -390,7 +387,7 @@ namespace UnofficialPatch
         {
             foreach (data_girls.girls girl in data_girls.girl)
             {
-                if (girl != null && girl.status != data_girls._status.graduated)
+                if (girl != null && !girl.IsSick() && girl.status != data_girls._status.graduated)
                 {
                     girl.AddAppeal(__instance.type, val);
                 }

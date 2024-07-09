@@ -281,11 +281,11 @@ namespace CustomAuditions
     class CustomAuditions
     {
         public const string DEF_MINAGE_STR = "12";
-        public const string DEF_MAXAGE_STR = "12";
+        public const string DEF_MAXAGE_STR = "23";
         public const string DEF_CHANCE_LES_STR = "7";
         public const string DEF_CHANCE_BI_STR = "14";
         public const string DEF_PRIO = "50";
-        public const string DEF_COUNT = "50";
+        public const string DEF_COUNT = "5";
 
         public const string VARID_MINAGE = "AuditionAgeLimit_MinAge";
         public const string VARID_MAXAGE = "AuditionAgeLimit_MaxAge";

@@ -14,4 +14,6 @@
 		<PackageReference Include="UnityEngine.Modules" Version="2019.4.23" IncludeAssets="compile" />
 	</ItemGroup>
 
+	<Import Project="..\..\shared\StatLimits\StatLimits.projitems" Label="Shared" />
+
 </Project>

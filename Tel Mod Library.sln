@@ -62,6 +62,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Worker Rights", "mods\Worke
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "ModUtilities", "shared\ModUtilities\ModUtilities.shproj", "{75650718-EA26-44F4-AE2B-B79691042AAA}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "StatLimits", "shared\StatLimits\StatLimits.shproj", "{3B6BB50B-6D78-4577-B976-A9452E1D8733}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -171,6 +173,10 @@ Global
 		SolutionGuid = {74832412-0B5B-4568-8EA3-0873D921E039}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		shared\StatLimits\StatLimits.projitems*{3b6bb50b-6d78-4577-b976-a9452e1d8733}*SharedItemsImports = 13
 		shared\ModUtilities\ModUtilities.projitems*{75650718-ea26-44f4-ae2b-b79691042aaa}*SharedItemsImports = 13
+		shared\StatLimits\StatLimits.projitems*{82b025e3-6a48-488d-895e-10a036a0a476}*SharedItemsImports = 5
+		shared\StatLimits\StatLimits.projitems*{aa48e8b1-be6c-49e0-b357-da6d33f06833}*SharedItemsImports = 5
+		shared\StatLimits\StatLimits.projitems*{f5fbbb27-949a-41e3-acff-f7f6421f6627}*SharedItemsImports = 5
 	EndGlobalSection
 EndGlobal

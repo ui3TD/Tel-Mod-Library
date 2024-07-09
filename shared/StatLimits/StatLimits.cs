@@ -1,10 +1,10 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace MBTI_Personalities
+namespace StatLimits
 {
 
     // Limits for business proposal stats

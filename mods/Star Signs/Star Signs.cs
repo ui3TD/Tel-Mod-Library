@@ -56,7 +56,7 @@ namespace StarSigns
         public static void Postfix(ref Audition_Data_Card __instance)
         {
             Zodiac zodiac = GetGirlZodiac(__instance.Girl.girl);
-            if (zodiac != Zodiac.None)
+            if (zodiac == Zodiac.None)
                 return;
 
             string txt = " (" + Language.Data[CONSTANT_SIGN_PREFIX + zodiac.ToString().ToUpper()] + ")";
@@ -371,6 +371,7 @@ namespace StarSigns
 
             var zodiacDates = new[]
             {
+                new { Month = 12, Day = 21, Sign = Zodiac.Sagittarius },
                 new { Month = 1, Day = 19, Sign = Zodiac.Capricorn },
                 new { Month = 2, Day = 18, Sign = Zodiac.Aquarius },
                 new { Month = 3, Day = 20, Sign = Zodiac.Pisces },
@@ -383,19 +384,16 @@ namespace StarSigns
                 new { Month = 10, Day = 23, Sign = Zodiac.Libra },
                 new { Month = 11, Day = 21, Sign = Zodiac.Scorpio },
                 new { Month = 12, Day = 21, Sign = Zodiac.Sagittarius },
+                new { Month = 1, Day = 19, Sign = Zodiac.Capricorn }
             };
 
-
-            for (int i = 1; i < zodiacDates.Length; i++)
+            if ((month == zodiacDates[month].Month && day <= zodiacDates[month].Day) ||
+                (month == zodiacDates[month - 1].Month && day > zodiacDates[month - 1].Day))
             {
-                if ((month == zodiacDates[i].Month && day <= zodiacDates[i].Day) ||
-                    (month == zodiacDates[i - 1].Month && day > zodiacDates[i - 1].Day))
-                {
-                    return zodiacDates[i].Sign;
-                }
+                return zodiacDates[month].Sign;
             }
 
-            return Zodiac.Capricorn;
+            return zodiacDates[month + 1].Sign;
         }
 
         public enum Zodiac

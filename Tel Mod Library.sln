@@ -60,6 +60,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unofficial Patch", "mods\Un
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Worker Rights", "mods\Worker Rights\Worker Rights.csproj", "{4094D766-0649-419F-A0EC-1906D2674303}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "ModUtilities", "shared\ModUtilities\ModUtilities.shproj", "{75650718-EA26-44F4-AE2B-B79691042AAA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -167,5 +169,8 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {74832412-0B5B-4568-8EA3-0873D921E039}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		shared\ModUtilities\ModUtilities.projitems*{75650718-ea26-44f4-ae2b-b79691042aaa}*SharedItemsImports = 13
 	EndGlobalSection
 EndGlobal

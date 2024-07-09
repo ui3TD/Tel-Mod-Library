@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Reflection;
 using static StarSigns.StarSigns;
+using static UnityEngine.UIElements.StyleVariableResolver;
 
 namespace StarSigns
 {
@@ -306,26 +307,48 @@ namespace StarSigns
 
                 if (asset != null && asset.ModName == data.ModName && asset.body_id == data.body_id)
                 {
+                    int[] months = GetZodiacMonthRange(data.zodiac);
+                    int currentMonth = staticVars.dateTime.Month;
+
+                    int targetAge = __result.GetAge();
                     if (asset.Age > 0)
                     {
-                        while (DateToZodiac(__result.birthday) != data.zodiac)
-                        {
-                            __result.birthday = staticVars.dateTime
-                                .AddYears(-asset.Age)
-                                .AddMonths(-UnityEngine.Random.Range(0, 11))
-                                .AddDays(-(double)UnityEngine.Random.Range(0, 25));
-                        }
+                        targetAge = asset.Age;
                     }
-                    else
+
+                    while (DateToZodiac(__result.birthday) != data.zodiac)
                     {
-                        while (DateToZodiac(__result.birthday) != data.zodiac)
-                        {
-                            __result.GenerateBirthday();
-                        }
+                        int targetMonth = months[UnityEngine.Random.Range(0, 3)];
+                        int monthsToSubtract = (currentMonth - targetMonth + 12) % 12;
+
+                        __result.birthday = staticVars.dateTime
+                            .AddYears(-targetAge)
+                            .AddMonths(-monthsToSubtract)
+                            .AddDays(-UnityEngine.Random.Range(0, 30));
                     }
                     break;
                 }
             }
+        }
+
+        private static int[] GetZodiacMonthRange(Zodiac zodiac)
+        {
+            return zodiac switch
+            {
+                Zodiac.Capricorn => new[] { 12, 1, 2 },
+                Zodiac.Aquarius => new[] { 1, 2, 3 },
+                Zodiac.Pisces => new[] { 2, 3, 4 },
+                Zodiac.Aries => new[] { 3, 4, 5 },
+                Zodiac.Taurus => new[] { 4, 5, 6 },
+                Zodiac.Gemini => new[] { 5, 6, 7 },
+                Zodiac.Cancer => new[] { 6, 7, 8 },
+                Zodiac.Leo => new[] { 7, 8, 9 },
+                Zodiac.Virgo => new[] { 8, 9, 10 },
+                Zodiac.Libra => new[] { 9, 10, 11 },
+                Zodiac.Scorpio => new[] { 10, 11, 12 },
+                Zodiac.Sagittarius => new[] { 11, 12, 1 },
+                _ => throw new ArgumentException("Invalid zodiac sign")
+            };
         }
     }
 

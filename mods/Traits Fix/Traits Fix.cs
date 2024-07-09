@@ -20,7 +20,7 @@ namespace TraitFix
         {
             foreach (data_girls.girls girls in data_girls.girl)
             {
-                if (girls.status != data_girls._status.graduated)
+                if (girls != null && girls.status != data_girls._status.graduated)
                 {
                     if (girls.trait == traits._trait._type.Live_fast)
                     {
@@ -34,46 +34,6 @@ namespace TraitFix
     [HarmonyPatch(typeof(Birthday_Popup), "DoParam")]
     public class Birthday_Popup_DoParam
     {
-        // Girls with Live Fast trait have double the rate of stat decreases after their peak age
-        //public static bool Prefix(float Delay, data_girls._paramType Prm, ref Birthday_Popup __instance)
-        //{
-
-        //    int age = __instance.Girl.GetAge();
-        //    int yrToPeak = age - __instance.Girl.peakAge;
-
-        //    if (__instance.Girl.trait == traits._trait._type.Live_fast && yrToPeak > 0 && Prm != data_girls._paramType.funny && Prm != data_girls._paramType.smart)
-        //    {
-        //        float paramVal = __instance.Girl.getParam(Prm).val;
-        //        float newVal = paramVal * (0.95f - 0.005f * (float)yrToPeak);
-        //        if (newVal > 100f)
-        //        {
-        //            newVal = 100f;
-        //        }
-        //        else if (newVal < 1f)
-        //        {
-        //            newVal = 1f;
-        //        }
-        //        __instance.Girl.getParam(Prm).setVal(newVal);
-        //        if (age < 19 && (Prm == data_girls._paramType.cool || Prm == data_girls._paramType.sexy))
-        //        {
-        //            paramVal = data_girls.SexyOrCool(age - 1, paramVal);
-        //            newVal = data_girls.SexyOrCool(age, newVal);
-        //        }
-        //        else if (age < 19 && Prm == data_girls._paramType.cute)
-        //        {
-        //            paramVal = data_girls.GetCuteVal(age - 1, paramVal);
-        //            newVal = data_girls.GetCuteVal(age, newVal);
-        //        }
-
-        //        GameObject gameObject = UnityEngine.Object.Instantiate<GameObject>(__instance.prefab_stat);
-        //        gameObject.GetComponent<Birthday_Stat>().Set(Prm, paramVal, newVal, Delay);
-        //        gameObject.transform.SetParent(__instance.Stat_Container.transform, false);
-
-        //        return false;
-        //    }
-
-        //    return true;
-        //}
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             List<CodeInstruction> instructionList = new List<CodeInstruction>(instructions);
@@ -107,12 +67,12 @@ namespace TraitFix
 
         public static float Infix(Birthday_Popup __this, float newVal, float orig)
         {
-            float output = orig;
-            if(__this.Girl.trait == traits._trait._type.Live_fast)
-            {
-                output = 2 * newVal - orig;
-            }
-            return output;
+            if (__this.Girl.trait != traits._trait._type.Live_fast)
+                return orig;
+
+            orig = 2 * newVal - orig;
+
+            return orig;
         }
     }
 
@@ -123,23 +83,21 @@ namespace TraitFix
         // Girls with Trendy trait have 1.5x the appeal to non-adults and 0.5x the appeal to adults.
         public static void Postfix(ref float __result, resources.fanType _FanType, data_girls.girls __instance)
         {
-            float output = __result;
-            if (__instance.trait == traits._trait._type.Trendy)
+            if (__instance.trait != traits._trait._type.Trendy)
+                return;
+
+            switch(_FanType)
             {
-                if (_FanType == resources.fanType.adult)
-                {
-                    output *= 0.5f;
-                }
-                else if(_FanType == resources.fanType.youngAdult)
-                {
-                    output *= 1.5f;
-                }
-                else if (_FanType == resources.fanType.teen)
-                {
-                    output *= 1.5f;
-                }
+                case resources.fanType.adult:
+                    __result *= 0.5f;
+                    break;
+                case resources.fanType.youngAdult:
+                    __result *= 1.5f;
+                    break;
+                case resources.fanType.teen:
+                    __result *= 1.5f;
+                    break;
             }
-            __result = output;
         }
     }
 
@@ -154,36 +112,33 @@ namespace TraitFix
             if (mainScript.chance(2) && __instance.DatingData.Is_Taken() && !__instance.DatingData.Is_Partner_Status_Known)
             {
                 bool leaker = false;
-                foreach (data_girls.girls girls in data_girls.GetActiveGirls(null))
+                foreach (data_girls.girls girls in data_girls.GetActiveGirls())
                 {
                     if (girls != __instance && girls.trait == traits._trait._type.Indiscreet)
                     {
                         leaker = true;
                     }
                 }
-                if (leaker)
+                if (!leaker)
+                    return;
+
+                string labelID = "IDOL__OUTSIDE_LEAK";
+                if (policies.GetSelectedPolicyValue(policies._type.dating).Value == policies._value.dating_forbidden)
                 {
-                    if (policies.GetSelectedPolicyValue(policies._type.dating).Value == policies._value.dating_forbidden)
-                    {
-                        NotificationManager.AddNotification(Language.Insert("IDOL__OUTSIDE_LEAK_SCANDAL", new string[]
-                        {
-                            __instance.GetName(true)
-                        }), mainScript.red32, NotificationManager._notification._type.idol_relationship_change);
-                        __instance.addParam(data_girls._paramType.scandalPoints, 1f, false);
-                    }
-                    else
-                    {
-                        NotificationManager.AddNotification(Language.Insert("IDOL__OUTSIDE_LEAK", new string[]
-                        {
-                            __instance.GetName(true)
-                        }), mainScript.red32, NotificationManager._notification._type.idol_relationship_change);
-                    }
-                    __instance.getParam(data_girls._paramType.mentalStamina).add(-30f, false);
-                    __instance.DatingData.Is_Partner_Status_Known = true;
-                    __instance.DatingData.Partner_Status_Known_To_Player = __instance.DatingData.Partner_Status;
+                    labelID = "IDOL__OUTSIDE_LEAK_SCANDAL";
+                    __instance.addParam(data_girls._paramType.scandalPoints, 1f, false);
                 }
+
+                NotificationManager.AddNotification(
+                    Language.Insert(labelID, new string[] { __instance.GetName() }),
+                    mainScript.red32,
+                    NotificationManager._notification._type.idol_relationship_change
+                    );
+
+                __instance.getParam(data_girls._paramType.mentalStamina).add(-30f, false);
+                __instance.DatingData.Is_Partner_Status_Known = true;
+                __instance.DatingData.Partner_Status_Known_To_Player = __instance.DatingData.Partner_Status;
             }
-            return;
         }
     }
 
@@ -194,8 +149,6 @@ namespace TraitFix
         // of having the relationship revealed each week
         public static void Postfix(ref bool __result, ref Relationships._relationship __instance)
         {
-            bool output = __result;
-
             if (mainScript.chance(2) && __instance.Dating && !__instance.IsRelationshipKnown())
             {
                 bool leaker = false;
@@ -206,35 +159,30 @@ namespace TraitFix
                         leaker = true;
                     }
                 }
-                if (leaker)
+                if (!leaker)
+                    return;
+
+                string labelID = "IDOL__OUTSIDE_LEAK";
+                if (policies.GetSelectedPolicyValue(policies._type.dating).Value == policies._value.dating_forbidden)
                 {
-                    if (policies.GetSelectedPolicyValue(policies._type.dating).Value == policies._value.dating_forbidden)
-                    {
-                        __instance.Girls[0].addParam(data_girls._paramType.scandalPoints, 1f, false);
-                        __instance.Girls[1].addParam(data_girls._paramType.scandalPoints, 1f, false);
-                        NotificationManager.AddNotification(Language.Insert("IDOL__INSIDE_LEAK_SCANDAL", new string[]
-                        {
-                            __instance.Girls[0].GetName(true),
-                            __instance.Girls[1].GetName(true)
-                        }), mainScript.red32, NotificationManager._notification._type.idol_relationship_change);
-                    }
-                    else
-                    {
-                        NotificationManager.AddNotification(Language.Insert("IDOL__INSIDE_LEAK", new string[]
-                        {
-                            __instance.Girls[0].GetName(true),
-                            __instance.Girls[1].GetName(true)
-                        }), mainScript.red32, NotificationManager._notification._type.idol_relationship_change);
-                    }
-                    __instance.Girls[0].getParam(data_girls._paramType.mentalStamina).add(-30f, false);
-                    __instance.Girls[1].getParam(data_girls._paramType.mentalStamina).add(-30f, false);
-                    __instance.Girls[0].DatingData.Is_Partner_Status_Known = true;
-                    __instance.Girls[1].DatingData.Is_Partner_Status_Known = true;
-                    __instance.Girls[0].DatingData.Partner_Status_Known_To_Player = data_girls.girls._dating_data._partner_status.taken_idol;
-                    __instance.Girls[1].DatingData.Partner_Status_Known_To_Player = data_girls.girls._dating_data._partner_status.taken_idol;
+                    labelID = "IDOL__INSIDE_LEAK_SCANDAL";
+                    __instance.Girls[0].addParam(data_girls._paramType.scandalPoints, 1f, false);
+                    __instance.Girls[1].addParam(data_girls._paramType.scandalPoints, 1f, false);
                 }
+
+                NotificationManager.AddNotification(Language.Insert(labelID, new string[]
+                {
+                        __instance.Girls[0].GetName(),
+                        __instance.Girls[1].GetName()
+                }), mainScript.red32, NotificationManager._notification._type.idol_relationship_change);
+
+                __instance.Girls[0].getParam(data_girls._paramType.mentalStamina).add(-30f, false);
+                __instance.Girls[1].getParam(data_girls._paramType.mentalStamina).add(-30f, false);
+                __instance.Girls[0].DatingData.Is_Partner_Status_Known = true;
+                __instance.Girls[1].DatingData.Is_Partner_Status_Known = true;
+                __instance.Girls[0].DatingData.Partner_Status_Known_To_Player = data_girls.girls._dating_data._partner_status.taken_idol;
+                __instance.Girls[1].DatingData.Partner_Status_Known_To_Player = data_girls.girls._dating_data._partner_status.taken_idol;
             }
-            __result = output;
         }
     }
 
@@ -244,21 +192,21 @@ namespace TraitFix
     {
         public static void Postfix(ref Relationships._relationship __instance)
         {
-            int age = __instance.Girls[0].GetAge();
-            int age2 = __instance.Girls[1].GetAge();
-            if (__instance.Girls[0].trait == traits._trait._type.Maternal && age > age2)
+            int age0 = __instance.Girls[0].GetAge();
+            int age1 = __instance.Girls[1].GetAge();
+            if (__instance.Girls[0].trait == traits._trait._type.Maternal && age0 > age1)
             {
                 __instance.Dynamic = Relationships._relationship._dynamic.positive;
             }
-            else if (__instance.Girls[1].trait == traits._trait._type.Maternal && age2 > age)
+            else if (__instance.Girls[1].trait == traits._trait._type.Maternal && age1 > age0)
             {
                 __instance.Dynamic = Relationships._relationship._dynamic.positive;
             }
-            else if (__instance.Girls[0].trait == traits._trait._type.Precocious && age < age2)
+            else if (__instance.Girls[0].trait == traits._trait._type.Precocious && age0 < age1)
             {
                 __instance.Dynamic = Relationships._relationship._dynamic.positive;
             }
-            else if (__instance.Girls[1].trait == traits._trait._type.Precocious && age2 < age)
+            else if (__instance.Girls[1].trait == traits._trait._type.Precocious && age1 < age0)
             {
                 __instance.Dynamic = Relationships._relationship._dynamic.positive;
             }
@@ -275,61 +223,52 @@ namespace TraitFix
             {
                 if (relationship.Dynamic == Relationships._relationship._dynamic.positive)
                 {
-                    if (relationship.Girls[0].trait == traits._trait._type.Maternal && relationship.Girls[0].GetAge() > relationship.Girls[1].GetAge())
-                    {
-                        relationship.Add(0.3f);
-                    }
-                    else if (relationship.Girls[1].trait == traits._trait._type.Maternal && relationship.Girls[1].GetAge() > relationship.Girls[0].GetAge())
-                    {
-                        relationship.Add(0.3f);
-                    }
-                    if (relationship.Girls[0].trait == traits._trait._type.Precocious && relationship.Girls[0].GetAge() < relationship.Girls[1].GetAge())
-                    {
-                        relationship.Add(0.3f);
-                    }
-                    else if (relationship.Girls[1].trait == traits._trait._type.Precocious && relationship.Girls[1].GetAge() < relationship.Girls[0].GetAge())
-                    {
-                        relationship.Add(0.3f);
-                    }
-                }
-                singles._single single = singles.GetLatestReleasedSingle(false, relationship.Girls[0].GetGroup());
-                singles._single single2 = singles.GetLatestReleasedSingle(false, relationship.Girls[1].GetGroup());
-                singles._single single3 = singles.GetLatestReleasedSingle(false, Groups.GetMainGroup());
-                if (single == null)
-                {
-                    single = single3;
-                }
-                if (single2 == null)
-                {
-                    single2 = single3;
+                    AdjustForAgeTraits(relationship);
                 }
 
-                data_girls.girls center1 = null;
-                data_girls.girls center2 = null;
-                data_girls.girls center3 = null;
-                if (single != null)
+                // Get either last center of main group or last center of girl's group
+                singles._single mainSingle = singles.GetLatestReleasedSingle(false, Groups.GetMainGroup());
+                singles._single single0 = singles.GetLatestReleasedSingle(false, relationship.Girls[0].GetGroup());
+                singles._single single1 = singles.GetLatestReleasedSingle(false, relationship.Girls[1].GetGroup());
+
+                if (IsCenter(relationship.Girls[0], single0, mainSingle)
+                    && relationship.Girls[0].trait == traits._trait._type.Arrogant)
                 {
-                    center1 = single.GetCenter();
+                    relationship.Add(-0.5f / 2);
                 }
-                if (single2 != null)
+                else if(IsCenter(relationship.Girls[1], single1, mainSingle)
+                    && relationship.Girls[1].trait == traits._trait._type.Arrogant)
                 {
-                    center2 = single2.GetCenter();
+                    relationship.Add(-0.5f / 2);
                 }
-                if (single3 != null)
-                {
-                    center3 = single3.GetCenter();
-                }
-                if (center1 != null || center2 != null)
-                {
-                    if ((center1 == relationship.Girls[0] || center3 == relationship.Girls[0]) && relationship.Girls[0].trait == traits._trait._type.Arrogant)
-                    {
-                        relationship.Add(-0.5f);
-                    }
-                    else if ((center2 == relationship.Girls[1] || center3 == relationship.Girls[1]) && relationship.Girls[1].trait == traits._trait._type.Arrogant)
-                    {
-                        relationship.Add(-0.5f);
-                    }
-                }
+            }
+        }
+
+        private static bool IsCenter(data_girls.girls girl, singles._single groupSingle, singles._single mainSingle)
+        {
+            return (groupSingle?.GetCenter() == girl) || (mainSingle?.GetCenter() == girl);
+        }
+
+        private static void AdjustForAgeTraits(Relationships._relationship relationship)
+        {
+            // Maternal
+            if (relationship.Girls[0].trait == traits._trait._type.Maternal && relationship.Girls[0].GetAge() > relationship.Girls[1].GetAge())
+            {
+                relationship.Add(0.3f / 2);
+            }
+            else if (relationship.Girls[1].trait == traits._trait._type.Maternal && relationship.Girls[1].GetAge() > relationship.Girls[0].GetAge())
+            {
+                relationship.Add(0.3f / 2);
+            }
+
+            // Precocious
+            if (relationship.Girls[0].trait == traits._trait._type.Precocious && relationship.Girls[0].GetAge() < relationship.Girls[1].GetAge())
+            {
+                relationship.Add(0.3f / 2);
+            }
+            else if (relationship.Girls[1].trait == traits._trait._type.Precocious && relationship.Girls[1].GetAge() < relationship.Girls[0].GetAge())
+            {
+                relationship.Add(0.3f / 2);
             }
         }
     }
@@ -340,13 +279,14 @@ namespace TraitFix
     {
         public static void Postfix(ref Relationships._relationship __instance)
         {
-            if (__instance.Ratio < 0.5f)
+            if (__instance.Ratio >= 0.5f)
+                return;
+
+            if (__instance.Girls[0].trait == traits._trait._type.Forgiving || __instance.Girls[1].trait == traits._trait._type.Forgiving)
             {
-                if ((__instance.Girls[0].trait == traits._trait._type.Forgiving || __instance.Girls[1].trait == traits._trait._type.Forgiving))
-                {
-                    __instance.Ratio = 0.5f;
-                }
+                __instance.Ratio = 0.5f;
             }
+
         }
     }
 
@@ -358,29 +298,16 @@ namespace TraitFix
         {
             if(type != data_girls._paramType.teamChemistry)
             {
-                float output = 0;
-                float counter = 0;
-                float sum = 0f;
                 foreach (data_girls.girls girls in girlList)
                 {
-                    if (girls != null)
+                    if (girls != null 
+                        && !girls.IsSick()
+                        && girls.trait == traits._trait._type.Meme_queen
+                        && __instance.medium.media_type == Shows._param._media_type.internet)
                     {
-                        counter++;
-                        if (girls.trait == traits._trait._type.Meme_queen)
-                        {
-                            if (__instance.medium.media_type == Shows._param._media_type.internet)
-                            {
-                                sum += 10f;
-                            }
-                        }
+                        __instance.girlParams.Last().val += 10;
                     }
                 }
-                if (counter > 0)
-                {
-                    output = sum / counter;
-                }
-                float val = __instance.girlParams.Last().val + output;
-                __instance.girlParams.Last().val = val;
             }    
         }
     }
@@ -389,37 +316,20 @@ namespace TraitFix
     [HarmonyPatch(typeof(Show_Popup), "AddCastParam")]
     public class Show_Popup_AddCastParam
     {
-        public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, ref Show_Popup __instance)
+        public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, ref List<data_girls.girls.param> ___girlParams, Shows._param ___medium)
         {
-            Shows._param medium = Traverse.Create(__instance).Field("medium").GetValue() as Shows._param;
-            List<data_girls.girls.param> girlParams = Traverse.Create(__instance).Field("girlParams").GetValue() as List<data_girls.girls.param>;
+            if (type == data_girls._paramType.teamChemistry)
+                return;
 
-            if (type != data_girls._paramType.teamChemistry)
+            foreach (data_girls.girls girls in girlList)
             {
-                float output = 0;
-                float counter = 0;
-                float sum = 0f;
-                foreach (data_girls.girls girls in girlList)
+                if (girls != null 
+                    && !girls.IsSick()
+                    && girls.trait == traits._trait._type.Meme_queen
+                    && ___medium.media_type == Shows._param._media_type.internet)
                 {
-                    if (girls != null)
-                    {
-                        counter++;
-                        if (girls.trait == traits._trait._type.Meme_queen)
-                        {
-                            if (medium.media_type == Shows._param._media_type.internet)
-                            {
-                                sum += 10f;
-                            }
-                        }
-                    }
+                    ___girlParams.Last().val += 10;
                 }
-                if (counter > 0)
-                {
-                    output = sum / counter;
-                }
-                float val = girlParams.Last().val + output;
-                girlParams.Last().val = val;
-                Traverse.Create(__instance).Field("girlParams").SetValue(girlParams);
             }
         }
     }
@@ -428,14 +338,12 @@ namespace TraitFix
     [HarmonyPatch(typeof(Show_Popup), "SetParam")]
     public class Show_Popup_SetParam
     {
-        public static void Postfix(ref Show_Popup __instance)
+        public static void Postfix(ref Show_Popup __instance, Shows._show._castType? ___castType)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            Shows._show._castType? castType = Traverse.Create(__instance).Field("castType").GetValue() as Shows._show._castType?;
-            if (castType != null)
-            {
-                __instance.SetCastType(castType.Value);
-            }
+            if (___castType == null)
+                return;
+
+            __instance.SetCastType(___castType.Value);
         }
     }
 
@@ -579,7 +487,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.First)]
         public static bool Prefix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             TraitsFix.patchGetVal = true;
             return true;
         }
@@ -587,7 +494,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix(data_girls.girls _girl, ref float __result, business._proposal __instance)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             // Girls with Photogenic trait have +100% to photoshoots
             if (__instance.type == business._type.photoshoot && _girl.trait == traits._trait._type.Photogenic)
             {
@@ -606,7 +512,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.First)]
         public static bool Prefix(List<data_girls.girls> Girls)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             TraitsFix.patchGetVal = true;
             TraitsFix.girlList = Girls;
             return true;
@@ -615,7 +520,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             TraitsFix.patchGetVal = false;
             TraitsFix.girlList = null;
         }
@@ -628,7 +532,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.First)]
         public static bool Prefix(List<data_girls.girls> _girls)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             TraitsFix.patchGetVal = true;
             TraitsFix.girlList = _girls;
             return true;
@@ -637,7 +540,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             TraitsFix.patchGetVal = false;
             TraitsFix.girlList = null;
         }
@@ -650,7 +552,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.First)]
         public static bool Prefix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             TraitsFix.patchGetVal = true;
             return true;
         }
@@ -658,7 +559,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             TraitsFix.patchGetVal = false;
         }
     }
@@ -670,7 +570,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.First)]
         public static bool Prefix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             TraitsFix.patchGetVal = true;
             return true;
         }
@@ -678,7 +577,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             TraitsFix.patchGetVal = false;
         }
     }
@@ -691,7 +589,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.First)]
         public static bool Prefix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             TraitsFix.patchGetVal = true;
             return true;
         }
@@ -700,8 +597,6 @@ namespace TraitFix
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-
             TraitsFix.patchGetVal = false;
         }
     }
@@ -713,17 +608,7 @@ namespace TraitFix
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            // Girls with Photogenic trait have +100% to photoshoots
-            float output = __result;
-            if (output > 20f)
-            {
-                output = 20f;
-            }
-            else if (output < 0f)
-            {
-                output = 0f;
-            }
-            __result = output;
+            __result = Mathf.Max(0, Mathf.Min(20, __result));
         }
     }
 
@@ -735,16 +620,7 @@ namespace TraitFix
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            float output = __result;
-            if (output < 0)
-            {
-                output = 0;
-            }
-            else if (output > 100)
-            {
-                output = 100;
-            }
-            __result = output;
+            __result = Mathf.Max(0, Mathf.Min(100, __result));
         }
     }
 
@@ -756,17 +632,7 @@ namespace TraitFix
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref data_girls.girls.param __result)
         {
-
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            if (__result.val < 0f)
-            {
-                __result.val = 0f;
-            }
-            else if (__result.val > 100f)
-            {
-                __result.val = 100f;
-            }
-
+            __result.val = Mathf.Max(0, Mathf.Min(100, __result.val));
         }
     }
 
@@ -777,17 +643,7 @@ namespace TraitFix
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref data_girls.girls.param __result)
         {
-
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            if (__result.val < 0f)
-            {
-                __result.val = 0f;
-            }
-            else if (__result.val > 100f)
-            {
-                __result.val = 100f;
-            }
-
+            __result.val = Mathf.Max(0, Mathf.Min(100, __result.val));
         }
     }
 
@@ -798,19 +654,7 @@ namespace TraitFix
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref int __result)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            int output = __result;
-
-            if (output < 0)
-            {
-                output = 0;
-            }
-            else if (output > 100)
-            {
-                output = 100;
-            }
-            __result = output;
-
+            __result = Math.Max(0, Math.Min(100, __result));
         }
     }
 
@@ -822,19 +666,7 @@ namespace TraitFix
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref int __result)
         {
-            int output = __result;
-
-            if (output < 0)
-            {
-                output = 0;
-            }
-            else if (output > 100)
-            {
-                output = 100;
-            }
-
-
-            __result = output;
+            __result = Math.Max(0, Math.Min(100, __result));
         }
     }
 
@@ -843,21 +675,9 @@ namespace TraitFix
     public class Show_Popup_AddCastParam_Limits
     {
         [HarmonyPriority(Priority.Last)]
-        public static void Postfix(ref Show_Popup __instance)
+        public static void Postfix(ref List<data_girls.girls.param> ___girlParams)
         {
-            List<data_girls.girls.param> girlParams = Traverse.Create(__instance).Field("girlParams").GetValue() as List<data_girls.girls.param>;
-
-            float val = girlParams.Last().val;
-            if (val > 100)
-            {
-                val = 100;
-            }
-            else if (val < 0)
-            {
-                val = 0;
-            }
-            girlParams.Last().val = val;
-            Traverse.Create(__instance).Field("girlParams").SetValue(girlParams);
+            ___girlParams.Last().val = Mathf.Max(0, Mathf.Min(100, ___girlParams.Last().val));
         }
     }
 
@@ -868,16 +688,7 @@ namespace TraitFix
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref Shows._show __instance)
         {
-            float val = __instance.girlParams.Last().val;
-            if (val > 100)
-            {
-                val = 100;
-            }
-            else if (val < 0)
-            {
-                val = 0;
-            }
-            __instance.girlParams.Last().val = val;
+            __instance.girlParams.Last().val = Mathf.Max(0, Mathf.Min(100, __instance.girlParams.Last().val));
         }
     }
 
@@ -889,7 +700,6 @@ namespace TraitFix
         {
             if (TraitsFix.patchGetVal)
             {
-                //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
                 __result += TraitsFix.GetTraitModifier(__instance.Parent, __instance.type, TraitsFix.girlList);
             }
         }
@@ -907,7 +717,6 @@ namespace TraitFix
         // This method calculates the modifier to girl parameters based on their trait.
         public static int GetTraitModifier(data_girls.girls girls, data_girls._paramType type, List<data_girls.girls> allGirls = null)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             float num = 0;
             if (girls != null && data_girls.IsStatParam(type))
             {

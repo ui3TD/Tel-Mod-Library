@@ -21,7 +21,7 @@ Let me know of any bugs.
 - Precocious: positive relationships with those older than them by default and these relationships develop naturally 4x faster.
 - Arrogant: all relationships naturally rapidly decrease after they center a single until the next single release.
 - Forgiving: will never dislike or hate any other girls.
-- Meme Queen: +10 to all stats for internet shows and get +10% success rate and +5% crit success rate when participating in viral marketing campaigns (does not stack).
+- Meme Queen: +10 to all stats for internet shows and get +10% success rate and +5% crit success rate when participating in viral marketing campaigns.
 - Annoying: causes other members to spend 1.2x physical stamina in shows.
 - Misandry: 20% chance of receiving bad opinions from Male fans when participating in a single with handshakes.
 - Perfectionist: -20 to mental stamina when world tours end with less than 80% attendance, or when they participate in concerts with less than 100% hype.

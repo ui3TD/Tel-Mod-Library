@@ -142,12 +142,18 @@ namespace GoingViral
     [HarmonyPatch(typeof(Contracts_Line), "Set")]
     public class Contracts_Line_Set
     {
-        public static void Postfix(ref Contracts_Line __instance)
+        public static void Postfix(ref Contracts_Line __instance, business.active_proposal ___ActiveProposal)
         {
             if (IsTrending() == TrendingStatus.trending)
             {
-                business.active_proposal ActiveProposal = Traverse.Create(__instance).Field("ActiveProposal").GetValue() as business.active_proposal;
-                ExtensionMethods.SetText(__instance.NewFans, ExtensionMethods.formatNumber(Mathf.RoundToInt(ActiveProposal.Fans_per_week * GetTrendingCoeff()), false, false));
+                ExtensionMethods.SetText(
+                    __instance.NewFans,
+                    ExtensionMethods.formatNumber(
+                        Mathf.RoundToInt(___ActiveProposal.Fans_per_week * GetTrendingCoeff()),
+                        false, 
+                        false
+                        )
+                    );
             }
         }
     }

@@ -2,22 +2,29 @@
 using System;
 using UnityEngine;
 using System.Reflection;
+using static WorkerRights.WorkerRights;
 
 namespace WorkerRights
 {
+    public class WorkerRights
+    {
+        public const int FIRE_MIN_DAYS = 30;
+        public const int DEF_SALARY = 20000;
+        public const float MAXFAME_SALARY_EARN_COEFF = 0.1f;
+        public const int GRAD_DAYS_PENALTY = 9;
+        public const int GRAD_DAYS_PENALTY_SEVERE = 27;
+    }
+
     // Staff cannot be fired using scandal points within the first month
     [HarmonyPatch(typeof(staff._staff), "CanFire")]
     public class staff__staff_CanFire
     {
         public static void Postfix(staff._staff __instance, ref bool __result)
         {
-            Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            bool output = __result;
-            if ((staticVars.dateTime - __instance.HireDate).Days < 30)
+            if ((staticVars.dateTime - __instance.HireDate).Days < FIRE_MIN_DAYS)
             {
-                output = false;
+                __result = false;
             }
-            __result = output;
         }
     }
     // 20000 yen/wk is the expected starting salary for 100% satisfaction
@@ -26,11 +33,9 @@ namespace WorkerRights
     {
         public static void Postfix(ref int __result, data_girls.girls __instance)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            float num = (float)__instance.GetFameLevel();
-            if (num < 1f)
+            if (__instance.GetFameLevel() < 1f)
             {
-                __result = 40000;
+                __result = DEF_SALARY * 2;
             }
         }
     }
@@ -41,28 +46,20 @@ namespace WorkerRights
     {
         public static void Postfix(ref data_girls.girls __instance)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
             int salarySatisfaction_Percentage = __instance.GetSalarySatisfaction_Percentage();
-            if (__instance.status == data_girls._status.announced_graduation)
-            {
+            if (staticVars.IsEasy() || __instance.status == data_girls._status.announced_graduation || policies.GetSelectedPolicyValue(policies._type.salary).Value != policies._value.salary_manual)
                 return;
-            }
-            float num = 0;
+
+            int daysModifier = 0;
             if (salarySatisfaction_Percentage < 20)
             {
-                if (!staticVars.IsEasy() && policies.GetSelectedPolicyValue(policies._type.salary).Value == policies._value.salary_manual)
-                {
-                    num -= 27f;
-                }
+                daysModifier -= GRAD_DAYS_PENALTY_SEVERE;
             }
             else if (salarySatisfaction_Percentage < 50)
             {
-                if (!staticVars.IsEasy() && policies.GetSelectedPolicyValue(policies._type.salary).Value == policies._value.salary_manual)
-                {
-                    num -= 9f;
-                }
+                daysModifier -= GRAD_DAYS_PENALTY;
             }
-            __instance.Graduation_Date.AddDays((double)Mathf.RoundToInt(num));
+            __instance.Graduation_Date.AddDays(daysModifier);
         }
     }
 
@@ -72,15 +69,14 @@ namespace WorkerRights
     {
         public static void Postfix(ref long __result, data_girls.girls __instance)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            if (staticVars.IsHard())
+            if (!staticVars.IsHard())
+                return;
+
+            int expected = __instance.GetExpectedSalary();
+            float earning = __instance.GetAverageEarnings();
+            if (__instance.GetFameLevel() == 10 && (earning * MAXFAME_SALARY_EARN_COEFF) > expected)
             {
-                int num = __instance.GetExpectedSalary();
-                float num2 = __instance.GetAverageEarnings();
-                if (__instance.GetFameLevel() == 10 && num2 / 10 > num)
-                {
-                    __result = (long)Mathf.Round(num2 / 10);
-                }
+                __result = (long)Mathf.Round(earning * MAXFAME_SALARY_EARN_COEFF);
             }
         }
     }
@@ -92,8 +88,7 @@ namespace WorkerRights
     {
         public static void Postfix(ref data_girls.girls __result)
         {
-            Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            __result.salary = 20000;
+            __result.salary = DEF_SALARY;
         }
     }
 

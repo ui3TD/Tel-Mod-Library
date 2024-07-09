@@ -97,7 +97,7 @@ namespace TraitsExpansion
             }
             if (count > 0)
             {
-                __result = Mathf.RoundToInt(__result * (1 + 0.2f * count));
+                __result = Mathf.RoundToInt(__result * (1 + POLYGLOT_BONUS * count));
             }
         }
     }
@@ -156,15 +156,15 @@ namespace TraitsExpansion
             {
                 case NewTraits.Fashionista:
                     if (_FanType == resources.fanType.female)
-                        __result *= 1.2f;
+                        __result *= FASHIONISTA_COEFF;
                     break;
                 case NewTraits.Flirty:
                     if (_FanType == resources.fanType.male)
-                        __result *= 1.2f;
+                        __result *= FLIRTY_COEFF;
                     break;
                 case NewTraits.Idol_Otaku:
                     if (_FanType == resources.fanType.hardcore)
-                        __result *= 1.2f;
+                        __result *= OTAKU_COEFF;
                     break;
             }
         }
@@ -199,12 +199,12 @@ namespace TraitsExpansion
                     if (girls.IsSick())
                         continue;
 
-                    string notif = Language.Insert("IDOL__BULLIED_UNKNOWN", new string[] { "10" });
+                    string notif = Language.Insert("IDOL__BULLIED_UNKNOWN", new string[] { SADISTIC_MODIFIER.ToString() });
 
-                    girls.getParam(data_girls._paramType.mentalStamina).add(-10f, false);
+                    girls.getParam(data_girls._paramType.mentalStamina).add(-SADISTIC_MODIFIER, false);
                     if (clique.KnownBulliedGirls.Contains(girls))
                     {
-                        notif = girls.GetName() + Language.Insert("REL__BULLYING_LOST", new string[] { "10" });
+                        notif = girls.GetName() + Language.Insert("REL__BULLYING_LOST", new string[] { SADISTIC_MODIFIER.ToString() });
                     }
 
                     NotificationManager.AddNotification(notif, mainScript.red32, NotificationManager._notification._type.idol_relationship_change);
@@ -223,7 +223,7 @@ namespace TraitsExpansion
             if (__instance.trait != (traits._trait._type)NewTraits.Job_Hopper)
                 return;
 
-            __instance.Graduation_Date = staticVars.dateTime.AddDays((double)UnityEngine.Random.Range(100, 365));
+            __instance.Graduation_Date = staticVars.dateTime.AddDays(UnityEngine.Random.Range(JOBHOPPER_DAYS_LOWER, JOBHOPPER_DAYS_UPPER));
         }
     }
 
@@ -237,7 +237,7 @@ namespace TraitsExpansion
             {
                 if (girls != null && girls.trait == (traits._trait._type)NewTraits.Aerophobia)
                 {
-                    girls.addParam(data_girls._paramType.mentalStamina, -50);
+                    girls.addParam(data_girls._paramType.mentalStamina, -AEROPHOB_PENALTY);
                 }
             }
         }
@@ -260,7 +260,7 @@ namespace TraitsExpansion
                             mainScript.red32,
                             NotificationManager._notification._type.idol_stat_change
                             );
-                        girls.addParam(data_girls._paramType.mentalStamina, -30);
+                        girls.addParam(data_girls._paramType.mentalStamina, -STAGEFRIGHT_PENALTY);
                     }
                 }
             }
@@ -293,7 +293,7 @@ namespace TraitsExpansion
             if (__instance.trait != (traits._trait._type)NewTraits.Cult_Leader)
                 return;
 
-            __result = (long)Mathf.Round(__result * 1.5f);
+            __result = (long)Mathf.Round(__result * CULT_COEFF);
         }
     }
 
@@ -309,7 +309,7 @@ namespace TraitsExpansion
                 return;
 
             __state = _proposal.stamina;
-            _proposal.stamina = Mathf.RoundToInt(_proposal.stamina / 2);
+            _proposal.stamina = Mathf.RoundToInt(_proposal.stamina * THESPIAN_COEFF);
         }
 
         public static void Postfix(ref business._proposal _proposal, ref int __state)
@@ -330,7 +330,7 @@ namespace TraitsExpansion
             if (__instance.ActiveProposal.type != business._type.tv_drama || __instance.ActiveProposal.girl.trait != (traits._trait._type)NewTraits.Thespian)
                 return;
 
-            __instance.ActiveProposal.stamina = Mathf.RoundToInt(__instance.ActiveProposal.stamina / 2);
+            __instance.ActiveProposal.stamina = Mathf.RoundToInt(__instance.ActiveProposal.stamina * THESPIAN_COEFF);
         }
     }
 
@@ -347,19 +347,19 @@ namespace TraitsExpansion
                     return;
 
                 float stam = __instance.getParam(data_girls._paramType.physicalStamina).val;
-                if (stam >= 60f)
+                if (stam >= RECKLESS_THR_UPPER)
                     return;
 
                 float injuryChance;
                 // 1% chance below 60
-                if (stam > 5f)
+                if (stam > RECKLESS_THR_LOWER)
                 {
-                    injuryChance = 1f;
+                    injuryChance = RECKLESS_CHANCE;
                 }
                 // 2% chance below 5
                 else
                 {
-                    injuryChance = 2f;
+                    injuryChance = RECKLESS_CHANCE_SEVERE;
                 }
                 if (mainScript.chance(injuryChance))
                 {
@@ -396,12 +396,12 @@ namespace TraitsExpansion
             // Girls with Wooden Acting receive penalty
             if (__instance.type == business._type.tv_drama && _girl.trait == (traits._trait._type)NewTraits.Wooden_Acting)
             {
-                __result -= 0.2f;
+                __result -= WOODACTING_PENALTY;
             }
             // Girls with Wooden Acting receive penalty
             else if (__instance.type == business._type.variety && _girl.trait == (traits._trait._type)NewTraits.Quick_Wit)
             {
-                __result += 0.5f;
+                __result += QUICKWIT_BONUS;
             }
             patchGetVal = false;
         }
@@ -618,6 +618,32 @@ namespace TraitsExpansion
 
     public class TraitsExpansion
     {
+        public const int PERFPITCH_BONUS = 50;
+        public const int BEAUTYGURU_BONUS = 30;
+        public const int MENSA_BONUS = 50;
+        public const int WELLENDOWED_BONUS = 30;
+        public const int HOMELY_PENALTY = 10;
+        public const int TONEDEAF_PENALTY = 30;
+
+        public const float WOODACTING_PENALTY = 0.2f;
+        public const float QUICKWIT_BONUS = 0.5f;
+        public const float RECKLESS_THR_UPPER = 60f;
+        public const float RECKLESS_THR_LOWER = 5f;
+        public const float RECKLESS_CHANCE = 1f;
+        public const float RECKLESS_CHANCE_SEVERE = 2f;
+        public const float THESPIAN_COEFF = 0.5f;
+        public const float CULT_COEFF = 1.5f;
+        public const float STAGEFRIGHT_PENALTY = 30;
+        public const float AEROPHOB_PENALTY = 50;
+        public const int JOBHOPPER_DAYS_LOWER = 100;
+        public const int JOBHOPPER_DAYS_UPPER = 365;
+        public const int SADISTIC_MODIFIER = 10;
+        public const float FASHIONISTA_COEFF = 1.2f;
+        public const float FLIRTY_COEFF = 1.2f;
+        public const float OTAKU_COEFF = 1.2f;
+        public const float POLYGLOT_BONUS = 0.2f;
+
+
         public static bool patchGetVal = false;
         public static List<data_girls.girls> girlList = null;
         public static bool patchAddParam = false;
@@ -634,22 +660,22 @@ namespace TraitsExpansion
             {
                 case NewTraits.Perfect_Pitch:
                     if (type == data_girls._paramType.vocal)
-                        num += 50;
+                        num += PERFPITCH_BONUS;
                     break;
 
                 case NewTraits.Beauty_Guru:
                     if (type == data_girls._paramType.pretty)
-                        num += 30;
+                        num += BEAUTYGURU_BONUS;
                     break;
 
                 case NewTraits.Mensa_Member:
                     if (type == data_girls._paramType.smart)
-                        num += 50;
+                        num += MENSA_BONUS;
                     break;
 
                 case NewTraits.Well_Endowed:
                     if (type == data_girls._paramType.sexy)
-                        num += 30;
+                        num += WELLENDOWED_BONUS;
                     break;
 
                 case NewTraits.Homely:
@@ -657,12 +683,12 @@ namespace TraitsExpansion
                         type == data_girls._paramType.cute ||
                         type == data_girls._paramType.cool ||
                         type == data_girls._paramType.sexy)
-                        num -= 10;
+                        num -= HOMELY_PENALTY;
                     break;
 
                 case NewTraits.Tone_Deaf:
                     if (type == data_girls._paramType.vocal)
-                        num -= 30;
+                        num -= TONEDEAF_PENALTY;
                     break;
             }
 

@@ -310,7 +310,10 @@ namespace StarSigns
                     {
                         while (DateToZodiac(__result.birthday) != data.zodiac)
                         {
-                            __result.birthday = staticVars.dateTime.AddYears(-asset.Age).AddMonths(-UnityEngine.Random.Range(0, 11)).AddDays(-(double)UnityEngine.Random.Range(0, 25));
+                            __result.birthday = staticVars.dateTime
+                                .AddYears(-asset.Age)
+                                .AddMonths(-UnityEngine.Random.Range(0, 11))
+                                .AddDays(-(double)UnityEngine.Random.Range(0, 25));
                         }
                     }
                     else

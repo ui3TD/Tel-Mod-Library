@@ -238,7 +238,11 @@ namespace CustomAuditions
     {
         public static void Postfix(ref data_girls.girls __instance)
         {
-            DateTime dateTime = staticVars.dateTime.AddYears(-maxAge - 1).AddYears(UnityEngine.Random.Range(0, maxAge - minAge + 1)).AddMonths(UnityEngine.Random.Range(0, 12)).AddDays((double)UnityEngine.Random.Range(0, 31));
+            DateTime dateTime = staticVars.dateTime
+                .AddYears(-maxAge - 1)
+                .AddYears(UnityEngine.Random.Range(0, maxAge - minAge + 1))
+                .AddMonths(UnityEngine.Random.Range(0, 12))
+                .AddDays(UnityEngine.Random.Range(0, 31));
             __instance.SetBirthday(dateTime);
         }
     }

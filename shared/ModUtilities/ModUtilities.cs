@@ -2,7 +2,7 @@
 
 namespace IMModUtilities
 {
-    public class Utilities
+    public class ModUtilities
     {
         public static void ProbeGameObject(GameObject gameObject)
         {

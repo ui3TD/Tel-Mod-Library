@@ -19,7 +19,6 @@ namespace TraitsExpansion
             try
             {
                 __result = (traits._trait._type)Enum.Parse(typeof(NewTraits), str);
-                Debug.Log("Custom trait found: " + str);
             }
             catch { }
         }
@@ -82,8 +81,6 @@ namespace TraitsExpansion
         }
     }
 
-
-
     // World tours give 1.2x more fans for each multilingual member
     [HarmonyPatch(typeof(SEvent_Tour.tour), "GetNewFansByAttendance")]
     public class SEvent_Tour_tour_GetNewFansByAttendance
@@ -112,10 +109,10 @@ namespace TraitsExpansion
         [HarmonyPriority(Priority.LowerThanNormal)]
         public static void Postfix(ref float __result, data_girls.girls __instance)
         {
-            if (__instance.trait == (traits._trait._type)NewTraits.Old_Money)
-            {
-                __result = 2f;
-            }
+            if (__instance.trait != (traits._trait._type)NewTraits.Old_Money)
+                return;
+
+            __result = 2f;
         }
     }
 
@@ -123,14 +120,13 @@ namespace TraitsExpansion
     [HarmonyPatch(typeof(data_girls), "CheckLowSalaries")]
     public class data_girls_CheckLowSalaries
     {
-        public static bool Prefix()
+        public static void Prefix()
         {
-            TraitsExpansion.patchAddParam = true;
-            return true;
+            patchAddParam = true;
         }
         public static void Postfix()
         {
-            TraitsExpansion.patchAddParam = false;
+            patchAddParam = false;
         }
     }
 
@@ -138,17 +134,15 @@ namespace TraitsExpansion
     [HarmonyPatch(typeof(data_girls.girls), "addParam")]
     public class data_girls_girls_addParam
     {
-        public static bool Prefix(data_girls.girls __instance, data_girls._paramType type, ref float val)
+        public static void Prefix(data_girls.girls __instance, data_girls._paramType type, ref float val)
         {
-            if (TraitsExpansion.patchAddParam)
-            {
-                //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-                if (__instance.trait == (traits._trait._type)NewTraits.Old_Money && type == data_girls._paramType.mentalStamina)
-                {
-                    val = 0;
-                }
-            }
-            return true;
+            if (!patchAddParam)
+                return;
+
+            if (__instance.trait != (traits._trait._type)NewTraits.Old_Money || type != data_girls._paramType.mentalStamina)
+                return;
+
+            val = 0;
         }
     }
 
@@ -158,26 +152,20 @@ namespace TraitsExpansion
     {
         public static void Postfix(ref float __result, resources.fanType _FanType, data_girls.girls __instance)
         {
-            if (__instance.trait == (traits._trait._type)NewTraits.Fashionista)
+            switch((NewTraits)__instance.trait)
             {
-                if (_FanType == resources.fanType.female)
-                {
-                    __result *= 1.2f;
-                }
-            }
-            else if (__instance.trait == (traits._trait._type)NewTraits.Flirty)
-            {
-                if (_FanType == resources.fanType.male)
-                {
-                    __result *= 1.2f;
-                }
-            }
-            else if (__instance.trait == (traits._trait._type)NewTraits.Idol_Otaku)
-            {
-                if (_FanType == resources.fanType.hardcore)
-                {
-                    __result *= 1.2f;
-                }
+                case NewTraits.Fashionista:
+                    if (_FanType == resources.fanType.female)
+                        __result *= 1.2f;
+                    break;
+                case NewTraits.Flirty:
+                    if (_FanType == resources.fanType.male)
+                        __result *= 1.2f;
+                    break;
+                case NewTraits.Idol_Otaku:
+                    if (_FanType == resources.fanType.hardcore)
+                        __result *= 1.2f;
+                    break;
             }
         }
     }
@@ -194,32 +182,34 @@ namespace TraitsExpansion
                 sadistic = 0;
                 foreach(data_girls.girls member in clique.Members)
                 {
-                    if(member.trait == (traits._trait._type)NewTraits.Sadistic && clique.IsBullied(member))
+                    if (member.IsSick())
+                        continue;
+
+                    if (member.trait == (traits._trait._type)NewTraits.Sadistic && clique.IsBullied(member))
                     {
                         sadistic++;
                     }
                 }
-                if(sadistic > 0)
+
+                if (sadistic == 0)
+                    continue;
+
+                foreach (data_girls.girls girls in clique.Bullied_Girls)
                 {
-                    foreach (data_girls.girls girls in clique.Bullied_Girls)
+                    if (girls.IsSick())
+                        continue;
+
+                    string notif = Language.Insert("IDOL__BULLIED_UNKNOWN", new string[] { "10" });
+
+                    girls.getParam(data_girls._paramType.mentalStamina).add(-10f, false);
+                    if (clique.KnownBulliedGirls.Contains(girls))
                     {
-                        girls.getParam(data_girls._paramType.mentalStamina).add(-10f, false);
-                        if (clique.KnownBulliedGirls.Contains(girls))
-                        {
-                            NotificationManager.AddNotification(girls.GetName(true) + Language.Insert("REL__BULLYING_LOST", new string[]
-                            {
-                        "10"
-                            }), mainScript.red32, NotificationManager._notification._type.idol_relationship_change);
-                        }
-                        else
-                        {
-                            NotificationManager.AddNotification(Language.Insert("IDOL__BULLIED_UNKNOWN", new string[]
-                            {
-                        "10"
-                            }), mainScript.red32, NotificationManager._notification._type.idol_relationship_change);
-                        }
+                        notif = girls.GetName() + Language.Insert("REL__BULLYING_LOST", new string[] { "10" });
                     }
+
+                    NotificationManager.AddNotification(notif, mainScript.red32, NotificationManager._notification._type.idol_relationship_change);
                 }
+
             }
         }
     }
@@ -230,10 +220,10 @@ namespace TraitsExpansion
     {
         public static void Postfix(ref data_girls.girls __instance)
         {
-            if (__instance.trait == (traits._trait._type)NewTraits.Job_Hopper)
-            {
-                __instance.Graduation_Date = staticVars.dateTime.AddDays((double)UnityEngine.Random.Range(100, 365));
-            }
+            if (__instance.trait != (traits._trait._type)NewTraits.Job_Hopper)
+                return;
+
+            __instance.Graduation_Date = staticVars.dateTime.AddDays((double)UnityEngine.Random.Range(100, 365));
         }
     }
 
@@ -265,10 +255,11 @@ namespace TraitsExpansion
                 {
                     if (girls != null && girls.trait == (traits._trait._type)NewTraits.Stage_Fright)
                     {
-                        NotificationManager.AddNotification(Language.Insert("IDOL__STAGEFRIGHT", new string[]
-                        {
-                            girls.GetName(true)
-                        }), mainScript.red32, NotificationManager._notification._type.idol_stat_change);
+                        NotificationManager.AddNotification(
+                            Language.Insert("IDOL__STAGEFRIGHT", new string[] {girls.GetName()}), 
+                            mainScript.red32,
+                            NotificationManager._notification._type.idol_stat_change
+                            );
                         girls.addParam(data_girls._paramType.mentalStamina, -30);
                     }
                 }
@@ -280,14 +271,13 @@ namespace TraitsExpansion
     [HarmonyPatch(typeof(SEvent_SSK._SSK), "GenerateResults")]
     public class SEvent_SSK__SSK_GenerateResults
     {
-        public static bool Prefix()
+        public static void Prefix()
         {
-            TraitsExpansion.patchGetFan_Count = true;
-            return true;
+            patchGetFan_Count = true;
         }
         public static void Postfix()
         {
-            TraitsExpansion.patchGetFan_Count = false;
+            patchGetFan_Count = false;
         }
     }
 
@@ -297,13 +287,13 @@ namespace TraitsExpansion
     {
         public static void Postfix(data_girls.girls __instance, ref long __result)
         {
-            if(TraitsExpansion.patchGetFan_Count)
-            {
-                if(__instance.trait == (traits._trait._type)NewTraits.Cult_Leader)
-                {
-                    __result = (long)Mathf.Round(__result * 1.5f);
-                }
-            }
+            if (!patchGetFan_Count)
+                return;
+
+            if (__instance.trait != (traits._trait._type)NewTraits.Cult_Leader)
+                return;
+
+            __result = (long)Mathf.Round(__result * 1.5f);
         }
     }
 
@@ -312,24 +302,22 @@ namespace TraitsExpansion
     [HarmonyPatch(typeof(Business_Popup), "Set")]
     public class Business_Popup_Set
     {
-        public static bool Prefix(ref business._proposal _proposal, ref int __state)
+        public static void Prefix(ref business._proposal _proposal, ref int __state)
         {
             __state = 0;
-            if (_proposal.type == business._type.tv_drama && _proposal.girl.trait == (traits._trait._type)NewTraits.Thespian)
-            {
-                __state = _proposal.stamina;
-                _proposal.stamina = Mathf.RoundToInt(_proposal.stamina / 2);
-            }
-            return true;
+            if (_proposal.type != business._type.tv_drama || _proposal.girl.trait != (traits._trait._type)NewTraits.Thespian)
+                return;
+
+            __state = _proposal.stamina;
+            _proposal.stamina = Mathf.RoundToInt(_proposal.stamina / 2);
         }
 
         public static void Postfix(ref business._proposal _proposal, ref int __state)
         {
-            if (__state != 0)
-            {
-                _proposal.stamina = __state;
-            }
+            if (__state == 0)
+                return;
 
+            _proposal.stamina = __state;
         }
     }
 
@@ -337,13 +325,12 @@ namespace TraitsExpansion
     [HarmonyPatch(typeof(business), "Accept")]
     public class business_Accept
     {
-        public static bool Prefix(ref business __instance)
+        public static void Prefix(ref business __instance)
         {
-            if (__instance.ActiveProposal.type == business._type.tv_drama && __instance.ActiveProposal.girl.trait == (traits._trait._type)NewTraits.Thespian)
-            {
-                __instance.ActiveProposal.stamina = Mathf.RoundToInt(__instance.ActiveProposal.stamina / 2);
-            }
-            return true;
+            if (__instance.ActiveProposal.type != business._type.tv_drama || __instance.ActiveProposal.girl.trait != (traits._trait._type)NewTraits.Thespian)
+                return;
+
+            __instance.ActiveProposal.stamina = Mathf.RoundToInt(__instance.ActiveProposal.stamina / 2);
         }
     }
 
@@ -357,27 +344,24 @@ namespace TraitsExpansion
             if (__instance.trait == (traits._trait._type)NewTraits.Reckless && __instance.status != data_girls._status.injured)
             {
                 if (__instance.room != null && __instance.room.type == agency._type.doctorsOffice)
-                {
                     return;
-                }
-                float val = __instance.getParam(data_girls._paramType.physicalStamina).val;
+
+                float stam = __instance.getParam(data_girls._paramType.physicalStamina).val;
+                if (stam >= 60f)
+                    return;
+
+                float injuryChance;
                 // 1% chance below 60
-                if (val >= 60f)
+                if (stam > 5f)
                 {
-                    return;
+                    injuryChance = 1f;
                 }
-                float num;
-                // 1.5% chance below 20
-                if (val > 5f)
-                {
-                    num = 1f;
-                }
-                // 3% chance below 5
+                // 2% chance below 5
                 else
                 {
-                    num = 2f;
+                    injuryChance = 2f;
                 }
-                if (mainScript.chance(num))
+                if (mainScript.chance(injuryChance))
                 {
                     __instance.Set_Injured();
                 }
@@ -386,30 +370,24 @@ namespace TraitsExpansion
     }
 
 
-    [HarmonyPatch(typeof(Profile_Popup), "RenderTab_Extras")]
-    public class Profile_Popup_RenderTab_Extras
-    {
+    //[HarmonyPatch(typeof(Profile_Popup), "RenderTab_Extras")]
+    //public class Profile_Popup_RenderTab_Extras
+    //{
 
-        public static void Postfix(Profile_Popup __instance)
-        {
-            traits._trait trait = __instance.Girl.GetTrait();
-            if(trait != null)
-            {
-                Debug.Log("Trait Type: " + ((int)trait.Type));
-            }
-        }
-    }
+    //    public static void Postfix(Profile_Popup __instance)
+    //    {
+    //        traits._trait trait = __instance.Girl.GetTrait();
+    //    }
+    //}
 
     // Apply traits to businesses
     [HarmonyPatch(typeof(business._proposal), "GetGirlCoeff")]
     public class Business__proposal_GetGirlCoeff
     {
         [HarmonyPriority(Priority.First)]
-        public static bool Prefix()
+        public static void Prefix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = true;
-            return true;
+            patchGetVal = true;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
@@ -425,8 +403,7 @@ namespace TraitsExpansion
             {
                 __result += 0.5f;
             }
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = false;
+            patchGetVal = false;
         }
     }
 
@@ -436,20 +413,17 @@ namespace TraitsExpansion
     public class Data_girls_GetAverageParam
     {
         [HarmonyPriority(Priority.First)]
-        public static bool Prefix(List<data_girls.girls> Girls)
+        public static void Prefix(List<data_girls.girls> Girls)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = true;
-            TraitsExpansion.girlList = Girls;
-            return true;
+            patchGetVal = true;
+            girlList = Girls;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = false;
-            TraitsExpansion.girlList = null;
+            patchGetVal = false;
+            girlList = null;
         }
     }
 
@@ -458,20 +432,17 @@ namespace TraitsExpansion
     public class Shows__show_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
-        public static bool Prefix(List<data_girls.girls> _girls)
+        public static void Prefix(List<data_girls.girls> _girls)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = true;
-            TraitsExpansion.girlList = _girls;
-            return true;
+            patchGetVal = true;
+            girlList = _girls;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = false;
-            TraitsExpansion.girlList = null;
+            patchGetVal = false;
+            girlList = null;
         }
     }
 
@@ -480,18 +451,15 @@ namespace TraitsExpansion
     public class Singles__single_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
-        public static bool Prefix()
+        public static void Prefix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = true;
-            return true;
+            patchGetVal = true;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = false;
+            patchGetVal = false;
         }
     }
 
@@ -500,18 +468,15 @@ namespace TraitsExpansion
     public class SEvent_Concerts__concert__song_GetSkillValue
     {
         [HarmonyPriority(Priority.First)]
-        public static bool Prefix()
+        public static void Prefix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = true;
-            return true;
+            patchGetVal = true;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = false;
+            patchGetVal = false;
         }
     }
 
@@ -521,20 +486,17 @@ namespace TraitsExpansion
     public class SEvent_Concerts__concert__mc_GetSkillValue
     {
         [HarmonyPriority(Priority.First)]
-        public static bool Prefix()
+        public static void Prefix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            TraitsExpansion.patchGetVal = true;
-            return true;
+            patchGetVal = true;
         }
 
 
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix()
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
 
-            TraitsExpansion.patchGetVal = false;
+            patchGetVal = false;
         }
     }
 
@@ -545,17 +507,7 @@ namespace TraitsExpansion
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            // Girls with Photogenic trait have +100% to photoshoots
-            float output = __result;
-            if (output > 20f)
-            {
-                output = 20f;
-            }
-            else if (output < 0f)
-            {
-                output = 0f;
-            }
-            __result = output;
+            __result = Mathf.Max(0,Mathf.Min(20,__result));
         }
     }
 
@@ -567,16 +519,7 @@ namespace TraitsExpansion
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            float output = __result;
-            if (output < 0)
-            {
-                output = 0;
-            }
-            else if (output > 100)
-            {
-                output = 100;
-            }
-            __result = output;
+            __result = Mathf.Max(0, Mathf.Min(100, __result));
         }
     }
 
@@ -588,17 +531,7 @@ namespace TraitsExpansion
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref data_girls.girls.param __result)
         {
-
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            if (__result.val < 0f)
-            {
-                __result.val = 0f;
-            }
-            else if (__result.val > 100f)
-            {
-                __result.val = 100f;
-            }
-
+            __result.val = Mathf.Max(0, Mathf.Min(100, __result.val));
         }
     }
 
@@ -609,17 +542,7 @@ namespace TraitsExpansion
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref data_girls.girls.param __result)
         {
-
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            if (__result.val < 0f)
-            {
-                __result.val = 0f;
-            }
-            else if (__result.val > 100f)
-            {
-                __result.val = 100f;
-            }
-
+            __result.val = Mathf.Max(0, Mathf.Min(100, __result.val));
         }
     }
 
@@ -630,19 +553,7 @@ namespace TraitsExpansion
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref int __result)
         {
-            //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-            int output = __result;
-
-            if (output < 0)
-            {
-                output = 0;
-            }
-            else if (output > 100)
-            {
-                output = 100;
-            }
-            __result = output;
-
+            __result = Math.Max(0, Math.Min(100, __result));
         }
     }
 
@@ -654,19 +565,7 @@ namespace TraitsExpansion
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref int __result)
         {
-            int output = __result;
-
-            if (output < 0)
-            {
-                output = 0;
-            }
-            else if (output > 100)
-            {
-                output = 100;
-            }
-
-
-            __result = output;
+            __result = Math.Max(0, Math.Min(100, __result));
         }
     }
 
@@ -675,21 +574,9 @@ namespace TraitsExpansion
     public class Show_Popup_AddCastParam_Limits
     {
         [HarmonyPriority(Priority.Last)]
-        public static void Postfix(ref Show_Popup __instance)
+        public static void Postfix(ref List<data_girls.girls.param> ___girlParams)
         {
-            List<data_girls.girls.param> girlParams = Traverse.Create(__instance).Field("girlParams").GetValue() as List<data_girls.girls.param>;
-
-            float val = girlParams.Last().val;
-            if (val > 100)
-            {
-                val = 100;
-            }
-            else if (val < 0)
-            {
-                val = 0;
-            }
-            girlParams.Last().val = val;
-            Traverse.Create(__instance).Field("girlParams").SetValue(girlParams);
+            ___girlParams.Last().val = Mathf.Max(0, Mathf.Min(100, ___girlParams.Last().val));
         }
     }
 
@@ -700,16 +587,7 @@ namespace TraitsExpansion
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref Shows._show __instance)
         {
-            float val = __instance.girlParams.Last().val;
-            if (val > 100)
-            {
-                val = 100;
-            }
-            else if (val < 0)
-            {
-                val = 0;
-            }
-            __instance.girlParams.Last().val = val;
+            __instance.girlParams.Last().val = Mathf.Max(0, Mathf.Min(100, __instance.girlParams.Last().val));
         }
     }
 
@@ -720,14 +598,7 @@ namespace TraitsExpansion
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            if (__result > 100)
-            {
-                __result = 100;
-            }
-            else if (__result < 0)
-            {
-                __result = 0;
-            }
+            __result = Mathf.Max(0, Mathf.Min(100, __result));
         }
     }
 
@@ -738,56 +609,64 @@ namespace TraitsExpansion
     {
         public static void Postfix(ref float __result, data_girls.girls.param __instance)
         {
-            if (TraitsExpansion.patchGetVal)
-            {
-                //Debug.Log(MethodBase.GetCurrentMethod().DeclaringType.Namespace + "." + MethodBase.GetCurrentMethod().DeclaringType.Name + "." + MethodBase.GetCurrentMethod().Name);
-                __result += TraitsExpansion.GetTraitModifier(__instance.Parent, __instance.type, TraitsExpansion.girlList);
-            }
+            if (!patchGetVal)
+                return;
+
+            __result += GetTraitModifier(__instance.Parent, __instance.type, girlList);
         }
     }
 
     public class TraitsExpansion
     {
         public static bool patchGetVal = false;
-
         public static List<data_girls.girls> girlList = null;
-
         public static bool patchAddParam = false;
-
         public static bool patchGetFan_Count = false;
 
         // This method calculates the modifier to girl parameters based on their trait.
         public static int GetTraitModifier(data_girls.girls girls, data_girls._paramType type, List<data_girls.girls> _1 = null)
         {
-            float num = 0;
-            if (girls != null && data_girls.IsStatParam(type))
+            int num = 0;
+            if (girls == null || !data_girls.IsStatParam(type))
+                return num;
+
+            switch ((NewTraits)girls.trait)
             {
-                if (girls.trait == (traits._trait._type)NewTraits.Perfect_Pitch && type == data_girls._paramType.vocal)
-                {
-                    num += 50;
-                }
-                else if (girls.trait == (traits._trait._type)NewTraits.Beauty_Guru && type == data_girls._paramType.pretty)
-                {
-                    num += 30;
-                }
-                else if (girls.trait == (traits._trait._type)NewTraits.Mensa_Member && type == data_girls._paramType.smart)
-                {
-                    num += 50;
-                }
-                else if (girls.trait == (traits._trait._type)NewTraits.Well_Endowed && type == data_girls._paramType.sexy)
-                {
-                    num += 30;
-                }
-                else if (girls.trait == (traits._trait._type)NewTraits.Homely && (type == data_girls._paramType.pretty || type == data_girls._paramType.cute || type == data_girls._paramType.cool || type == data_girls._paramType.sexy))
-                {
-                    num -= 10;
-                }
-                else if (girls.trait == (traits._trait._type)NewTraits.Tone_Deaf && type == data_girls._paramType.vocal)
-                {
-                    num -= 30;
-                }
+                case NewTraits.Perfect_Pitch:
+                    if (type == data_girls._paramType.vocal)
+                        num += 50;
+                    break;
+
+                case NewTraits.Beauty_Guru:
+                    if (type == data_girls._paramType.pretty)
+                        num += 30;
+                    break;
+
+                case NewTraits.Mensa_Member:
+                    if (type == data_girls._paramType.smart)
+                        num += 50;
+                    break;
+
+                case NewTraits.Well_Endowed:
+                    if (type == data_girls._paramType.sexy)
+                        num += 30;
+                    break;
+
+                case NewTraits.Homely:
+                    if (type == data_girls._paramType.pretty ||
+                        type == data_girls._paramType.cute ||
+                        type == data_girls._paramType.cool ||
+                        type == data_girls._paramType.sexy)
+                        num -= 10;
+                    break;
+
+                case NewTraits.Tone_Deaf:
+                    if (type == data_girls._paramType.vocal)
+                        num -= 30;
+                    break;
             }
-            return (int)num;
+
+            return num;
         }
 
         public enum NewTraits

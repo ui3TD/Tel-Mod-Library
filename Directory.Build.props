@@ -10,22 +10,22 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Reference Include="Assembly-CSharp" private ="false">
+		<Reference Include="Assembly-CSharp" private="false">
 			<HintPath>$(dllDir)\Assembly-CSharp.dll</HintPath>
 		</Reference>
-		<Reference Include="Assembly-CSharp-firstpass" private ="false">
+		<Reference Include="Assembly-CSharp-firstpass" private="false">
 			<HintPath>$(dllDir)\Assembly-CSharp-firstpass.dll</HintPath>
 		</Reference>
-		<Reference Include="Harmony" private ="false">
+		<Reference Include="Harmony" private="false">
 			<HintPath>$(dllDir)\0Harmony.dll</HintPath>
 		</Reference>
-		<Reference Include="UnityEngine.UI" private ="false">
+		<Reference Include="UnityEngine.UI" private="false">
 			<HintPath>$(dllDir)\UnityEngine.UI.dll</HintPath>
 		</Reference>
-		<Reference Include="Unity.TextMeshPro" private ="false">
+		<Reference Include="Unity.TextMeshPro" private="false">
 			<HintPath>$(dllDir)\Unity.TextMeshPro.dll</HintPath>
 		</Reference>
-		<Reference Include="DOTween" private ="false">
+		<Reference Include="DOTween" private="false">
 			<HintPath>$(dllDir)\DOTween.dll</HintPath>
 		</Reference>
 	</ItemGroup>

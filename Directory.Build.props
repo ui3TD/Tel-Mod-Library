@@ -37,8 +37,8 @@
 
 	<Target Name="PostBuild" AfterTargets="Build">
 		<MakeDir Directories="$(ModOutputDir)\$(ModName)" Condition="!Exists('$(ModOutputDir)\$(ModName)')" />
-		<Exec Command="copy /Y &quot;$(TargetDir)$(AssemblyName).dll&quot; &quot;$(ModOutputDir)\$(ModName)\$(AssemblyName).dll&quot;" />
-		<Exec Command="xcopy /Y /E /I &quot;assets&quot; &quot;$(ModOutputDir)\$(ModName)&quot;" />
+		<Exec Command='copy /Y "$(TargetDir)$(AssemblyName).dll" "$(ModOutputDir)\$(ModName)\$(AssemblyName).dll"' />
+		<Exec Command='xcopy /Y /E /I "assets" "$(ModOutputDir)\$(ModName)"' />
 	</Target>
 
 </Project>

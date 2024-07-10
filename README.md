@@ -44,3 +44,5 @@ To compile this project, follow these steps:
 
 3. **Build**
 
+
+Check out [IM-FastForward](https://github.com/ui3TD/IM-FastForward) for a tutorial for beginners.

@@ -36,7 +36,7 @@ Library of mods for Idol Manager
 
 To compile this project, follow these steps:
 
-1. **Configure Directories:** Set directories of `ModOutputDir` and `dllDir` in `Directory.Build.props`
+1. **Configure Directories:** Set directories of `ModOutputDirDebug`, `ModOutputDirRelease` and `dllDir` in `Directory.Build.props`
 
 2. **Get Pre-requisites (if Visual Studio did not do it automatically):** 
    - .NET Framework 4.6: [https://www.nuget.org/packages/Microsoft.NETFramework.ReferenceAssemblies.net46](https://www.nuget.org/packages/Microsoft.NETFramework.ReferenceAssemblies.net46)

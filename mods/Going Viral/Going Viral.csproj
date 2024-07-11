@@ -1,9 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.goingviral</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>Going Viral</ModName>
-		<Description>Idol Manager Mod</Description>
+		<HarmonyID>com.tel.goingviral</HarmonyID>
+		<ModDescription>Introduces a trending mechanism. You have a small chance to go viral and become trending, which doubles your fan growth.</ModDescription>
+		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
+		<Tags>["gameplay"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

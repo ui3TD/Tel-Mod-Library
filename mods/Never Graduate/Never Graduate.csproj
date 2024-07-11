@@ -1,11 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.nevergraduate</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>Never Graduate</ModName>
-		<Description>Idol Manager Mod</Description>
+		<HarmonyID>com.tel.nevergraduate</HarmonyID>
+		<ModDescription>This makes the game never check for graduations, unless the girl is fired.</ModDescription>
+		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
-	</PropertyGroup>
+		<Tags>["gameplay"]</Tags>
 
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
+	</PropertyGroup>
+	
 	<ItemGroup>
 		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net46" Version="1.0.3">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

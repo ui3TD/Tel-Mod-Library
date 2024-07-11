@@ -1,8 +1,0 @@
-{
-  "Title": "Tour Stamina Limit",
-  "Description": "World Tour has a 100 stamina limit. Fans increased 3.5x to compensate.",
-  "Author": "Tel",
-  "Version": "1.0",
-  "Tags": ["gameplay"],
-  "HarmonyID": "com.tel.tourstamina"
-}

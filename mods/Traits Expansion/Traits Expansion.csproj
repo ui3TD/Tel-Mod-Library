@@ -1,9 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.traitsexpansion</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>Traits Expansion</ModName>
-		<Description>Idol Manager Mod</Description>
+		<HarmonyID>com.tel.traitsexpansion</HarmonyID>
+		<ModDescription>A bunch of new traits that expand upon the existing set of traits. They affect stats, appeal, businesses, special events and more.</ModDescription>
+		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
+		<Tags>["gameplay"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

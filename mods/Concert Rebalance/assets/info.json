@@ -1,8 +1,0 @@
-{
-  "Title": "Concert Rebalance",
-  "Description": "Rebalances concerts to make things more challenging.",
-  "Author": "Tel",
-  "Version": "1.0",
-  "Tags": ["gameplay"],
-  "HarmonyID": "com.tel.concertrebalance"
-}

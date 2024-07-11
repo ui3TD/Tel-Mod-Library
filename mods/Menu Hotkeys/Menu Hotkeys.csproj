@@ -1,9 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.menuhotkeys</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>Menu Hotkeys</ModName>
-		<Description>Idol Manager Mod</Description>
+		<HarmonyID>com.tel.menuhotkeys</HarmonyID>
+		<ModDescription>Home row on the keyboard (asdfg...) are hotkeys for the main menu.</ModDescription>
+		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
+		<Tags>["gameplay"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

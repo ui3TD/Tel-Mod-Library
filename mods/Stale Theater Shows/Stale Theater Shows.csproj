@@ -1,9 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.staletheater</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>Stale Theater Shows</ModName>
-		<Description>Idol Manager Mod</Description>
+		<HarmonyID>com.tel.staletheater</HarmonyID>
+		<ModDescription>Rebalances the theater. Theater shows go stale over time. Release a single every month to keep the theater shows fresh.</ModDescription>
+		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
+		<Tags>["gameplay"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

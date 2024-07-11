@@ -1,9 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.traitsfix</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>Traits Fix</ModName>
-		<Description>Idol Manager Mod</Description>
-		<Version>1.0.0</Version>
+		<HarmonyID>com.tel.traitsfix</HarmonyID>
+		<ModDescription>This mod adds implementations for all traits that don't work in the original game.</ModDescription>
+		<Authors>Tel</Authors>
+		<Version>1.1.0</Version>
+		<Tags>["gameplay"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

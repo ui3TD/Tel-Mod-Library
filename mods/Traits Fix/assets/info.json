@@ -1,8 +1,0 @@
-{
-  "Title": "Traits Fix",
-  "Description": "This mod adds implementations for all traits that don't work in the original game.",
-  "Author": "Tel",
-  "Version": "1.1",
-  "Tags": ["gameplay"],
-  "HarmonyID": "com.tel.traitsfix"
-}

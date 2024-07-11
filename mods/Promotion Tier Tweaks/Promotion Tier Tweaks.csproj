@@ -1,9 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.promotiontiertweaks</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>Promotion Tier Tweaks</ModName>
-		<Description>Idol Manager Mod</Description>
+		<HarmonyID>com.tel.promotiontiertweaks</HarmonyID>
+		<ModDescription>The criteria for promotion levelups increased to be more challenging.</ModDescription>
+		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
+		<Tags>["gameplay"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

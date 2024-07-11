@@ -1,8 +1,0 @@
-{
-  "Title": "FastForward",
-  "Description": "Press '4' or click the fast-forward button twice to go faster!",
-  "Author": "Tel",
-  "Version": "1.2",
-  "Tags": ["gameplay"],
-  "HarmonyID": "com.tel.fastforward"
-}

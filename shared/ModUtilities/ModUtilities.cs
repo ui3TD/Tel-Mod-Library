@@ -1,5 +1,9 @@
 ﻿using System;
+using UnityEngine;
+using TMPro;
+using UnityEngine.UI;
 
+#if DEBUG
 namespace IMModUtilities
 {
     public class ModUtilities
@@ -88,3 +92,4 @@ namespace IMModUtilities
     }
 
 }
+#endif

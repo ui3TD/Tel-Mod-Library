@@ -1,8 +1,0 @@
-{
-  "Title": "Fan Attrition",
-  "Description": "Completely revamps the game balance of fans and makes the game way more challenging! Fan attrition is introduced as a churn rate, and there are new viable ways to grow fans.",
-  "Author": "Tel",
-  "Version": "1.0",
-  "Tags": ["gameplay"],
-  "HarmonyID": "com.tel.fanattrition"
-}

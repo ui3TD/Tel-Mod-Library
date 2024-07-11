@@ -1,10 +1,13 @@
 <Project>
 	<PropertyGroup>
-		<ModOutputDir>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDir>
-		<!--<ModOutputDir>$(SolutionDir)\..\Mods</ModOutputDir>-->
+		<!--<ModOutputDir>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDir>-->
+		<ModOutputDir>$(SolutionDir)\..\Mods</ModOutputDir>
 		<dllDir>$(SolutionDir)\..\dll</dllDir>
-		
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+		<!--Other assembly info-->
+		<Description>Idol Manager Mod</Description>
+
+		<!--C# and .NET version-->
 		<LangVersion>latest</LangVersion>
 		<TargetFramework>net46</TargetFramework>
 	</PropertyGroup>
@@ -40,5 +43,50 @@
 		<Exec Command='copy /Y "$(TargetDir)$(AssemblyName).dll" "$(ModOutputDir)\$(ModName)\$(AssemblyName).dll"' />
 		<Exec Command='xcopy /Y /E /I "assets" "$(ModOutputDir)\$(ModName)"' />
 	</Target>
+
+	<!--Create the mod's info.json file by calling the -->
+	<Target Name="CreateInfoFile" AfterTargets="Build">
+		<CreateInfoJSON
+			OutputFilePath="$(ModOutputDir)\$(ModName)\info.json"
+			ModName="$(ModName)"
+			AssemblyName="$(AssemblyName)"
+			ModDescription="$(ModDescription)"
+			Version="$(Version)"
+			Authors="$(Authors)"
+			Tags="$(Tags)"
+			JSONLoadOrder="$(JSONLoadOrder)" />
+	</Target>
+
+	<!--Task to create the info.json file-->
+	<UsingTask TaskName="CreateInfoJSON" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+		<ParameterGroup>
+			<OutputFilePath ParameterType="System.String" Required="true" />
+			<ModName ParameterType="System.String" Required="true" />
+			<AssemblyName ParameterType="System.String" Required="true" />
+			<ModDescription ParameterType="System.String" Required="true" />
+			<Version ParameterType="System.String" Required="true" />
+			<Authors ParameterType="System.String" Required="true" />
+			<Tags ParameterType="System.String" Required="true" />
+			<JSONLoadOrder ParameterType="System.String" Required="true" />
+		</ParameterGroup>
+		<Task>
+			<Using Namespace="System.IO"/>
+			<Code Type="Fragment" Language="cs">
+				<![CDATA[
+var content = $@"{{
+	""Title"": ""{ModName}"",
+	""Description"": ""{ModDescription}"",
+	""Authors"": ""{Authors}"",
+	""Version"": ""{Version}"",
+	""Tags"": {Tags},
+	""JSONLoadOrder"": {JSONLoadOrder},
+	""HarmonyID"": ""{AssemblyName}""
+}}";
+
+File.WriteAllText(OutputFilePath, content);
+				]]>
+			</Code>
+		</Task>
+	</UsingTask>
 
 </Project>

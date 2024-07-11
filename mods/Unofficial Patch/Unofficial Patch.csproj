@@ -1,9 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.unofficialpatch</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>Unofficial Patch</ModName>
-		<Description>Idol Manager Mod</Description>
-		<Version>1.0.0</Version>
+		<HarmonyID>com.tel.unofficialpatch</HarmonyID>
+		<ModDescription>Unofficial bugfixes</ModDescription>
+		<Authors>Tel</Authors>
+		<Version>1.3.1</Version>
+		<Tags>["gameplay"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

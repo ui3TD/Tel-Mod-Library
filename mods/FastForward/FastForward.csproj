@@ -1,9 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.fastforward</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>FastForward</ModName>
-		<Description>Idol Manager Mod</Description>
-		<Version>1.0.0</Version>
+		<HarmonyID>com.tel.fastforward</HarmonyID>
+		<ModDescription>Press '4' or click the fast-forward button twice to go faster!</ModDescription>
+		<Authors>Tel</Authors>
+		<Version>1.2.0</Version>
+		<Tags>["gameplay"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

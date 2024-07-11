@@ -1,11 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.fanattrition</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>Fan Attrition</ModName>
-		<Description>Idol Manager Mod</Description>
+		<HarmonyID>com.tel.fanattrition</HarmonyID>
+		<ModDescription>Completely revamps the game balance of fans and makes the game way more challenging! Fan attrition is introduced as a churn rate, and there are new viable ways to grow fans.</ModDescription>
+		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
-	</PropertyGroup>
+		<Tags>["gameplay"]</Tags>
 
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
+	</PropertyGroup>
+	
 	<ItemGroup>
 		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net46" Version="1.0.3">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

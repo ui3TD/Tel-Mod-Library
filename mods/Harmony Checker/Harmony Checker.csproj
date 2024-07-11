@@ -1,9 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.harmonychecker</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>IM-HarmonyIntegration Plugin</ModName>
-		<Description>Idol Manager Mod</Description>
+		<HarmonyID>com.tel.harmonychecker</HarmonyID>
+		<ModDescription>This mod checks if you have IM-HarmonyIntegration (IM-HI) installed. If it is not installed, please visit the IM-HarmonyIntegration github page for instructions.</ModDescription>
+		<Authors>Tel, Shelon</Authors>
 		<Version>1.0.0</Version>
+		<Tags>["example", "patches"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

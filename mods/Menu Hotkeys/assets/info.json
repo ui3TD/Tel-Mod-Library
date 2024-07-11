@@ -1,8 +1,0 @@
-{
-  "Title": "Menu Hotkeys",
-  "Description": "Home row on the keyboard (asdfg...) are hotkeys for the main menu.",
-  "Author": "Tel",
-  "Version": "1.0",
-  "Tags": ["gameplay"],
-  "HarmonyID": "com.tel.menuhotkeys"
-}

@@ -1,9 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<AssemblyName>com.tel.jsonloadorder</AssemblyName>
+		<!--Define the mod's info.json-->
 		<ModName>JSON Load Order</ModName>
-		<Description>Idol Manager Mod</Description>
+		<HarmonyID>com.tel.jsonloadorder</HarmonyID>
+		<ModDescription>Allows modders to adjust the JSON load order of their mods. Just add a JSONLoadOrder attribute to info.json. Default JSONLoadOrder number is 0. Lower numbers load early, and higher numbers load late.</ModDescription>
+		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
+		<Tags>["modding"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>100</JSONLoadOrder>
+
+		<AssemblyName>$(HarmonyID)</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

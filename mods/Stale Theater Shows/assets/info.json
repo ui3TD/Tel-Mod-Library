@@ -1,8 +1,0 @@
-{
-  "Title": "Stale Theater Shows",
-  "Description": "Rebalances the theater. Theater shows go stale over time. Release a single every month to keep the theater shows fresh.",
-  "Author": "Tel",
-  "Version": "1.0",
-  "Tags": ["gameplay"],
-  "HarmonyID": "com.tel.staletheater"
-}

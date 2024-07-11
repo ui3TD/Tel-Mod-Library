@@ -876,8 +876,8 @@ namespace MBTIPersonalities
         public static bool isShow = false;
 
         // Lists to store MBTI data references
-        public static List<MBTIData> MBTIReferenceList = new();
         public static List<MBTITextureData> MBTITextureReferenceList = new();
+        public static Dictionary<int, MBTI> MBTIReferenceDict = new();
 
         /// <summary>
         /// Calculates the modifier to idol parameters based on their MBTI traits.
@@ -925,20 +925,13 @@ namespace MBTIPersonalities
         /// <returns>MBTI type assigned to the idol.</returns>
         public static MBTI GetGirlMBTI(data_girls.girls girls)
         {
-            MBTI mbti = MBTI.None;
-
-            MBTIData mbtiData = MBTIReferenceList.FirstOrDefault(data => data.id == girls.id);
-
-            if (mbtiData == null)
+            if (MBTIReferenceDict.TryGetValue(girls.id, out MBTI mbti))
             {
-                mbti = GenerateMBTI(girls);
-                CreateMBTIData(girls, mbti);
-            }
-            else
-            {
-                mbti = mbtiData.mbti;
+                return mbti;
             }
 
+            mbti = GenerateMBTI(girls);
+            SetGirlMBTI(girls, mbti);
             return mbti;
 
         }
@@ -950,33 +943,7 @@ namespace MBTIPersonalities
         /// <param name="mbti">MBTI type to assign to the idol.</param>
         public static void SetGirlMBTI(data_girls.girls girls, MBTI mbti)
         {
-            MBTIData mbtiData = MBTIReferenceList.FirstOrDefault(data => data.id == girls.id);
-
-            if (mbtiData == null)
-            {
-                CreateMBTIData(girls, mbti);
-            }
-            else
-            {
-                mbtiData.mbti = mbti;
-                girls.SetVariable(mbti.ToString());
-            }
-        }
-
-        /// <summary>
-        /// Creates MBTI data for a newly assigned idol.
-        /// </summary>
-        /// <param name="girls">The idol for whom MBTI data is created.</param>
-        /// <param name="mbti">MBTI type to assign to the idol.</param>
-        private static void CreateMBTIData(data_girls.girls girls, MBTI mbti)
-        {
-            MBTIData newMBTI = new()
-            {
-                id = girls.id,
-                mbti = mbti,
-            };
-            MBTIReferenceList.Add(newMBTI);
-
+            MBTIReferenceDict[girls.id] = mbti;
             girls.SetVariable(mbti.ToString());
         }
 
@@ -1000,7 +967,7 @@ namespace MBTIPersonalities
         /// </summary>
         public static void ResetMBTI()
         {
-            MBTIReferenceList = new();
+            MBTIReferenceDict.Clear();
         }
 
         /// <summary>
@@ -1016,19 +983,10 @@ namespace MBTIPersonalities
                 num = 2166136261U;
                 for (int i = 0; i < s.Length; i++)
                 {
-                    num = ((uint)s[i] ^ num) * 16777619U;
+                    num = (s[i] ^ num) * 16777619U;
                 }
             }
             return num;
-        }
-
-        /// <summary>
-        /// Class to store MBTI data associated with each idol.
-        /// </summary>
-        public class MBTIData
-        {
-            public int id;
-            public MBTI mbti;
         }
 
         /// <summary>

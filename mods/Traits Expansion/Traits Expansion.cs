@@ -16,11 +16,10 @@ namespace TraitsExpansion
     {
         public static void Postfix(string str, ref traits._trait._type __result)
         {
-            try
+            if (Enum.TryParse(str, out NewTraits parsedEnum))
             {
-                __result = (traits._trait._type)Enum.Parse(typeof(NewTraits), str);
+                __result = (traits._trait._type)parsedEnum;
             }
-            catch { }
         }
     }
 
@@ -68,14 +67,10 @@ namespace TraitsExpansion
 
         public static data_girls_textures._textureAsset Infix(data_girls_textures._textureAsset textureAsset, JSONNode jsonnode)
         {
-            traits._trait._type getTrait = textureAsset.Trait;
-            try
+            if (Enum.TryParse(jsonnode["trait"], out NewTraits parsedEnum))
             {
-                getTrait = (traits._trait._type)Enum.Parse(typeof(NewTraits), jsonnode["trait"]);
+                textureAsset.Trait = (traits._trait._type)parsedEnum;
             }
-            catch { }
-            
-            textureAsset.Trait = getTrait;
 
             return textureAsset;
         }

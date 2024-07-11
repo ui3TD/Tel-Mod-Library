@@ -1,7 +1,7 @@
 <Project>
 	<PropertyGroup>
-		<!--<ModOutputDir>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDir>-->
-		<ModOutputDir>$(SolutionDir)\..\Mods</ModOutputDir>
+		<ModOutputDirRelease>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDirRelease>
+		<ModOutputDirDebug>$(SolutionDir)\..\Mods</ModOutputDirDebug>
 		<dllDir>$(SolutionDir)\..\dll</dllDir>
 
 		<!--Other assembly info-->
@@ -32,6 +32,14 @@
 			<HintPath>$(dllDir)\DOTween.dll</HintPath>
 		</Reference>
 	</ItemGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+		<ModOutputDir>$(ModOutputDirDebug)</ModOutputDir>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<ModOutputDir>$(ModOutputDirRelease)</ModOutputDir>
+	</PropertyGroup>
 
 	<Target Name="CleanModOutputDir" BeforeTargets="Clean">
 		<RemoveDir Directories="$(ModOutputDir)/$(ModName)" Condition="Exists('$(ModOutputDir)/$(ModName)')" />

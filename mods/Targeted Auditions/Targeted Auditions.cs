@@ -139,6 +139,11 @@ namespace CustomAuditions
         /// <param name="__result">The generated girl data.</param>
         public static void Postfix(ref data_girls.girls __result)
         {
+            int girlCount = int.Parse(variables.Get(VARID_COUNT) ?? DEF_COUNT);
+            if (girlCount > 12)
+            {
+                Auditions.UsedBodyIDs.Clear();
+            }
 
             data_girls.girls._sexuality sexuality = data_girls.girls._sexuality.straight;
             if (mainScript.chance(chanceLesbian))

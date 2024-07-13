@@ -363,51 +363,52 @@ namespace FanAttrition
             radioFans = 0;
             netFans = 0;
             cafeFans = 0;
-            foreach (business.active_proposal active_proposal in Camera.main.GetComponent<mainScript>().Data.GetComponent<business>().ActiveProposals)
+
+            mainScript mainScript = Camera.main.GetComponent<mainScript>();
+            business businessComponent = mainScript.Data.GetComponent<business>();
+
+            foreach (business.active_proposal activeProposal in businessComponent.ActiveProposals)
             {
-                if (active_proposal.Fans_per_week > 0)
+                if (activeProposal.Fans_per_week <= 0) continue;
+
+                switch (activeProposal.Type)
                 {
-                    if (active_proposal.Type == business._type.ad)
-                    {
-                        adFans += active_proposal.Fans_per_week;
-                    }
-                    else if (active_proposal.Type == business._type.tv_drama)
-                    {
-                        dramaFans += active_proposal.Fans_per_week;
-                    }
+                    case business._type.ad:
+                        adFans += activeProposal.Fans_per_week;
+                        break;
+                    case business._type.tv_drama:
+                        dramaFans += activeProposal.Fans_per_week;
+                        break;
                 }
             }
 
             foreach (Shows._show show in Shows.shows)
             {
-                if (show.status != Shows._show._status.normal && show.status != Shows._show._status.working && show.status != Shows._show._status.canceled)
+                if (show.status != Shows._show._status.normal &&
+                    show.status != Shows._show._status.working &&
+                    show.status != Shows._show._status.canceled)
                 {
-                    if (show.medium.media_type == Shows._param._media_type.tv)
+                    int lastFans = show.fans.Last();
+                    switch (show.medium.media_type)
                     {
-                        tvFans += show.fans[show.fans.Count - 1];
-                    }
-                    else if (show.medium.media_type == Shows._param._media_type.radio)
-                    {
-                        radioFans += show.fans[show.fans.Count - 1];
-                    }
-                    else if (show.medium.media_type == Shows._param._media_type.internet)
-                    {
-                        netFans += show.fans[show.fans.Count - 1];
+                        case Shows._param._media_type.tv:
+                            tvFans += lastFans;
+                            break;
+                        case Shows._param._media_type.radio:
+                            radioFans += lastFans;
+                            break;
+                        case Shows._param._media_type.internet:
+                            netFans += lastFans;
+                            break;
                     }
                 }
             }
 
             foreach (Cafes._cafe cafe in Cafes.Cafes_)
             {
-                int dayCount = 0;
-                for (int i = cafe.Stats.Count - 1; i >= 0; i--)
+                for (int i = Math.Max(0, cafe.Stats.Count - 7); i < cafe.Stats.Count; i++)
                 {
                     cafeFans += cafe.Stats[i].New_Fans;
-                    dayCount++;
-                    if (dayCount >= 7)
-                    {
-                        break;
-                    }
                 }
             }
 

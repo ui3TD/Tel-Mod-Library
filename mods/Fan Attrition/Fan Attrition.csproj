@@ -5,7 +5,7 @@
 		<HarmonyID>com.tel.fanattrition</HarmonyID>
 		<ModDescription>Completely revamps the game balance of fans and makes the game way more challenging! Fan attrition is introduced as a churn rate, and there are new viable ways to grow fans.</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.0.0</Version>
+		<Version>1.0.1</Version>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

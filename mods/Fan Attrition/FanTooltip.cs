@@ -4,7 +4,6 @@ using UnityEngine;
 using System.Reflection;
 using UnityEngine.UI;
 using static FanAttrition.Utility;
-using System.Runtime.InteropServices;
 
 namespace FanAttrition
 {

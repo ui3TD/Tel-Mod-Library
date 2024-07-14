@@ -1,7 +1,8 @@
 <Project>
 	<PropertyGroup>
 		<ModOutputDirRelease>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDirRelease>
-		<ModOutputDirDebug>$(SolutionDir)\..\Mods</ModOutputDirDebug>
+		<ModOutputDirDebug>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDirDebug>
+		<!--<ModOutputDirDebug>$(SolutionDir)\..\Mods</ModOutputDirDebug>-->
 		<dllDir>$(SolutionDir)\..\dll</dllDir>
 
 		<!--Other assembly info-->

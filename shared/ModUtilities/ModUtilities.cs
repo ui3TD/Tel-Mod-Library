@@ -5,7 +5,6 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
 using HarmonyLib;
-using UnityEngine.UI.Extensions;
 
 #if DEBUG
 namespace IMModUtilities
@@ -37,6 +36,17 @@ namespace IMModUtilities
         }
     }
 
+    public static class ComponentExtensions
+    {
+        public static T AddOrGetComponent<T>(this GameObject gameObject) where T : Component
+        {
+            return gameObject.TryGetComponent<T>(out var outComponent)
+                ? outComponent
+                : gameObject.AddComponent<T>();
+        }
+
+    }
+
     /// <summary>
     /// Upon clicking "`", outputs game UI objects, their hierarchy and their components to the console.
     /// Upon right click, outputs game UI object that the mouse is hovering over to the console.
@@ -47,20 +57,20 @@ namespace IMModUtilities
         {
             GameObject data = Camera.main.GetComponent<mainScript>().Data;
             GameObject agencyPopups = data.GetComponent<PopupManager>().GetByType(PopupManager._type.main_menu_settings).obj.transform.parent.gameObject;
-            agencyPopups.AddComponent<GraphicRaycaster>();
-            agencyPopups.AddComponent<ClickDetector>();
+            agencyPopups.AddOrGetComponent<GraphicRaycaster>();
+            agencyPopups.AddOrGetComponent<ClickDetector>();
 
             GameObject agencyBuilding = data.GetComponent<PopupManager>().AgencyBuilding;
             if(agencyBuilding != null)
             {
-                agencyBuilding.AddComponent<GraphicRaycaster>();
-                agencyBuilding.AddComponent<ClickDetector>();
+                agencyBuilding.AddOrGetComponent<GraphicRaycaster>();
+                agencyBuilding.AddOrGetComponent<ClickDetector>();
             }
             GameObject agencyGUI = data.GetComponent<PopupManager>().AgencyGUI;
             if (agencyGUI != null)
             {
-                agencyGUI.AddComponent<GraphicRaycaster>();
-                agencyGUI.AddComponent<ClickDetector>();
+                agencyGUI.AddOrGetComponent<GraphicRaycaster>();
+                agencyGUI.AddOrGetComponent<ClickDetector>();
             }
 
         }
@@ -68,15 +78,15 @@ namespace IMModUtilities
         {
             GameObject data = Camera.main.GetComponent<mainScript>().Data;
             GameObject Tooltips = data.GetComponent<TooltipManager>().TooltipObject.transform.parent.gameObject;
-            Tooltips.AddComponent<GraphicRaycaster>();
-            Tooltips.AddComponent<ClickDetector>();
+            Tooltips.AddOrGetComponent<GraphicRaycaster>();
+            Tooltips.AddOrGetComponent<ClickDetector>();
         }
         public static void AttachToMainMenu()
         {
             GameObject data = Camera.main.GetComponent<mainScript>().Data;
             GameObject GUI_Buttons = data.GetComponent<MainMenu_Buttons_Controller>().Main_Container.transform.parent.gameObject;
-            GUI_Buttons.AddComponent<GraphicRaycaster>();
-            GUI_Buttons.AddComponent<ClickDetector>();
+            GUI_Buttons.AddOrGetComponent<GraphicRaycaster>();
+            GUI_Buttons.AddOrGetComponent<ClickDetector>();
         }
 
         public class ClickDetector : MonoBehaviour

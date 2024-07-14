@@ -26,30 +26,49 @@ namespace FanAttrition
 
             resources.RecalcFans();
             Text[] textLines = __instance.gameObject.GetComponentsInChildren<Text>();
-            textLines[0].text = GetFanLine(resources.fanType.hardcore);
-            textLines[1].text = GetFanLine(resources.fanType.casual);
-            textLines[2].text = GetFanLine(resources.fanType.male);
-            textLines[3].text = GetFanLine(resources.fanType.female);
-            textLines[4].text = GetFanLine(resources.fanType.teen);
-            textLines[5].text = GetFanLine(resources.fanType.youngAdult);
-            textLines[6].text = GetFanLine(resources.fanType.adult);
+            textLines[0].text = GetLineText(resources.fanType.hardcore);
+            textLines[1].text = GetLineText(resources.fanType.casual);
+            textLines[2].text = GetLineText(resources.fanType.male);
+            textLines[3].text = GetLineText(resources.fanType.female);
+            textLines[4].text = GetLineText(resources.fanType.teen);
+            textLines[5].text = GetLineText(resources.fanType.youngAdult);
+            textLines[6].text = GetLineText(resources.fanType.adult);
 
-            textLines[7].text = mainScript.separator_no_linebreaks;
+            textLines[7].text = GetLineText(lineType.padding);
 
-            textLines[8].text = GetContractsLine(business._type.ad);
-            textLines[9].text = GetContractsLine(business._type.tv_drama);
-            textLines[10].text = GetShowLine(Shows._param._media_type.internet);
-            textLines[11].text = GetShowLine(Shows._param._media_type.tv);
-            textLines[12].text = GetShowLine(Shows._param._media_type.radio);
-            textLines[13].text = GetCafeLine();
+            textLines[8].text = GetLineText(business._type.ad);
+            textLines[9].text = GetLineText(business._type.tv_drama);
+            textLines[10].text = GetLineText(Shows._param._media_type.internet);
+            textLines[11].text = GetLineText(Shows._param._media_type.tv);
+            textLines[12].text = GetLineText(Shows._param._media_type.radio);
+            textLines[13].text = GetLineText(lineType.cafe);
 
-            textLines[14].text = GetChurnLine();
+            textLines[14].text = GetLineText(lineType.churn);
 
             RenderFanChange.Invoke(__instance, null);
             LayoutRebuilder.ForceRebuildLayoutImmediate(__instance.gameObject.GetComponent<RectTransform>());
             return false;
         }
 
+        static string GetLineText(lineType lineType)
+        {
+            string lineText = "";
+
+            switch(lineType)
+            {
+                case lineType.padding:
+                    lineText = mainScript.separator_no_linebreaks;
+                    break;
+                case lineType.cafe:
+                    lineText = GetCafeLine();
+                    break;
+                case lineType.churn:
+                    lineText = GetChurnLine();
+                    break;
+            }
+
+            return lineText;
+        }
 
         /// <summary>
         /// Generates the churn line for the fan tooltip.
@@ -58,7 +77,7 @@ namespace FanAttrition
         static string GetChurnLine()
         {
             string label = Language.Data[CHURNRATE_LABEL];
-            long value = Math.Max(resources.FansChange * 7, 0);
+            long value = Math.Min(resources.FansChange * 7, 0);
             string valueText = ExtensionMethods.formatNumber(value) + " " + Language.Data["PER_WEEK"];
 
             if (resources.FansChange < 0)
@@ -91,7 +110,7 @@ namespace FanAttrition
         /// </summary>
         /// <param name="FanType">The type of fan to generate the line for.</param>
         /// <returns>A formatted string with fan type information and appeal.</returns>
-        static string GetFanLine(resources.fanType FanType)
+        static string GetLineText(resources.fanType FanType)
         {
             int num = 0;
             float appeal = 0f;
@@ -158,7 +177,7 @@ namespace FanAttrition
         /// </summary>
         /// <param name="Type">The type of business contract.</param>
         /// <returns>A formatted string with contract-based fan information.</returns>
-        static string GetContractsLine(business._type Type)
+        static string GetLineText(business._type Type)
         {
             string label;
             long value;
@@ -192,7 +211,7 @@ namespace FanAttrition
         /// </summary>
         /// <param name="Type">The type of media for the show.</param>
         /// <returns>A formatted string with show-based fan information.</returns>
-        static string GetShowLine(Shows._param._media_type Type)
+        static string GetLineText(Shows._param._media_type Type)
         {
             long value;
             string label;
@@ -224,6 +243,13 @@ namespace FanAttrition
             }
 
             return label + ": " + fanStr;
+        }
+
+        enum lineType
+        {
+            padding,
+            cafe,
+            churn
         }
     }
 

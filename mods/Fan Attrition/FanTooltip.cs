@@ -45,7 +45,6 @@ namespace FanAttrition
 
             textLines[14].text = GetChurnLine();
 
-            MethodInfo RenderFanChange = __instance.GetType().GetMethod("RenderFanChange", BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null);
             RenderFanChange.Invoke(__instance, null);
             LayoutRebuilder.ForceRebuildLayoutImmediate(__instance.gameObject.GetComponent<RectTransform>());
             return false;
@@ -206,11 +205,11 @@ namespace FanAttrition
                     break;
                 case Shows._param._media_type.internet:
                     label = Language.Data[TOOLTIP_INTERNET_LABEL];
-                    value = Math.Max(tvFans, 0);
+                    value = Math.Max(netFans, 0);
                     break;
                 case Shows._param._media_type.radio:
                     label = Language.Data[TOOLTIP_RADIO_LABEL];
-                    value = Math.Max(tvFans, 0);
+                    value = Math.Max(radioFans, 0);
                     break;
                 default:
                     label = "";
@@ -241,6 +240,8 @@ namespace FanAttrition
         /// <returns>Whether to execute the original method.</returns>
         public static void Prefix(tooltip_fans __instance)
         {
+            RenderFanChange = AccessTools.Method(__instance.GetType(), "RenderFanChange");
+
             for (int i = 0; i < 15; i++)
             {
                 AddLine(__instance, "");

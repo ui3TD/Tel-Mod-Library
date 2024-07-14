@@ -4,6 +4,7 @@ using UnityEngine;
 using System.Reflection;
 using UnityEngine.UI;
 using static FanAttrition.Utility;
+using System.Runtime.InteropServices;
 
 namespace FanAttrition
 {
@@ -45,7 +46,7 @@ namespace FanAttrition
 
             textLines[14].text = GetLineText(lineType.churn);
 
-            RenderFanChange.Invoke(__instance, null);
+            RenderFanChangeDelegate();
             LayoutRebuilder.ForceRebuildLayoutImmediate(__instance.gameObject.GetComponent<RectTransform>());
             return false;
         }
@@ -266,7 +267,8 @@ namespace FanAttrition
         /// <returns>Whether to execute the original method.</returns>
         public static void Prefix(tooltip_fans __instance)
         {
-            RenderFanChange = AccessTools.Method(__instance.GetType(), "RenderFanChange");
+            MethodInfo RenderFanChange = AccessTools.Method(__instance.GetType(), "RenderFanChange");
+            RenderFanChangeDelegate = AccessTools.MethodDelegate<Action>(RenderFanChange, __instance);
 
             for (int i = 0; i < 15; i++)
             {

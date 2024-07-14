@@ -1,13 +1,124 @@
-﻿using System;
+﻿using System.Linq;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.Collections.Generic;
+using UnityEngine.EventSystems;
+using HarmonyLib;
+using UnityEngine.UI.Extensions;
 
 #if DEBUG
 namespace IMModUtilities
 {
+    [HarmonyPatch(typeof(PopupManager), "Start")]
+    public class PopupManager_Start
+    {
+        public static void Postfix()
+        {
+            ModUtilities.AttachToPopupManager();
+        }
+    }
+
+    [HarmonyPatch(typeof(TooltipManager), "Start")]
+    public class TooltipManager_Start
+    {
+        public static void Postfix()
+        {
+            ModUtilities.AttachToToolTips();
+        }
+    }
+
+    [HarmonyPatch(typeof(MainMenu_Buttons_Controller), "Start")]
+    public class MainMenu_Buttons_Controller_Start
+    {
+        public static void Postfix()
+        {
+            ModUtilities.AttachToMainMenu();
+        }
+    }
+
+    /// <summary>
+    /// Upon clicking "`", outputs game UI objects, their hierarchy and their components to the console.
+    /// Upon right click, outputs game UI object that the mouse is hovering over to the console.
+    /// </summary>
     public class ModUtilities
     {
+        public static void AttachToPopupManager()
+        {
+            GameObject data = Camera.main.GetComponent<mainScript>().Data;
+            GameObject agencyPopups = data.GetComponent<PopupManager>().GetByType(PopupManager._type.main_menu_settings).obj.transform.parent.gameObject;
+            agencyPopups.AddComponent<GraphicRaycaster>();
+            agencyPopups.AddComponent<ClickDetector>();
+
+            GameObject agencyBuilding = data.GetComponent<PopupManager>().AgencyBuilding;
+            if(agencyBuilding != null)
+            {
+                agencyBuilding.AddComponent<GraphicRaycaster>();
+                agencyBuilding.AddComponent<ClickDetector>();
+            }
+            GameObject agencyGUI = data.GetComponent<PopupManager>().AgencyGUI;
+            if (agencyGUI != null)
+            {
+                agencyGUI.AddComponent<GraphicRaycaster>();
+                agencyGUI.AddComponent<ClickDetector>();
+            }
+
+        }
+        public static void AttachToToolTips()
+        {
+            GameObject data = Camera.main.GetComponent<mainScript>().Data;
+            GameObject Tooltips = data.GetComponent<TooltipManager>().TooltipObject.transform.parent.gameObject;
+            Tooltips.AddComponent<GraphicRaycaster>();
+            Tooltips.AddComponent<ClickDetector>();
+        }
+        public static void AttachToMainMenu()
+        {
+            GameObject data = Camera.main.GetComponent<mainScript>().Data;
+            GameObject GUI_Buttons = data.GetComponent<MainMenu_Buttons_Controller>().Main_Container.transform.parent.gameObject;
+            GUI_Buttons.AddComponent<GraphicRaycaster>();
+            GUI_Buttons.AddComponent<ClickDetector>();
+        }
+
+        public class ClickDetector : MonoBehaviour
+        {
+            PointerEventData clickData;
+            List<RaycastResult> clickResults;
+            GraphicRaycaster raycaster;
+            private void Start()
+            {
+                raycaster = GetComponent<GraphicRaycaster>();
+                clickData = new(EventSystem.current);
+                clickResults = new();
+            }
+
+            private void Update()
+            {
+                if (Input.GetMouseButtonDown(1))
+                {
+                    Vector2 mousePosition = Input.mousePosition;
+
+                    clickData.position = mousePosition;
+                    clickResults.Clear();
+                    raycaster.Raycast(clickData, clickResults);
+
+                    if (clickResults.Count > 0)
+                    {
+                        Debug.Log($"Mouse clicked at: {mousePosition}");
+                        ProbeGameObject(clickResults[0].gameObject);
+                    }
+
+                }
+                else if (Input.GetKeyDown(KeyCode.BackQuote))
+                {
+                    if(gameObject.activeInHierarchy)
+                    {
+                        ProbeGameObject(gameObject);
+                    }
+                }
+            }
+
+        }
+
         public static void ProbeGameObject(GameObject gameObject)
         {
             Debug.Log("Probing Object: " + gameObject.name);
@@ -72,7 +183,12 @@ namespace IMModUtilities
                         int i = 1;
                         while (i < eventCount)
                         {
-                            suffix += ", " + btn.onClick.GetPersistentTarget(i).GetType().Name + "." + btn.onClick.GetPersistentMethodName(i);
+                            suffix += ", ";
+                            if(btn.onClick.GetPersistentTarget(i) != null)
+                            {
+                                suffix += btn.onClick.GetPersistentTarget(i).GetType().Name + ".";
+                            }
+                            suffix += btn.onClick.GetPersistentMethodName(i);
                             i++;
                         }
                         suffix += ")";

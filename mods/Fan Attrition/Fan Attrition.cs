@@ -293,7 +293,7 @@ namespace FanAttrition
         public static long radioFans = 0;
         public static long netFans = 0;
         public static long cafeFans = 0;
-        public static MethodInfo RenderFanChange;
+        public static Action RenderFanChangeDelegate;
 
         private const float CHURN_POWER_HARD = 0.83f;
         private const float CHURN_COEFF_HARD = 0.012f;

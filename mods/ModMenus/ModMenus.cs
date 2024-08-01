@@ -262,7 +262,7 @@ namespace ModMenus
                     }
                 }
 
-                AddMenuText(mod.ModName, parentTransform, TITLE_SIZE, mainScript.black32, TextAlignmentOptions.Center);
+                AddMenuText(mod.Title, parentTransform, TITLE_SIZE, mainScript.black32, TextAlignmentOptions.Center);
                 
             }
 

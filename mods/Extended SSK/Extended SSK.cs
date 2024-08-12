@@ -43,7 +43,7 @@ namespace ExtendedSSK
 
             if (index != -1)
             {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(SSK_GenerateResultsPatch), "Infix")));
+                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Call, typeof(SSK_GenerateResultsPatch).GetMethod(nameof(Infix))));
             }
 
             return instructionList.AsEnumerable();
@@ -88,8 +88,10 @@ namespace ExtendedSSK
                 int limit = int.Parse(variables.Get(varID) ?? defaultRankingsStr);
                 List<int> list = __instance.FameBonus;
 
-                var GetFameBaseVal = __instance.GetType().GetMethod("GetFameBaseVal", BindingFlags.NonPublic | BindingFlags.Instance);
-                int num = Mathf.RoundToInt((int)GetFameBaseVal.Invoke(__instance, null) * 0.056f);
+                MethodInfo GetFameBaseValInfo = AccessTools.Method(typeof(SEvent_SSK._SSK), "GetFameBaseVal");
+                Func<int> GetFameBaseValDelegate = AccessTools.MethodDelegate<Func<int>>(GetFameBaseValInfo, __instance);
+
+                int num = Mathf.RoundToInt(GetFameBaseValDelegate() * 0.056f);
                 for (int i = 10; i < Math.Min(girlCount, limit); i++)
                 {
                     list.Add(num);

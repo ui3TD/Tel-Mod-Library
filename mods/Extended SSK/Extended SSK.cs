@@ -107,14 +107,13 @@ namespace ExtendedSSK
     {
         public static void Postfix(data_girls.girls Girl)
         {
-            if(Girl.Wish_Type == girl_wishes._type.ssk_rank)
-            {
-                int ranking = int.TryParse(Girl.Wish_Formula, out int r) ? r : 10;
-                if(ranking > 16)
-                {
-                    Girl.Wish_Formula = "16";
-                }
+            if (Girl.Wish_Type != girl_wishes._type.ssk_rank)
+                return;
 
+            int ranking = int.TryParse(Girl.Wish_Formula, out int r) ? r : 10;
+            if(ranking > 16)
+            {
+                Girl.Wish_Formula = "16";
             }
         }
     }

@@ -1,38 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<!--Define the mod's info.json-->
+		<ModName>Extended SSK</ModName>
+		<HarmonyID>com.tel.extendedssk</HarmonyID>
+		<ModDescription>Extends elections to 64 ranks</ModDescription>
+		<Authors>Tel</Authors>
+		<Version>1.2.0</Version>
+		<Tags>["gameplay"]</Tags>
 
-  <PropertyGroup>
-    <TargetFramework>net46</TargetFramework>
-    <AssemblyName>com.tel.extendedssk</AssemblyName>
-    <Description>IM-HarmonyIntegration Plugin</Description>
-    <Version>1.0.0</Version>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net46" Version="1.0.3">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="UnityEngine.Modules" Version="2019.4.23" IncludeAssets="compile" />
-  </ItemGroup>
-  
-    <ItemGroup>
-	    <Reference Include="Assembly-CSharp">
-		    <HintPath>dll\Assembly-CSharp.dll</HintPath>
-	    </Reference>
-	    <Reference Include="Harmony">
-		    <HintPath>dll\0Harmony.dll</HintPath>
-	    </Reference>
-		<Reference Include="UnityEngine.UI">
-			<HintPath>dll\UnityEngine.UI.dll</HintPath>
-		</Reference>
-		<Reference Include="Unity.TextMeshPro">
-			<HintPath>dll\Unity.TextMeshPro.dll</HintPath>
-		</Reference>
-    </ItemGroup>
-  
-    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-      <Exec Command="copy /Y &quot;$(TargetDir)com.tel.extendedssk.dll&quot; &quot;C:\Users\vance\AppData\LocalLow\Glitch Pitch\Idol Manager\Mods\Extended SSK\com.tel.extendedssk.dll&quot;" />
-    </Target>
+		<AssemblyName>$(HarmonyID)</AssemblyName>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net46" Version="1.0.3">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="UnityEngine.Modules" Version="2019.4.23" IncludeAssets="compile" />
+	</ItemGroup>
+
 </Project>

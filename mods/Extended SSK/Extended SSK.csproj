@@ -5,7 +5,7 @@
 		<HarmonyID>com.tel.extendedssk</HarmonyID>
 		<ModDescription>Extends elections to 64 ranks</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.2.0</Version>
+		<Version>1.2.1</Version>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

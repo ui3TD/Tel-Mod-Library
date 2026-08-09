@@ -81,25 +81,7 @@ namespace CustomAuditions
         {
             __state = false;
 
-            // Set audition age limits (only if popup is not used)
-            bool toggle = ReadInt(VARID_AGELIMIT_POPUP_TOGGLE, DEF_AGELIMIT_POPUP_TOGGLE) == 1;
-            if (!toggle)
-            {
-                minAge = ReadInt(VARID_MINAGE, DEF_MINAGE_STR);
-                maxAge = ReadInt(VARID_MAXAGE, DEF_MAXAGE_STR);
-                if (maxAge < minAge)
-                {
-                    // swap values
-                    maxAge = ReadInt(VARID_MINAGE, DEF_MAXAGE_STR);
-                    minAge = ReadInt(VARID_MAXAGE, DEF_MINAGE_STR);
-
-                    // correct default variables
-                    defaultMaxAge = maxAge;
-                    defaultMinAge = minAge;
-                    variables.Set(VARID_MAXAGE, maxAge.ToString());
-                    variables.Set(VARID_MINAGE, minAge.ToString());
-                }
-            }
+            LoadConfiguredAgeRange();
 
             // Set sexual orientation
             float varLesbian = ReadFloat(VARID_LESCHANCE, DEF_CHANCE_LES_STR);
@@ -312,38 +294,6 @@ namespace CustomAuditions
     }
 
     /// <summary>
-    /// Patches the CM_Player_Audition_Button class to handle age input popup. (obsolete)
-    /// </summary>
-    [HarmonyPatch(typeof(CM_Player_Audition_Button), "OnClick")]
-    public class Auditions_GenerateAudition
-    {
-        /// <summary>
-        /// Postfix method to show the age input popup if enabled. (disabled)
-        /// </summary>
-        public static void Postfix()
-        {
-            bool toggle = ReadInt(VARID_AGELIMIT_POPUP_TOGGLE, DEF_AGELIMIT_POPUP_TOGGLE) == 1;
-            if (toggle)
-            {
-                defaultMinAge = ReadInt(VARID_MINAGE, DEF_MINAGE_STR);
-                defaultMaxAge = ReadInt(VARID_MAXAGE, DEF_MAXAGE_STR);
-                if (defaultMaxAge < defaultMinAge)
-                {
-                    // swap values
-                    defaultMaxAge = ReadInt(VARID_MINAGE, DEF_MAXAGE_STR);
-                    defaultMinAge = ReadInt(VARID_MAXAGE, DEF_MINAGE_STR);
-
-                    // correct variables
-                    variables.Set(VARID_MAXAGE, maxAge.ToString());
-                    variables.Set(VARID_MINAGE, minAge.ToString());
-                }
-                agePopup = true;
-                Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>().Open(PopupManager._type.staff_nickname, true);
-            }
-        }
-    }
-
-    /// <summary>
     /// Contains utility methods and variables for custom auditions.
     /// </summary>
     class CustomAuditions
@@ -535,6 +485,26 @@ namespace CustomAuditions
             }
 
             Auditions.UsedBodyIDs.RemoveAll(id => !uniqueBodyIDs.Contains(id));
+        }
+
+        public static void LoadConfiguredAgeRange()
+        {
+            // The former per-audition age popup is retired. Always use the Mod Menu range.
+            variables.Set(VARID_AGELIMIT_POPUP_TOGGLE, DEF_AGELIMIT_POPUP_TOGGLE);
+
+            minAge = ReadInt(VARID_MINAGE, DEF_MINAGE_STR);
+            maxAge = ReadInt(VARID_MAXAGE, DEF_MAXAGE_STR);
+            if (maxAge < minAge)
+            {
+                int originalMinAge = minAge;
+                minAge = maxAge;
+                maxAge = originalMinAge;
+
+                defaultMaxAge = maxAge;
+                defaultMinAge = minAge;
+                variables.Set(VARID_MAXAGE, maxAge.ToString());
+                variables.Set(VARID_MINAGE, minAge.ToString());
+            }
         }
 
         public static void ApplyRandomBirthdayInConfiguredRange(data_girls.girls girl)

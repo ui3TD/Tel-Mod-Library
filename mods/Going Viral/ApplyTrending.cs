@@ -1,173 +1,243 @@
 ﻿using HarmonyLib;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Reflection;
-using static GoingViral.TrendingManager;
 using UnityEngine;
+using static GoingViral.TrendingManager;
 
 namespace GoingViral
 {
-
-
-    // Apply fans increase to singles
     [HarmonyPatch(typeof(singles), "GenerateSales")]
     public class singles_GenerateSales
     {
         public static void Postfix(singles._single single)
         {
-            if (IsTrending() == TrendingStatus.trending)
+            if (IsTrending() != TrendingStatus.trending || single == null || single.sales == null)
+                return;
+
+            long totalNewFans = 0;
+            long casualNewFans = 0;
+            List<singles._single._sales> casualSales = new List<singles._single._sales>();
+            foreach (singles._single._sales sale in single.sales)
             {
-                long totalNewFans = 0;
-                long casualNewFans = 0;
-                foreach (singles._single._sales sale in single.sales)
+                if (sale == null) continue;
+                totalNewFans = SafeAdd(totalNewFans, sale.new_fans);
+                if (sale.fan != null && sale.fan.IsType(resources.fanType.casual))
                 {
-                    totalNewFans += sale.new_fans;
-                    if (sale.fan.IsType(resources.fanType.casual))
-                    {
-                        casualNewFans += sale.new_fans;
-                    }
+                    casualSales.Add(sale);
+                    casualNewFans = SafeAdd(casualNewFans, sale.new_fans);
                 }
-                foreach (singles._single._sales sale in single.sales)
+            }
+
+            if (totalNewFans <= 0 || casualSales.Count == 0)
+                return;
+
+            long targetTotal = ScaleLong(totalNewFans, GetTrendingCoeff());
+            long bonus = Math.Max(0, targetTotal - totalNewFans);
+            if (bonus == 0)
+                return;
+
+            long assigned = 0;
+            for (int i = 0; i < casualSales.Count; i++)
+            {
+                long share;
+                if (i == casualSales.Count - 1)
                 {
-                    if (sale.fan.IsType(resources.fanType.casual))
-                    {
-                        sale.new_fans = (long)Math.Round(sale.new_fans * totalNewFans / casualNewFans * GetTrendingCoeff());
-                    }
+                    share = bonus - assigned;
                 }
+                else if (casualNewFans > 0)
+                {
+                    share = (long)Math.Round(bonus * Math.Max(0d, (double)casualSales[i].new_fans) / casualNewFans, MidpointRounding.AwayFromZero);
+                    share = Math.Min(share, bonus - assigned);
+                }
+                else
+                {
+                    share = (bonus - assigned) / (casualSales.Count - i);
+                }
+
+                casualSales[i].new_fans = SafeAdd(casualSales[i].new_fans, share);
+                assigned = SafeAdd(assigned, share);
             }
         }
     }
 
-    // Apply fans increase to shows
+    // Scope show fan additions so the viral bonus can be added without relying on compiler local numbers.
     [HarmonyPatch(typeof(Shows._show), "SetSales")]
     public class Shows__show_SetSales
     {
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        internal sealed class FanBucket
         {
-            List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            object newFansOperand = null;
-            object fanOperand = null;
-            for (int i = 0; i < instructionList.Count; i++)
-            {
-                if (instructionList[i].opcode == OpCodes.Ldloc_S && instructionList[i].operand is LocalVariableInfo localVariable && localVariable.LocalIndex == 12)
-                {
-                    index = i;
-                    newFansOperand = instructionList[i].operand;
-                }
-                if (instructionList[i].opcode == OpCodes.Ldloc_S && instructionList[i].operand is LocalVariableInfo localVariable2 && localVariable2.LocalIndex == 7)
-                {
-                    fanOperand = instructionList[i].operand;
-                }
-                if (instructionList[i].opcode == OpCodes.Call && (MethodInfo)instructionList[i].operand == AccessTools.Method(typeof(data_girls), "AddFans_Equally", new Type[] { typeof(long), typeof(resources._fan), typeof(List<data_girls.girls>) }))
-                {
-                    break;
-                }
-            }
-
-            if (index != -1)
-            {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldloc_S, fanOperand));
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Shows__show_SetSales), "Infix")));
-                instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Stloc_S, newFansOperand));
-                instructionList.Insert(index + 4, new CodeInstruction(OpCodes.Ldloc_S, newFansOperand));
-            }
-
-            return instructionList.AsEnumerable();
+            public resources._fan Fan;
+            public long BaseFans;
         }
 
-        public static int Infix(int fanCount, resources._fan fan)
+        internal sealed class Context
         {
-            if (IsTrending() == TrendingStatus.trending)
-            {
-                if (fan.IsType(resources.fanType.casual))
-                {
-                    fanCount = Mathf.RoundToInt(fanCount * GetTrendingCoeff());
-                }
-            }
-            return fanCount;
+            public Shows._show Show;
+            public long BaseNewFans;
+            public bool AddingTrendingBonus;
+            public readonly List<FanBucket> CasualBuckets = new List<FanBucket>();
+        }
+
+        private static readonly Stack<Context> contexts = new Stack<Context>();
+        internal static Context Current { get { return contexts.Count > 0 ? contexts.Peek() : null; } }
+
+        [HarmonyPriority(Priority.First)]
+        public static void Prefix(Shows._show __instance)
+        {
+            contexts.Push(new Context { Show = __instance });
+        }
+
+        public static Exception Finalizer(Exception __exception)
+        {
+            if (contexts.Count > 0) contexts.Pop();
+            return __exception;
         }
     }
 
-    // Apply fans increase to businesses
-    [HarmonyPatch(typeof(business._proposal), "set_newFans")]
-    public class business__proposal_set_newFans
+    [HarmonyPatch(typeof(data_girls), "AddFans_Equally", new Type[] { typeof(long), typeof(resources._fan), typeof(List<data_girls.girls>) })]
+    public class data_girls_AddFans_Equally_TrendingRecorder
     {
-        public static void Postfix(ref business._proposal __instance)
+        [HarmonyPriority(Priority.Last)]
+        public static void Prefix(long total_fans, resources._fan _Fan)
         {
-            if (IsTrending() == TrendingStatus.trending)
-            {
-                __instance._newFans = Mathf.RoundToInt(__instance._newFans * GetTrendingCoeff());
-            }
+            Shows__show_SetSales.Context context = Shows__show_SetSales.Current;
+            if (context == null || context.AddingTrendingBonus || total_fans <= 0)
+                return;
+
+            context.BaseNewFans = SafeAdd(context.BaseNewFans, total_fans);
+            if (_Fan != null && _Fan.IsType(resources.fanType.casual))
+                context.CasualBuckets.Add(new Shows__show_SetSales.FanBucket { Fan = _Fan, BaseFans = total_fans });
         }
     }
 
-
-    // Reduce fans_per_week to orig value for contracts
-    [HarmonyPatch(typeof(business), "AddActiveProposal")]
-    public class business_AddActiveProposal
+    [HarmonyPatch(typeof(Shows._show), "SetNewFans")]
+    public class Shows__show_SetNewFans_Trending
     {
-        public static void Postfix(ref business __instance)
+        [HarmonyPriority(Priority.Last)]
+        public static void Prefix(ref int val)
         {
-            if (IsTrending() == TrendingStatus.trending)
+            Shows__show_SetSales.Context context = Shows__show_SetSales.Current;
+            if (context == null || IsTrending() != TrendingStatus.trending || context.BaseNewFans <= 0)
+                return;
+
+            long target = ScaleLong(context.BaseNewFans, GetTrendingCoeff());
+            long bonus = Math.Max(0, target - context.BaseNewFans);
+            if (bonus == 0 || context.CasualBuckets.Count == 0)
             {
-                __instance.ActiveProposals[__instance.ActiveProposals.Count - 1].Fans_per_week = Mathf.RoundToInt(__instance.ActiveProposals[__instance.ActiveProposals.Count - 1].Fans_per_week / GetTrendingCoeff());
+                val = context.BaseNewFans > int.MaxValue ? int.MaxValue : (int)context.BaseNewFans;
+                return;
             }
-        }
-    }
 
-    // Apply fans increase to business contracts
-    [HarmonyPatch(typeof(business), "DoWeeklyFans")]
-    public class business_DoWeeklyFans
-    {
-        public static void Postfix(ref business __instance)
-        {
-            if (IsTrending() == TrendingStatus.trending)
+            List<data_girls.girls> cast = context.Show != null ? context.Show.GetCast() : null;
+            if (cast == null || cast.Count == 0)
             {
-                foreach (business.active_proposal active_proposal in __instance.ActiveProposals)
+                val = context.BaseNewFans > int.MaxValue ? int.MaxValue : (int)context.BaseNewFans;
+                return;
+            }
+
+            long casualBase = 0;
+            foreach (Shows__show_SetSales.FanBucket bucket in context.CasualBuckets)
+                casualBase = SafeAdd(casualBase, Math.Max(0, bucket.BaseFans));
+
+            long assigned = 0;
+            context.AddingTrendingBonus = true;
+            try
+            {
+                for (int i = 0; i < context.CasualBuckets.Count; i++)
                 {
-                    if (active_proposal.Fans_per_week > 0)
+                    Shows__show_SetSales.FanBucket bucket = context.CasualBuckets[i];
+                    long share;
+                    if (i == context.CasualBuckets.Count - 1)
+                        share = bonus - assigned;
+                    else if (casualBase > 0)
                     {
-                        active_proposal.Girl.AddFans(Mathf.RoundToInt(active_proposal.Fans_per_week * (GetTrendingCoeff() - 1)), null);
+                        share = (long)Math.Round(bonus * (double)Math.Max(0, bucket.BaseFans) / casualBase, MidpointRounding.AwayFromZero);
+                        share = Math.Min(share, bonus - assigned);
+                    }
+                    else
+                        share = (bonus - assigned) / (context.CasualBuckets.Count - i);
+
+                    if (share > 0 && bucket.Fan != null)
+                    {
+                        data_girls.AddFans_Equally(share, bucket.Fan, cast);
+                        assigned = SafeAdd(assigned, share);
                     }
                 }
             }
+            finally
+            {
+                context.AddingTrendingBonus = false;
+            }
+
+            long displayed = SafeAdd(context.BaseNewFans, assigned);
+            if (displayed > int.MaxValue) val = int.MaxValue;
+            else if (displayed < int.MinValue) val = int.MinValue;
+            else val = (int)displayed;
         }
     }
 
-    // Apply fans increase to business contracts
-    [HarmonyPatch(typeof(Contracts_Line), "Set")]
-    public class Contracts_Line_Set
+    [HarmonyPatch(typeof(business._proposal), "set_newFans")]
+    public class business__proposal_set_newFans
     {
-        public static void Postfix(ref Contracts_Line __instance, business.active_proposal ___ActiveProposal)
+        public static void Postfix(business._proposal __instance)
         {
-            if (IsTrending() == TrendingStatus.trending)
+            if (IsTrending() == TrendingStatus.trending && __instance != null && __instance._newFans > 0)
+                __instance._newFans = ScaleInt(__instance._newFans, GetTrendingCoeff());
+        }
+    }
+
+    [HarmonyPatch(typeof(business), "AddActiveProposal")]
+    public class business_AddActiveProposal
+    {
+        public static void Postfix(business __instance)
+        {
+            if (IsTrending() != TrendingStatus.trending || __instance == null || __instance.ActiveProposals == null || __instance.ActiveProposals.Count == 0)
+                return;
+
+            business.active_proposal proposal = __instance.ActiveProposals[__instance.ActiveProposals.Count - 1];
+            float coeff = GetTrendingCoeff();
+            if (proposal != null && proposal.Fans_per_week > 0 && coeff > 0f)
+                proposal.Fans_per_week = Mathf.RoundToInt(proposal.Fans_per_week / coeff);
+        }
+    }
+
+    [HarmonyPatch(typeof(business), "DoWeeklyFans")]
+    public class business_DoWeeklyFans
+    {
+        public static void Postfix(business __instance)
+        {
+            if (IsTrending() != TrendingStatus.trending || __instance == null || __instance.ActiveProposals == null)
+                return;
+
+            float extraCoeff = GetTrendingCoeff() - 1f;
+            foreach (business.active_proposal proposal in __instance.ActiveProposals)
             {
-                ExtensionMethods.SetText(
-                    __instance.NewFans,
-                    ExtensionMethods.formatNumber(
-                        Mathf.RoundToInt(___ActiveProposal.Fans_per_week * GetTrendingCoeff()),
-                        false, 
-                        false
-                        )
-                    );
+                if (proposal != null && proposal.Girl != null && proposal.Fans_per_week > 0)
+                    proposal.Girl.AddFans(ScaleLong(proposal.Fans_per_week, extraCoeff), null);
             }
         }
     }
 
-    // Apply fans increase to tour
+    [HarmonyPatch(typeof(Contracts_Line), "Set")]
+    public class Contracts_Line_Set
+    {
+        public static void Postfix(Contracts_Line __instance, business.active_proposal ___ActiveProposal)
+        {
+            if (IsTrending() != TrendingStatus.trending || __instance == null || __instance.NewFans == null || ___ActiveProposal == null)
+                return;
+
+            ExtensionMethods.SetText(__instance.NewFans,
+                ExtensionMethods.formatNumber(ScaleLong(___ActiveProposal.Fans_per_week, GetTrendingCoeff()), false, false));
+        }
+    }
+
     [HarmonyPatch(typeof(SEvent_Tour.tour), "GetNewFansByAttendance")]
     public class SEvent_Tour_tour_GetNewFansByAttendance
     {
         public static void Postfix(ref int __result)
         {
-            if (IsTrending() == TrendingStatus.trending)
-            {
-                __result = Mathf.RoundToInt(__result * GetTrendingCoeff());
-            }
+            if (IsTrending() == TrendingStatus.trending && __result > 0)
+                __result = ScaleInt(__result, GetTrendingCoeff());
         }
     }
 }

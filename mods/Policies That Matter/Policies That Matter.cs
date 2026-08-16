@@ -45,6 +45,43 @@ namespace PoliciesThatMatter
         public const string DATING_NOTIF_LABEL = "POLICYMOD__IDOL__DATING";
     }
 
+
+    /// <summary>
+    /// Removes duplicate policy definitions after the game has loaded all policy JSON files.
+    ///
+    /// Policies That Matter replaces the vanilla policies.json through ignore.json, but the
+    /// vanilla loader simply appends every policies.json it can see and does not de-duplicate
+    /// entries. If the vanilla file is still exposed (or the same mod path is exposed twice),
+    /// every policy choice is added a second time. Keep the last definition for each
+    /// (Type, Value) pair so the mod/load-order winner remains authoritative.
+    /// </summary>
+    [HarmonyPatch(typeof(policies), nameof(policies.Load))]
+    public class policies_Load_RemoveDuplicateValues
+    {
+        public static void Postfix()
+        {
+            if (policies.Values == null || policies.Values.Count < 2)
+                return;
+
+            HashSet<long> seen = new();
+
+            // Walk backwards so duplicate definitions loaded later win, matching the
+            // game's normal mod-file ordering semantics.
+            for (int i = policies.Values.Count - 1; i >= 0; i--)
+            {
+                policies.value policy = policies.Values[i];
+                if (policy == null)
+                    continue;
+
+                long key = ((long)(int)policy.Type << 32) | (uint)(int)policy.Value;
+                if (!seen.Add(key))
+                {
+                    policies.Values.RemoveAt(i);
+                }
+            }
+        }
+    }
+
     // Performance: Energetic: 1.5x increase in performance profit
     [HarmonyPatch(typeof(Activities), "GetPerformanceMoneyPerLevel")]
     public class Activities_GetPerformanceMoneyPerLevel

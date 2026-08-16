@@ -13,39 +13,26 @@ using static ModMenus.ModMenusUtils;
 namespace ModMenus
 {
     /// <summary>
-    /// Ensures the mod menu popup is available when the game starts.
+    /// Lazily installs ModMenus only when the player opens the in-game Settings tab.
+    /// This intentionally does no work on the main menu or while a game is loading.
     /// </summary>
-    [HarmonyPatch(typeof(PopupManager), "Start")]
-    public class PopupManager_Start
+    [HarmonyPatch(typeof(Tabs_Manager), nameof(Tabs_Manager.OpenTab))]
+    public class Tabs_Manager_OpenTab
     {
-        /// <summary>
-        /// Postfix method that generates the mod menu popup.
-        /// </summary>
-        public static void Postfix()
+        public static void Postfix(Tabs_Manager._tab._type __0)
         {
-            GenerateMenuPopup();
-        }
-    }
-
-    /// <summary>
-    /// Integrates the mod menu access point into the game's existing UI.
-    /// </summary>
-    [HarmonyPatch(typeof(Tabs_Manager), "Awake")]
-    public class Tabs_Manager_Awake
-    {
-        /// <summary>
-        /// Postfix method that adds a mod menu button to the settings panel.
-        /// </summary>
-        public static void Postfix()
-        {
-            Transform settingsPanelTransform = Camera.main.GetComponent<mainScript>().Data.GetComponent<Tabs_Manager>().GetTab(Tabs_Manager._tab._type.settings).Tab.transform.Find("ScrollRect").Find("Container");
-            GameObject mainMenuButton = settingsPanelTransform.Find("Main Menu").gameObject;
-            GameObject modMenuButton = CloneButton(mainMenuButton, settingsPanelTransform, BUTTON_OBJ_NAME, BUTTON_LABEL, false, false);
-            modMenuButton.transform.SetSiblingIndex(settingsPanelTransform.childCount - 2);
-            modMenuButton.GetComponent<Button>().onClick.AddListener(() =>
+            if (__0 != Tabs_Manager._tab._type.settings || !ModMenusUtils.IsGameplayReady())
             {
-                PopupManager.OpenPopup((PopupManager._type)999);
-            });
+                return;
+            }
+
+            // The Settings hierarchy is active by the time this postfix runs, so install
+            // the button once without any background retry loop. The heavier mod-menu
+            // popup is generated only if the player actually clicks Mod Settings.
+            if (!ModMenusUtils.TryInstallSettingsButton())
+            {
+                Debug.LogWarning("[ModMenus] Could not install the Mod Settings button in the active in-game Settings tab.");
+            }
         }
     }
 
@@ -81,6 +68,7 @@ namespace ModMenus
 
 
         public const string BUTTON_OBJ_NAME = "ModMenuButton";
+        public const string SETTINGS_BUTTON_OBJ_NAME = "Settings";
         public const string POPUP_OBJ_NAME = "ModMenu";
         public const string APPLYBUTTON_OBJ_NAME = "ModMenuApply";
         public const string CANCELBUTTON_OBJ_NAME = "ModMenuCancel";
@@ -93,6 +81,316 @@ namespace ModMenus
         public const string SCROLLBAR_OBJ_NAME = "VerticalScrollBar";
         public const string SCROLLRECT_OBJ_NAME = "ScrollContainer";
         public const string VIEWPORT_OBJ_NAME = "Viewport";
+
+        /// <summary>
+        /// Returns true only after a gameplay scene is active and its game-only data exists.
+        /// The title screen intentionally fails this check.
+        /// </summary>
+        public static bool IsGameplayReady()
+        {
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                return false;
+            }
+
+            mainScript main = camera.GetComponent<mainScript>();
+            if (main == null || main.Data == null || !main.IsGameScene)
+            {
+                return false;
+            }
+
+            // mainScript.IsMainMenu() uses this same component as the distinction between
+            // the title screen and a loaded game. Checking it directly avoids calling the
+            // static helper while scene objects are still being constructed.
+            return main.Data.GetComponent<SpecialEvents_Manager>() != null;
+        }
+
+        /// <summary>
+        /// Installs or repairs the Mod Settings button on the active in-game settings tab.
+        /// </summary>
+        public static bool TryInstallSettingsButton()
+        {
+            if (!IsGameplayReady())
+            {
+                return false;
+            }
+
+            mainScript main = Camera.main.GetComponent<mainScript>();
+
+            Tabs_Manager tabsManager = main.Data.GetComponent<Tabs_Manager>();
+            if (tabsManager == null)
+            {
+                return false;
+            }
+
+            Tabs_Manager._tab settingsTab = tabsManager.GetTab(Tabs_Manager._tab._type.settings);
+            if (settingsTab == null || settingsTab.Tab == null || !settingsTab.Tab.activeInHierarchy)
+            {
+                return false;
+            }
+
+            Transform settingsContainer = FindSettingsContainer(settingsTab.Tab.transform);
+            if (settingsContainer == null)
+            {
+                return false;
+            }
+
+            // Mod Settings has one ordering anchor only: the vanilla Settings button.
+            // Do not derive its location from childCount and do not anchor it to
+            // Save & Quit/Main Menu, so later mods remain free to occupy that region.
+            Transform settingsButton = FindSettingsButton(settingsContainer);
+            if (settingsButton == null || settingsButton.parent == null)
+            {
+                return false;
+            }
+
+            settingsContainer = settingsButton.parent;
+
+            Transform existingButton = FindNamedChild(settingsTab.Tab.transform, BUTTON_OBJ_NAME);
+            if (existingButton != null)
+            {
+                ConfigureModMenuButton(existingButton.gameObject);
+                PositionModMenuButton(existingButton, settingsButton);
+                return true;
+            }
+
+            // Clone the exact vanilla Settings button that also serves as our anchor.
+            GameObject modMenuButton = CloneButton(
+                settingsButton.gameObject,
+                settingsContainer,
+                BUTTON_OBJ_NAME,
+                BUTTON_LABEL,
+                false,
+                false);
+
+            if (modMenuButton == null)
+            {
+                return false;
+            }
+
+            ConfigureModMenuButton(modMenuButton);
+            PositionModMenuButton(modMenuButton.transform, settingsButton);
+            return true;
+        }
+
+        /// <summary>
+        /// Finds the settings list container using strict path first, then robust fallback.
+        /// </summary>
+        private static Transform FindSettingsContainer(Transform settingsRoot)
+        {
+            if (settingsRoot == null)
+            {
+                return null;
+            }
+
+            Transform container = settingsRoot.Find("ScrollRect/Container");
+            if (container != null)
+            {
+                return container;
+            }
+
+            Transform[] descendants = settingsRoot.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < descendants.Length; i++)
+            {
+                Transform candidate = descendants[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (!string.Equals(candidate.name, "Container", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (candidate.GetComponent<VerticalLayoutGroup>() != null || candidate.GetComponent<GridLayoutGroup>() != null)
+                {
+                    return candidate;
+                }
+            }
+
+            Button[] buttons = settingsRoot.GetComponentsInChildren<Button>(true);
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                Button candidate = buttons[i];
+                if (candidate == null || candidate.gameObject == null || candidate.transform.parent == null)
+                {
+                    continue;
+                }
+
+                if (candidate.GetComponentInChildren<TextMeshProUGUI>(true) == null)
+                {
+                    continue;
+                }
+
+                Transform parent = candidate.transform.parent;
+                if (parent.GetComponent<LayoutGroup>() != null)
+                {
+                    return parent;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Finds a named descendant in a hierarchy using depth-first traversal.
+        /// </summary>
+        private static Transform FindNamedChild(Transform root, string childName)
+        {
+            if (root == null || string.IsNullOrEmpty(childName))
+            {
+                return null;
+            }
+
+            Transform[] descendants = root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < descendants.Length; i++)
+            {
+                Transform candidate = descendants[i];
+                if (candidate != null && string.Equals(candidate.name, childName, StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Finds the vanilla Settings button by its stable GameObject name.
+        /// This intentionally does not use Save & Quit/Main Menu or any modded button
+        /// as a fallback ordering anchor.
+        /// </summary>
+        private static Transform FindSettingsButton(Transform settingsContainer)
+        {
+            if (settingsContainer == null)
+            {
+                return null;
+            }
+
+            Transform direct = settingsContainer.Find(SETTINGS_BUTTON_OBJ_NAME);
+            if (direct != null && direct.GetComponent<Button>() != null)
+            {
+                return direct;
+            }
+
+            Button[] buttons = settingsContainer.GetComponentsInChildren<Button>(true);
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                Button candidate = buttons[i];
+                if (candidate == null || candidate.gameObject == null)
+                {
+                    continue;
+                }
+
+                if (string.Equals(candidate.gameObject.name, SETTINGS_BUTTON_OBJ_NAME, StringComparison.Ordinal))
+                {
+                    return candidate.transform;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Repairs Mod Settings so it is immediately after the vanilla Settings button.
+        /// Called both when creating the button and on every Settings-tab activation
+        /// when an existing ModMenuButton is found.
+        /// </summary>
+        private static void PositionModMenuButton(Transform modMenuButton, Transform settingsButton)
+        {
+            if (modMenuButton == null || settingsButton == null || settingsButton.parent == null)
+            {
+                return;
+            }
+
+            Transform parent = settingsButton.parent;
+            if (modMenuButton.parent != parent)
+            {
+                modMenuButton.SetParent(parent, false);
+            }
+
+            MoveImmediatelyAfter(modMenuButton, settingsButton);
+
+            RectTransform settingsRect = parent as RectTransform;
+            if (settingsRect != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(settingsRect);
+            }
+
+            Canvas.ForceUpdateCanvases();
+        }
+
+        private static void MoveImmediatelyAfter(Transform item, Transform anchor)
+        {
+            if (item == null || anchor == null || item == anchor || anchor.parent == null)
+            {
+                return;
+            }
+
+            Transform parent = anchor.parent;
+            if (item.parent != parent)
+            {
+                item.SetParent(parent, false);
+            }
+
+            int itemIndex = item.GetSiblingIndex();
+            int targetIndex = anchor.GetSiblingIndex() + 1;
+
+            // Removing an item that started before the anchor shifts the anchor left.
+            if (itemIndex < targetIndex)
+            {
+                targetIndex--;
+            }
+
+            item.SetSiblingIndex(Mathf.Clamp(targetIndex, 0, parent.childCount - 1));
+        }
+
+        /// <summary>
+        /// Configures localized text and click action for the Mod Settings button.
+        /// </summary>
+        private static void ConfigureModMenuButton(GameObject modMenuButton)
+        {
+            if (modMenuButton == null)
+            {
+                return;
+            }
+
+            Transform textTransform = modMenuButton.transform.Find("Text");
+            if (textTransform != null)
+            {
+                Lang_Button languageBinding = textTransform.GetComponent<Lang_Button>();
+                if (languageBinding != null)
+                {
+                    languageBinding.Constant = BUTTON_LABEL;
+                }
+
+                TextMeshProUGUI label = textTransform.GetComponent<TextMeshProUGUI>();
+                if (label != null)
+                {
+                    label.text = Language.Data.TryGetValue(BUTTON_LABEL, out string localized) ? localized : BUTTON_LABEL;
+                }
+            }
+
+            Button button = modMenuButton.GetComponent<Button>();
+            if (button == null)
+            {
+                return;
+            }
+
+            button.onClick = new Button.ButtonClickedEvent();
+            button.onClick.AddListener(() =>
+            {
+                if (!IsGameplayReady())
+                {
+                    return;
+                }
+
+                GenerateMenuPopup();
+                PopupManager.OpenPopup((PopupManager._type)999);
+            });
+        }
 
         /// <summary>
         /// Generates the main mod menu popup.
@@ -211,7 +509,7 @@ namespace ModMenus
                                 minValue = item[JSON_FIELD_MIN].AsFloat;
                                 maxValue = item[JSON_FIELD_MAX].AsFloat;
                             }
-                            float defaultFloat = maxValue + minValue / 2;
+                            float defaultFloat = (maxValue + minValue) / 2f;
                             if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
                             {
                                 defaultFloat = item[JSON_FIELD_DEF].AsFloat;

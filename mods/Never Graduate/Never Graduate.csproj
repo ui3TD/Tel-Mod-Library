@@ -3,9 +3,9 @@
 		<!--Define the mod's info.json-->
 		<ModName>Never Graduate</ModName>
 		<HarmonyID>com.tel.nevergraduate</HarmonyID>
-		<ModDescription>This makes the game never check for graduations, unless the girl is fired.</ModDescription>
+		<ModDescription>Prevents graduation-date checks and graduation announcements while enabled. Graduation-date changes from other mods are ignored; firing remains available.</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.0.0</Version>
+		<Version>1.2.0</Version>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

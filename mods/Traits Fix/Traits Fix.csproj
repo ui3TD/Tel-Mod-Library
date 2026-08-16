@@ -5,7 +5,7 @@
 		<HarmonyID>com.tel.traitsfix</HarmonyID>
 		<ModDescription>This mod adds implementations for all traits that don't work in the original game.</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.1.0</Version>
+		<Version>1.1.1</Version>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

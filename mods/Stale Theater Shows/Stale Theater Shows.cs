@@ -109,9 +109,17 @@ namespace StaleTheater
                 }
             }
 
-            if (index != -1)
+            if (index != -1 && index + 1 < instructionList.Count)
             {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldarg_0));
+                // The instruction after the early return is the branch target for the normal
+                // ticket-price path. Move its labels to our first injected instruction so
+                // branches execute the replacement attendance multiplier instead of skipping it.
+                CodeInstruction originalTarget = instructionList[index + 1];
+                CodeInstruction loadThis = new(OpCodes.Ldarg_0);
+                loadThis.labels.AddRange(originalTarget.labels);
+                originalTarget.labels.Clear();
+
+                instructionList.Insert(index + 1, loadThis);
                 instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Theaters__theater_GetNumberOfVisitors), "Infix")));
                 instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Stloc_0));
             }

@@ -69,7 +69,7 @@ namespace ExtendedSSK
     [HarmonyPatch("RecalcFameBonus")]
     public static class SSK_RecalcFameBonusPatch
     {
-        static Func<int> GetFameBaseValDelegate;
+        static readonly MethodInfo GetFameBaseValInfo = AccessTools.Method(typeof(SEvent_SSK._SSK), "GetFameBaseVal");
 
         /// <summary>
         /// Postfix method to recalculate fame bonuses after the original method execution.
@@ -90,13 +90,8 @@ namespace ExtendedSSK
                 int limit = int.Parse(variables.Get(varID) ?? defaultRankingsStr);
                 List<int> list = __instance.FameBonus;
 
-                if(GetFameBaseValDelegate == null)
-                {
-                    MethodInfo GetFameBaseValInfo = AccessTools.Method(typeof(SEvent_SSK._SSK), "GetFameBaseVal");
-                    GetFameBaseValDelegate = AccessTools.MethodDelegate<Func<int>>(GetFameBaseValInfo, __instance);
-                }
-
-                int num = Mathf.RoundToInt(GetFameBaseValDelegate() * 0.056f);
+                int fameBaseVal = (int)GetFameBaseValInfo.Invoke(__instance, null);
+                int num = Mathf.RoundToInt(fameBaseVal * 0.056f);
                 for (int i = 10; i < Math.Min(girlCount, limit); i++)
                 {
                     list.Add(num);

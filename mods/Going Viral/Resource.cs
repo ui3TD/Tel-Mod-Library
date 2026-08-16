@@ -1,62 +1,110 @@
 ﻿using HarmonyLib;
-using UnityEngine;
 using System;
-using System.Collections.Generic;
-using System.Reflection.Emit;
-using System.Reflection;
-using System.Linq;
+using UnityEngine;
 
 namespace GoingViral
 {
-
-    // Trending stat and fan counts
-    // Apply trending to churn
     [HarmonyPatch(typeof(resources), "OnNewDay")]
     public class resources_OnNewDay
     {
         [HarmonyAfter("com.tel.fanattrition")]
         public static void Postfix()
         {
-            if(TrendingManager.trending > 0)
+            if (TrendingManager.trending < 0)
             {
-                TrendingManager.trending = Math.Min(90, Math.Max(0, TrendingManager.trending - 1));
+                // Apply today's crisis before consuming a day, including the final day.
+                resources.FansChange = TrendingManager.ScaleLong(resources.FansChange, TrendingManager.GetTrendingCoeff());
+                TrendingManager.trending = Math.Min(0, TrendingManager.trending + 1);
             }
-            else if(TrendingManager.trending < 0)
+            else if (TrendingManager.trending > 0)
             {
-                TrendingManager.trending = Math.Max(-90, Math.Min(0, TrendingManager.trending + 1));
-                resources.FansChange = (long)Mathf.Round(resources.FansChange * TrendingManager.GetTrendingCoeff());
+                TrendingManager.trending = Math.Max(0, TrendingManager.trending - 1);
             }
-            Debug.Log("Trending: " + TrendingManager.trending);
 
             TrendingManager.UpdateFanCount();
         }
     }
 
-    // Save trending resource
     [HarmonyPatch(typeof(resources), "SaveFunction")]
     public class resources_SaveFunction
     {
+        private const long SAVE_MARKER = 1000000L;
+        private const long SAVE_OFFSET = 100L;
+
         public static void Postfix()
         {
-            Camera.main.GetComponent<mainScript>().GetSavedData().resources__Resources.Add(new resources.ResourceData{Type = resources.type.buzz, Val = TrendingManager.trending + 10000 });
+            if (Camera.main == null)
+                return;
+            mainScript main = Camera.main.GetComponent<mainScript>();
+            if (main == null || main.GetSavedData() == null || main.GetSavedData().resources__Resources == null)
+                return;
+
+            main.GetSavedData().resources__Resources.Add(new resources.ResourceData
+            {
+                Type = resources.type.buzz,
+                Val = SAVE_MARKER + SAVE_OFFSET + TrendingManager.trending
+            });
         }
     }
 
-    // Set trending resource
     [HarmonyPatch(typeof(resources), "Set")]
     public class resources_Set
     {
+        private const long SAVE_MARKER = 1000000L;
+        private const long SAVE_OFFSET = 100L;
+
         public static bool Prefix(resources.type _type, long val)
         {
-            if(_type == resources.type.buzz)
+            // Tagged Buzz values are private save records. Never reinterpret a runtime Buzz Set.
+            if (!resources_LoadFunction.Loading || _type != resources.type.buzz)
+                return true;
+
+            // New marker. Consume it instead of allowing vanilla Set() to overwrite real Buzz.
+            if (val >= SAVE_MARKER && val <= SAVE_MARKER + 200L)
             {
-                if(val >= 10000)
-                {
-                    TrendingManager.trending = val - 10000;
-                }
+                long loaded = Math.Max(TrendingManager.MIN_TREND_DAYS,
+                    Math.Min(TrendingManager.MAX_TREND_DAYS, val - SAVE_MARKER - SAVE_OFFSET));
+                TrendingManager.trending = loaded < 0 && !Harmony.HasAnyPatches("com.tel.fanattrition") ? 0 : loaded;
+                return false;
             }
+
+            // Backward compatibility with the old 10000 + trending marker, including negative trends.
+            // Legitimate game Buzz is capped far below this range.
+            if (val >= 9900L && val <= 10100L)
+            {
+                long loaded = Math.Max(TrendingManager.MIN_TREND_DAYS,
+                    Math.Min(TrendingManager.MAX_TREND_DAYS, val - 10000L));
+                TrendingManager.trending = loaded < 0 && !Harmony.HasAnyPatches("com.tel.fanattrition") ? 0 : loaded;
+                return false;
+            }
+
             return true;
         }
     }
 
+    [HarmonyPatch(typeof(resources), "LoadFunction")]
+    public class resources_LoadFunction
+    {
+        private static int loadDepth;
+        internal static bool Loading { get { return loadDepth > 0; } }
+
+        [HarmonyPriority(Priority.First)]
+        public static void Prefix()
+        {
+            loadDepth++;
+            // Prevent a save without a marker from inheriting static trend state from a prior loaded game.
+            TrendingManager.trending = 0;
+        }
+
+        public static void Postfix()
+        {
+            TrendingManager.UpdateFanCount();
+        }
+
+        public static Exception Finalizer(Exception __exception)
+        {
+            if (loadDepth > 0) loadDepth--;
+            return __exception;
+        }
+    }
 }

@@ -16,21 +16,6 @@
 		"defaultValue": 23
 	},
 	{
-		"type": "dropdown",
-		"varID": "AuditionAgeLimit_TogglePopup",
-		"labelID": "AUDITIONAGELIMIT__MODMENU__TOGGLE",
-		"defaultValue": 1,
-		"itemIDList": ["No", "Yes"],
-		"ignore": true
-	},
-	{
-		"type": "checkbox",
-		"varID": "AuditionAgeLimit_TogglePopup",
-		"labelID": "AUDITIONAGELIMIT__MODMENU__TOGGLE",
-		"defaultValue": false,
-		"ignore": true
-	},
-	{
 		"type": "slider",
 		"varID": "CustomAudition_Prio_cute",
 		"labelID": "CUSTOMAUDITION__MODMENU__CUTE",

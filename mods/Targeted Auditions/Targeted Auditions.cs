@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Reflection.Emit;
@@ -40,7 +40,14 @@ namespace CustomAuditions
         /// <param name="__instance">The instance of Popup_Audition being patched.</param>
         public static void Postfix(Popup_Audition __instance)
         {
-            if (__instance.Cards_Container.transform.parent.GetComponent<ScrollRect>() != null)
+            if (__instance == null || __instance.Cards_Container == null)
+                return;
+
+            Transform currentParent = __instance.Cards_Container.transform.parent;
+            if (currentParent == null)
+                return;
+
+            if (currentParent.GetComponent<ScrollRect>() != null)
                 return;
 
             // Create ScrollRect container and attach to panel
@@ -51,6 +58,7 @@ namespace CustomAuditions
             // Configure the ScrollRect
             ScrollRect scrollRect = scrollContainer.GetComponent<ScrollRect>();
             scrollRect.content = __instance.Cards_Container.GetComponent<RectTransform>(); // attach content
+            scrollRect.viewport = scrollRectTransform;
             scrollRect.vertical = false;
             scrollRect.horizontal = true;
             scrollRect.movementType = ScrollRect.MovementType.Elastic;
@@ -59,10 +67,205 @@ namespace CustomAuditions
             scrollRect.scrollSensitivity = 20;
 
             // Configure hierarchy
-            scrollContainer.transform.SetParent(__instance.Cards_Container.transform.parent, false);
+            scrollContainer.transform.SetParent(currentParent, false);
             __instance.Cards_Container.transform.SetParent(scrollContainer.transform, false);
 
-            __instance.Cards_Container.AddComponent<ContentSizeFitter>().horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            // Reuse existing fitter if one exists to avoid duplicate component warnings.
+            ContentSizeFitter fitter = __instance.Cards_Container.GetComponent<ContentSizeFitter>();
+            if (fitter == null)
+            {
+                fitter = __instance.Cards_Container.AddComponent<ContentSizeFitter>();
+            }
+            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+    }
+
+    /// <summary>
+    /// Tracks audition popup loading from the moment Set begins.
+    /// Starting before the original Set keeps the watchdog state aligned with
+    /// Assistant Manager's delayed per-manager audition handoff.
+    /// </summary>
+    [HarmonyPatch(typeof(Popup_Audition), "Set", new Type[] { typeof(Auditions.data), typeof(bool) })]
+    public class Popup_Audition_Set
+    {
+        public static void Prefix(Popup_Audition __instance)
+        {
+            if (__instance == null)
+            {
+                return;
+            }
+
+            auditionLoadStartedAt[__instance.GetInstanceID()] = Time.unscaledTime;
+        }
+
+        public static Exception Finalizer(Popup_Audition __instance, Exception __exception)
+        {
+            if (__exception == null)
+            {
+                return null;
+            }
+
+            if (__instance != null)
+            {
+                auditionLoadStartedAt.Remove(__instance.GetInstanceID());
+            }
+
+            Debug.LogError(
+                "[Targeted Auditions] Popup_Audition.Set failed:\n" +
+                __exception);
+
+            // Preserve the original exception.
+            return __exception;
+        }
+    }
+
+    /// <summary>
+    /// Clears load watchdog state when audition popup is reset.
+    /// </summary>
+    [HarmonyPatch(typeof(Popup_Audition), "Reset")]
+    public class Popup_Audition_Reset
+    {
+        /// <summary>
+        /// Postfix method that removes stale watchdog entries.
+        /// </summary>
+        /// <param name="__instance">Popup instance.</param>
+        public static void Postfix(Popup_Audition __instance)
+        {
+            if (__instance == null)
+            {
+                return;
+            }
+
+            auditionLoadStartedAt.Remove(__instance.GetInstanceID());
+        }
+    }
+
+    /// <summary>
+    /// Clears load watchdog state when audition popup is closed.
+    /// </summary>
+    [HarmonyPatch(typeof(Popup_Audition), "Close")]
+    public class Popup_Audition_Close
+    {
+        /// <summary>
+        /// Prefix method that removes stale watchdog entries before close logic runs.
+        /// </summary>
+        /// <param name="__instance">Popup instance.</param>
+        public static void Prefix(Popup_Audition __instance)
+        {
+            if (__instance == null)
+            {
+                return;
+            }
+
+            auditionLoadStartedAt.Remove(__instance.GetInstanceID());
+        }
+    }
+
+    /// <summary>
+    /// Prevents recruitment popup deadlocks when one portrait never resolves.
+    /// </summary>
+    [HarmonyPatch(typeof(Popup_Audition), "PortraitsLoaded")]
+    public class Popup_Audition_PortraitsLoaded
+    {
+        /// <summary>
+        /// Postfix method that applies a timeout fallback for stuck portrait loading.
+        /// </summary>
+        /// <param name="__instance">Popup instance.</param>
+        /// <param name="__result">Original readiness result.</param>
+        public static void Postfix(Popup_Audition __instance, ref bool __result)
+        {
+            if (__result || __instance == null || __instance.Cards_Container == null)
+            {
+                return;
+            }
+
+            int popupId = __instance.GetInstanceID();
+            if (!auditionLoadStartedAt.TryGetValue(popupId, out float startedAt))
+            {
+                return;
+            }
+
+            float elapsed = Time.unscaledTime - startedAt;
+            if (elapsed < PORTRAIT_LOAD_TIMEOUT_SECONDS)
+            {
+                return;
+            }
+
+            // The vanilla coroutine waits indefinitely for all portraits. With large candidate counts this can
+            // deadlock the popup (blur shown, cards never become interactive). After timeout, continue anyway.
+            EnsurePopupIsVisible(__instance);
+            Sprite fallbackSprite = FindFallbackPortraitSprite(__instance);
+            bool missingPortraits = FillMissingPortraits(__instance, fallbackSprite);
+            if (missingPortraits)
+            {
+                Debug.Log("[Targeted Auditions] Portrait load timed out. Continuing with fallback portraits.");
+            }
+
+            __result = true;
+        }
+
+        private static void EnsurePopupIsVisible(Popup_Audition popup)
+        {
+            CanvasGroup cg = popup.GetComponent<CanvasGroup>();
+            if (cg != null)
+            {
+                cg.alpha = 1f;
+                cg.blocksRaycasts = true;
+                cg.interactable = true;
+            }
+
+            RectTransform rt = popup.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                rt.localScale = Vector3.one;
+            }
+        }
+
+        private static Sprite FindFallbackPortraitSprite(Popup_Audition popup)
+        {
+            foreach (Transform child in popup.Cards_Container.transform)
+            {
+                Audition_Closed_Card closedCard = child.GetComponent<Audition_Closed_Card>();
+                if (closedCard == null || closedCard.Portrait == null)
+                {
+                    continue;
+                }
+
+                Image image = closedCard.Portrait.GetComponent<Image>();
+                if (image != null && image.sprite != null)
+                {
+                    return image.sprite;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool FillMissingPortraits(Popup_Audition popup, Sprite fallback)
+        {
+            bool hadMissing = false;
+            foreach (Transform child in popup.Cards_Container.transform)
+            {
+                Audition_Closed_Card closedCard = child.GetComponent<Audition_Closed_Card>();
+                if (closedCard == null || closedCard.Portrait == null)
+                {
+                    continue;
+                }
+
+                Image image = closedCard.Portrait.GetComponent<Image>();
+                if (image == null || image.sprite != null)
+                {
+                    continue;
+                }
+
+                hadMissing = true;
+                if (fallback != null)
+                {
+                    image.sprite = fallback;
+                }
+            }
+
+            return hadMissing;
         }
     }
 
@@ -76,27 +279,10 @@ namespace CustomAuditions
         /// Prefix method to set audition parameters before generating girls.
         /// </summary>
         /// <param name="__instance">The instance of Auditions being patched.</param>
-        public static void Prefix(Auditions __instance)
+        public static void Prefix(Auditions __instance, out bool __state)
         {
-            // Set audition age limits (only if popup is not used)
-            bool toggle = int.Parse(variables.Get(VARID_AGELIMIT_POPUP_TOGGLE) ?? DEF_AGELIMIT_POPUP_TOGGLE) == 1;
-            if (!toggle)
-            {
-                minAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MINAGE_STR);
-                maxAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MAXAGE_STR);
-                if (maxAge < minAge)
-                {
-                    // swap values
-                    maxAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MAXAGE_STR);
-                    minAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MINAGE_STR);
-
-                    // correct default variables
-                    defaultMaxAge = maxAge;
-                    defaultMinAge = minAge;
-                    variables.Set(VARID_MAXAGE, maxAge.ToString());
-                    variables.Set(VARID_MINAGE, minAge.ToString());
-                }
-            }
+            __state = false;
+            LoadConfiguredAgeRange();
 
             // Set sexual orientation
             float varLesbian = float.Parse(variables.Get(VARID_LESCHANCE) ?? DEF_CHANCE_LES_STR);
@@ -123,7 +309,25 @@ namespace CustomAuditions
             // Set girl count
             __instance.NumberOfGirls = int.Parse(variables.Get(VARID_COUNT) ?? DEF_COUNT);
 
+            BeginAuditionGeneration();
+            __state = true;
+        }
 
+        public static Exception Finalizer(Exception __exception, bool __state)
+        {
+            if (__state)
+            {
+                EndAuditionGeneration();
+            }
+            if (__exception != null)
+            {
+                Debug.LogError(
+                    "[Targeted Auditions] Auditions.GenerateGirls failed:\n" +
+                    __exception);
+            }
+
+            // Preserve the original exception.
+            return __exception;
         }
     }
 
@@ -134,15 +338,31 @@ namespace CustomAuditions
     public class data_girls_GenerateGirl
     {
         /// <summary>
-        /// Postfix method to set the sexuality of a generated girl.
+        /// Before an audition candidate is generated, allow body IDs to repeat only after
+        /// every currently eligible body ID has been used once in this audition.
+        /// </summary>
+        public static void Prefix(bool genTextures, data_girls_textures._textureAsset BodyAsset)
+        {
+            if (!IsGeneratingAudition || !genTextures || BodyAsset != null)
+            {
+                return;
+            }
+
+            if (!HasUnusedEligibleBody())
+            {
+                Auditions.UsedBodyIDs.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Postfix method to set the sexuality of a generated audition candidate.
         /// </summary>
         /// <param name="__result">The generated girl data.</param>
         public static void Postfix(ref data_girls.girls __result)
         {
-            int girlCount = int.Parse(variables.Get(VARID_COUNT) ?? DEF_COUNT);
-            if (girlCount > 12)
+            if (!IsGeneratingAudition || __result == null)
             {
-                Auditions.UsedBodyIDs.Clear();
+                return;
             }
 
             data_girls.girls._sexuality sexuality = data_girls.girls._sexuality.straight;
@@ -200,6 +420,11 @@ namespace CustomAuditions
         /// <returns>A new list of assigned stat values.</returns>
         public static List<int> Infix(List<int> statValues)
         {
+            if (!IsGeneratingAudition)
+            {
+                return statValues;
+            }
+
             List<int> output = new(statValues);
             Dictionary<data_girls._paramType, int> priorityDictTemp = new(priorityDict);
             List<data_girls._paramType> remainingParamTypes = priorityDictTemp.Keys.ToList();
@@ -243,43 +468,9 @@ namespace CustomAuditions
     {
         public static void Postfix(ref data_girls.girls __instance)
         {
-            DateTime dateTime = staticVars.dateTime
-                .AddYears(-maxAge - 1)
-                .AddYears(UnityEngine.Random.Range(0, maxAge - minAge + 1))
-                .AddMonths(UnityEngine.Random.Range(0, 12))
-                .AddDays(UnityEngine.Random.Range(0, 31));
-            __instance.SetBirthday(dateTime);
-        }
-    }
-
-    /// <summary>
-    /// Patches the CM_Player_Audition_Button class to handle age input popup. (obsolete)
-    /// </summary>
-    [HarmonyPatch(typeof(CM_Player_Audition_Button), "OnClick")]
-    public class Auditions_GenerateAudition
-    {
-        /// <summary>
-        /// Postfix method to show the age input popup if enabled. (disabled)
-        /// </summary>
-        public static void Postfix()
-        {
-            bool toggle = int.Parse(variables.Get(VARID_AGELIMIT_POPUP_TOGGLE) ?? DEF_AGELIMIT_POPUP_TOGGLE) == 1;
-            if (toggle)
+            if (IsGeneratingAudition)
             {
-                defaultMinAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MINAGE_STR);
-                defaultMaxAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MAXAGE_STR);
-                if (defaultMaxAge < defaultMinAge)
-                {
-                    // swap values
-                    defaultMaxAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MAXAGE_STR);
-                    defaultMinAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MINAGE_STR);
-
-                    // correct variables
-                    variables.Set(VARID_MAXAGE, maxAge.ToString());
-                    variables.Set(VARID_MINAGE, minAge.ToString());
-                }
-                agePopup = true;
-                Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>().Open(PopupManager._type.staff_nickname, true);
+                ApplyRandomBirthdayInConfiguredRange(__instance);
             }
         }
     }
@@ -305,6 +496,7 @@ namespace CustomAuditions
 
 
         public const string AUD_SCROLLRECT_NAME = "ScrollContainer";
+        public const float PORTRAIT_LOAD_TIMEOUT_SECONDS = 6f;
 
         public const string VARID_AGELIMIT_POPUP_TOGGLE = "AuditionAgeLimit_TogglePopup";
         public const string DEF_AGELIMIT_POPUP_TOGGLE = "0";
@@ -319,6 +511,7 @@ namespace CustomAuditions
 
         public static bool agePopup = false;
         public static bool inputValid = false;
+        public static Dictionary<int, float> auditionLoadStartedAt = new();
 
         /// <summary>
         /// Parses the age range string and sets the minAge and maxAge values.
@@ -390,6 +583,77 @@ namespace CustomAuditions
         };
 
         public static Dictionary<data_girls._paramType, int> priorityDict = new();
+
+        private static int auditionGenerationDepth = 0;
+        public static bool IsGeneratingAudition => auditionGenerationDepth > 0;
+
+        public static void BeginAuditionGeneration()
+        {
+            auditionGenerationDepth++;
+        }
+
+        public static void EndAuditionGeneration()
+        {
+            if (auditionGenerationDepth > 0)
+            {
+                auditionGenerationDepth--;
+            }
+        }
+
+        private static readonly System.Reflection.FieldInfo textureAssetsField =
+            AccessTools.Field(typeof(data_girls_textures), "textureAssets");
+
+        public static bool HasUnusedEligibleBody()
+        {
+            List<data_girls_textures._textureAsset> textureAssets =
+                textureAssetsField?.GetValue(null) as List<data_girls_textures._textureAsset>;
+            if (textureAssets == null)
+            {
+                return false;
+            }
+
+            return textureAssets.Any(asset =>
+                asset != null &&
+                !asset.Add_To_Default &&
+                asset.type == data_girls_textures._spriteType.body &&
+                !Auditions.UsedBodyIDs.Contains(asset.body_id) &&
+                asset.CanBeHired());
+        }
+
+        public static void LoadConfiguredAgeRange()
+        {
+            // The former per-audition age popup is retired. Always use the Mod Menu range.
+            variables.Set(VARID_AGELIMIT_POPUP_TOGGLE, DEF_AGELIMIT_POPUP_TOGGLE);
+
+            minAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MINAGE_STR);
+            maxAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MAXAGE_STR);
+            if (maxAge < minAge)
+            {
+                int originalMinAge = minAge;
+                minAge = maxAge;
+                maxAge = originalMinAge;
+
+                defaultMaxAge = maxAge;
+                defaultMinAge = minAge;
+                variables.Set(VARID_MAXAGE, maxAge.ToString());
+                variables.Set(VARID_MINAGE, minAge.ToString());
+            }
+        }
+
+        public static void ApplyRandomBirthdayInConfiguredRange(data_girls.girls girl)
+        {
+            if (girl == null)
+            {
+                return;
+            }
+
+            int age = UnityEngine.Random.Range(minAge, maxAge + 1);
+            DateTime latestBirthday = staticVars.dateTime.AddYears(-age);
+            DateTime earliestBirthday = staticVars.dateTime.AddYears(-age - 1).AddDays(1);
+            int possibleDays = (latestBirthday - earliestBirthday).Days + 1;
+            DateTime dateTime = earliestBirthday.AddDays(UnityEngine.Random.Range(0, possibleDays));
+            girl.SetBirthday(dateTime);
+        }
 
     }
 }

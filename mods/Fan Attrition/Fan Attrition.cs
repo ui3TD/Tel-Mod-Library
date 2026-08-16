@@ -62,7 +62,7 @@ namespace FanAttrition
         {
             if (__this.mc != null)
             {
-                float mcCoeff = Mathf.Max(1f, 1f + __this.mc.fame * __this.mc.fame / 10);
+                float mcCoeff = Mathf.Max(1f, 1f + __this.mc.fame * __this.mc.fame / 10f);
                 if (__this.mc.fame >= 10)
                 {
                     mcCoeff += MC_MAX_FAME_BONUS;
@@ -123,6 +123,11 @@ namespace FanAttrition
         /// <returns>The modified fan count.</returns>
         public static float Infix(Shows._show __this, float num2)
         {
+            if (__this.medium != null && __this.medium.media_type == Shows._param._media_type.internet)
+            {
+                return num2;
+            }
+
             if (staticVars.IsHard())
             {
                 num2 *= 1f - __this.GetFatigue() * __this.GetFatigue() / SHOW_FATIGUE_COEFF_HARD;

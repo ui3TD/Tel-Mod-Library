@@ -1,89 +1,80 @@
 ﻿using HarmonyLib;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
 using UnityEngine;
 using static TraitFix.TraitsFix;
 
 namespace TraitFix
 {
-
     [HarmonyPatch(typeof(data_girls), "AgeDeterioration")]
     public class Data_girls_AgeDeterioration
     {
-        // Girls with Live Fast trait have double the rate of stat decreases after their peak age
+        // Live Fast: double random post-peak deterioration.
         public static void Postfix()
         {
-            foreach (data_girls.girls girls in data_girls.girl)
+            if (data_girls.girl == null)
+                return;
+
+            foreach (data_girls.girls girl in data_girls.girl)
             {
-                if (girls != null
-                    && girls.status != data_girls._status.graduated
-                    && girls.trait == traits._trait._type.Live_fast)
-                { 
-                    for(int i = 0; i < LIVEFAST_DETERIORATION - 1; i++)
-                    {
-                        girls.AgeDeterioration();
-                    }
-                }
+                if (girl == null || girl.status == data_girls._status.graduated || girl.trait != traits._trait._type.Live_fast)
+                    continue;
+
+                for (int i = 0; i < LIVEFAST_DETERIORATION - 1; i++)
+                    girl.AgeDeterioration();
             }
         }
     }
 
+    // Live Fast birthday deterioration without a compiler-local-dependent transpiler.
     [HarmonyPatch(typeof(Birthday_Popup), "DoParam")]
     public class Birthday_Popup_DoParam
     {
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        [HarmonyPriority(Priority.First)]
+        public static void Prefix(Birthday_Popup __instance, data_girls._paramType Prm, ref bool __state)
         {
-            List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            bool breakFlag = false;
-            for (int i = 0; i < instructionList.Count; i++)
-            {
-                if (breakFlag && instructionList[i].opcode == OpCodes.Stloc_1)
-                {
-                    index = i;
-                    break;
-                }
-                if (instructionList[i].opcode == OpCodes.Ldc_R4 && (float)instructionList[i].operand == 0.975f)
-                {
-                    breakFlag = true;
-                }
-            }
-
-            if (index != -1)
-            {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldarg_0));
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Ldloc_1));
-                instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Ldloc_0));
-                instructionList.Insert(index + 4, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Birthday_Popup_DoParam), "Infix")));
-                instructionList.Insert(index + 5, new CodeInstruction(OpCodes.Stloc_1));
-            }
-
-            return instructionList.AsEnumerable();
+            __state = BeginBirthdayDeterioration(__instance?.Girl, Prm);
         }
 
-        public static float Infix(Birthday_Popup __this, float newVal, float orig)
+        public static Exception Finalizer(Exception __exception, bool __state)
         {
-            if (__this.Girl.trait != traits._trait._type.Live_fast)
-                return orig;
-
-            return LIVEFAST_MODIFIER * (newVal - orig) + orig;
+            if (__state)
+                EndBirthdayDeterioration();
+            return __exception;
         }
     }
 
+    [HarmonyPatch(typeof(data_girls.girls.param), "setVal")]
+    public class data_girls_girls_param_setVal_Birthday
+    {
+        [HarmonyPriority(Priority.VeryLow)]
+        public static void Prefix(data_girls.girls.param __instance, ref float newVal)
+        {
+            if (__instance == null)
+                return;
+            newVal = AdjustBirthdayDeterioration(__instance.Parent, __instance.type, newVal);
+        }
+    }
+
+    [HarmonyPatch(typeof(Birthday_Stat), "Set")]
+    public class Birthday_Stat_Set
+    {
+        [HarmonyPriority(Priority.VeryLow)]
+        public static void Prefix(data_girls._paramType Type, float OldVal, ref float NewVal)
+        {
+            NewVal = AdjustBirthdayDeteriorationDisplay(Type, OldVal, NewVal);
+        }
+    }
 
     [HarmonyPatch(typeof(data_girls.girls), "GetAppealOfStat")]
     public class Data_girls_girls_GetAppealOfStat
     {
-        // Girls with Trendy trait have 1.5x the appeal to non-adults and 0.5x the appeal to adults.
         public static void Postfix(ref float __result, resources.fanType _FanType, data_girls.girls __instance)
         {
-            if (__instance.trait != traits._trait._type.Trendy)
+            if (__instance == null || __instance.trait != traits._trait._type.Trendy)
                 return;
 
-            switch(_FanType)
+            switch (_FanType)
             {
                 case resources.fanType.adult:
                     __result *= TRENDY_ADULT_MODIFIER;
@@ -101,499 +92,416 @@ namespace TraitFix
     [HarmonyPatch(typeof(data_girls.girls), "UpdateDatingStatus")]
     public class Data_girls_girls_UpdateDatingStatus
     {
-
-        // If there is an Indiscreet member, girls in dating relationships unknown to the player have a 2% chance
-        // of having the relationship revealed each week
-        public static void Postfix(ref data_girls.girls __instance)
+        // Outside relationships get one reveal roll; idol-idol dating is handled by CheckDating below.
+        public static void Postfix(data_girls.girls __instance)
         {
-            if (mainScript.chance(INDISCREET_CHANCE) && __instance.DatingData.Is_Taken() && !__instance.DatingData.Is_Partner_Status_Known)
+            if (__instance?.DatingData == null
+                || !__instance.DatingData.Is_Taken_Outside()
+                || __instance.DatingData.Is_Partner_Status_Known
+                || !mainScript.chance(INDISCREET_CHANCE)
+                || !HasIndiscreetLeaker(__instance))
             {
-                bool leaker = false;
-                foreach (data_girls.girls girls in data_girls.GetActiveGirls())
-                {
-                    if (girls != __instance && girls.trait == traits._trait._type.Indiscreet)
-                    {
-                        leaker = true;
-                    }
-                }
-                if (!leaker)
-                    return;
-
-                string labelID = INDISCREET_LABEL_OUTSIDE;
-                if (policies.GetSelectedPolicyValue(policies._type.dating).Value == policies._value.dating_forbidden)
-                {
-                    labelID = INDISCREET_LABEL_OUTSIDE_SCANDAL;
-                    __instance.addParam(data_girls._paramType.scandalPoints, 1f, false);
-                }
-
-                NotificationManager.AddNotification(
-                    Language.Insert(labelID, new string[] { __instance.GetName() }),
-                    mainScript.red32,
-                    NotificationManager._notification._type.idol_relationship_change
-                    );
-
-                __instance.getParam(data_girls._paramType.mentalStamina).add(-30f, false);
-                __instance.DatingData.Is_Partner_Status_Known = true;
-                __instance.DatingData.Partner_Status_Known_To_Player = __instance.DatingData.Partner_Status;
+                return;
             }
+
+            string labelID = INDISCREET_LABEL_OUTSIDE;
+            if (IsDatingForbidden())
+            {
+                labelID = INDISCREET_LABEL_OUTSIDE_SCANDAL;
+                __instance.addParam(data_girls._paramType.scandalPoints, 1f, false);
+            }
+
+            NotificationManager.AddNotification(
+                Language.Insert(labelID, new string[] { __instance.GetName() }),
+                mainScript.red32,
+                NotificationManager._notification._type.idol_relationship_change);
+
+            __instance.getParam(data_girls._paramType.mentalStamina)?.add(-30f, false);
+            __instance.DatingData.Is_Partner_Status_Known = true;
+            __instance.DatingData.Partner_Status_Known_To_Player = __instance.DatingData.Partner_Status;
         }
     }
 
     [HarmonyPatch(typeof(Relationships._relationship), "CheckDating")]
     public class Relationships__relationship_CheckDating
     {
-        // If there is an Indiscreet member, girls in dating relationships unknown to the player have a 2% chance
-        // of having the relationship revealed each week
-        public static void Postfix(ref Relationships._relationship __instance)
+        public static void Postfix(Relationships._relationship __instance)
         {
-            if (mainScript.chance(INDISCREET_CHANCE) && __instance.Dating && !__instance.IsRelationshipKnown())
+            if (!TryGetRelationshipGirls(__instance, out data_girls.girls girl0, out data_girls.girls girl1) || !__instance.Dating)
+                return;
+
+            // Repair old one-sided knowledge and prevent the same relationship leaking every week.
+            if (girl0.DatingData.Is_Partner_Status_Known || girl1.DatingData.Is_Partner_Status_Known)
             {
-                bool leaker = false;
-                foreach (data_girls.girls girls in data_girls.GetActiveGirls(null))
-                {
-                    if (girls != __instance.Girls[0] && girls != __instance.Girls[1] && girls.trait == traits._trait._type.Indiscreet)
-                    {
-                        leaker = true;
-                    }
-                }
-                if (!leaker)
-                    return;
-
-                string labelID = INDISCREET_LABEL_OUTSIDE;
-                if (policies.GetSelectedPolicyValue(policies._type.dating).Value == policies._value.dating_forbidden)
-                {
-                    labelID = INDISCREET_LABEL_INSIDE;
-                    __instance.Girls[0].addParam(data_girls._paramType.scandalPoints, 1f, false);
-                    __instance.Girls[1].addParam(data_girls._paramType.scandalPoints, 1f, false);
-                }
-
-                NotificationManager.AddNotification(Language.Insert(labelID, new string[]
-                {
-                        __instance.Girls[0].GetName(),
-                        __instance.Girls[1].GetName()
-                }), mainScript.red32, NotificationManager._notification._type.idol_relationship_change);
-
-                __instance.Girls[0].getParam(data_girls._paramType.mentalStamina).add(-30f, false);
-                __instance.Girls[1].getParam(data_girls._paramType.mentalStamina).add(-30f, false);
-                __instance.Girls[0].DatingData.Is_Partner_Status_Known = true;
-                __instance.Girls[1].DatingData.Is_Partner_Status_Known = true;
-                __instance.Girls[0].DatingData.Partner_Status_Known_To_Player = data_girls.girls._dating_data._partner_status.taken_idol;
-                __instance.Girls[1].DatingData.Partner_Status_Known_To_Player = data_girls.girls._dating_data._partner_status.taken_idol;
+                MarkIdolRelationshipKnown(girl0, girl1);
+                return;
             }
+            if (__instance.IsRelationshipKnown())
+                return;
+
+            if (!mainScript.chance(INDISCREET_CHANCE) || !HasIndiscreetLeaker(girl0, girl1))
+                return;
+
+            string labelID = INDISCREET_LABEL_OUTSIDE;
+            if (IsDatingForbidden())
+            {
+                labelID = INDISCREET_LABEL_INSIDE;
+                girl0.addParam(data_girls._paramType.scandalPoints, 1f, false);
+                girl1.addParam(data_girls._paramType.scandalPoints, 1f, false);
+            }
+
+            NotificationManager.AddNotification(
+                Language.Insert(labelID, new string[] { girl0.GetName(), girl1.GetName() }),
+                mainScript.red32,
+                NotificationManager._notification._type.idol_relationship_change);
+
+            girl0.getParam(data_girls._paramType.mentalStamina)?.add(-30f, false);
+            girl1.getParam(data_girls._paramType.mentalStamina)?.add(-30f, false);
+            MarkIdolRelationshipKnown(girl0, girl1);
         }
     }
 
-    // Maternal and Precocious default relationship is positive based on age criteria
     [HarmonyPatch(typeof(Relationships._relationship), "Initialize")]
     public class Relationships__relationship_Initialize
     {
-        public static void Postfix(ref Relationships._relationship __instance)
+        public static void Postfix(Relationships._relationship __instance)
         {
-            int age0 = __instance.Girls[0].GetAge();
-            int age1 = __instance.Girls[1].GetAge();
-            if (__instance.Girls[0].trait == traits._trait._type.Maternal && age0 > age1)
-            {
+            if (!TryGetRelationshipGirls(__instance, out data_girls.girls girl0, out data_girls.girls girl1))
+                return;
+
+            int age0 = girl0.GetAge();
+            int age1 = girl1.GetAge();
+            if (girl0.trait == traits._trait._type.Maternal && age0 > age1)
                 __instance.Dynamic = Relationships._relationship._dynamic.positive;
-            }
-            else if (__instance.Girls[1].trait == traits._trait._type.Maternal && age1 > age0)
-            {
+            else if (girl1.trait == traits._trait._type.Maternal && age1 > age0)
                 __instance.Dynamic = Relationships._relationship._dynamic.positive;
-            }
-            else if (__instance.Girls[0].trait == traits._trait._type.Precocious && age0 < age1)
-            {
+            else if (girl0.trait == traits._trait._type.Precocious && age0 < age1)
                 __instance.Dynamic = Relationships._relationship._dynamic.positive;
-            }
-            else if (__instance.Girls[1].trait == traits._trait._type.Precocious && age1 < age0)
-            {
+            else if (girl1.trait == traits._trait._type.Precocious && age1 < age0)
                 __instance.Dynamic = Relationships._relationship._dynamic.positive;
-            }
         }
     }
 
-    // Maternal and Precocious default relationship is positive based on age criteria
     [HarmonyPatch(typeof(Relationships), "Do_Dynamic")]
     public class Relationships_Do_Dynamic
     {
         public static void Postfix()
         {
+            if (Relationships.RelationshipsData == null)
+                return;
+
             foreach (Relationships._relationship relationship in Relationships.RelationshipsData)
             {
-                if (relationship.Dynamic == Relationships._relationship._dynamic.positive)
-                {
-                    AdjustForAgeTraits(relationship);
-                }
+                if (!TryGetRelationshipGirls(relationship, out data_girls.girls girl0, out data_girls.girls girl1))
+                    continue;
 
-                // Get either last center of main group or last center of girl's group
-                if (IsCenter(relationship.Girls[0])
-                    && relationship.Girls[0].trait == traits._trait._type.Arrogant)
-                {
-                    relationship.Add(ARROGANT_PENALTY / 2);
-                }
-                else if(IsCenter(relationship.Girls[1])
-                    && relationship.Girls[1].trait == traits._trait._type.Arrogant)
-                {
-                    relationship.Add(ARROGANT_PENALTY / 2);
-                }
+                if (relationship.Dynamic == Relationships._relationship._dynamic.positive)
+                    AdjustForAgeTraits(relationship, girl0, girl1);
+
+                if (IsCenter(girl0) && girl0.trait == traits._trait._type.Arrogant)
+                    relationship.Add(ARROGANT_PENALTY / 2f);
+                else if (IsCenter(girl1) && girl1.trait == traits._trait._type.Arrogant)
+                    relationship.Add(ARROGANT_PENALTY / 2f);
             }
         }
 
-        private static void AdjustForAgeTraits(Relationships._relationship relationship)
+        private static void AdjustForAgeTraits(Relationships._relationship relationship, data_girls.girls girl0, data_girls.girls girl1)
         {
-            // Maternal
-            if (relationship.Girls[0].trait == traits._trait._type.Maternal && relationship.Girls[0].GetAge() > relationship.Girls[1].GetAge())
-            {
-                relationship.Add(MATERNAL_BONUS / 2);
-            }
-            else if (relationship.Girls[1].trait == traits._trait._type.Maternal && relationship.Girls[1].GetAge() > relationship.Girls[0].GetAge())
-            {
-                relationship.Add(MATERNAL_BONUS / 2);
-            }
+            // Relationship.Add halves positive values. Vanilla already contributes +0.05;
+            // Add(0.3) contributes +0.15 more, producing the advertised 4x (+0.20 total).
+            if (girl0.trait == traits._trait._type.Maternal && girl0.GetAge() > girl1.GetAge())
+                relationship.Add(MATERNAL_BONUS);
+            else if (girl1.trait == traits._trait._type.Maternal && girl1.GetAge() > girl0.GetAge())
+                relationship.Add(MATERNAL_BONUS);
 
-            // Precocious
-            if (relationship.Girls[0].trait == traits._trait._type.Precocious && relationship.Girls[0].GetAge() < relationship.Girls[1].GetAge())
-            {
-                relationship.Add(PRECOCIOUS_BONUS / 2);
-            }
-            else if (relationship.Girls[1].trait == traits._trait._type.Precocious && relationship.Girls[1].GetAge() < relationship.Girls[0].GetAge())
-            {
-                relationship.Add(PRECOCIOUS_BONUS / 2);
-            }
+            if (girl0.trait == traits._trait._type.Precocious && girl0.GetAge() < girl1.GetAge())
+                relationship.Add(PRECOCIOUS_BONUS);
+            else if (girl1.trait == traits._trait._type.Precocious && girl1.GetAge() < girl0.GetAge())
+                relationship.Add(PRECOCIOUS_BONUS);
         }
     }
 
-    // Girls with Forgiving trait will never dislike or hate any other girls
     [HarmonyPatch(typeof(Relationships._relationship), "Recalc")]
     public class Relationships__relationship_Recalc
     {
-        public static void Postfix(ref Relationships._relationship __instance)
+        public static void Postfix(Relationships._relationship __instance)
         {
-            if (__instance.Ratio >= FORGIVING_THR)
+            if (!TryGetRelationshipGirls(__instance, out data_girls.girls girl0, out data_girls.girls girl1)
+                || __instance.Ratio >= FORGIVING_THR)
                 return;
 
-            if (__instance.Girls[0].trait == traits._trait._type.Forgiving || __instance.Girls[1].trait == traits._trait._type.Forgiving)
-            {
+            if (girl0.trait == traits._trait._type.Forgiving || girl1.trait == traits._trait._type.Forgiving)
                 __instance.Ratio = FORGIVING_THR;
-            }
-
         }
     }
 
-    // Girls with Meme Queen trait get +10 to all stats for internet shows
     [HarmonyPatch(typeof(Shows._show), "AddCastParam")]
     public class Shows__show_AddCastParam
     {
-        public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, ref Shows._show __instance)
+        public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, Shows._show __instance)
         {
-            if (type == data_girls._paramType.teamChemistry)
+            if (type == data_girls._paramType.teamChemistry
+                || __instance?.medium == null
+                || __instance.medium.media_type != Shows._param._media_type.internet
+                || !HasActiveMemeQueen(girlList)
+                || __instance.girlParams == null
+                || __instance.girlParams.Count == 0)
                 return;
 
-            foreach (data_girls.girls girls in girlList)
-            {
-                if (girls != null 
-                    && !girls.IsSick()
-                    && girls.trait == traits._trait._type.Meme_queen
-                    && __instance.medium.media_type == Shows._param._media_type.internet)
-                {
-                    __instance.girlParams.Last().val += MEME_INT_SHOW;
-                    break;
-                }
-            }
+            data_girls.girls.param param = __instance.girlParams[__instance.girlParams.Count - 1];
+            if (param != null && param.type == type)
+                param.val += MEME_INT_SHOW;
         }
     }
 
-    // Girls with Meme Queen trait get +10 to all stats for internet shows
     [HarmonyPatch(typeof(Show_Popup), "AddCastParam")]
     public class Show_Popup_AddCastParam
     {
-        public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, ref List<data_girls.girls.param> ___girlParams, Shows._param ___medium)
+        public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, List<data_girls.girls.param> ___girlParams, Shows._param ___medium)
         {
-            if (type == data_girls._paramType.teamChemistry)
+            if (type == data_girls._paramType.teamChemistry
+                || ___medium == null
+                || ___medium.media_type != Shows._param._media_type.internet
+                || !HasActiveMemeQueen(girlList)
+                || ___girlParams == null
+                || ___girlParams.Count == 0)
                 return;
 
-            foreach (data_girls.girls girls in girlList)
-            {
-                if (girls != null 
-                    && !girls.IsSick()
-                    && girls.trait == traits._trait._type.Meme_queen
-                    && ___medium.media_type == Shows._param._media_type.internet)
-                {
-                    ___girlParams.Last().val += MEME_INT_SHOW;
-                    break;
-                }
-            }
+            data_girls.girls.param param = ___girlParams[___girlParams.Count - 1];
+            if (param != null && param.type == type)
+                param.val += MEME_INT_SHOW;
         }
     }
 
-    // Update shows on medium selection just in case of meme queen
+    // Recalculate only when the medium changes, avoiding a recalculation on every SetParam.
     [HarmonyPatch(typeof(Show_Popup), "SetParam")]
     public class Show_Popup_SetParam
     {
-        public static void Postfix(ref Show_Popup __instance, Shows._show._castType? ___castType)
+        public static void Postfix(Show_Popup __instance, Show_Popup_Param_Button._type type, Shows._show._castType? ___castType)
         {
-            if (___castType == null)
+            if (__instance == null || type != Show_Popup_Param_Button._type.medium || ___castType == null)
                 return;
-
             __instance.SetCastType(___castType.Value);
         }
     }
 
-    // Girls with Meme Queen trait get +10% success rate and +5% crit success rate when participating in viral marketing campaigns
     [HarmonyPatch(typeof(singles._param), "GetSuccessChance", new Type[] { typeof(Single_Marketing_Roll._result), typeof(int), typeof(singles._single) })]
     public class Singles__param_GetSuccessChance
     {
         public static void Postfix(ref float __result, singles._param __instance, Single_Marketing_Roll._result Result, singles._single Single)
         {
-            if (Single == null || __instance.Special_Type != singles._param._special_type.viral_campaign)
+            if (__instance == null || Single?.girls == null || __instance.Special_Type != singles._param._special_type.viral_campaign)
                 return;
 
-            bool flag = false;
-            foreach (data_girls.girls girls in Single.girls)
+            bool hasMemeQueen = false;
+            foreach (data_girls.girls girl in Single.girls)
             {
-                if (girls != null 
-                    && !girls.IsSick() 
-                    && girls.trait == traits._trait._type.Meme_queen)
+                if (girl != null && !girl.IsSick() && girl.trait == traits._trait._type.Meme_queen)
                 {
-                    flag = true;
+                    hasMemeQueen = true;
                     break;
                 }
             }
-            if (flag)
-            {
-                switch(Result)
-                {
-                    case Single_Marketing_Roll._result.success:
-                        __result += MEME_VIRAL_SUCCESS;
-                        break;
-                    case Single_Marketing_Roll._result.success_crit:
-                        __result += MEME_VIRAL_SUCCESS_CRIT;
-                        break;
-                    case Single_Marketing_Roll._result.fail:
-                        __result += MEME_VIRAL_FAIL;
-                        break;
-                }
-            }
+            if (!hasMemeQueen)
+                return;
+
+            // Do not patch fail directly: vanilla derives regular fail chance from the
+            // success/crit chances, so subtracting 15 from fail double-counted this bonus.
+            if (Result == Single_Marketing_Roll._result.success)
+                __result += MEME_VIRAL_SUCCESS;
+            else if (Result == Single_Marketing_Roll._result.success_crit)
+                __result += MEME_VIRAL_SUCCESS_CRIT;
         }
     }
 
-    // Girls with Annoying trait cause other members to spend 1.2x physical stamina in shows
     [HarmonyPatch(typeof(Shows._show), "SetStamina")]
     public class Shows__show_SetStamina
     {
         public static void Postfix(Shows._show __instance)
         {
-            List<data_girls.girls> cast = __instance.GetCast();
-            float staminaCost = __instance.GetStaminaCost();
-            int annoyCount = 0;
-            foreach (data_girls.girls girls in cast)
-            {
-                if (girls != null 
-                    && girls.trait == traits._trait._type.Annoying 
-                    && girls.IsActive())
-                {
-                    annoyCount++;
-                }
-            }
-            if (annoyCount == 0)
+            List<data_girls.girls> cast = __instance?.GetCast();
+            if (cast == null || cast.Count == 0)
                 return;
 
-            foreach (data_girls.girls girls2 in cast)
+            float staminaCost = __instance.GetStaminaCost();
+            int annoyingCount = 0;
+            foreach (data_girls.girls girl in cast)
             {
-                if (girls2.IsActive())
-                {
-                    if (annoyCount > 1 || (annoyCount == 1 && girls2.trait != traits._trait._type.Annoying))
-                    {
-                        girls2.addParam(data_girls._paramType.physicalStamina, -staminaCost * ANNOYING_MODIFIER, false);
-                    }
-                }
+                if (girl != null && girl.trait == traits._trait._type.Annoying && girl.IsActive())
+                    annoyingCount++;
+            }
+            if (annoyingCount == 0)
+                return;
+
+            foreach (data_girls.girls girl in cast)
+            {
+                if (girl == null || !girl.IsActive())
+                    continue;
+                if (annoyingCount > 1 || girl.trait != traits._trait._type.Annoying)
+                    girl.addParam(data_girls._paramType.physicalStamina, -staminaCost * ANNOYING_MODIFIER, false);
             }
         }
     }
 
-    // Girls with Misandry trait have a 20% chance of receiving bad opinions from Male fans when participating in a single with handshakes
     [HarmonyPatch(typeof(singles), "ReleaseSingle")]
     public class Singles_ReleaseSingle
     {
         public static void Postfix(singles._single single)
         {
-            foreach (data_girls.girls girls in single.girls)
+            if (single?.girls == null)
+                return;
+
+            bool hasHandshake = single.IsIndividualHS() || single.IsGroupHS();
+            if (!hasHandshake)
+                return;
+
+            foreach (data_girls.girls girl in single.girls)
             {
-                if (girls != null 
-                    && !girls.IsSick()
-                    && girls.trait == traits._trait._type.Misandry 
-                    && (single.IsIndividualHS() || single.IsGroupHS()) 
-                    && mainScript.chance(20))
-                {
-                        girls.AddAppeal(resources.fanType.male, MISANDRY_MODIFIER);
-                }
+                if (girl != null && !girl.IsSick() && girl.trait == traits._trait._type.Misandry && mainScript.chance(20))
+                    girl.AddAppeal(resources.fanType.male, MISANDRY_MODIFIER);
             }
         }
     }
 
-    // Girls with Perfectionist trait get -20 to mental stamina when world tours end with less than 80% average attendance
+    // FinishTour clears Tour before returning, so capture the attendance result first.
     [HarmonyPatch(typeof(SEvent_Tour), "FinishTour")]
     public class SEvent_Tour_FinishTour
     {
-        public static void Postfix(SEvent_Tour __instance)
+        public static void Prefix(SEvent_Tour __instance, ref bool __state)
         {
+            __state = __instance?.Tour != null && __instance.Tour.GetAverageAttendance() < PERFECTIONIST_TOUR_ATT;
+        }
+
+        public static void Postfix(bool __state)
+        {
+            if (!__state)
+                return;
             List<data_girls.girls> activeGirls = data_girls.GetActiveGirls();
-            foreach (data_girls.girls girls in activeGirls)
+            if (activeGirls == null)
+                return;
+
+            foreach (data_girls.girls girl in activeGirls)
             {
-                if (girls.trait == traits._trait._type.Perfectionist 
-                    && __instance.Tour.GetAverageAttendance() < PERFECTIONIST_TOUR_ATT)
-                {
-                    girls.getParam(data_girls._paramType.mentalStamina).add(PERFECTIONIST_MENTAL, false);
-                }
+                if (girl != null && girl.trait == traits._trait._type.Perfectionist)
+                    girl.getParam(data_girls._paramType.mentalStamina)?.add(PERFECTIONIST_MENTAL, false);
             }
         }
     }
 
-    // Girls with Perfectionist trait get -20 to mental stamina when they participate in concerts with less than 100% hype.
     [HarmonyPatch(typeof(SEvent_Concerts._concert), "Finish")]
     public class SEvent_Concerts__concert_Finish
     {
         public static void Postfix(SEvent_Concerts._concert __instance)
         {
-            foreach (data_girls.girls girls in __instance.GetGirls(true))
+            if (__instance == null || __instance.Hype >= PERFECTIONIST_HYPE)
+                return;
+            List<data_girls.girls> girls = __instance.GetGirls(true);
+            if (girls == null)
+                return;
+
+            foreach (data_girls.girls girl in girls)
             {
-                if (girls.trait == traits._trait._type.Perfectionist 
-                    && __instance.Hype < PERFECTIONIST_HYPE)
-                {
-                    girls.getParam(data_girls._paramType.mentalStamina).add(PERFECTIONIST_MENTAL, false);
-                }
+                if (girl != null && girl.trait == traits._trait._type.Perfectionist)
+                    girl.getParam(data_girls._paramType.mentalStamina)?.add(PERFECTIONIST_MENTAL, false);
             }
         }
     }
 
-
-    // Apply traits to businesses
+    // Trait stat contexts use a stack plus Finalizers so nested calls and exceptions cannot poison later GetVal calls.
     [HarmonyPatch(typeof(business._proposal), "GetGirlCoeff")]
     public class Business__proposal_GetGirlCoeff
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
-        {
-            patchGetVal = true;
-        }
+        public static void Prefix() => BeginTraitCalculation();
 
-        [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix(data_girls.girls _girl, ref float __result, business._proposal __instance)
         {
-            // Girls with Photogenic trait have +100% to photoshoots
-            if (__instance.type == business._type.photoshoot 
-                && _girl.trait == traits._trait._type.Photogenic)
-            {
+            if (__instance != null && _girl != null && __instance.type == business._type.photoshoot && _girl.trait == traits._trait._type.Photogenic)
                 __result += PHOTOGENIC_MODIFIER;
-            }
+        }
 
-            patchGetVal = false;
+        public static Exception Finalizer(Exception __exception)
+        {
+            EndTraitCalculation();
+            return __exception;
         }
     }
 
-
-    // Stat changes for shows
     [HarmonyPatch(typeof(data_girls), "GetAverageParam")]
     public class Data_girls_GetAverageParam
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix(List<data_girls.girls> Girls)
-        {
-            patchGetVal = true;
-            showCast = Girls;
-        }
+        public static void Prefix(List<data_girls.girls> Girls) => BeginTraitCalculation(Girls);
 
-        [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
-            patchGetVal = false;
-            showCast = null;
+            EndTraitCalculation();
+            return __exception;
         }
     }
 
-    // Stat changes for shows (for team chemistray calc)
     [HarmonyPatch(typeof(Shows._show), "SenbatsuCalcParam")]
     public class Shows__show_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix(List<data_girls.girls> _girls)
-        {
-            patchGetVal = true;
-            showCast = _girls;
-        }
+        public static void Prefix(List<data_girls.girls> _girls) => BeginTraitCalculation(_girls);
 
-        [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
-            patchGetVal = false;
-            showCast = null;
+            EndTraitCalculation();
+            return __exception;
         }
     }
 
-    // Stat changes for singles
     [HarmonyPatch(typeof(singles._single), "SenbatsuCalcParam")]
     public class Singles__single_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
-        {
-            patchGetVal = true;
-        }
+        public static void Prefix() => BeginTraitCalculation();
 
-        [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
-            patchGetVal = false;
+            EndTraitCalculation();
+            return __exception;
         }
     }
 
-    // Stat changes for concert songs
     [HarmonyPatch(typeof(SEvent_Concerts._concert._song), "GetSkillValue")]
     public class SEvent_Concerts__concert__song_GetSkillValue
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
-        {
-            patchGetVal = true;
-        }
+        public static void Prefix() => BeginTraitCalculation();
 
-        [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
-            patchGetVal = false;
+            EndTraitCalculation();
+            return __exception;
         }
     }
 
-
-    // Stat changes for concert MCs
     [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), "GetSkillValue")]
     public class SEvent_Concerts__concert__mc_GetSkillValue
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
-        {
-            patchGetVal = true;
-        }
+        public static void Prefix() => BeginTraitCalculation();
 
-
-        [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
-            patchGetVal = false;
+            EndTraitCalculation();
+            return __exception;
         }
     }
 
-    // Apply traits to parameters and skills
     [HarmonyPatch(typeof(data_girls.girls.param), "GetVal")]
     public class data_girls_girls_param_GetVal
     {
         public static void Postfix(ref float __result, data_girls.girls.param __instance)
         {
-            if (!patchGetVal)
+            if (!IsTraitCalculationActive || __instance == null)
                 return;
-
-            __result += GetTraitModifier(__instance.Parent, __instance.type, showCast);
+            __result += GetTraitModifier(__instance.Parent, __instance.type, CurrentTraitCast);
         }
     }
-
 
     public class TraitsFix
     {
@@ -613,7 +521,6 @@ namespace TraitFix
         public const float ANNOYING_MODIFIER = 0.2f;
         public const float MEME_VIRAL_SUCCESS = 10;
         public const float MEME_VIRAL_SUCCESS_CRIT = 5;
-        public const float MEME_VIRAL_FAIL = -15;
         public const float MEME_INT_SHOW = 10;
         public const float FORGIVING_THR = 0.5f;
         public const float MATERNAL_BONUS = 0.3f;
@@ -623,142 +530,284 @@ namespace TraitFix
         public const float TRENDY_ADULT_MODIFIER = 0.5f;
         public const float TRENDY_YA_MODIFIER = 1.5f;
         public const float TRENDY_TEEN_MODIFIER = 1.5f;
-        public const float LIVEFAST_MODIFIER = 2;
+        public const float LIVEFAST_MODIFIER = 2f;
         public const int LIVEFAST_DETERIORATION = 2;
 
         public const string INDISCREET_LABEL_OUTSIDE = "IDOL__OUTSIDE_LEAK";
         public const string INDISCREET_LABEL_INSIDE = "IDOL__INSIDE_LEAK_SCANDAL";
         public const string INDISCREET_LABEL_OUTSIDE_SCANDAL = "IDOL__OUTSIDE_LEAK_SCANDAL";
 
-        public static bool patchGetVal = false;
-        public static bool patchSetVal = false;
-        public static bool patchSet = false;
-
-        public static List<data_girls.girls> showCast = null;
-
-        // This method calculates the modifier to girl parameters based on their trait.
-        public static int GetTraitModifier(data_girls.girls girls, data_girls._paramType type, List<data_girls.girls> cast = null)
+        private sealed class TraitCalculationContext
         {
-            if (girls != null && data_girls.IsStatParam(type))
+            public List<data_girls.girls> Cast;
+        }
+
+        private sealed class BirthdayDeteriorationContext
+        {
+            public data_girls.girls Girl;
+            public data_girls._paramType Type;
+            public float OldValue;
+        }
+
+        private static readonly Stack<TraitCalculationContext> traitCalculationContexts = new Stack<TraitCalculationContext>();
+        private static readonly Stack<BirthdayDeteriorationContext> birthdayDeteriorationContexts = new Stack<BirthdayDeteriorationContext>();
+
+        public static bool IsTraitCalculationActive => traitCalculationContexts.Count > 0;
+        public static List<data_girls.girls> CurrentTraitCast => IsTraitCalculationActive ? traitCalculationContexts.Peek().Cast : null;
+
+        public static int GetTraitModifier(data_girls.girls girl, data_girls._paramType type, List<data_girls.girls> cast = null)
+        {
+            if (girl == null || !data_girls.IsStatParam(type))
+                return 0;
+
+            switch (girl.trait)
             {
-                switch(girls.trait)
-                {
-                    case traits._trait._type.Anxiety:
-                        if (IsEventUpcoming())
-                            return ANXIETY_MODIFIER;
-                        break;
-                    case traits._trait._type.Clumsy:
-                        if (type == data_girls._paramType.dance)
-                            return CLUMSY_DANCE_MODIFIER;
-
-                        if (type == data_girls._paramType.funny)
-                            return CLUMSY_FUNNY_MODIFIER;
-                        break;
-                    case traits._trait._type.Worrier:
-                        if (resources.GetScandalPointsTotal() > 0L)
-                            return WORRIER_MODIFIER;
-                        break;
-                    case traits._trait._type.Complacent:
-                        if (IsCenter(girls)
-                            && (type == data_girls._paramType.vocal || type == data_girls._paramType.dance))
-                            return COMPLACENT_MODIFIER;
-                        break;
-                    case traits._trait._type.Lone_Wolf:
-                        if (cast != null)
+                case traits._trait._type.Anxiety:
+                    if (IsEventUpcoming()) return ANXIETY_MODIFIER;
+                    break;
+                case traits._trait._type.Clumsy:
+                    if (type == data_girls._paramType.dance) return CLUMSY_DANCE_MODIFIER;
+                    if (type == data_girls._paramType.funny) return CLUMSY_FUNNY_MODIFIER;
+                    break;
+                case traits._trait._type.Worrier:
+                    if (resources.GetScandalPointsTotal() > 0L) return WORRIER_MODIFIER;
+                    break;
+                case traits._trait._type.Complacent:
+                    if (IsCenter(girl) && (type == data_girls._paramType.vocal || type == data_girls._paramType.dance))
+                        return COMPLACENT_MODIFIER;
+                    break;
+                case traits._trait._type.Lone_Wolf:
+                    if (cast != null)
+                    {
+                        int count = 0;
+                        foreach (data_girls.girls castGirl in cast)
                         {
-                            int count = 0;
-                            foreach (data_girls.girls g in cast)
-                            {
-                                if (g != null && !g.IsSick())
-                                    count++;
-
-                                if (count > 1) break;
-                            }
-                            if (count == 1)
-                                return LONEWOLF_MODIFIER;
+                            if (castGirl != null && castGirl.IsActive() && !castGirl.IsSick())
+                                count++;
+                            if (count > 1) break;
                         }
-                        break;
-                }
-
-                singles._single mainSingle = singles.GetLatestReleasedSingle(false, Groups.GetMainGroup());
-                singles._single groupSingle = singles.GetLatestReleasedSingle(false, girls.GetGroup());
-
-                singles._single recentSingle = GetRecentSingle(groupSingle, mainSingle);
-
-                if (recentSingle != null 
-                    && (staticVars.dateTime - recentSingle.ReleaseData.ReleaseDate).Days >= staticVars.dateTime.Day 
-                    && recentSingle.ReleaseData.Chart_Position != 1)
-                {
-                    if (girls.trait == traits._trait._type.Defeatist)
-                    {
-                        return DEFEATIST_MODIFIER;
+                        if (count == 1) return LONEWOLF_MODIFIER;
                     }
-                    else if (girls.trait == traits._trait._type.Underdog)
-                    {
-                        return UNDERDOG_MODIFIER;
-                    }
-                }
+                    break;
             }
+
+            if (girl.trait == traits._trait._type.Defeatist || girl.trait == traits._trait._type.Underdog)
+            {
+                singles._single mainSingle = singles.GetLatestReleasedSingle(false, Groups.GetMainGroup());
+                Groups._group girlGroup = girl.GetGroup();
+                singles._single groupSingle = girlGroup != null ? singles.GetLatestReleasedSingle(false, girlGroup) : null;
+                singles._single recentSingle = GetRecentSingle(groupSingle, mainSingle);
+                if (DidSingleMissNumberOne(recentSingle))
+                    return girl.trait == traits._trait._type.Defeatist ? DEFEATIST_MODIFIER : UNDERDOG_MODIFIER;
+            }
+
             return 0;
         }
 
         public static bool IsCenter(data_girls.girls girl)
         {
+            if (girl == null)
+                return false;
             singles._single mainSingle = singles.GetLatestReleasedSingle(false, Groups.GetMainGroup());
-            singles._single groupSingle = singles.GetLatestReleasedSingle(false, girl.GetGroup());
-
-            return (groupSingle?.GetCenter() == girl) || (mainSingle?.GetCenter() == girl);
+            Groups._group girlGroup = girl.GetGroup();
+            singles._single groupSingle = girlGroup != null ? singles.GetLatestReleasedSingle(false, girlGroup) : null;
+            return groupSingle?.GetCenter() == girl || mainSingle?.GetCenter() == girl;
         }
 
-        private static bool IsEventUpcoming()
+        public static void BeginTraitCalculation(List<data_girls.girls> cast = null)
         {
-            foreach (var tour in SEvent_Tour.Tours)
+            traitCalculationContexts.Push(new TraitCalculationContext { Cast = cast });
+        }
+
+        public static void EndTraitCalculation()
+        {
+            if (traitCalculationContexts.Count > 0)
+                traitCalculationContexts.Pop();
+        }
+
+        public static bool BeginBirthdayDeterioration(data_girls.girls girl, data_girls._paramType type)
+        {
+            if (girl == null
+                || girl.trait != traits._trait._type.Live_fast
+                || girl.GetAge() <= girl.peakAge
+                || type == data_girls._paramType.funny
+                || type == data_girls._paramType.smart)
+                return false;
+
+            data_girls.girls.param param = girl.getParam(type);
+            if (param == null)
+                return false;
+
+            birthdayDeteriorationContexts.Push(new BirthdayDeteriorationContext
             {
-                if (tour.Status != SEvent_Tour.tour._status.finished)
-                {
-                    return true;
-                }
-            }
-            foreach (var sSK in SEvent_SSK.Elections)
+                Girl = girl,
+                Type = type,
+                OldValue = param.val
+            });
+            return true;
+        }
+
+        public static void EndBirthdayDeterioration()
+        {
+            if (birthdayDeteriorationContexts.Count > 0)
+                birthdayDeteriorationContexts.Pop();
+        }
+
+        public static float AdjustBirthdayDeterioration(data_girls.girls girl, data_girls._paramType type, float newValue)
+        {
+            if (birthdayDeteriorationContexts.Count == 0)
+                return newValue;
+            BirthdayDeteriorationContext context = birthdayDeteriorationContexts.Peek();
+            if (context.Girl != girl || context.Type != type || newValue >= context.OldValue)
+                return newValue;
+            return Mathf.Clamp(context.OldValue + LIVEFAST_MODIFIER * (newValue - context.OldValue), 1f, 100f);
+        }
+
+        public static float AdjustBirthdayDeteriorationDisplay(data_girls._paramType type, float oldValue, float newValue)
+        {
+            if (birthdayDeteriorationContexts.Count == 0)
+                return newValue;
+            BirthdayDeteriorationContext context = birthdayDeteriorationContexts.Peek();
+            if (context.Type != type || newValue >= oldValue)
+                return newValue;
+            return Mathf.Clamp(oldValue + LIVEFAST_MODIFIER * (newValue - oldValue), 1f, 100f);
+        }
+
+        public static bool IsDatingForbidden()
+        {
+            policies.value datingPolicy = policies.GetSelectedPolicyValue(policies._type.dating);
+            return datingPolicy != null && datingPolicy.Value == policies._value.dating_forbidden;
+        }
+
+        public static bool HasActiveMemeQueen(List<data_girls.girls> girls)
+        {
+            if (girls == null)
+                return false;
+            foreach (data_girls.girls girl in girls)
             {
-                if (sSK.Status != SEvent_Tour.tour._status.finished)
-                {
+                if (girl != null && girl.IsActive() && !girl.IsSick() && girl.trait == traits._trait._type.Meme_queen)
                     return true;
-                }
-            }
-            foreach (var concert in SEvent_Concerts.Concerts)
-            {
-                if (concert.Status != SEvent_Tour.tour._status.finished)
-                {
-                    return true;
-                }
             }
             return false;
         }
 
-        // Helper method to get the more recent single based on release date and sales
+        public static bool HasIndiscreetLeaker(params data_girls.girls[] excludedGirls)
+        {
+            List<data_girls.girls> activeGirls = data_girls.GetActiveGirls(null);
+            if (activeGirls == null)
+                return false;
+
+            foreach (data_girls.girls girl in activeGirls)
+            {
+                if (girl == null || girl.trait != traits._trait._type.Indiscreet)
+                    continue;
+                bool excluded = false;
+                if (excludedGirls != null)
+                {
+                    foreach (data_girls.girls excludedGirl in excludedGirls)
+                    {
+                        if (girl == excludedGirl)
+                        {
+                            excluded = true;
+                            break;
+                        }
+                    }
+                }
+                if (!excluded)
+                    return true;
+            }
+            return false;
+        }
+
+        public static bool TryGetRelationshipGirls(Relationships._relationship relationship, out data_girls.girls girl0, out data_girls.girls girl1)
+        {
+            girl0 = null;
+            girl1 = null;
+            if (relationship?.Girls == null || relationship.Girls.Count < 2)
+                return false;
+            girl0 = relationship.Girls[0];
+            girl1 = relationship.Girls[1];
+            return girl0 != null && girl1 != null && girl0.DatingData != null && girl1.DatingData != null;
+        }
+
+        public static void MarkIdolRelationshipKnown(data_girls.girls girl0, data_girls.girls girl1)
+        {
+            if (girl0?.DatingData == null || girl1?.DatingData == null)
+                return;
+            girl0.DatingData.Is_Partner_Status_Known = true;
+            girl1.DatingData.Is_Partner_Status_Known = true;
+            girl0.DatingData.Partner_Status_Known_To_Player = data_girls.girls._dating_data._partner_status.taken_idol;
+            girl1.DatingData.Partner_Status_Known_To_Player = data_girls.girls._dating_data._partner_status.taken_idol;
+        }
+
+        private static bool DidSingleMissNumberOne(singles._single single)
+        {
+            if (single?.ReleaseData == null)
+                return false;
+
+            DateTime releaseDate = single.ReleaseData.ReleaseDate;
+            if (releaseDate.Year == staticVars.dateTime.Year && releaseDate.Month == staticVars.dateTime.Month)
+                return false;
+
+            int chartPosition = single.ReleaseData.Chart_Position;
+            if (chartPosition <= 0)
+                chartPosition = ResolveChartPosition(single);
+            return chartPosition > 1;
+        }
+
+        private static int ResolveChartPosition(singles._single single)
+        {
+            if (single?.ReleaseData == null || Rivals.Date_To_Month == null)
+                return 0;
+
+            // Player singles released in a month are part of that month's chart data.
+            DateTime releaseMonth = single.ReleaseData.ReleaseDate;
+            foreach (Rivals._date_to_month_id month in Rivals.Date_To_Month)
+            {
+                if (month == null || month.Date.Year != releaseMonth.Year || month.Date.Month != releaseMonth.Month)
+                    continue;
+
+                List<Rivals._group._single> chartSingles = Rivals.GetSingles(month.ID);
+                if (chartSingles == null)
+                    return 0;
+                for (int i = 0; i < chartSingles.Count; i++)
+                {
+                    Rivals._group._single chartSingle = chartSingles[i];
+                    if (chartSingle != null && chartSingle.Player && chartSingle.SingleID == single.id)
+                        return i + 1;
+                }
+                return 0;
+            }
+            return 0;
+        }
+
+        private static bool IsEventUpcoming()
+        {
+            if (SEvent_Tour.Tours != null)
+            {
+                foreach (SEvent_Tour.tour tour in SEvent_Tour.Tours)
+                    if (tour != null && tour.Status != SEvent_Tour.tour._status.finished) return true;
+            }
+            if (SEvent_SSK.Elections != null)
+            {
+                foreach (SEvent_SSK._SSK election in SEvent_SSK.Elections)
+                    if (election != null && election.Status != SEvent_Tour.tour._status.finished) return true;
+            }
+            if (SEvent_Concerts.Concerts != null)
+            {
+                foreach (SEvent_Concerts._concert concert in SEvent_Concerts.Concerts)
+                    if (concert != null && concert.Status != SEvent_Tour.tour._status.finished) return true;
+            }
+            return false;
+        }
+
         private static singles._single GetRecentSingle(singles._single groupSingle, singles._single mainSingle)
         {
-            if (groupSingle == null) return mainSingle;
-            if (mainSingle == null) return groupSingle;
-
-            if (groupSingle.ReleaseData.ReleaseDate > mainSingle.ReleaseData.ReleaseDate)
-            {
-                return groupSingle;
-            }
-            else if (groupSingle.ReleaseData.ReleaseDate < mainSingle.ReleaseData.ReleaseDate)
-            {
-                return mainSingle;
-            }
-            else if (groupSingle.ReleaseData.Sales > mainSingle.ReleaseData.Sales)
-            {
-                return groupSingle;
-            }
-            else
-            {
-                return mainSingle;
-            }
+            if (groupSingle?.ReleaseData == null) return mainSingle?.ReleaseData != null ? mainSingle : null;
+            if (mainSingle?.ReleaseData == null) return groupSingle;
+            if (groupSingle.ReleaseData.ReleaseDate > mainSingle.ReleaseData.ReleaseDate) return groupSingle;
+            if (groupSingle.ReleaseData.ReleaseDate < mainSingle.ReleaseData.ReleaseDate) return mainSingle;
+            return groupSingle.ReleaseData.Sales > mainSingle.ReleaseData.Sales ? groupSingle : mainSingle;
         }
     }
-
 }

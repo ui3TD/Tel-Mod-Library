@@ -180,7 +180,7 @@ namespace TraitsExpansion
                     if (member.IsSick())
                         continue;
 
-                    if (member.trait == (traits._trait._type)NewTraits.Sadistic && clique.IsBullied(member))
+                    if (member.trait == (traits._trait._type)NewTraits.Sadistic && clique.IsBully(member))
                     {
                         sadistic++;
                     }
@@ -377,15 +377,15 @@ namespace TraitsExpansion
         [HarmonyPriority(Priority.VeryLow)]
         public static void Postfix(data_girls.girls _girl, ref float __result, business._proposal __instance)
         {
-            // Girls with Wooden Acting receive penalty
+            // Girls with Wooden Acting receive a 50% drama reward penalty.
             if (__instance.type == business._type.tv_drama && _girl.trait == (traits._trait._type)NewTraits.Wooden_Acting)
             {
-                __result -= WOODACTING_PENALTY;
+                __result *= 1f - WOODACTING_PENALTY;
             }
-            // Girls with Wooden Acting receive penalty
+            // Girls with Quick Wit receive a 50% variety reward bonus.
             else if (__instance.type == business._type.variety && _girl.trait == (traits._trait._type)NewTraits.Quick_Wit)
             {
-                __result += QUICKWIT_BONUS;
+                __result *= 1f + QUICKWIT_BONUS;
             }
             patchGetVal = false;
         }
@@ -506,7 +506,7 @@ namespace TraitsExpansion
         public const int HOMELY_PENALTY = 10;
         public const int TONEDEAF_PENALTY = 30;
 
-        public const float WOODACTING_PENALTY = 0.2f;
+        public const float WOODACTING_PENALTY = 0.5f;
         public const float QUICKWIT_BONUS = 0.5f;
         public const float RECKLESS_THR_UPPER = 60f;
         public const float RECKLESS_THR_LOWER = 5f;

@@ -5,7 +5,7 @@
 		<HarmonyID>com.tel.fastforward</HarmonyID>
 		<ModDescription>Press '4' or click the fast-forward button twice to go faster!</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.2.0</Version>
+		<Version>1.2.1</Version>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

@@ -1,276 +1,218 @@
 ﻿using HarmonyLib;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Reflection;
-using static GoingViral.TrendingManager;
 using UnityEngine;
-using static Achievements;
-using static singles;
+using static GoingViral.TrendingManager;
 
 namespace GoingViral
 {
-
-    // Apply 3x casual bias to fan appeal for adding fans
-    // Separate opinion from fan decrease
+    // Replace appeal weights only while an idol is actually distributing a fan change.
     [HarmonyPatch(typeof(data_girls.girls), "AddFans", new Type[] { typeof(long), typeof(resources.fanType?) })]
     public class data_girls_girls_AddFans
     {
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        internal sealed class Context
         {
-            List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            bool breakFlag = false;
-            object operandi = null;
-            for (int i = 0; i < instructionList.Count; i++)
-            {
-                if (breakFlag && instructionList[i].opcode == OpCodes.Stloc_S)
-                {
-                    index = i;
-                    operandi = instructionList[i].operand;
-                    break;
-                }
-                if (instructionList[i].opcode == OpCodes.Callvirt && instructionList[i].operand is MethodBase method && method.Name == "GetTotalAppeal" && method.DeclaringType == typeof(resources._fan))
-                {
-                    breakFlag = true;
-                }
-            }
-
-            if (index != -1)
-            {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldarg_0));
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Ldloc_3));
-                instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Ldarg_1));
-                instructionList.Insert(index + 4, new CodeInstruction(OpCodes.Ldloc_S, operandi));
-                instructionList.Insert(index + 5, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_girls_AddFans), "Infix")));
-                instructionList.Insert(index + 6, new CodeInstruction(OpCodes.Stloc_S, operandi));
-            }
-
-            return instructionList.AsEnumerable();
+            public data_girls.girls Girl;
+            public long Value;
         }
 
-        public static float Infix(data_girls.girls __this, resources._fan fan, long val, float fanProportion)
+        private static readonly Stack<Context> contexts = new Stack<Context>();
+        internal static Context Current { get { return contexts.Count > 0 ? contexts.Peek() : null; } }
+
+        [HarmonyPriority(Priority.First)]
+        public static void Prefix(data_girls.girls __instance, long val)
         {
-
-            // Apply default calc with opinions for decrease in fans
-            if (val < 0)
-            {
-                float churnTotal = 0;
-
-                foreach (resources._fan _fan in __this.Fans)
-                {
-                    churnTotal += GetFanChurn(_fan.appeal, _fan.Ratio, _fan.hardcoreness);
-                }
-
-                fanProportion = GetFanChurn(fan.appeal, fan.Ratio, fan.hardcoreness) / churnTotal;
-            }
-            // Apply new calc excluding opinions for increase in fans
-            else if (val > 0)
-            {
-                float acquisitionTotal = 0;
-
-                foreach (resources._fan _fan in __this.Fans)
-                {
-                    acquisitionTotal += GetFanAcquisition(__this, _fan.appeal, _fan.hardcoreness);
-                }
-
-                fanProportion = GetFanAcquisition(__this, fan.appeal, fan.hardcoreness) / acquisitionTotal;
-            }
-
-
-            return fanProportion;
+            contexts.Push(new Context { Girl = __instance, Value = val });
         }
 
-
+        public static Exception Finalizer(Exception __exception)
+        {
+            if (contexts.Count > 0) contexts.Pop();
+            return __exception;
+        }
     }
 
-    // When losing fans, use appeal and opinion instead of fame to distribute across girls
-    [HarmonyPatch(typeof(data_girls), "AddFans")]
+    [HarmonyPatch(typeof(resources._fan), "GetTotalAppeal")]
+    public class resources__fan_GetTotalAppeal_TrendingWeights
+    {
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(resources._fan __instance, ref float __result)
+        {
+            data_girls_girls_AddFans.Context context = data_girls_girls_AddFans.Current;
+            if (context == null || context.Girl == null || __instance == null)
+                return;
+
+            float weight;
+            if (context.Value < 0)
+                weight = GetFanChurn(__instance.appeal, __instance.Ratio, __instance.hardcoreness);
+            else if (context.Value > 0)
+                weight = GetFanAcquisition(context.Girl, __instance.appeal, __instance.hardcoreness);
+            else
+                return;
+
+            if (!float.IsNaN(weight) && !float.IsInfinity(weight))
+                __result = Math.Max(0f, weight);
+        }
+    }
+
+    // While the global AddFans routine allocates losses among idols, substitute churn weights
+    // for fame points. The original allocator and its rounding remain intact for compatibility.
+    [HarmonyPatch(typeof(data_girls), "AddFans", new Type[] { typeof(long), typeof(resources.fanType?), typeof(List<data_girls.girls>), typeof(data_girls.girls) })]
     public class data_girls_AddFans
     {
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        internal sealed class Context
         {
-            List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            object coeffOperand = null;
-            object girlOperand = null;
-            for (int i = 0; i < instructionList.Count; i++)
-            {
-                if (instructionList[i].opcode == OpCodes.Stloc_S && instructionList[i].operand is LocalVariableInfo girl && girl.LocalIndex == 6)
-                {
-                    girlOperand = instructionList[i].operand;
-                }
-                if (instructionList[i].opcode == OpCodes.Stloc_S && instructionList[i].operand is LocalVariableInfo coeff && coeff.LocalIndex == 7)
-                {
-                    index = i;
-                    coeffOperand = instructionList[i].operand;
-                    break;
-                }
-            }
-
-            if (index != -1)
-            {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldloc_S, girlOperand));
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Ldloc_S, coeffOperand));
-                instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Ldarg_0));
-                instructionList.Insert(index + 4, new CodeInstruction(OpCodes.Ldarg_1));
-                instructionList.Insert(index + 5, new CodeInstruction(OpCodes.Ldarg_2));
-                instructionList.Insert(index + 6, new CodeInstruction(OpCodes.Ldarg_3));
-                instructionList.Insert(index + 7, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_AddFans), "Infix")));
-                instructionList.Insert(index + 8, new CodeInstruction(OpCodes.Stloc_S, coeffOperand));
-            }
-
-            return instructionList.AsEnumerable();
+            public long Value;
+            public resources.fanType? FanType;
+            public List<data_girls.girls> Girls;
+            public data_girls.girls ExceptionGirl;
         }
 
-        public static float Infix(data_girls.girls girl, float coeff, long total_fans, resources.fanType? fanType, List<data_girls.girls> Girls, data_girls.girls ExceptionGirl)
+        private static readonly Stack<Context> contexts = new Stack<Context>();
+        internal static Context Current { get { return contexts.Count > 0 ? contexts.Peek() : null; } }
+
+        [HarmonyPriority(Priority.First)]
+        public static void Prefix(long total_fans, resources.fanType? fanType, List<data_girls.girls> Girls, data_girls.girls ExceptionGirl)
         {
-            if (total_fans >= 0)
+            contexts.Push(new Context
             {
-                return coeff;
-            }
+                Value = total_fans,
+                FanType = fanType,
+                Girls = Girls,
+                ExceptionGirl = ExceptionGirl
+            });
+        }
 
-            float churnTotal = 0;
+        public static Exception Finalizer(Exception __exception)
+        {
+            if (contexts.Count > 0) contexts.Pop();
+            return __exception;
+        }
 
-            foreach (data_girls.girls _girl in Girls)
+        internal static bool IsEligible(Context context, data_girls.girls girl)
+        {
+            if (context == null || girl == null || girl == context.ExceptionGirl || girl.status == data_girls._status.graduated)
+                return false;
+            List<data_girls.girls> pool = context.Girls ?? data_girls.girl;
+            return pool != null && pool.Contains(girl);
+        }
+
+        internal static float GetGirlChurnWeight(Context context, data_girls.girls girl)
+        {
+            if (!IsEligible(context, girl) || girl.Fans == null)
+                return 0f;
+
+            float total = 0f;
+            foreach (resources._fan fan in girl.Fans)
             {
-                if (_girl.status != data_girls._status.graduated && _girl != ExceptionGirl)
-                {
-                    foreach (resources._fan _fan in _girl.Fans)
-                    {
-                        if (_fan.IsType(fanType))
-                        {
-                            churnTotal += GetFanChurn(_fan.appeal, _fan.Ratio, _fan.hardcoreness);
-                        }
-                    }
-                }
+                if (fan != null && fan.IsType(context.FanType))
+                    total += GetFanChurn(fan.appeal, fan.Ratio, fan.hardcoreness);
             }
-
-            float girlChurn = 0;
-            foreach (resources._fan _fan in girl.Fans)
-            {
-                if (_fan.IsType(fanType))
-                {
-                    girlChurn += GetFanChurn(_fan.appeal, _fan.Ratio, _fan.hardcoreness);
-                }
-            }
-
-            float fanProportion = girlChurn / churnTotal;
-
-
-            return fanProportion;
+            return total;
         }
     }
 
-    // Set opinion for theater
+    [HarmonyPatch(typeof(data_girls.girls), "GetFamePoints")]
+    public class data_girls_girls_GetFamePoints_TrendingChurn
+    {
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(data_girls.girls __instance, ref float __result)
+        {
+            data_girls_AddFans.Context context = data_girls_AddFans.Current;
+            if (context == null || context.Value >= 0 || !data_girls_AddFans.IsEligible(context, __instance))
+                return;
+
+            float weight = data_girls_AddFans.GetGirlChurnWeight(context, __instance);
+            if (!float.IsNaN(weight) && !float.IsInfinity(weight) && weight >= 0f)
+                __result = weight * 1000f; // avoids vanilla's <1 fame fallback while preserving proportions
+        }
+    }
+
     [HarmonyPatch(typeof(resources), "OnNewWeek")]
     public class resources_OnNewWeek
     {
         public static void Postfix()
         {
+            if (Theaters.Theaters_ == null)
+                return;
+
             foreach (Theaters._theater theater in Theaters.Theaters_)
             {
-                if(theater == null || theater.Stats.Count < 7)
-                {
+                if (theater == null || theater.Stats == null || theater.Stats.Count < 7 || theater.GetGroup() == null)
                     continue;
-                }
 
-
-                foreach (object fanTypeEnum in Enum.GetValues(typeof(resources.fanType)))
+                foreach (resources.fanType type in Enum.GetValues(typeof(resources.fanType)))
                 {
-                    resources.fanType type = (resources.fanType)fanTypeEnum;
-
-                    float thisWeek = 0;
-                    for (int i = 1; i <= 7; i++)
-                    {
-                        if(type == theater.Stats[theater.Stats.Count - i].Schedule.FanType)
-                        {
-                            thisWeek += 1;
-                        }
-                    }
-
+                    int thisWeek = CountScheduledDays(theater, type, 1, 7);
                     if (theater.Stats.Count < 14)
                     {
-                        if(thisWeek > 0)
-                        {
-                            foreach (data_girls.girls girl in theater.GetGroup().GetGirls())
-                            {
-                                if (girl != null && girl.status != data_girls._status.graduated)
-                                {
-                                    girl.AddAppeal(type, 1);
-                                    NotificationManager.AddNotification(Language.Insert("THEATER__FANS_LIKE", new string[]
-                                    {
-                                        ExtensionMethods.color(resources.GetFanTitle(type), mainScript.green),
-                                        theater.GetGroup().Title
-                                    }), mainScript.green32, NotificationManager._notification._type.fans_opinion_change);
-                                }
-                            }
-                        }
+                        if (thisWeek > 0)
+                            ApplyTheaterOpinion(theater, type, 1f);
                         continue;
                     }
 
-                    float pastWeek = 0;
-                    for (int i = 8; i <= 14; i++)
-                    {
-                        if (type == theater.Stats[theater.Stats.Count - i].Schedule.FanType)
-                        {
-                            pastWeek += 1;
-                        }
-                    }
-
-                    foreach (data_girls.girls girl in theater.GetGroup().GetGirls())
-                    {
-                        if (girl != null && girl.status != data_girls._status.graduated)
-                        {
-                            if(thisWeek > pastWeek)
-                            {
-                                girl.AddAppeal(type, 1);
-                                NotificationManager.AddNotification(Language.Insert("THEATER__FANS_LIKE", new string[]
-                                {
-                                        ExtensionMethods.color(resources.GetFanTitle(type), mainScript.green),
-                                        theater.GetGroup().Title
-                                }), mainScript.green32, NotificationManager._notification._type.fans_opinion_change);
-                            }
-                            else if (thisWeek < pastWeek)
-                            {
-                                girl.AddAppeal(type, -1);
-                                NotificationManager.AddNotification(Language.Insert("THEATER__FANS_DISLIKE", new string[]
-                                {
-                                        ExtensionMethods.color(resources.GetFanTitle(type), mainScript.red),
-                                        theater.GetGroup().Title
-                                }), mainScript.red32, NotificationManager._notification._type.fans_opinion_change);
-                            }
-                        }
-                    }
+                    int pastWeek = CountScheduledDays(theater, type, 8, 14);
+                    if (thisWeek > pastWeek)
+                        ApplyTheaterOpinion(theater, type, 1f);
+                    else if (thisWeek < pastWeek)
+                        ApplyTheaterOpinion(theater, type, -1f);
                 }
-
             }
+        }
+
+        private static int CountScheduledDays(Theaters._theater theater, resources.fanType type, int fromLatest, int toLatest)
+        {
+            int count = 0;
+            if (theater == null || theater.Stats == null)
+                return 0;
+
+            for (int offset = fromLatest; offset <= toLatest; offset++)
+            {
+                int index = theater.Stats.Count - offset;
+                if (index < 0 || index >= theater.Stats.Count)
+                    continue;
+                Theaters._theater._stat stat = theater.Stats[index];
+                if (stat != null && stat.Schedule != null && stat.Schedule.FanType == type)
+                    count++;
+            }
+            return count;
+        }
+
+        private static void ApplyTheaterOpinion(Theaters._theater theater, resources.fanType type, float value)
+        {
+            Groups._group group = theater != null ? theater.GetGroup() : null;
+            if (group == null || group.GetGirls() == null)
+                return;
+
+            foreach (data_girls.girls girl in group.GetGirls())
+            {
+                if (girl != null && girl.status != data_girls._status.graduated)
+                    girl.AddAppeal(type, value);
+            }
+
+            string key = value > 0 ? "THEATER__FANS_LIKE" : "THEATER__FANS_DISLIKE";
+            string color = value > 0 ? mainScript.green : mainScript.red;
+            Color32 color32 = value > 0 ? mainScript.green32 : mainScript.red32;
+            NotificationManager.AddNotification(
+                Language.Insert(key, new string[] { ExtensionMethods.color(resources.GetFanTitle(type), color), group.Title }),
+                color32,
+                NotificationManager._notification._type.fans_opinion_change);
         }
     }
 
-
-    // Fixed fan opinion to be impacted by concerts, SSK/show cancellation and random events
     [HarmonyPatch(typeof(resources._fanOpinion), "Add")]
     public class resources__fanOpinion_Add
     {
         public static void Postfix(resources._fanOpinion __instance, float val)
         {
-            if (Harmony.HasAnyPatches("com.tel.unofficialpatch"))
-            {
+            if (Harmony.HasAnyPatches("com.tel.unofficialpatch") || __instance == null || data_girls.girl == null)
                 return;
-            }
+
             foreach (data_girls.girls girl in data_girls.girl)
             {
                 if (girl != null && girl.status != data_girls._status.graduated)
-                {
                     girl.AddAppeal(__instance.type, val);
-                }
             }
         }
     }
-
-
 }

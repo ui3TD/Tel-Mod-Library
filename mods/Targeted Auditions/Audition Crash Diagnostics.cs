@@ -21,7 +21,7 @@ namespace CustomAuditions
     {
         // Set to true and rebuild only when hard-crash instrumentation is needed.
         // False means no diagnostic Harmony patches, no Unity/BepInEx log mirroring, and no diagnostic file writes.
-        internal const bool Enabled = false;
+        internal static readonly bool Enabled = false;
 
         private const string DiagnosticHarmonyId = "com.tel.customauditions.auditioncrashdiag";
         private const string DiagnosticFileName = "audition_crash_diagnostics.log";

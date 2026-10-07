@@ -12,7 +12,8 @@ namespace FastForward
         public const string VARID = "FastForward_Multiplier";
         public const string DEFAULT_VAR = "5";
         public const double BASE_FAST_SPEED = 200d;
-        public const double MAX_MULTIPLIER = 50d;
+        // Each time tick adds speed/4 minutes; above 28.8x a tick spans over a day and skips onNewDay/onNewWeek.
+        public const double MAX_MULTIPLIER = 28d;
         public const double EPSILON = 0.001d;
 
         internal static double GetConfiguredMultiplier()

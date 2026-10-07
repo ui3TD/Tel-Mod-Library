@@ -156,6 +156,7 @@ namespace CustomAuditions
         /// <summary>
         /// Before an audition candidate is generated, allow body IDs to repeat only after
         /// every currently eligible body ID has been used once in this audition.
+        /// Unique idols' bodies never repeat within an audition.
         /// </summary>
         public static void Prefix(bool genTextures, data_girls_textures._textureAsset BodyAsset)
         {
@@ -166,7 +167,7 @@ namespace CustomAuditions
 
             if (!HasUnusedEligibleBody())
             {
-                Auditions.UsedBodyIDs.Clear();
+                ClearUsedBodiesExceptUnique();
             }
         }
 
@@ -686,6 +687,33 @@ namespace CustomAuditions
                 asset.type == data_girls_textures._spriteType.body &&
                 !Auditions.UsedBodyIDs.Contains(asset.body_id) &&
                 asset.CanBeHired());
+        }
+
+        /// <summary>
+        /// Frees the used body IDs for reuse, except unique idols' bodies, so a unique idol
+        /// already shown in this audition can't be shown (and hired) a second time.
+        /// If only those bodies are left, the game skips the candidate rather than repeat one.
+        /// </summary>
+        public static void ClearUsedBodiesExceptUnique()
+        {
+            List<data_girls_textures._textureAsset> textureAssets =
+                textureAssetsField?.GetValue(null) as List<data_girls_textures._textureAsset>;
+            HashSet<int> uniqueBodyIDs = new();
+            if (textureAssets != null)
+            {
+                foreach (data_girls_textures._textureAsset asset in textureAssets)
+                {
+                    if (asset != null &&
+                        asset.Unique &&
+                        !asset.Add_To_Default &&
+                        asset.type == data_girls_textures._spriteType.body)
+                    {
+                        uniqueBodyIDs.Add(asset.body_id);
+                    }
+                }
+            }
+
+            Auditions.UsedBodyIDs.RemoveAll(id => !uniqueBodyIDs.Contains(id));
         }
 
         public static void ApplyRandomBirthdayInConfiguredRange(data_girls.girls girl)

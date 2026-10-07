@@ -62,6 +62,74 @@ namespace TargetedAuditions.Tests
             Assert.Equal(5, bodies.Skip(20).Distinct().Count());
         }
 
+        /// <summary>
+        /// Ordinary bodies repeat once the pool runs out; unique idols never do.
+        /// </summary>
+        [Fact]
+        public void LargeAudition_ShowsEachUniqueIdolOnce()
+        {
+            AddBodies(Enumerable.Range(1, 6).Select(id => Body(id)).ToArray());
+            AddBodies(Body(7, unique: true), Body(8, unique: true));
+            BeginAuditionGeneration();
+
+            List<int> bodies = new();
+            for (int i = 0; i < 25; i++)
+            {
+                BeforeCandidate();
+                bodies.Add(PickBody());
+            }
+
+            Assert.Equal(Enumerable.Range(1, 8), bodies.Take(8).OrderBy(b => b));
+            Assert.Single(bodies, 7);
+            Assert.Single(bodies, 8);
+            Assert.Equal(Enumerable.Range(1, 6), bodies.Skip(8).Take(6).OrderBy(b => b));
+        }
+
+        [Fact]
+        public void AllBodiesUsed_KeepsShownUniqueBodiesBlocked()
+        {
+            AddBodies(Body(1), Body(2, unique: true), Body(3));
+            Auditions.UsedBodyIDs.AddRange(new[] { 1, 2, 3 });
+            BeginAuditionGeneration();
+
+            BeforeCandidate();
+
+            Assert.Equal(new[] { 2 }, Auditions.UsedBodyIDs);
+        }
+
+        /// <summary>
+        /// With only shown unique idols left, they stay blocked: the game then skips the candidate
+        /// (as it does whenever no body is left) instead of showing a unique idol twice.
+        /// </summary>
+        [Fact]
+        public void OnlyShownUniqueBodiesLeft_StayBlocked()
+        {
+            AddBodies(Body(1, unique: true), Body(2, unique: true));
+            Auditions.UsedBodyIDs.AddRange(new[] { 1, 2 });
+            BeginAuditionGeneration();
+
+            BeforeCandidate();
+
+            Assert.Equal(new[] { 1, 2 }, Auditions.UsedBodyIDs);
+        }
+
+        /// <summary>
+        /// Add-on sprites are never picked as a body, so their unique flag doesn't block an ID.
+        /// </summary>
+        [Fact]
+        public void UniqueAddOnSprite_DoesntBlockItsID()
+        {
+            Asset addOn = Body(2, unique: true);
+            addOn.Add_To_Default = true;
+            AddBodies(Body(1), Body(2), addOn);
+            Auditions.UsedBodyIDs.AddRange(new[] { 1, 2 });
+            BeginAuditionGeneration();
+
+            BeforeCandidate();
+
+            Assert.Empty(Auditions.UsedBodyIDs);
+        }
+
         [Fact]
         public void UnusedBodyLeft_KeepsTheUsedList()
         {

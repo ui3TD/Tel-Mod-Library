@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Targeted Auditions\**\*.cs" Exclude="..\..\mods\Targeted Auditions\obj\**;..\..\mods\Targeted Auditions\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--mainScript's static fields (notification colours) need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

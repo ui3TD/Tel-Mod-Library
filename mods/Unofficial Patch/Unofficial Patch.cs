@@ -269,6 +269,22 @@ namespace UnofficialPatch
                 instruction.opcode == OpCodes.Stloc_3;
         }
 
+        // Builds the instruction that loads the local a stloc instruction stores to.
+        public static CodeInstruction LoadOfStore(CodeInstruction store)
+        {
+            if (store.opcode == OpCodes.Stloc_0)
+                return new CodeInstruction(OpCodes.Ldloc_0);
+            if (store.opcode == OpCodes.Stloc_1)
+                return new CodeInstruction(OpCodes.Ldloc_1);
+            if (store.opcode == OpCodes.Stloc_2)
+                return new CodeInstruction(OpCodes.Ldloc_2);
+            if (store.opcode == OpCodes.Stloc_3)
+                return new CodeInstruction(OpCodes.Ldloc_3);
+            if (store.opcode == OpCodes.Stloc_S)
+                return new CodeInstruction(OpCodes.Ldloc_S, store.operand);
+            return new CodeInstruction(OpCodes.Ldloc, store.operand);
+        }
+
         // Checks for conditional branches that jump when the stack value is true.
         public static bool IsBranchTrue(CodeInstruction instruction)
         {
@@ -766,7 +782,6 @@ namespace UnofficialPatch
         private const int NoIdols = 0;
         private const int MinRows = 1;
         private const int MaxRows = 5;
-        private const int FirstIndex = 0;
         // Constants for triangular number inversion.
         private const float TriangularScale = 8f;
         private const float TriangularOffset = 1f;
@@ -775,15 +790,28 @@ namespace UnofficialPatch
 
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            // Resolve the infix method that computes percent based on actual filled rows.
+            // Resolve the infix method that computes percent based on the rows the agency can fill.
             MethodInfo infix = AccessTools.Method(typeof(singles__single_SenbatsuCalcParam), nameof(Infix));
-            if (infix == null)
+            MethodInfo countGirls = AccessTools.Method(typeof(Groups._group), nameof(Groups._group.GetNumberOfNonGraduatedGirls));
+            if (infix == null || countGirls == null)
             {
-                PatchLog.WarnOncePerPatch<singles__single_SenbatsuCalcParam>("Infix method lookup failed.");
+                PatchLog.WarnOncePerPatch<singles__single_SenbatsuCalcParam>("Infix or GetNumberOfNonGraduatedGirls lookup failed.");
                 return instructions;
             }
 
             var matcher = new CodeMatcher(instructions);
+            // Find the local holding the agency's idol count (num): the group's count, plus the other groups' for the main group.
+            matcher.MatchForward(false,
+                new CodeMatch(ci => IlHelpers.IsCallTo(ci, countGirls)),
+                new CodeMatch(ci => IlHelpers.IsStloc(ci)));
+            if (matcher.IsInvalid)
+            {
+                PatchLog.WarnOncePerPatch<singles__single_SenbatsuCalcParam>("idol count local not found.");
+                return instructions;
+            }
+            CodeInstruction storeIdolCount = matcher.InstructionAt(1);
+
+            matcher.Start();
             // Find the sequence that divides 100f by the row count (num2).
             matcher.MatchForward(false,
                 new CodeMatch(ci => ci.opcode == OpCodes.Ldc_R4 && ci.operand is float value && value == PercentScale),
@@ -805,50 +833,36 @@ namespace UnofficialPatch
                 return instructions;
             }
 
-            // Replace 100f / num2 with Infix(_girls) to derive rows from actual filled slots.
+            // Replace 100f / num2 with Infix(num) to count only the rows the agency can fill completely.
             var labels = matcher.Instruction.labels.ToList();
             var blocks = matcher.Instruction.blocks.ToList();
             matcher.RemoveInstructions(DivPatternLength);
-            // Ldarg_1 loads the _girls list from the original SenbatsuCalcParam signature.
-            var loadGirls = new CodeInstruction(OpCodes.Ldarg_1);
-            loadGirls.labels.AddRange(labels);
-            loadGirls.blocks.AddRange(blocks);
-            matcher.Insert(loadGirls, new CodeInstruction(OpCodes.Call, infix));
+            var loadIdolCount = IlHelpers.LoadOfStore(storeIdolCount);
+            loadIdolCount.labels.AddRange(labels);
+            loadIdolCount.blocks.AddRange(blocks);
+            matcher.Insert(loadIdolCount, new CodeInstruction(OpCodes.Call, infix));
             return matcher.InstructionEnumeration();
         }
 
-        public static float Infix(List<data_girls.girls> girls)
+        public static float Infix(int idolCount)
         {
-            // Count only filled slots to determine how many rows are actually used.
-            int idolCount = NoIdols;
-            if (girls != null)
-            {
-                for (int i = FirstIndex; i < girls.Count; i++)
-                {
-                    if (girls[i] != null)
-                    {
-                        idolCount++;
-                    }
-                }
-            }
-
             // Total rows in the senbatsu formation:
             // 1, 2, 3, 4, 5  (total capacity = 15)
             // Safety: if no idols, don't divide by zero.
-            // (The game probably never passes 0, but this prevents Infinity/NaN.)
             if (idolCount <= NoIdols)
                 return ZeroPercent;
 
             // Triangular number inversion:
-            // Assume that r represents the minimum required number of rows to fit all our idols represented by n
-            // Find the smallest r such that r(r+1)/2 >= idolCount
+            // r represents the number of rows the agency's idols (n) can fill completely:
+            // the largest r such that r(r+1)/2 <= n.
+            // A row the agency can't fill doesn't count against the single; idols placed in it add on top.
             //
-            // r = ceil((sqrt(8N + 1) - 1) / 2)
+            // r = floor((sqrt(8N + 1) - 1) / 2)
             float n = idolCount;
             float r = (Mathf.Sqrt(TriangularScale * n + TriangularOffset) - TriangularOffset) / TriangularDivisor;
 
-            // Round up to the next whole row to ensure all idols fit.
-            int rowsUsed = Mathf.CeilToInt(r);
+            // Round down to the last complete row.
+            int rowsUsed = Mathf.FloorToInt(r);
 
             // Clamp to the real formation size:
             // Anything above 15 idols still just uses all 5 rows.

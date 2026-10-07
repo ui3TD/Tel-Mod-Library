@@ -138,7 +138,7 @@ namespace TraitsExpansionTests
 
     /// <summary>
     /// Some of the mod's patches call game methods that reach Unity's native code (Random.Range,
-    /// notifications, injuries). Those can't run outside the game, so the mod's own methods are
+    /// notifications, injuries, logging). Those can't run outside the game, so the mod's own methods are
     /// patched to call these stubs instead.
     /// </summary>
     public static class Seams
@@ -151,6 +151,7 @@ namespace TraitsExpansionTests
         public static readonly List<(data_girls.girls girl, data_girls._paramType type, float val)> ParamsAdded = new();
         public static readonly List<data_girls.girls> Injured = new();
         public static readonly List<string> Notifications = new();
+        public static readonly List<string> Warnings = new();
 
         private static readonly Dictionary<MethodBase, MethodInfo> Redirects = new()
         {
@@ -159,6 +160,7 @@ namespace TraitsExpansionTests
             [AccessTools.Method(typeof(NotificationManager), nameof(NotificationManager.AddNotification), new[] { typeof(string), typeof(Color32), typeof(NotificationManager._notification._type) })] = Stub(nameof(StubNotification)),
             [AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.addParam))] = Stub(nameof(StubAddParam)),
             [AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.Set_Injured))] = Stub(nameof(StubSetInjured)),
+            [AccessTools.Method(typeof(Debug), nameof(Debug.LogWarning), new[] { typeof(object) })] = Stub(nameof(StubWarning)),
         };
 
         private static readonly MethodBase[] Patched =
@@ -168,6 +170,7 @@ namespace TraitsExpansionTests
             AccessTools.Method(typeof(SEvent_Tour_UseStamina), nameof(SEvent_Tour_UseStamina.Postfix)),
             AccessTools.Method(typeof(SEvent_Concerts__concert_Finish), nameof(SEvent_Concerts__concert_Finish.Postfix)),
             AccessTools.Method(typeof(data_girls_girls_Try_Injury), nameof(data_girls_girls_Try_Injury.Postfix)),
+            AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), nameof(data_girls_textures_LoadAssetsData.WarnUnlessModTrait)),
         };
 
         private static readonly Lazy<bool> Installed = new(() =>
@@ -192,6 +195,7 @@ namespace TraitsExpansionTests
             ParamsAdded.Clear();
             Injured.Clear();
             Notifications.Clear();
+            Warnings.Clear();
 
             Language.Data["IDOL__BULLIED_UNKNOWN"] = "An idol lost @ mental stamina to bullying.";
             Language.Data["REL__BULLYING_LOST"] = " lost @ mental stamina to bullying.";
@@ -231,5 +235,6 @@ namespace TraitsExpansionTests
         private static void StubNotification(string text, Color32 color, NotificationManager._notification._type type) => Notifications.Add(text);
         private static void StubAddParam(data_girls.girls girl, data_girls._paramType type, float val, bool ignorePotential) => ParamsAdded.Add((girl, type, val));
         private static void StubSetInjured(data_girls.girls girl) => Injured.Add(girl);
+        private static void StubWarning(object message) => Warnings.Add(message?.ToString());
     }
 }

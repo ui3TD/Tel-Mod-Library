@@ -60,9 +60,26 @@ namespace TraitsExpansion
                 instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Ldloc_S, jsonNodeOperand));
                 instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), "Infix")));
                 instructionList.Insert(index + 4, new CodeInstruction(OpCodes.Stloc_S, textureAssetOperand));
+
+                // Only warn about traits that neither the game nor this mod knows
+                MethodInfo logWarning = AccessTools.Method(typeof(Debug), nameof(Debug.LogWarning), new[] { typeof(object) });
+                int warning = instructionList.FindIndex(index + 5, x => x.Calls(logWarning));
+                if (warning != -1)
+                {
+                    instructionList[warning].operand = AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), nameof(WarnUnlessModTrait));
+                    instructionList.Insert(warning, new CodeInstruction(OpCodes.Ldloc_S, jsonNodeOperand));
+                }
             }
 
             return instructionList.AsEnumerable();
+        }
+
+        public static void WarnUnlessModTrait(object message, JSONNode jsonnode)
+        {
+            if (!Enum.TryParse(jsonnode["trait"], out NewTraits _))
+            {
+                Debug.LogWarning(message);
+            }
         }
 
         public static data_girls_textures._textureAsset Infix(data_girls_textures._textureAsset textureAsset, JSONNode jsonnode)

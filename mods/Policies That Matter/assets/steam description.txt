@@ -32,9 +32,9 @@ Streaming:
 
 Social Media:
 - Controlled: 10% chance for -10 mental each week
-- Controlled: 10% chance for 22 fans/week/girl/fame
+- Controlled: 10% chance for 2 to 22 fans each week, depending on fame
 - No Restrictions: 10% chance for -20 mental each week
-- No Restrictions: 10% chance for 110 fans/week/girl/fame
+- No Restrictions: 10% chance for 10 to 110 fans each week, depending on fame
 
 Security:
 - Relaxed: 1.5x concert stamina

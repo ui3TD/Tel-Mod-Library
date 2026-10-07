@@ -31,6 +31,14 @@ namespace UnofficialPatch
             Warn(typeof(TPatch), message);
         }
 
+        // Logs an error for the given patch type, including the resolved Harmony target.
+        public static void Error<TPatch>(string message)
+        {
+            bool usedFallback;
+            string target = GetTargetName(typeof(TPatch), out usedFallback);
+            Debug.LogError(LogPrefix + target + ": " + message);
+        }
+
         // Logs a warning once per patch + message.
         public static void WarnOnce<TPatch>(string message)
         {
@@ -1231,26 +1239,79 @@ namespace UnofficialPatch
     // because Camera.main.GetComponent<mainScript>().GetSavedData() is null.
     //
     // Fix:
-    // Preserve the previous in-memory SaveManager.Data before LoadData runs; if LoadData exits with null Data,
-    // restore the previous data so autosave and SaveEvent subscribers remain safe.
+    // During play, a failed load leaves the game untouched, so the previous SaveManager.Data is restored
+    // and autosave keeps saving the game being played.
+    // From the main menu, the game scene opens before the file is read, so a failed load leaves an empty game.
+    // Data stays null and that scene's autosaves are skipped, so the empty game can't overwrite a save.
+    public static class FailedLoadGuard
+    {
+        private const string EmptyGameError =
+            "The save could not be loaded, so this game is empty. Autosave is off for this session so it can't overwrite your saves. Return to the main menu and load another save.";
+
+        // Set while the main menu loads a save into the game scene it has just opened.
+        internal static bool MenuLoadPending;
+
+        // The save manager of a game scene whose save failed to load from the main menu.
+        // Cleared by the next successful load, or when the main menu starts another game.
+        internal static SaveManager BlockedSaveManager;
+
+        // What the LoadData prefixes record for their postfixes.
+        public struct LoadState
+        {
+            public SaveManager.SavedData Previous;
+            public bool FromMenu;
+        }
+
+        internal static LoadState BeforeLoad(SaveManager manager)
+        {
+            LoadState state = new LoadState
+            {
+                Previous = manager != null ? manager.Data : null,
+                FromMenu = MenuLoadPending,
+            };
+            MenuLoadPending = false;
+            return state;
+        }
+
+        internal static void AfterLoad<TPatch>(SaveManager manager, LoadState state, string restoredWarning)
+        {
+            if (manager == null)
+                return;
+
+            if (manager.Data != null)
+            {
+                // The load worked, so this scene holds a real game again.
+                if (ReferenceEquals(manager, BlockedSaveManager))
+                    BlockedSaveManager = null;
+                return;
+            }
+
+            if (!state.FromMenu && state.Previous != null)
+            {
+                manager.Data = state.Previous;
+                PatchLog.WarnOncePerPatch<TPatch>(restoredWarning);
+                return;
+            }
+
+            BlockedSaveManager = manager;
+            PatchLog.Error<TPatch>(EmptyGameError);
+        }
+    }
+
     [HarmonyPatch(typeof(SaveManager), "LoadData", new Type[] { typeof(bool) })]
     public class SaveManager_LoadData_Bool_NullGuard
     {
         private const string WarningMessage =
             "LoadData(bool) left SaveManager.Data null. Restored previous in-memory save data to prevent SaveEvent/autosave null crash.";
 
-        public static void Prefix(SaveManager __instance, ref SaveManager.SavedData __state)
+        public static void Prefix(SaveManager __instance, ref FailedLoadGuard.LoadState __state)
         {
-            __state = __instance != null ? __instance.Data : null;
+            __state = FailedLoadGuard.BeforeLoad(__instance);
         }
 
-        public static void Postfix(SaveManager __instance, SaveManager.SavedData __state)
+        public static void Postfix(SaveManager __instance, FailedLoadGuard.LoadState __state)
         {
-            if (__instance == null || __instance.Data != null || __state == null)
-                return;
-
-            __instance.Data = __state;
-            PatchLog.WarnOncePerPatch<SaveManager_LoadData_Bool_NullGuard>(WarningMessage);
+            FailedLoadGuard.AfterLoad<SaveManager_LoadData_Bool_NullGuard>(__instance, __state, WarningMessage);
         }
     }
 
@@ -1261,18 +1322,36 @@ namespace UnofficialPatch
         private const string WarningMessage =
             "LoadData(string) left SaveManager.Data null. Restored previous in-memory save data to prevent SaveEvent/autosave null crash.";
 
-        public static void Prefix(SaveManager __instance, ref SaveManager.SavedData __state)
+        public static void Prefix(SaveManager __instance, ref FailedLoadGuard.LoadState __state)
         {
-            __state = __instance != null ? __instance.Data : null;
+            __state = FailedLoadGuard.BeforeLoad(__instance);
         }
 
-        public static void Postfix(SaveManager __instance, SaveManager.SavedData __state)
+        public static void Postfix(SaveManager __instance, FailedLoadGuard.LoadState __state)
         {
-            if (__instance == null || __instance.Data != null || __state == null)
-                return;
+            FailedLoadGuard.AfterLoad<SaveManager_LoadData_Path_NullGuard>(__instance, __state, WarningMessage);
+        }
+    }
 
-            __instance.Data = __state;
-            PatchLog.WarnOncePerPatch<SaveManager_LoadData_Path_NullGuard>(WarningMessage);
+    // Marks loads the main menu makes into the game scene it has just opened. Starting another game
+    // from the main menu also ends an earlier scene's autosave block.
+    [HarmonyPatch(typeof(MainMenu_LoadGameManager), "LoadAsync")]
+    public class MainMenu_LoadGameManager_LoadAsync
+    {
+        public static void Prefix(bool loadSave)
+        {
+            FailedLoadGuard.MenuLoadPending = loadSave;
+            FailedLoadGuard.BlockedSaveManager = null;
+        }
+    }
+
+    // Skips autosaves in a game scene whose save failed to load from the main menu.
+    [HarmonyPatch(typeof(SaveManager), "SaveData", new Type[] { typeof(bool), typeof(bool) })]
+    public class SaveManager_SaveData
+    {
+        public static bool Prefix(SaveManager __instance, bool autoSave)
+        {
+            return !autoSave || !ReferenceEquals(__instance, FailedLoadGuard.BlockedSaveManager);
         }
     }
 

@@ -119,9 +119,10 @@ namespace TraitsExpansion
         {
             patchAddParam = true;
         }
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
             patchAddParam = false;
+            return __exception;
         }
     }
 
@@ -270,9 +271,10 @@ namespace TraitsExpansion
         {
             patchGetFan_Count = true;
         }
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
             patchGetFan_Count = false;
+            return __exception;
         }
     }
 

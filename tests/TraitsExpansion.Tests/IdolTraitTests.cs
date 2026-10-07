@@ -85,8 +85,24 @@ namespace TraitsExpansionTests
             TestGame.Reset();
             data_girls_CheckLowSalaries.Prefix();
             Assert.True(patchAddParam);
-            data_girls_CheckLowSalaries.Postfix();
+            data_girls_CheckLowSalaries.Finalizer(null);
             Assert.False(patchAddParam);
+        }
+
+        /// <summary>
+        /// If the salary check throws, Old Money's protection still switches off.
+        /// </summary>
+        [Fact]
+        public void SalaryCheckException_StillSwitchesOff()
+        {
+            TestGame.Reset(patched: true);
+            data_girls.girl.Add(null);
+            Assert.Throws<NullReferenceException>(() => TestGame.Component<data_girls>().CheckLowSalaries());
+            Assert.False(patchAddParam);
+
+            data_girls.girls rich = TestGame.Idol(NewTraits.Old_Money);
+            rich.addParam(mentalStamina, -10f);
+            Assert.Equal(90f, TestGame.Stat(rich, mentalStamina));
         }
     }
 

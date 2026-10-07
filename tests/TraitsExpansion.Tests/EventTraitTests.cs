@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using TraitsExpansion;
 using Xunit;
@@ -150,7 +151,7 @@ namespace TraitsExpansionTests
             Assert.Equal(1500L, girl.GetFan_Count(resources.fanType.hardcore));
             Assert.Equal(500L, girl.GetFan_Count(resources.fanType.casual));
             Assert.Equal(1500L, girl.GetFan_Count(resources.fanType.male));
-            SEvent_SSK__SSK_GenerateResults.Postfix();
+            SEvent_SSK__SSK_GenerateResults.Finalizer(null);
 
             Assert.False(patchGetFan_Count);
         }
@@ -170,7 +171,20 @@ namespace TraitsExpansionTests
 
             SEvent_SSK__SSK_GenerateResults.Prefix();
             Assert.Equal(1000L, girl.GetFan_Count(resources.fanType.hardcore));
-            SEvent_SSK__SSK_GenerateResults.Postfix();
+            SEvent_SSK__SSK_GenerateResults.Finalizer(null);
+        }
+
+        /// <summary>
+        /// The election's Finalizer switches the bonus off whether or not the election threw.
+        /// </summary>
+        [Fact]
+        public void ElectionException_StillSwitchesOff()
+        {
+            SEvent_SSK__SSK_GenerateResults.Prefix();
+            Exception thrown = new InvalidOperationException();
+            Assert.Same(thrown, SEvent_SSK__SSK_GenerateResults.Finalizer(thrown));
+            Assert.False(patchGetFan_Count);
+            Assert.Equal(1000L, WithFans(NewTraits.Cult_Leader).GetFan_Count(resources.fanType.hardcore));
         }
 
         /// <summary>
@@ -183,7 +197,7 @@ namespace TraitsExpansionTests
 
             SEvent_SSK__SSK_GenerateResults.Prefix();
             Assert.Equal(1000L, girl.GetFan_Count(resources.fanType.male, resources.fanType.hardcore, resources.fanType.teen));
-            SEvent_SSK__SSK_GenerateResults.Postfix();
+            SEvent_SSK__SSK_GenerateResults.Finalizer(null);
         }
     }
 }

@@ -166,11 +166,21 @@ namespace MBTIPersonalities
                     mBTI = GetGirlMBTI(_girls);
                     if(mBTI == MBTI.ISTP)
                     {
-                        __result = Mathf.RoundToInt(__result + (100 - __result) * ISTPBonus);
+                        __result = ApplyISTPBonus(__result);
                         return;
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Halves the chance of failing an accident.
+        /// </summary>
+        /// <param name="successChance">Success chance in whole percent (0-100).</param>
+        /// <returns>Success chance with the ISTP bonus, in whole percent.</returns>
+        public static int ApplyISTPBonus(int successChance)
+        {
+            return Mathf.RoundToInt(successChance + (100 - successChance) * ISTPBonus);
         }
     }
 

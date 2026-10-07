@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Worker Rights\**\*.cs" Exclude="..\..\mods\Worker Rights\obj\**;..\..\mods\Worker Rights\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+</Project>

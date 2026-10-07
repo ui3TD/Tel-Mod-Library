@@ -3,7 +3,8 @@
 		<ModOutputDirRelease>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDirRelease>
 		<ModOutputDirDebug>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDirDebug>
 		<!--<ModOutputDirDebug>$(SolutionDir)\..\Mods</ModOutputDirDebug>-->
-		<dllDir>$(SolutionDir)\..\dll</dllDir>
+		<dllDir Condition="'$(SolutionDir)' != ''">$(SolutionDir)\..\dll</dllDir>
+		<dllDir Condition="'$(SolutionDir)' == ''">$(MSBuildThisFileDirectory)..\dll</dllDir>
 
 		<!--Other assembly info-->
 		<Description>Idol Manager Mod</Description>

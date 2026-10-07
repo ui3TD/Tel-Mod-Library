@@ -166,7 +166,7 @@ namespace MBTIPersonalities
                     mBTI = GetGirlMBTI(_girls);
                     if(mBTI == MBTI.ISTP)
                     {
-                        __result = Mathf.RoundToInt(ISTPBonus + __result / 100 * (1 - ISTPBonus));
+                        __result = Mathf.RoundToInt(__result + (100 - __result) * ISTPBonus);
                         return;
                     }
                 }

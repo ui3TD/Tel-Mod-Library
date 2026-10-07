@@ -13,6 +13,72 @@ namespace ConcertRebalance
         public const int DOME_CAPACITY_HARD = 50000;
         public const int DOME_PRICE_HARD = 200000000;
 
+        /// <summary>
+        /// Attendance rate per fan after the price adjustment. Above the price threshold, replaces vanilla's curve with an exponential falloff.
+        /// </summary>
+        /// <param name="vanillaAttendance">The attendance rate computed by vanilla.</param>
+        /// <param name="ticketPrice">The ticket price set by the player.</param>
+        /// <param name="isHard">Whether the game is on hard difficulty.</param>
+        public static float AdjustAttendance(float vanillaAttendance, int ticketPrice, bool isHard)
+        {
+            int ticketPriceFactor = ticketPrice;
+            int basePriceThreshold = 10000;
+            float attendanceMultiplier = ATTENDANCE_MULT_BASE;
+            if (isHard)
+            {
+                ticketPriceFactor *= 3;
+                basePriceThreshold = 6000;
+                attendanceMultiplier = ATTENDANCE_MULT_HARD;
+            }
+
+            if (ticketPriceFactor >= 3000 && ticketPriceFactor > basePriceThreshold)
+            {
+                return attendanceMultiplier * Mathf.Pow(PRICE_SCALING_BASE, -(float)ticketPriceFactor + basePriceThreshold) / 100f;
+            }
+
+            return vanillaAttendance;
+        }
+
+        /// <summary>
+        /// Revenue multiplier for hype above 100%, using the same diminishing curve vanilla applies to non-club venues.
+        /// </summary>
+        /// <param name="hype">The concert hype, in percent.</param>
+        public static float HypeMultiplierAbove100(float hype)
+        {
+            float num2 = hype - 100f;
+            LinearFunction._function function = new();
+            function.Init(0f, 50f, 100f, 25f);
+            float num3 = function.GetY(num2) / 100f;
+            return num2 * num3 / 100f + 1f;
+        }
+
+        /// <summary>
+        /// Club concert revenue with the diminishing hype multiplier applied.
+        /// </summary>
+        /// <param name="audience">The number of attendees.</param>
+        /// <param name="ticketPrice">The ticket price set by the player.</param>
+        /// <param name="hype">The concert hype, in percent (above 100).</param>
+        /// <param name="fujiTickets">Whether the FUJI_3_TICKETS bonus is active.</param>
+        public static long ClubRevenue(long audience, int ticketPrice, float hype, bool fujiTickets)
+        {
+            float num = HypeMultiplierAbove100(hype);
+            float num4 = 1f;
+            if (fujiTickets)
+            {
+                num4 = 1.05f;
+            }
+            return (long)Mathf.Round(audience * ticketPrice * num * num4);
+        }
+
+        /// <summary>
+        /// Whether a finished concert qualifies to unlock the next venue: sold out and not at a loss.
+        /// </summary>
+        /// <param name="actualAttendance">The fraction of the venue filled.</param>
+        /// <param name="actualProfit">The concert's profit.</param>
+        public static bool QualifiesForVenueUnlock(float actualAttendance, long actualProfit)
+        {
+            return actualAttendance >= 1f && actualProfit >= 0L;
+        }
     }
 
     /// <summary>
@@ -28,24 +94,7 @@ namespace ConcertRebalance
         /// <param name="__instance">The instance of the projected values class.</param>
         public static void Postfix(ref float __result, SEvent_Concerts._concert._projectedValues __instance)
         {
-            float calculatedAttendance = __result;
-
-            int ticketPriceFactor = __instance.TicketPrice;
-            int basePriceThreshold = 10000;
-            float attendanceMultiplier = ATTENDANCE_MULT_BASE;
-            if (staticVars.IsHard())
-            {
-                ticketPriceFactor *= 3;
-                basePriceThreshold = 6000;
-                attendanceMultiplier = ATTENDANCE_MULT_HARD;
-            }
-
-            if (ticketPriceFactor >= 3000 && ticketPriceFactor > basePriceThreshold)
-            {
-                calculatedAttendance = attendanceMultiplier * Mathf.Pow(PRICE_SCALING_BASE, -(float)ticketPriceFactor + basePriceThreshold) / 100f;
-            }
-
-            __result = calculatedAttendance;
+            __result = AdjustAttendance(__result, __instance.TicketPrice, staticVars.IsHard());
         }
     }
 
@@ -64,19 +113,11 @@ namespace ConcertRebalance
             if (__instance.Venue != SEvent_Concerts._venue.club || __instance.Hype <= 100f)
                 return;
 
-            float num;
-            float num2 = __instance.Hype - 100f;
-            LinearFunction._function function = new();
-            function.Init(0f, 50f, 100f, 25f);
-            float num3 = function.GetY(num2) / 100f;
-            num = num2 * num3 / 100f + 1f;
-            float num4 = 1f;
-            if (variables.Get("FUJI_3_TICKETS") == "true")
-            {
-                num4 = 1.05f;
-            }
-            __instance.ProjectedValues.Actual_Revenue = (long)Mathf.Round(__instance.ProjectedValues.Actual_Audience * __instance.ProjectedValues.TicketPrice * num * num4);
-
+            __instance.ProjectedValues.Actual_Revenue = ClubRevenue(
+                __instance.ProjectedValues.Actual_Audience,
+                __instance.ProjectedValues.TicketPrice,
+                __instance.Hype,
+                variables.Get("FUJI_3_TICKETS") == "true");
 
             return;
         }
@@ -116,7 +157,7 @@ namespace ConcertRebalance
         /// <param name="__instance">The instance of the concert that has finished.</param>
         public static void Postfix(SEvent_Concerts._concert __instance)
         {
-            if (__instance.ProjectedValues.Actual_Attendance >= 1f && __instance.ProjectedValues.GetActualProfit() >= 0L)
+            if (QualifiesForVenueUnlock(__instance.ProjectedValues.Actual_Attendance, __instance.ProjectedValues.GetActualProfit()))
             {
                 SEvent_Concerts.UpdateVenueUnlocked(__instance);
             }

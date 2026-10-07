@@ -12,7 +12,7 @@ Also recommended mods by magier:
 - Fixed Theater so that average stats ignore days off.
 - Fixed Theater so that revenue gets added to girls earnings.
 - Fixed Cafe weekly revenue so that it includes 7 days instead of 6.
-- Fixed senbatsu stats calculation so it doesn't punish you for rows your line-up doesn't fill, and so it uses the requested stat instead of always Cute.
+- Fixed senbatsu stats calculation so it doesn't punish you if you don't have enough idols to fill all rows, and so it uses the requested stat instead of always Cute.
 - Fixed Concert revenue formula so that it shows accurate estimated values, including the FUJI ticket bonus.
 - Fixed so that when girls dating each other break up, their relationship status is no longer known.
 - Fixed fan age pie charts to show correct proportions.

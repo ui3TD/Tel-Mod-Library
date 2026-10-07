@@ -3,6 +3,7 @@ using Xunit;
 
 namespace MBTIPersonalities.Tests
 {
+    [Collection(MBTICollection.Name)]
     public class PatchTargetTests
     {
         private const string ModNamespace = "MBTIPersonalities";

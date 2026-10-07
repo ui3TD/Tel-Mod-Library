@@ -387,7 +387,13 @@ namespace TraitsExpansion
             {
                 __result += QUICKWIT_BONUS;
             }
+        }
+
+        [HarmonyPriority(Priority.VeryLow)]
+        public static Exception Finalizer(Exception __exception)
+        {
             patchGetVal = false;
+            return __exception;
         }
     }
 
@@ -404,10 +410,11 @@ namespace TraitsExpansion
         }
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
             patchGetVal = false;
             girlList = null;
+            return __exception;
         }
     }
 
@@ -423,10 +430,11 @@ namespace TraitsExpansion
         }
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
             patchGetVal = false;
             girlList = null;
+            return __exception;
         }
     }
 
@@ -441,9 +449,10 @@ namespace TraitsExpansion
         }
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
             patchGetVal = false;
+            return __exception;
         }
     }
 
@@ -458,9 +467,10 @@ namespace TraitsExpansion
         }
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
             patchGetVal = false;
+            return __exception;
         }
     }
 
@@ -477,10 +487,10 @@ namespace TraitsExpansion
 
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static Exception Finalizer(Exception __exception)
         {
-
             patchGetVal = false;
+            return __exception;
         }
     }
 

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Traits Expansion\**\*.cs" Exclude="..\..\mods\Traits Expansion\obj\**;..\..\mods\Traits Expansion\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--mainScript's static fields (notification colours) need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

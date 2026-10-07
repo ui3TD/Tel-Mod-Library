@@ -141,10 +141,10 @@ namespace TraitFix
             if (!mainScript.chance(INDISCREET_CHANCE) || !HasIndiscreetLeaker(girl0, girl1))
                 return;
 
-            string labelID = INDISCREET_LABEL_OUTSIDE;
+            string labelID = INDISCREET_LABEL_INSIDE;
             if (IsDatingForbidden())
             {
-                labelID = INDISCREET_LABEL_INSIDE;
+                labelID = INDISCREET_LABEL_INSIDE_SCANDAL;
                 girl0.addParam(data_girls._paramType.scandalPoints, 1f, false);
                 girl1.addParam(data_girls._paramType.scandalPoints, 1f, false);
             }
@@ -531,7 +531,8 @@ namespace TraitFix
         public const int LIVEFAST_DETERIORATION = 2;
 
         public const string INDISCREET_LABEL_OUTSIDE = "IDOL__OUTSIDE_LEAK";
-        public const string INDISCREET_LABEL_INSIDE = "IDOL__INSIDE_LEAK_SCANDAL";
+        public const string INDISCREET_LABEL_INSIDE = "IDOL__INSIDE_LEAK";
+        public const string INDISCREET_LABEL_INSIDE_SCANDAL = "IDOL__INSIDE_LEAK_SCANDAL";
         public const string INDISCREET_LABEL_OUTSIDE_SCANDAL = "IDOL__OUTSIDE_LEAK_SCANDAL";
 
         private sealed class TraitCalculationContext

@@ -2,5 +2,7 @@
 	<ItemGroup>
 		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
 		<Compile Include="..\..\mods\Concert Rebalance\**\*.cs" Exclude="..\..\mods\Concert Rebalance\obj\**;..\..\mods\Concert Rebalance\bin\**" LinkBase="Mod" />
+		<!--Unofficial Patch also patches the concert estimate; the forecast tests run with both mods-->
+		<Compile Include="..\..\mods\Unofficial Patch\**\*.cs" Exclude="..\..\mods\Unofficial Patch\obj\**;..\..\mods\Unofficial Patch\bin\**" LinkBase="UnofficialPatch" />
 	</ItemGroup>
 </Project>

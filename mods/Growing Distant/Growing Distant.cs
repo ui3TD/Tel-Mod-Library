@@ -19,6 +19,7 @@ namespace GrowingDistant
         public const int SALARY_LOWER_THR = 50;
         public const int ROMANCE_PENALTY = -1;
         public const int FRIEND_PENALTY = -2;
+        public const int RELATIONSHIP_MAX_POINTS = 512;
 
         /// <summary>
         /// Harmony patch for the UpdateRelationshipBasedOnSalary method in data_girls.girls.
@@ -31,7 +32,7 @@ namespace GrowingDistant
             int salarySatisfaction_Percentage = __instance.GetSalarySatisfaction_Percentage();
             if (salarySatisfaction_Percentage >= SALARY_UPPER_THR)
             {
-                __instance.Rel_Influence_Points += INFLUENCE_BONUS;
+                __instance.Rel_Influence_Points = Math.Min(RELATIONSHIP_MAX_POINTS, __instance.Rel_Influence_Points + INFLUENCE_BONUS);
             }
             else if (salarySatisfaction_Percentage <= SALARY_LOWER_THR && __instance.Rel_Influence_Points >= -INFLUENCE_PENALTYCRIT)
             {

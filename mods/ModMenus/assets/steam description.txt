@@ -88,3 +88,6 @@ Dropdown elements output an index (0, 1, 2, etc.) as a string to an in-game vari
 [/list]
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.1.0: Mod Settings button now sits under Settings; sliders without a default start at the midpoint.

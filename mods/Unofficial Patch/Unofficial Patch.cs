@@ -997,7 +997,13 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(resources._fanOpinion), "Add")]
     public class resources__fanOpinion_Add
     {
-        public static void Postfix(resources._fanOpinion __instance, float val)
+        // The game counts val down to its fraction as it records whole points, so keep the full change.
+        public static void Prefix(float val, out float __state)
+        {
+            __state = val;
+        }
+
+        public static void Postfix(resources._fanOpinion __instance, float __state)
         {
             // Propagate global fan opinion changes to each active girl.
             foreach (data_girls.girls girl in data_girls.girl)
@@ -1006,7 +1012,7 @@ namespace UnofficialPatch
                 if (girl != null && !girl.IsSick() && girl.status != data_girls._status.graduated)
                 {
                     // Apply the appeal delta for the matching fan type.
-                    girl.AddAppeal(__instance.type, val);
+                    girl.AddAppeal(__instance.type, __state);
                 }
             }
         }

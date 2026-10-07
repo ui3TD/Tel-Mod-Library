@@ -1,7 +1,6 @@
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace StatLimits
@@ -14,7 +13,7 @@ namespace StatLimits
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            __result = Mathf.Max(0, Mathf.Min(20, __result));
+            __result = Mathf.Clamp(__result, 0f, 20f);
         }
     }
 
@@ -26,7 +25,7 @@ namespace StatLimits
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            __result = Mathf.Max(0, Mathf.Min(100, __result));
+            __result = Mathf.Clamp(__result, 0f, 100f);
         }
     }
 
@@ -38,7 +37,8 @@ namespace StatLimits
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref data_girls.girls.param __result)
         {
-            __result.val = Mathf.Max(0, Mathf.Min(100, __result.val));
+            if (__result != null)
+                __result.val = Mathf.Clamp(__result.val, 0f, 100f);
         }
     }
 
@@ -49,7 +49,8 @@ namespace StatLimits
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref data_girls.girls.param __result)
         {
-            __result.val = Mathf.Max(0, Mathf.Min(100, __result.val));
+            if (__result != null)
+                __result.val = Mathf.Clamp(__result.val, 0f, 100f);
         }
     }
 
@@ -81,9 +82,14 @@ namespace StatLimits
     public class Show_Popup_AddCastParam_Limits
     {
         [HarmonyPriority(Priority.Last)]
-        public static void Postfix(ref List<data_girls.girls.param> ___girlParams)
+        public static void Postfix(List<data_girls.girls.param> ___girlParams)
         {
-            ___girlParams.Last().val = Mathf.Max(0, Mathf.Min(100, ___girlParams.Last().val));
+            if (___girlParams == null || ___girlParams.Count == 0)
+                return;
+
+            data_girls.girls.param param = ___girlParams[___girlParams.Count - 1];
+            if (param != null)
+                param.val = Mathf.Clamp(param.val, 0f, 100f);
         }
     }
 
@@ -92,9 +98,14 @@ namespace StatLimits
     public class Shows__show_AddCastParam_Limits
     {
         [HarmonyPriority(Priority.Last)]
-        public static void Postfix(ref Shows._show __instance)
+        public static void Postfix(Shows._show __instance)
         {
-            __instance.girlParams.Last().val = Mathf.Max(0, Mathf.Min(100, __instance.girlParams.Last().val));
+            if (__instance == null || __instance.girlParams == null || __instance.girlParams.Count == 0)
+                return;
+
+            data_girls.girls.param param = __instance.girlParams[__instance.girlParams.Count - 1];
+            if (param != null)
+                param.val = Mathf.Clamp(param.val, 0f, 100f);
         }
     }
 
@@ -105,7 +116,7 @@ namespace StatLimits
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref float __result)
         {
-            __result = Mathf.Max(0, Mathf.Min(100, __result));
+            __result = Mathf.Clamp(__result, 0f, 100f);
         }
     }
 }

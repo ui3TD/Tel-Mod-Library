@@ -470,7 +470,7 @@ namespace TraitsFixTests
             Assert.Equal(100f, show.girlParams.Last().val);
 
             List<data_girls.girls.param> popupParams = new() { new data_girls.girls.param { type = cute, _val = 120f } };
-            StatLimits.Show_Popup_AddCastParam_Limits.Postfix(ref popupParams);
+            StatLimits.Show_Popup_AddCastParam_Limits.Postfix(popupParams);
             Assert.Equal(100f, popupParams[0].val);
         }
 
@@ -487,6 +487,46 @@ namespace TraitsFixTests
             float chemistry = 140f;
             StatLimits.data_girls_GetTeamChemistry_Patch.Postfix(ref chemistry);
             Assert.Equal(100f, chemistry);
+        }
+
+        [Fact]
+        public void Limits_IgnoreMissingParams()
+        {
+            StatLimits.Show_Popup_AddCastParam_Limits.Postfix(null);
+            StatLimits.Show_Popup_AddCastParam_Limits.Postfix(new List<data_girls.girls.param>());
+            StatLimits.Show_Popup_AddCastParam_Limits.Postfix(new List<data_girls.girls.param> { null });
+
+            StatLimits.Shows__show_AddCastParam_Limits.Postfix(null);
+            StatLimits.Shows__show_AddCastParam_Limits.Postfix(new Shows._show { girlParams = null });
+            StatLimits.Shows__show_AddCastParam_Limits.Postfix(new Shows._show { girlParams = new List<data_girls.girls.param>() });
+            StatLimits.Shows__show_AddCastParam_Limits.Postfix(new Shows._show { girlParams = new List<data_girls.girls.param> { null } });
+
+            data_girls.girls.param none = null;
+            StatLimits.Singles__single_SenbatsuCalcParam_Limits.Postfix(ref none);
+            StatLimits.Shows__show_SenbatsuCalcParam_Limits.Postfix(ref none);
+            Assert.Null(none);
+        }
+
+        [Fact]
+        public void CastParams_OnlyLastParamClamped()
+        {
+            List<data_girls.girls.param> popupParams = new()
+            {
+                new data_girls.girls.param { type = cute, _val = 130f },
+                new data_girls.girls.param { type = cute, _val = -5f },
+            };
+            StatLimits.Show_Popup_AddCastParam_Limits.Postfix(popupParams);
+            Assert.Equal(130f, popupParams[0]._val);
+            Assert.Equal(0f, popupParams[1].val);
+
+            Shows._show show = new() { girlParams = new List<data_girls.girls.param>
+            {
+                new data_girls.girls.param { type = cute, _val = -5f },
+                new data_girls.girls.param { type = cute, _val = 130f },
+            } };
+            StatLimits.Shows__show_AddCastParam_Limits.Postfix(show);
+            Assert.Equal(-5f, show.girlParams[0]._val);
+            Assert.Equal(100f, show.girlParams[1].val);
         }
     }
 }

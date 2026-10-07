@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Traits Fix\**\*.cs" Exclude="..\..\mods\Traits Fix\obj\**;..\..\mods\Traits Fix\bin\**" LinkBase="Mod" />
+		<!--The mod ships the shared stat limits in its DLL-->
+		<Compile Include="..\..\shared\StatLimits\StatLimits.cs" LinkBase="Mod" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--mainScript's static fields (notification colours) need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

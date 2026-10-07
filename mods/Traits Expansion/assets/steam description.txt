@@ -60,4 +60,4 @@ Use the types for unique idol params.json files, and use the numbers for editing
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.1.0: Sadistic idols now add to the bullying they take part in, instead of only when they are bullied.
+- 1.1.0: Sadistic idols now add to the bullying they take part in, instead of only when they are bullied. Aerophobia costs 30 mental stamina and Stage Fright 10 per song or MC, within the game's daily limit of 30.

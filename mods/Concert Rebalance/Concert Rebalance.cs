@@ -124,6 +124,31 @@ namespace ConcertRebalance
     }
 
     /// <summary>
+    /// Applies the reduced club hype multiplier to the concert's projected revenue, so the estimate matches what the club pays.
+    /// </summary>
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), "GetRevenue")]
+    public class SEvent_Concerts__concert__projectedValues_GetRevenue
+    {
+        /// <summary>
+        /// Recalculates projected revenue for Club venues above 100% hype. A postfix, so it overrides any other mod's estimate for clubs.
+        /// </summary>
+        /// <param name="__result">The projected revenue from the game or other mods.</param>
+        /// <param name="__instance">The instance of the projected values class.</param>
+        public static void Postfix(ref long __result, SEvent_Concerts._concert._projectedValues __instance)
+        {
+            float hype = __instance.GetHype() * 100f;
+            if (__instance.Parent.Venue != SEvent_Concerts._venue.club || hype <= 100f)
+                return;
+
+            __result = ClubRevenue(
+                __instance.GetNumberOfSoldTickets(),
+                __instance.TicketPrice,
+                hype,
+                variables.Get("FUJI_3_TICKETS") == "true");
+        }
+    }
+
+    /// <summary>
     /// Modifies the venue unlocking mechanism to require selling out the previous venue with a profit.
     /// </summary>
     [HarmonyPatch(typeof(SEvent_Concerts), "UpdateVenueUnlocked")]

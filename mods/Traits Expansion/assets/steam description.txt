@@ -58,3 +58,6 @@ Thespian = 2820
 Use the types for unique idol params.json files, and use the numbers for editing save files.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.1.0: Sadistic idols now add to the bullying they take part in, instead of only when they are bullied.

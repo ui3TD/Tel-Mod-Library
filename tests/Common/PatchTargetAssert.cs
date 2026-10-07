@@ -58,6 +58,11 @@ namespace TelModTests.Common
                     {
                         harmony.CreateClassProcessor(patchClass).Patch();
                     }
+                    catch (Exception e) when (e.InnerException is System.Security.SecurityException)
+                    {
+                        // The target calls Unity native methods, which can't be compiled outside the game
+                        // (e.g. tooltip_fans.Render). TargetsResolve still checks the target exists.
+                    }
                     catch (Exception e)
                     {
                         Assert.Fail($"{patchClass.Name} failed to patch: {e.InnerException?.Message ?? e.Message}");
@@ -66,7 +71,17 @@ namespace TelModTests.Common
             }
             finally
             {
-                harmony.UnpatchSelf();
+                foreach (MethodBase original in harmony.GetPatchedMethods().ToList())
+                {
+                    try
+                    {
+                        harmony.Unpatch(original, HarmonyPatchType.All, harmony.Id);
+                    }
+                    catch (HarmonyException e) when (e.InnerException is System.Security.SecurityException)
+                    {
+                        // Same limitation: the skipped patch stays registered, and restoring it fails.
+                    }
+                }
             }
         }
 

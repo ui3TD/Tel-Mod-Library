@@ -1,6 +1,8 @@
 ﻿using HarmonyLib;
 using UnityEngine;
 using TMPro;
+using System;
+using System.Globalization;
 using static FastForward.FastForward;
 
 namespace FastForward
@@ -9,6 +11,77 @@ namespace FastForward
     {
         public const string VARID = "FastForward_Multiplier";
         public const string DEFAULT_VAR = "5";
+        public const double BASE_FAST_SPEED = 200d;
+        public const double MAX_MULTIPLIER = 50d;
+        public const double EPSILON = 0.001d;
+
+        internal static double GetConfiguredMultiplier()
+        {
+            string raw = variables.Get(VARID);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                raw = DEFAULT_VAR;
+            }
+
+            if (!double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out double multiplier))
+            {
+                multiplier = 5d;
+            }
+
+            if (double.IsNaN(multiplier) || double.IsInfinity(multiplier))
+            {
+                multiplier = 5d;
+            }
+
+            if (multiplier < 1d)
+            {
+                multiplier = 1d;
+            }
+            else if (multiplier > MAX_MULTIPLIER)
+            {
+                multiplier = MAX_MULTIPLIER;
+            }
+
+            return multiplier;
+        }
+
+        internal static double GetConfiguredSpeed()
+        {
+            return BASE_FAST_SPEED * GetConfiguredMultiplier();
+        }
+
+        internal static void ApplySuperFast(mainScript main)
+        {
+            if (main == null)
+            {
+                return;
+            }
+
+            // Use vanilla state transition first so all game-side effects still run as expected.
+            main.Time_SetState(mainScript._time_state.fast);
+            staticVars.dateTimeAddMinutesPerSecond = GetConfiguredSpeed();
+            SetFastButtonColor(mainScript.gold32);
+        }
+
+        internal static void SetFastButtonColor(Color32 color)
+        {
+            if (Camera.main == null)
+            {
+                return;
+            }
+
+            mainScript main = Camera.main.GetComponent<mainScript>();
+            if (main == null || main.TimeControls_Fast == null)
+            {
+                return;
+            }
+
+            TextMeshProUGUI fastLabel = main.TimeControls_Fast.GetComponent<TextMeshProUGUI>();
+            if (fastLabel != null)
+            {
+                fastLabel.color = color;
+            }
+        }
     }
 
     /// <summary>
@@ -24,18 +97,14 @@ namespace FastForward
         /// <returns>Boolean indicating whether the original method should be executed.</returns>
         public static bool Prefix(TimeControlButton __instance)
         {
-            double mult = double.Parse(variables.Get(VARID) ?? DEFAULT_VAR);
-            double speed = 200 * mult;
+            double speed = GetConfiguredSpeed();
 
-            if (__instance.Type != mainScript._time_state.fast || staticVars.timeState != mainScript._time_state.fast || staticVars.dateTimeAddMinutesPerSecond == speed)
+            if (__instance.Type != mainScript._time_state.fast || staticVars.timeState != mainScript._time_state.fast || Math.Abs(staticVars.dateTimeAddMinutesPerSecond - speed) <= EPSILON)
                 return true;
 
-            staticVars.dateTimeAddMinutesPerSecond = speed;
-            Camera.main.GetComponent<mainScript>().TimeControls_Fast.GetComponent<TextMeshProUGUI>().color = mainScript.gold32;
-
+            ApplySuperFast(Camera.main != null ? Camera.main.GetComponent<mainScript>() : null);
             return false;
         }
-
     }
 
     /// <summary>
@@ -54,12 +123,7 @@ namespace FastForward
 
             if (Input.GetKeyDown(KeyCode.Alpha4))
             {
-                double mult = double.Parse(variables.Get(VARID) ?? DEFAULT_VAR);
-                double speed = 200 * mult;
-                Camera.main.GetComponent<mainScript>().Time_SetState(mainScript._time_state.fast);
-                staticVars.dateTimeAddMinutesPerSecond = speed;
-
-                Camera.main.GetComponent<mainScript>().TimeControls_Fast.GetComponent<TextMeshProUGUI>().color = mainScript.gold32;
+                ApplySuperFast(Camera.main != null ? Camera.main.GetComponent<mainScript>() : null);
             }
         }
     }

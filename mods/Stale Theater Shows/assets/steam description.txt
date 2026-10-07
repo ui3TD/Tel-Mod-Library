@@ -10,3 +10,6 @@ Rebalances the theater. Theater shows go stale over time. Release a single every
 - Theater attendance increased when the show targets 'everyone', 'casual' or specific age groups to be balanced.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.1.0: Attendance changes now apply; staleness levels off at 10%; fixed negative subscription income at very high revenue.

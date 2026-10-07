@@ -36,3 +36,6 @@ You can make unique idols have a specific MBTI type by adding a line in params.j
 "mbti": "INTJ"
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.1.0: ISTP now halves the chance of failing concert accidents, instead of making them almost always fail.

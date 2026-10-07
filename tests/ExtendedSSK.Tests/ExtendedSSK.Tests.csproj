@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Extended SSK\**\*.cs" Exclude="..\..\mods\Extended SSK\obj\**;..\..\mods\Extended SSK\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+</Project>

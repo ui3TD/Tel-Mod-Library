@@ -13,3 +13,6 @@ Idols will demand fair wages! Brand new staff cannot be blamed for scandals!
 - Staff cannot be fired using scandal points within the first month so that you can't just hire and immediately fire staff to get rid of points.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.1.0: The low-salary graduation penalty now applies; the 10-fame salary floor no longer lowers expectations.

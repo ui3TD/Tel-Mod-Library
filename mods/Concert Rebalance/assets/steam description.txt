@@ -12,4 +12,4 @@ Rebalances concerts to make things more challenging.
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.0.1: Internal cleanup, no gameplay changes.
+- 1.1.0: Club concert estimates now match the reduced hype payout.

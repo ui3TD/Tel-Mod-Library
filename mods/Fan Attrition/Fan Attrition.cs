@@ -62,7 +62,7 @@ namespace FanAttrition
         {
             if (__this.mc != null)
             {
-                float mcCoeff = Mathf.Max(1f, 1f + __this.mc.fame * __this.mc.fame / 10);
+                float mcCoeff = Mathf.Max(1f, 1f + __this.mc.fame * __this.mc.fame / 10f);
                 if (__this.mc.fame >= 10)
                 {
                     mcCoeff += MC_MAX_FAME_BONUS;

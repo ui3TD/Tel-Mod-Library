@@ -13,8 +13,8 @@ namespace StaleTheater
     {
         public const float DECAYTIME_HARD = 183f;
         public const float DECAYTIME_NORMAL = 366f;
-        public const float STREAM_PENALTY_HARD = 0.9f;
-        public const float STREAM_PENALTY_NORMAL = 0.7f;
+        public const double STREAM_PENALTY_HARD = 0.9;
+        public const double STREAM_PENALTY_NORMAL = 0.7;
 
         public const float THEATER_EVERYONE = 0.3f;
         public const float THEATER_CASUAL = 0.65f;
@@ -72,6 +72,7 @@ namespace StaleTheater
     }
 
     // Theater subscription revenue decreased by 90% / 70%
+    // Kept as long via double: revenue can pass int's ~2.1 billion limit
     [HarmonyPatch(typeof(Theaters._theater), "GetSubRevenue")]
     public class Theaters__theater_GetSubRevenue
     {
@@ -79,11 +80,11 @@ namespace StaleTheater
         {
             if (staticVars.IsHard())
             {
-                __result = Mathf.RoundToInt(__result * (1 - STREAM_PENALTY_HARD));
+                __result = (long)Math.Round(__result * (1 - STREAM_PENALTY_HARD));
             }
             else if(staticVars.IsNormal())
             {
-                __result = Mathf.RoundToInt(__result * (1 - STREAM_PENALTY_NORMAL));
+                __result = (long)Math.Round(__result * (1 - STREAM_PENALTY_NORMAL));
             }
         }
     }

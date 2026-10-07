@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\FastForward\**\*.cs" Exclude="..\..\mods\FastForward\obj\**;..\..\mods\FastForward\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--For Input (hotkey patch)-->
+		<Reference Include="UnityEngine.InputLegacyModule">
+			<HintPath>$(dllDir)\UnityEngine.InputLegacyModule.dll</HintPath>
+		</Reference>
+		<!--staticVars' initializer loads Steamworks types-->
+		<Reference Include="Steamworks.NET">
+			<HintPath>$(dllDir)\Steamworks.NET.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

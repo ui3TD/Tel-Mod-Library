@@ -758,6 +758,9 @@ namespace UnofficialPatch
     {
         // Hype is capped at 200% (2.0) by the base game.
         private const float MaxRatio = 2f;
+        private const float PercentScale = 100f;
+        // Absorbs float error so exact percents (e.g. 0.29) don't floor one point low.
+        private const float FloorTolerance = 0.0001f;
 
         public static bool Prefix(ref float _val)
         {
@@ -766,6 +769,9 @@ namespace UnofficialPatch
             {
                 _val = MaxRatio;
             }
+            // The game rounds to the nearest percent, so 99.5-99.9% attendance showed as 100% (sold out).
+            // Round down instead; the game's rounding then keeps the whole percent.
+            _val = Mathf.Floor(_val * PercentScale + FloorTolerance) / PercentScale;
             return true;
         }
     }

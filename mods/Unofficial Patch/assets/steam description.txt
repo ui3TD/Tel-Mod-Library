@@ -12,16 +12,18 @@ Also recommended mods by magier:
 - Fixed Theater so that average stats ignore days off.
 - Fixed Theater so that revenue gets added to girls earnings.
 - Fixed Cafe weekly revenue so that it includes 7 days instead of 6.
-- Fixed senbatsu stats calculation so it doesn't punish you if you don't have enough idols to fill all rows.
-- Fixed Concert revenue formula so that it shows accurate estimated values.
+- Fixed senbatsu stats calculation so it doesn't punish you for rows your line-up doesn't fill, and so it uses the requested stat instead of always Cute.
+- Fixed Concert revenue formula so that it shows accurate estimated values, including the FUJI ticket bonus.
 - Fixed so that when girls dating each other break up, their relationship status is no longer known.
 - Fixed fan age pie charts to show correct proportions.
-- Fixed world tour revenue text color to consider savings.
+- Fixed world tour revenue text color to consider savings, and to show red when the tour would lose money.
 - Fixed dating status to show status of underage girls, so you can actually track scandals.
 - Fixed fan opinion to be impacted by concerts, SSK/show cancellation and random events
 - Fixed gossip so that idol will not gossip about themselves
 - Fixed event and dialogue checks for Influence to check for Influence instead of Friendship
+- Fixed event and dialogue checks for "not" conditions on variables, which always passed
 - Fixed display for Stamina cost of Performances to be correct for "Energetic" performance policy
 - Fixed event and dialogue checks for having a staffer of a specific type
+- Fixed loading a missing or corrupt save: during play, autosave keeps working; from the main menu, autosave is off for that session so the empty game can't overwrite your saves.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

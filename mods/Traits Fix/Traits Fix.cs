@@ -595,9 +595,7 @@ namespace TraitFix
                 Groups._group girlGroup = girl.GetGroup();
                 singles._single groupSingle = girlGroup != null ? singles.GetLatestReleasedSingle(false, girlGroup) : null;
                 singles._single recentSingle = GetRecentSingle(groupSingle, mainSingle);
-                if (recentSingle != null
-                    && (staticVars.dateTime - recentSingle.ReleaseData.ReleaseDate).Days >= staticVars.dateTime.Day
-                    && recentSingle.ReleaseData.Chart_Position != 1)
+                if (DidSingleMissNumberOne(recentSingle))
                     return girl.trait == traits._trait._type.Defeatist ? DEFEATIST_MODIFIER : UNDERDOG_MODIFIER;
             }
 
@@ -745,6 +743,50 @@ namespace TraitFix
             girl1.DatingData.Is_Partner_Status_Known = true;
             girl0.DatingData.Partner_Status_Known_To_Player = data_girls.girls._dating_data._partner_status.taken_idol;
             girl1.DatingData.Partner_Status_Known_To_Player = data_girls.girls._dating_data._partner_status.taken_idol;
+        }
+
+        private static bool DidSingleMissNumberOne(singles._single single)
+        {
+            if (single?.ReleaseData == null)
+                return false;
+
+            // The single charts the month after its release.
+            DateTime releaseDate = single.ReleaseData.ReleaseDate;
+            if (releaseDate.Year == staticVars.dateTime.Year && releaseDate.Month == staticVars.dateTime.Month)
+                return false;
+
+            // The chart popup records the position, except for the last-ranked single or when the popup is skipped.
+            // A single that can't be found on any chart counts as having missed #1.
+            int chartPosition = single.ReleaseData.Chart_Position;
+            if (chartPosition <= 0)
+                chartPosition = ResolveChartPosition(single);
+            return chartPosition != 1;
+        }
+
+        private static int ResolveChartPosition(singles._single single)
+        {
+            if (Rivals.Date_To_Month == null)
+                return 0;
+
+            // A month's chart lists the singles released the month before.
+            DateTime chartMonth = single.ReleaseData.ReleaseDate.AddMonths(1);
+            foreach (Rivals._date_to_month_id month in Rivals.Date_To_Month)
+            {
+                if (month == null || month.Date.Year != chartMonth.Year || month.Date.Month != chartMonth.Month)
+                    continue;
+
+                List<Rivals._group._single> chartSingles = Rivals.GetSingles(month.ID);
+                if (chartSingles == null)
+                    return 0;
+                for (int i = 0; i < chartSingles.Count; i++)
+                {
+                    Rivals._group._single chartSingle = chartSingles[i];
+                    if (chartSingle != null && chartSingle.Player && chartSingle.SingleID == single.id)
+                        return i + 1;
+                }
+                return 0;
+            }
+            return 0;
         }
 
         private static bool IsEventUpcoming()

@@ -335,8 +335,15 @@ namespace ModMenus
                 item.SetParent(parent, false);
             }
 
-            int itemIndex = item.GetSiblingIndex();
-            int targetIndex = anchor.GetSiblingIndex() + 1;
+            item.SetSiblingIndex(SiblingIndexAfter(item.GetSiblingIndex(), anchor.GetSiblingIndex(), parent.childCount));
+        }
+
+        /// <summary>
+        /// Returns the sibling index that places an item immediately after its anchor.
+        /// </summary>
+        public static int SiblingIndexAfter(int itemIndex, int anchorIndex, int childCount)
+        {
+            int targetIndex = anchorIndex + 1;
 
             // Removing an item that started before the anchor shifts the anchor left.
             if (itemIndex < targetIndex)
@@ -344,7 +351,7 @@ namespace ModMenus
                 targetIndex--;
             }
 
-            item.SetSiblingIndex(Mathf.Clamp(targetIndex, 0, parent.childCount - 1));
+            return Mathf.Clamp(targetIndex, 0, childCount - 1);
         }
 
         /// <summary>
@@ -450,6 +457,26 @@ namespace ModMenus
         }
 
         /// <summary>
+        /// Reads a slider's range and default from its JSON item. The range is 0-100 unless
+        /// both minValue and maxValue are set; the default is the midpoint unless defaultValue is set.
+        /// </summary>
+        public static void GetSliderRange(JSONNode item, out float minValue, out float maxValue, out float defaultValue)
+        {
+            minValue = 0;
+            maxValue = 100;
+            if (!string.IsNullOrEmpty(item[JSON_FIELD_MIN]) && !string.IsNullOrEmpty(item[JSON_FIELD_MAX]))
+            {
+                minValue = item[JSON_FIELD_MIN].AsFloat;
+                maxValue = item[JSON_FIELD_MAX].AsFloat;
+            }
+            defaultValue = (maxValue + minValue) / 2f;
+            if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
+            {
+                defaultValue = item[JSON_FIELD_DEF].AsFloat;
+            }
+        }
+
+        /// <summary>
         /// Adds menu items to the mod menu based on JSON configuration files.
         /// </summary>
         /// <param name="parentTransform">The parent transform to add menu items to.</param>
@@ -502,18 +529,7 @@ namespace ModMenus
                                 continue;
 
                             id = item[JSON_FIELD_VARID];
-                            float minValue = 0;
-                            float maxValue = 100;
-                            if (!string.IsNullOrEmpty(item[JSON_FIELD_MIN]) && !string.IsNullOrEmpty(item[JSON_FIELD_MAX]))
-                            {
-                                minValue = item[JSON_FIELD_MIN].AsFloat;
-                                maxValue = item[JSON_FIELD_MAX].AsFloat;
-                            }
-                            float defaultFloat = (maxValue + minValue) / 2f;
-                            if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
-                            {
-                                defaultFloat = item[JSON_FIELD_DEF].AsFloat;
-                            }
+                            GetSliderRange(item, out float minValue, out float maxValue, out float defaultFloat);
 
                             AddMenuSlider(id, label, minValue, maxValue, defaultFloat, parentTransform);
                             break;

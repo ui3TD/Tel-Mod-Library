@@ -91,14 +91,14 @@
 		type: 			"Aerophobia",
 		title: 			"Aerophobia",
 		intro:			"intro_aerophobia",
-		description:	"-50 mental stamina after a tour",
+		description:	"-30 mental stamina after a tour",
 		positive:		false
 	},
 	{
 		type: 			"Stage_Fright",
 		title: 			"Stage Fright",
 		intro:			"intro_stage_fright",
-		description:	"-30 mental stamina after centering or MCing in concerts",
+		description:	"-10 mental stamina for each song she centers or MC she takes part in",
 		positive:		false
 	},
 	{

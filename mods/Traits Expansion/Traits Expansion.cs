@@ -524,8 +524,8 @@ namespace TraitsExpansion
         public const float RECKLESS_CHANCE_SEVERE = 2f;
         public const float THESPIAN_COEFF = 0.5f;
         public const float CULT_COEFF = 1.5f;
-        public const float STAGEFRIGHT_PENALTY = 30;
-        public const float AEROPHOB_PENALTY = 50;
+        public const float STAGEFRIGHT_PENALTY = 10;
+        public const float AEROPHOB_PENALTY = 30;
         public const int JOBHOPPER_DAYS_LOWER = 100;
         public const int JOBHOPPER_DAYS_UPPER = 365;
         public const int SADISTIC_MODIFIER = 10;

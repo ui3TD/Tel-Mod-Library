@@ -195,7 +195,7 @@ namespace TraitsExpansionTests
 
             Language.Data["IDOL__BULLIED_UNKNOWN"] = "An idol lost @ mental stamina to bullying.";
             Language.Data["REL__BULLYING_LOST"] = " lost @ mental stamina to bullying.";
-            Language.Data["IDOL__STAGEFRIGHT"] = "@ lost 30 mental stamina due to stage fright.";
+            Language.Data["IDOL__STAGEFRIGHT"] = "@ lost 10 mental stamina due to stage fright.";
         }
 
         private static IEnumerable<CodeInstruction> Redirect(IEnumerable<CodeInstruction> instructions)

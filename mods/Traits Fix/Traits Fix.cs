@@ -133,6 +133,11 @@ namespace TraitFix
             if (__instance.IsRelationshipKnown())
                 return;
 
+            // A leak marks both idols as dating an idol, so this stops the same couple leaking every week.
+            // Knowing only one of them is dating (but not who) leaves the couple secret.
+            if (IsKnownToDateIdol(girl0) && IsKnownToDateIdol(girl1))
+                return;
+
             if (!mainScript.chance(INDISCREET_CHANCE) || !HasIndiscreetLeaker(girl0, girl1))
                 return;
 
@@ -722,6 +727,13 @@ namespace TraitFix
             girl0 = relationship.Girls[0];
             girl1 = relationship.Girls[1];
             return girl0 != null && girl1 != null && girl0.DatingData != null && girl1.DatingData != null;
+        }
+
+        public static bool IsKnownToDateIdol(data_girls.girls girl)
+        {
+            return girl?.DatingData != null
+                && girl.DatingData.Is_Partner_Status_Known
+                && girl.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.taken_idol;
         }
 
         public static void MarkIdolRelationshipKnown(data_girls.girls girl0, data_girls.girls girl1)

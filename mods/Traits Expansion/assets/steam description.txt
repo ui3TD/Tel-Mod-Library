@@ -18,8 +18,8 @@ A bunch of new traits that expand upon the existing set of traits. They affect s
 
 [h3]Business-related Traits[/h3]
 - Thespian: -50% stamina for dramas
-- Wooden Acting: -50% rewards for dramas
-- Quick Wit: +50% rewards for variety shows
+- Wooden Acting: -0.2 to her reward multiplier for dramas (-20% at 50 in the job's skill)
+- Quick Wit: +0.5 to her reward multiplier for variety shows (+50% at 50 in the job's skill)
 
 [h3]Special Event-related Traits[/h3]
 - Cult Leader: +50% votes in elections

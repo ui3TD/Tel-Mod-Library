@@ -17,8 +17,8 @@ Let me know of any bugs.
 - Underdog: +20 to all stats if the latest single does not top the charts. The modifier lasts until the next single release.
 - Lone Wolf: +40 to all stats when they are the only one assigned to a show.
 - Photogenic: +100% to photoshoots before other modifiers.
-- Maternal: positive relationships with those younger than them by default and these relationships develop naturally 4x faster.
-- Precocious: positive relationships with those older than them by default and these relationships develop naturally 4x faster.
+- Maternal: positive relationships with those younger than them by default and these relationships develop naturally 2.5x faster.
+- Precocious: positive relationships with those older than them by default and these relationships develop naturally 2.5x faster.
 - Arrogant: all relationships naturally rapidly decrease after they center a single until the next single release.
 - Forgiving: will never dislike or hate any other girls.
 - Meme Queen: +10 to all stats for internet shows and get +10% success rate and +5% crit success rate when participating in viral marketing campaigns (does not stack).

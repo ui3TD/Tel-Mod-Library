@@ -303,7 +303,7 @@ namespace FanAttrition
         public static void Postfix(tooltip_fans __instance)
         {
             long baseChange = resources.FansChange * 7;
-            long totalChange = adFans + dramaFans + netFans + tvFans + radioFans + baseChange;
+            long totalChange = adFans + dramaFans + netFans + tvFans + radioFans + cafeFans + baseChange;
 
             string changeStr = ExtensionMethods.formatNumber(totalChange, false, false) + " " + Language.Data["PER_WEEK"];
             if (totalChange > 0)

@@ -27,3 +27,6 @@ Also recommended mods by magier:
 - Fixed loading a missing or corrupt save: during play, autosave keeps working; from the main menu, autosave is off for that session so the empty game can't overwrite your saves.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.4.0: Fixes for senbatsu stats, breakups, event checks, concert estimates, fan opinion and failed loads.

@@ -54,7 +54,7 @@ namespace TraitsExpansionTests
     }
 
     /// <summary>
-    /// Aerophobic idols lose 50 mental stamina each time the agency goes on a world tour.
+    /// Aerophobic idols lose 30 mental stamina each time the agency goes on a world tour.
     /// </summary>
     public class AerophobiaTests
     {
@@ -70,7 +70,7 @@ namespace TraitsExpansionTests
 
             SEvent_Tour_UseStamina.Postfix();
 
-            Assert.Equal(new[] { (first, mentalStamina, -50f), (second, mentalStamina, -50f) }, Seams.ParamsAdded);
+            Assert.Equal(new[] { (first, mentalStamina, -30f), (second, mentalStamina, -30f) }, Seams.ParamsAdded);
         }
 
         [Fact]
@@ -83,7 +83,7 @@ namespace TraitsExpansionTests
     }
 
     /// <summary>
-    /// Stage Fright idols lose 30 mental stamina for each song they center and each MC they take
+    /// Stage Fright idols lose 10 mental stamina for each song they center and each MC they take
     /// part in, with a notification each time.
     /// </summary>
     public class StageFrightTests
@@ -91,7 +91,7 @@ namespace TraitsExpansionTests
         public StageFrightTests() => TestGame.Reset();
 
         [Fact]
-        public void EachCenterAndMC_Costs30()
+        public void EachCenterAndMC_Costs10()
         {
             data_girls.girls nervous = TestGame.Idol(NewTraits.Stage_Fright, name: "Nervous");
             data_girls.girls calm = TestGame.Idol(name: "Calm");
@@ -107,8 +107,8 @@ namespace TraitsExpansionTests
             SEvent_Concerts__concert_Finish.Postfix(concert);
 
             Assert.Equal(3, Seams.ParamsAdded.Count);
-            Assert.All(Seams.ParamsAdded, p => Assert.Equal((nervous, mentalStamina, -30f), p));
-            Assert.Equal(Enumerable.Repeat("Nervous lost 30 mental stamina due to stage fright.", 3), Seams.Notifications);
+            Assert.All(Seams.ParamsAdded, p => Assert.Equal((nervous, mentalStamina, -10f), p));
+            Assert.Equal(Enumerable.Repeat("Nervous lost 10 mental stamina due to stage fright.", 3), Seams.Notifications);
         }
 
         [Fact]

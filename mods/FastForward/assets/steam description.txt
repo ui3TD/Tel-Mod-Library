@@ -6,3 +6,6 @@ Press '4' or click the fast-forward button twice to speed up time 5x faster!
 Use the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url] to customise the speed.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.3.0: The speed setting now works with any region and number format; capped at 50x.

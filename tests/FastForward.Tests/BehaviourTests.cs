@@ -28,8 +28,9 @@ namespace FastForward.Tests
         [InlineData("2.5", 2.5d)]
         [InlineData("0.5", 1d)]
         [InlineData("-3", 1d)]
-        [InlineData("50", 50d)]
-        [InlineData("100", 50d)]
+        [InlineData("28", 28d)]
+        [InlineData("28.8", 28d)]
+        [InlineData("100", 28d)]
         public void MultiplierIsParsedAndClamped(string raw, double expected)
         {
             SetMultiplier(raw);

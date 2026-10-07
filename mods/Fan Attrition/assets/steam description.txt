@@ -22,3 +22,6 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 - Drama and Ad business proposals have their max base stamina reduced to 20 at high levels so it's easier to micromanage stamina.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.1.0: Fixed the MC fame bonus and the fan tooltip total.

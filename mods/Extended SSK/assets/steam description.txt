@@ -8,3 +8,6 @@ Use the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]M
 Warning: this can make elections go on for a long time.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.3.0: Ranks 11+ now use each election's own broadcast tier.

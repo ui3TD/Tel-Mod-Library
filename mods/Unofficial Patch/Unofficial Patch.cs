@@ -567,8 +567,8 @@ namespace UnofficialPatch
     {
         // Tooltip is intended to show a full week.
         private const int DaysInWeek = 7;
-        // Approximate weeks per month used by the base game for sub revenue.
-        private const float SubRevenueWeeksPerMonth = 4.35f;
+        // Average weeks per month, to spread the monthly subscription revenue over a week.
+        private const double SubRevenueWeeksPerMonth = 4.35;
 
         public static void Postfix(ref long __result)
         {
@@ -585,8 +585,9 @@ namespace UnofficialPatch
                 if (theater.AreSubsUnlocked())
                 {
                     // Include subscription revenue spread across an average month.
+                    // In double: a float loses whole yen above ~16.7 million a month.
                     long subRevenue = theater.GetSubRevenue();
-                    output += (long)Mathf.Round(subRevenue / SubRevenueWeeksPerMonth);
+                    output += (long)Math.Round(subRevenue / SubRevenueWeeksPerMonth);
                 }
             }
             // Return the corrected tooltip total.
@@ -603,18 +604,18 @@ namespace UnofficialPatch
 
         public static void Postfix(ref int __result)
         {
-            // Start with the base value from the game.
-            int output = __result;
+            // Recount the week in 64 bits: the game's int total wraps past ~2.1 billion.
+            long output = 0L;
             foreach (Cafes._cafe cafe in Cafes.Cafes_)
             {
-                // Add the missing 7th day for each cafe.
-                if (cafe.Stats.Count >= DaysInWeek)
+                // The last 7 days of each cafe; the game counts only 6.
+                for (int i = Math.Max(cafe.Stats.Count - DaysInWeek, 0); i < cafe.Stats.Count; i++)
                 {
-                    output += cafe.Stats[cafe.Stats.Count - DaysInWeek].Profit;
+                    output += cafe.Stats[i].Profit;
                 }
             }
-            // Return the corrected tooltip total.
-            __result = output;
+            // The tooltip reads an int, so cap the total instead of wrapping.
+            __result = (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, output));
         }
     }
 

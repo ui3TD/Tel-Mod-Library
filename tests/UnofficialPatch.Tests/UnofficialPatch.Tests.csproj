@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Unofficial Patch\**\*.cs" Exclude="..\..\mods\Unofficial Patch\obj\**;..\..\mods\Unofficial Patch\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--mainScript's static fields (notification colours) need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+		<!--For Canvas (the fan pie and tour popup patches)-->
+		<Reference Include="UnityEngine.UIModule">
+			<HintPath>$(dllDir)\UnityEngine.UIModule.dll</HintPath>
+		</Reference>
+		<!--Type-forwarding facade; Harmony needs it to compile patched methods that reference it-->
+		<Reference Include="UnityEngine">
+			<HintPath>$(dllDir)\UnityEngine.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

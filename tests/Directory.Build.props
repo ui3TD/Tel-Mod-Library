@@ -1,0 +1,66 @@
+<Project>
+	<!--
+	Replaces the root Directory.Build.props for test projects, so building tests
+	never deploys anything to the game's Mods folder.
+	-->
+	<PropertyGroup>
+		<dllDir>$(MSBuildThisFileDirectory)..\..\dll</dllDir>
+		<LangVersion>latest</LangVersion>
+		<TargetFramework>net472</TargetFramework>
+		<IsPackable>false</IsPackable>
+		<!--Mono-built game assemblies; run tests as x64 like the game-->
+		<PlatformTarget>x64</PlatformTarget>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!--Game assemblies are copied next to the tests so game types can load. Never commit them.-->
+		<Reference Include="Assembly-CSharp">
+			<HintPath>$(dllDir)\Assembly-CSharp.dll</HintPath>
+		</Reference>
+		<Reference Include="Assembly-CSharp-firstpass">
+			<HintPath>$(dllDir)\Assembly-CSharp-firstpass.dll</HintPath>
+		</Reference>
+		<Reference Include="Harmony">
+			<HintPath>$(dllDir)\0Harmony.dll</HintPath>
+		</Reference>
+		<Reference Include="UnityEngine.UI">
+			<HintPath>$(dllDir)\UnityEngine.UI.dll</HintPath>
+		</Reference>
+		<Reference Include="Unity.TextMeshPro">
+			<HintPath>$(dllDir)\Unity.TextMeshPro.dll</HintPath>
+		</Reference>
+		<Reference Include="DOTween">
+			<HintPath>$(dllDir)\DOTween.dll</HintPath>
+		</Reference>
+
+		<!--
+		Tests need runnable Unity code (Mathf etc.); the UnityEngine.Modules NuGet package the
+		mods compile against is stubs only. Copy these from the game's UnstrippedLibs folder.
+		-->
+		<Reference Include="UnityEngine.CoreModule">
+			<HintPath>$(dllDir)\UnityEngine.CoreModule.dll</HintPath>
+		</Reference>
+		<Reference Include="UnityEngine.SharedInternalsModule">
+			<HintPath>$(dllDir)\UnityEngine.SharedInternalsModule.dll</HintPath>
+		</Reference>
+
+		<!--HarmonyX's runtime dependencies, from the game's BepInEx\core folder-->
+		<Reference Include="MonoMod.Utils">
+			<HintPath>$(dllDir)\MonoMod.Utils.dll</HintPath>
+		</Reference>
+		<Reference Include="MonoMod.RuntimeDetour">
+			<HintPath>$(dllDir)\MonoMod.RuntimeDetour.dll</HintPath>
+		</Reference>
+		<Reference Include="Mono.Cecil">
+			<HintPath>$(dllDir)\Mono.Cecil.dll</HintPath>
+		</Reference>
+
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+		<PackageReference Include="xunit" Version="2.9.2" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Include="$(MSBuildThisFileDirectory)Common\**\*.cs" LinkBase="Common" />
+	</ItemGroup>
+</Project>

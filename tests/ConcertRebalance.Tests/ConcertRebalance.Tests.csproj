@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Concert Rebalance\**\*.cs" Exclude="..\..\mods\Concert Rebalance\obj\**;..\..\mods\Concert Rebalance\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+</Project>

@@ -180,7 +180,7 @@ namespace TraitsExpansion
                     if (member.IsSick())
                         continue;
 
-                    if (member.trait == (traits._trait._type)NewTraits.Sadistic && clique.IsBullied(member))
+                    if (member.trait == (traits._trait._type)NewTraits.Sadistic && clique.IsBully(member))
                     {
                         sadistic++;
                     }

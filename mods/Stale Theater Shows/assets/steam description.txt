@@ -4,7 +4,7 @@ Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyInt
 Rebalances the theater. Theater shows go stale over time. Release a single every month to keep the theater shows fresh.
 
 [h3]Details[/h3]
-- Theater show sales and subscriptions start to decay after 30 days since the last single due to staleness. It's not so severe in easy/normal mode, but more severe in Unfair.
+- Theater show sales and subscriptions start to decay after 30 days since the last single due to staleness, levelling off at 10% of normal. It's not so severe in easy/normal mode, but more severe in Unfair.
 - Theater subscription revenue decreased by 70% in Normal mode and 90% in Unfair mode. Most of the revenue goes to the streaming service provider.
 - Theater attendance for Manzais halved to scale with stamina cost compared to performances.
 - Theater attendance increased when the show targets 'everyone', 'casual' or specific age groups to be balanced.

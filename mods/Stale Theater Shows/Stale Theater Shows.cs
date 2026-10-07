@@ -11,6 +11,8 @@ namespace StaleTheater
 {
     public class StaleTheater
     {
+        public const float STALE_START = 30f;
+        public const float STALE_MIN = 0.1f;
         public const float DECAYTIME_HARD = 183f;
         public const float DECAYTIME_NORMAL = 366f;
         public const double STREAM_PENALTY_HARD = 0.9;
@@ -29,7 +31,7 @@ namespace StaleTheater
         public const float MANZAI_STAM_COEFF = 0.5f;
     }
 
-    // Theater show sales and subscriptions start to decay after 30 days
+    // Theater show sales and subscriptions start to decay after 30 days, levelling off at 10%
     [HarmonyPatch(typeof(Theaters._theater), "GetPriceCoeff")]
     public class Theaters__theater_GetPriceCoeff
     {
@@ -40,7 +42,6 @@ namespace StaleTheater
                 return;
 
             int daysSinceSingle;
-            LinearFunction._function linear = new();
             if(singles.GetLatestReleasedSingle(false, __instance.GetGroup()) != null)
             {
                 daysSinceSingle = (staticVars.dateTime - singles.GetLatestReleasedSingle(false, __instance.GetGroup()).ReleaseData.ReleaseDate).Days;
@@ -49,17 +50,15 @@ namespace StaleTheater
             {
                 daysSinceSingle = __instance.GetGroup().GetDaysSinceCreation();
             }
-            if (daysSinceSingle > 30)
+            if (daysSinceSingle > STALE_START)
             {
                 if (staticVars.IsHard())
                 {
-                    linear.Init(30f, 1f, DECAYTIME_HARD, 0.1f);
-                    output *= linear.GetY(daysSinceSingle);
+                    output *= GetStaleness(daysSinceSingle, DECAYTIME_HARD);
                 }
                 else if(staticVars.IsNormal())
                 {
-                    linear.Init(30f, 1f, DECAYTIME_NORMAL, 0.1f);
-                    output *= linear.GetY(daysSinceSingle);
+                    output *= GetStaleness(daysSinceSingle, DECAYTIME_NORMAL);
                 }
             }
             if (output < 0.001f)
@@ -68,6 +67,14 @@ namespace StaleTheater
             }
 
             __result = output;
+        }
+
+        // Starts flat, falls through the middle and levels off at STALE_MIN.
+        // 90% of the drop is done by decayTime; 99.4% by 1.5x that.
+        public static float GetStaleness(int daysSinceSingle, float decayTime)
+        {
+            float t = (daysSinceSingle - STALE_START) / (decayTime - STALE_START);
+            return STALE_MIN + (1f - STALE_MIN) * Mathf.Pow(10f, -t * t);
         }
     }
 

@@ -98,7 +98,7 @@ namespace TraitsExpansionTests
             List<CodeInstruction> before = PatchProcessor.GetOriginalInstructions(original);
             List<CodeInstruction> after = data_girls_textures_LoadAssetsData.Transpiler(before.Select(i => i.Clone())).ToList();
 
-            Assert.Equal(before.Count + 4, after.Count);
+            Assert.Equal(before.Count + 5, after.Count);
             MethodInfo infix = AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), nameof(data_girls_textures_LoadAssetsData.Infix));
             int call = after.FindIndex(i => i.opcode == OpCodes.Call && Equals(i.operand, infix));
             Assert.True(call > 2, "Infix call not inserted");
@@ -109,6 +109,33 @@ namespace TraitsExpansionTests
             AssertLocal(after[call + 1], OpCodes.Stloc_S, typeof(data_girls_textures._textureAsset));
             Assert.Equal(OpCodes.Ldstr, after[call + 2].opcode);
             Assert.Equal("Trait not found: ", after[call + 2].operand);
+
+            // The catch block's warning goes through the mod, with the idol's JSON
+            MethodInfo logWarning = AccessTools.Method(typeof(UnityEngine.Debug), nameof(UnityEngine.Debug.LogWarning), new[] { typeof(object) });
+            MethodInfo warn = AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), nameof(data_girls_textures_LoadAssetsData.WarnUnlessModTrait));
+            int warning = after.FindIndex(call, i => i.Calls(warn));
+            Assert.True(warning > call, "Warning not redirected");
+            AssertLocal(after[warning - 1], OpCodes.Ldloc_S, typeof(JSONNode));
+            Assert.DoesNotContain(after.Skip(call).Take(warning - call), i => i.Calls(logWarning));
+            Assert.Equal(before.Count(i => i.Calls(logWarning)) - 1, after.Count(i => i.Calls(logWarning)));
+        }
+
+        [Theory]
+        [InlineData("Cult_Leader")]
+        [InlineData("Thespian")]
+        public void ModTrait_NoWarning(string name)
+        {
+            TestGame.Reset();
+            data_girls_textures_LoadAssetsData.WarnUnlessModTrait("Trait not found: " + name, JSON.Parse($"{{\"trait\": \"{name}\"}}"));
+            Assert.Empty(Seams.Warnings);
+        }
+
+        [Fact]
+        public void UnknownTrait_StillWarns()
+        {
+            TestGame.Reset();
+            data_girls_textures_LoadAssetsData.WarnUnlessModTrait("Trait not found: Not_A_Trait", JSON.Parse("{\"trait\": \"Not_A_Trait\"}"));
+            Assert.Equal(new[] { "Trait not found: Not_A_Trait" }, Seams.Warnings);
         }
 
         private static void AssertLocal(CodeInstruction instruction, OpCode opcode, Type type)

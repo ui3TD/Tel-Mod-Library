@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Stale Theater Shows\**\*.cs" Exclude="..\..\mods\Stale Theater Shows\obj\**;..\..\mods\Stale Theater Shows\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+</Project>

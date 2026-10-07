@@ -10,3 +10,6 @@ Rebalances concerts to make things more challenging.
 - In Unfair, Tokyo Coliseum is increased to 50,000 capacity, but has its base cost increased to 200,000,000 for more endgame challenge.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.0.1: Internal cleanup, no gameplay changes.

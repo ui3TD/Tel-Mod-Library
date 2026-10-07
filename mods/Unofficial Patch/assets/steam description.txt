@@ -14,6 +14,7 @@ Also recommended mods by magier:
 - Fixed Cafe weekly revenue so that it includes 7 days instead of 6.
 - Fixed senbatsu stats calculation so it doesn't punish you if you don't have enough idols to fill all rows, and so it uses the requested stat instead of always Cute.
 - Fixed Concert revenue formula so that it shows accurate estimated values, including the FUJI ticket bonus.
+- Fixed concert attendance and hype percentages to round down, so 99.5% attendance no longer shows as a 100% sell-out.
 - Fixed so that when girls dating each other break up, their relationship status is no longer known.
 - Fixed fan age pie charts to show correct proportions.
 - Fixed world tour revenue text color to consider savings, and to show red when the tour would lose money.

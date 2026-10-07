@@ -85,16 +85,55 @@ namespace UnofficialPatch.Tests
             Assert.Equal(5_000_000L, Concert(_venue.club, 200f, false).ProjectedValues.GetRevenue());
         }
 
+        /// <summary>
+        /// The whole percent in one of the popup's coloured percent strings.
+        /// </summary>
+        private static int ShownPercent(string text) =>
+            int.Parse(System.Text.RegularExpressions.Regex.Match(text, @"(\d+)%").Groups[1].Value);
+
         [Theory]
-        [InlineData(2.5f, 2f)]
-        [InlineData(2f, 2f)]
-        [InlineData(1.5f, 1.5f)]
-        [InlineData(0.3f, 0.3f)]
-        public void PercentDisplay_IsCappedAt200(float value, float shown)
+        [InlineData(1f, 100)]
+        [InlineData(0.999f, 99)]   // the game showed 100%: sold out, though it isn't
+        [InlineData(0.995f, 99)]
+        [InlineData(0.994f, 99)]
+        [InlineData(0.29f, 29)]    // float error must not floor an exact percent one point low
+        [InlineData(0.8f, 80)]
+        [InlineData(0.456f, 45)]
+        [InlineData(0f, 0)]
+        public void Attendance_IsRoundedDown(float attendance, int shown)
         {
-            float val = value;
+            SEvent_Concerts._concert._projectedValues values = new() { Attendance = attendance };
+            Assert.Equal(shown, ShownPercent(values.GetAttendanceString()));
+        }
+
+        [Fact]
+        public void Attendance_ColourFollowsTheShownPercent()
+        {
+            // The game colours below 30% red; 29.9% now shows as 29, so it must be red too
+            SEvent_Concerts._concert._projectedValues low = new() { Attendance = 0.299f };
+            SEvent_Concerts._concert._projectedValues ok = new() { Attendance = 0.3f };
+            Assert.Contains(mainScript.red, low.GetAttendanceString());
+            Assert.DoesNotContain(mainScript.red, ok.GetAttendanceString());
+        }
+
+        [Theory]
+        [InlineData(200f, 200)]
+        [InlineData(199.5f, 199)]
+        [InlineData(150f, 150)]
+        public void Hype_IsRoundedDown(float hype, int shown)
+        {
+            SEvent_Concerts._concert concert = new();
+            concert.ProjectedValues.Parent = concert;
+            concert.SetListItems.Add(new FixedHypeItem(hype));
+            Assert.Equal(shown, ShownPercent(concert.ProjectedValues.GetHypeString()));
+        }
+
+        [Fact]
+        public void Display_IsCappedAt200()
+        {
+            float val = 2.5f;
             Assert.True(SEvent_Concerts__concert__projectedValues_GetString.Prefix(ref val));
-            Assert.Equal(shown, val);
+            Assert.Equal(2f, val);
         }
     }
 }

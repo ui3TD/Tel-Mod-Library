@@ -613,6 +613,25 @@ namespace FanAttrition.Tests
             Assert.Equal(0, Utility.tvFans);
         }
 
+        /// <summary>
+        /// An airing show with no episodes (a damaged save, or another mod) is skipped instead of stopping the daily count.
+        /// </summary>
+        [Theory]
+        [InlineData(Shows._show._status.released)]
+        [InlineData(Shows._show._status.relaunching)]
+        [InlineData(Shows._show._status.relaunching_working)]
+        public void Shows_WithNoEpisodes_AreLeftOut(Shows._show._status status)
+        {
+            Show(Shows._param._media_type.tv, status);
+            Show(Shows._param._media_type.tv, Shows._show._status.released, 400);
+            Cafe(600);
+
+            Seams.UpdateFanCount();
+
+            Assert.Equal(400, Utility.tvFans);
+            Assert.Equal(600, Utility.cafeFans);
+        }
+
         [Fact]
         public void Cafes_AddTheirLastWeek()
         {

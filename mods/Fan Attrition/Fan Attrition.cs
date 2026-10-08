@@ -393,6 +393,9 @@ namespace FanAttrition
                     show.status != Shows._show._status.working &&
                     show.status != Shows._show._status.canceled)
                 {
+                    // Released shows always have an episode, but a damaged save or another mod could leave none
+                    if (show.fans.Count == 0) continue;
+
                     int lastFans = show.fans.Last();
                     switch (show.medium.media_type)
                     {

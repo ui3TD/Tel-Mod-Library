@@ -84,7 +84,7 @@ namespace TraitsExpansionTests
             Business_Popup_Set.Prefix(ref proposal, ref state);
             Assert.Equal(shown, proposal.stamina);
 
-            Business_Popup_Set.Postfix(ref proposal, ref state);
+            Business_Popup_Set.Finalizer(ref proposal, ref state);
             Assert.Equal(stamina, proposal.stamina);
         }
 
@@ -102,8 +102,45 @@ namespace TraitsExpansionTests
             Assert.Equal(20, proposal.stamina);
             Assert.Equal(0, state);
 
-            Business_Popup_Set.Postfix(ref proposal, ref state);
+            Business_Popup_Set.Finalizer(ref proposal, ref state);
             Assert.Equal(20, proposal.stamina);
+        }
+
+        [Fact]
+        public void Popup_NoProposalOrGirl_DoesNothing()
+        {
+            business._proposal proposal = null;
+            int state = 0;
+            Business_Popup_Set.Prefix(ref proposal, ref state);
+            Business_Popup_Set.Finalizer(ref proposal, ref state);
+            Assert.Equal(0, state);
+
+            proposal = new() { type = tv_drama, girl = null, stamina = 20 };
+            Business_Popup_Set.Prefix(ref proposal, ref state);
+            Assert.Equal(20, proposal.stamina);
+            Assert.Equal(0, state);
+            Business_Popup_Set.Finalizer(ref proposal, ref state);
+            Assert.Equal(20, proposal.stamina);
+        }
+
+        [Fact]
+        public void Popup_RestoreIsAFinalizer()
+        {
+            Assert.NotNull(typeof(Business_Popup_Set).GetMethod("Finalizer"));
+            Assert.Null(typeof(Business_Popup_Set).GetMethod("Postfix"));
+        }
+
+        [Fact]
+        public void Accept_NoProposalOrGirl_DoesNothing()
+        {
+            business biz = TestGame.Component<business>();
+            biz.ActiveProposal = null;
+            business_Accept.Prefix(ref biz);
+            Assert.Null(biz.ActiveProposal);
+
+            biz.ActiveProposal = new business._proposal { type = tv_drama, girl = null, stamina = 20 };
+            business_Accept.Prefix(ref biz);
+            Assert.Equal(20, biz.ActiveProposal.stamina);
         }
 
         [Theory]

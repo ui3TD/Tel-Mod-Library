@@ -1,6 +1,7 @@
 using HarmonyLib;
 using SimpleJSON;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 using Xunit;
 using Object = UnityEngine.Object;
@@ -30,6 +32,13 @@ namespace HarmonyChecker.Tests
         public MainMenu_Buttons_Controller Controller;
         public Lang_Button ModsLangButton, SettingsLangButton;
         public Component Text;
+        public Button ModsClick;
+        public Image ModsBackground;
+
+        /// <summary>
+        /// The game's own click handler on the Mods button.
+        /// </summary>
+        public static void OpenModsList() { }
     }
 
     internal static class TestGame
@@ -41,6 +50,28 @@ namespace HarmonyChecker.Tests
         public const string VanillaConstant = "MM_MODS";
         public const string VanillaText = "Mods";
         public const string NotInstalledText = "Mods [IM-HI not installed]";
+        public const string PurpleSprite = "purple button";
+
+        /// <summary>
+        /// A purple tint like the game's, a little lighter on hover.
+        /// </summary>
+        public static readonly ColorBlock ModsTints = Tints(
+            normal: new Color(0.5f, 0.5f, 0.8f),
+            highlighted: new Color(0.6f, 0.6f, 0.8f),
+            pressed: new Color(0.25f, 0.25f, 0.4f),
+            selected: new Color(0.5f, 0.5f, 0.8f),
+            disabled: new Color(0.5f, 0.5f, 0.8f, 0.4f));
+
+        /// <summary>
+        /// The game's ColorBlock has no setters for most colours, so this sets its fields.
+        /// </summary>
+        public static ColorBlock Tints(Color normal, Color highlighted, Color pressed, Color selected, Color disabled)
+        {
+            object block = ColorBlock.defaultColorBlock;
+            foreach ((string field, Color color) in new[] { ("m_NormalColor", normal), ("m_HighlightedColor", highlighted), ("m_PressedColor", pressed), ("m_SelectedColor", selected), ("m_DisabledColor", disabled) })
+                AccessTools.Field(typeof(ColorBlock), field).SetValue(block, color);
+            return (ColorBlock)block;
+        }
 
         public static void Reset()
         {
@@ -86,6 +117,15 @@ namespace HarmonyChecker.Tests
             menu.ModsLangButton = Seams.Add<Lang_Button>(menu.Label);
             menu.ModsLangButton.Constant = VanillaConstant;
             Seams.Texts[menu.Text] = Language.Data[VanillaConstant];
+            menu.ModsClick = Seams.Add<Button>(menu.ModsButton);
+            menu.ModsBackground = Seams.Add<Image>(menu.ModsButton);
+            Seams.Tints[menu.ModsClick] = ModsTints;
+            Seams.Sprites[menu.ModsBackground] = PurpleSprite;
+            menu.ModsClick.onClick = new Button.ButtonClickedEvent();
+            menu.ModsClick.onClick.AddListener(Menu.OpenModsList);
+
+            // Another button after Mods, so the update button's place is checked
+            AddButton(menu.Container, "Quit", "SETTINGS", typeof(TextMeshProUGUI));
             return menu;
         }
 
@@ -101,6 +141,11 @@ namespace HarmonyChecker.Tests
         }
 
         public static string TextOf(Component text) => Seams.Texts.TryGetValue(text, out string value) ? value : null;
+
+        /// <summary>
+        /// The update button Harmony Checker added to the menu, or null.
+        /// </summary>
+        public static GameObject UpdateButton(Menu menu) => Seams.ChildNamed(menu.Container, IMHIUpdate.BUTTON_NAME);
 
         public static JSONNode LoadJson(string relativePath) =>
             mainScript.ProcessInboundData(File.ReadAllText(ModAsset(relativePath)));
@@ -157,6 +202,30 @@ namespace HarmonyChecker.Tests
         public static Camera MainCamera;
 
         /// <summary>
+        /// The mod's own version lookup, before Reset replaces it with an up-to-date IM-HI.
+        /// </summary>
+        public static readonly Func<Version> DefaultInstalledVersion = IMHIUpdate.InstalledVersion;
+
+        public static readonly List<string> OpenedUrls = new();
+        public static readonly List<GameObject> Instantiated = new();
+        public static readonly List<GameObject> Destroyed = new();
+
+        /// <summary>
+        /// The colour set on each text and image component.
+        /// </summary>
+        public static readonly Dictionary<object, Color> Colors = new(new SameObject());
+
+        /// <summary>
+        /// Each button's colour tints.
+        /// </summary>
+        public static readonly Dictionary<object, ColorBlock> Tints = new(new SameObject());
+
+        /// <summary>
+        /// Each image's sprite; images start with the game's purple button sprite.
+        /// </summary>
+        public static readonly Dictionary<object, string> Sprites = new(new SameObject());
+
+        /// <summary>
         /// The text each Text, TextMeshPro or TextMesh component shows.
         /// </summary>
         public static readonly Dictionary<object, string> Texts = new(new SameObject());
@@ -172,6 +241,7 @@ namespace HarmonyChecker.Tests
             [AccessTools.Method(typeof(MainMenu_Buttons_Controller_Start), nameof(MainMenu_Buttons_Controller_Start.Postfix))] = Stub(nameof(StartPostfix)),
             [AccessTools.Method(typeof(Mods_StopSpinner), nameof(Mods_StopSpinner.Postfix))] = Stub(nameof(StopSpinnerPostfix)),
             [AccessTools.Method(typeof(Lang_Button), nameof(Lang_Button.ResetText))] = Stub(nameof(ResetText)),
+            [AccessTools.Method(typeof(IMHIUpdate), nameof(IMHIUpdate.ShowButton))] = Stub(nameof(ShowButton)),
         };
 
         /// <summary>
@@ -189,6 +259,17 @@ namespace HarmonyChecker.Tests
             [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.text))] = Stub(nameof(StubSetText)),
             [AccessTools.PropertySetter(typeof(Text), nameof(Text.text))] = Stub(nameof(StubSetText)),
             [AccessTools.PropertySetter(typeof(TextMesh), nameof(TextMesh.text))] = Stub(nameof(StubSetText)),
+            [AccessTools.PropertyGetter(typeof(Component), nameof(Component.gameObject))] = Stub(nameof(StubGameObject)),
+            [AccessTools.PropertyGetter(typeof(Transform), nameof(Transform.parent))] = Stub(nameof(StubParent)),
+            [AccessTools.PropertySetter(typeof(Object), nameof(Object.name))] = Stub(nameof(StubSetName)),
+            [AccessTools.Method(typeof(Transform), nameof(Transform.GetSiblingIndex))] = Stub(nameof(StubGetSiblingIndex)),
+            [AccessTools.Method(typeof(Transform), nameof(Transform.SetSiblingIndex))] = Stub(nameof(StubSetSiblingIndex)),
+            [AccessTools.Method(typeof(Object), nameof(Object.Destroy), new[] { typeof(Object) })] = Stub(nameof(StubDestroy)),
+            [AccessTools.PropertySetter(typeof(Graphic), nameof(Graphic.color))] = Stub(nameof(StubSetColor)),
+            [AccessTools.DeclaredPropertySetter(typeof(TMP_Text), nameof(TMP_Text.color))] = Stub(nameof(StubSetColor)),
+            [AccessTools.PropertyGetter(typeof(Selectable), nameof(Selectable.colors))] = Stub(nameof(StubGetTints)),
+            [AccessTools.PropertySetter(typeof(Image), nameof(Image.sprite))] = Stub(nameof(StubSetSprite)),
+            [AccessTools.PropertySetter(typeof(Selectable), nameof(Selectable.colors))] = Stub(nameof(StubSetTints)),
         };
 
         /// <summary>
@@ -201,6 +282,9 @@ namespace HarmonyChecker.Tests
             [Generic(typeof(GameObject), nameof(GameObject.GetComponent))] = Stub(nameof(GetComponent)),
             [Generic(typeof(Component), nameof(Component.GetComponentInChildren))] = Stub(nameof(GetComponentInChildren)),
             [Generic(typeof(GameObject), nameof(GameObject.GetComponentInChildren))] = Stub(nameof(GetComponentInChildren)),
+            [Generic(typeof(Component), nameof(Component.GetComponentsInChildren))] = Stub(nameof(StubGetComponentsInChildren)),
+            [Generic(typeof(GameObject), nameof(GameObject.GetComponentsInChildren))] = Stub(nameof(StubGetComponentsInChildren)),
+            [Generic(typeof(Object), nameof(Object.Instantiate), 2)] = Stub(nameof(StubInstantiate)),
         };
 
         private static readonly Lazy<bool> Installed = new(() =>
@@ -218,6 +302,8 @@ namespace HarmonyChecker.Tests
 
         public static void ResetText(Lang_Button instance) => throw NotInstalled();
 
+        public static void ShowButton(Transform modsTransform, Version installed) => throw NotInstalled();
+
         private static Exception NotInstalled() => new InvalidOperationException("Call Seams.Reset first");
 
         /// <summary>
@@ -229,6 +315,14 @@ namespace HarmonyChecker.Tests
             MainCamera = null;
             Texts.Clear();
             Nodes.Clear();
+            Colors.Clear();
+            Tints.Clear();
+            Sprites.Clear();
+            OpenedUrls.Clear();
+            Instantiated.Clear();
+            Destroyed.Clear();
+            IMHIUpdate.InstalledVersion = () => IMHIUpdate.MIN_VERSION;
+            IMHIUpdate.OpenUrl = OpenedUrls.Add;
         }
 
         /// <summary>
@@ -277,6 +371,35 @@ namespace HarmonyChecker.Tests
 
         public static T GetComponent<T>(object owner) => NodeOf(owner).Components.OfType<T>().FirstOrDefault();
 
+        public static GameObject ChildNamed(GameObject parent, string name) =>
+            NodeOf(parent).Children.FirstOrDefault(c => c.Name == name)?.GameObject;
+
+        /// <summary>
+        /// The names of an object's children, in order.
+        /// </summary>
+        public static List<string> ChildNames(GameObject parent) => NodeOf(parent).Children.Select(c => c.Name).ToList();
+
+        public static bool InScene(GameObject obj) => NodeOf(obj).Parent != null;
+
+        /// <summary>
+        /// The delegates added to an event at runtime.
+        /// </summary>
+        public static List<Delegate> Listeners(UnityEventBase unityEvent)
+        {
+            object calls = Traverse.Create(unityEvent).Field("m_Calls").GetValue();
+            IList runtimeCalls = Traverse.Create(calls).Field("m_RuntimeCalls").GetValue<IList>();
+            return runtimeCalls.Cast<object>().Select(call => Traverse.Create(call).Field("Delegate").GetValue<Delegate>()).ToList();
+        }
+
+        /// <summary>
+        /// Clicks a button. UnityEvent.Invoke skips listeners on fakes, so this calls them itself.
+        /// </summary>
+        public static void Click(Button button)
+        {
+            foreach (Delegate listener in Listeners(button.onClick))
+                listener.DynamicInvoke();
+        }
+
         public static T GetComponentInChildren<T>(object owner) =>
             NodeOf(owner).SelfAndDescendants().SelectMany(n => n.Components).OfType<T>().FirstOrDefault();
 
@@ -287,10 +410,10 @@ namespace HarmonyChecker.Tests
         }
 
         /// <summary>
-        /// The generic overload without parameters.
+        /// The generic overload with this many parameters (none unless given).
         /// </summary>
-        private static MethodInfo Generic(Type type, string name) =>
-            type.GetMethods().Single(m => m.Name == name && m.IsGenericMethodDefinition && m.GetParameters().Length == 0);
+        private static MethodInfo Generic(Type type, string name, int parameters = 0) =>
+            type.GetMethods().Single(m => m.Name == name && m.IsGenericMethodDefinition && m.GetParameters().Length == parameters);
 
         private static IEnumerable<CodeInstruction> Redirect(IEnumerable<CodeInstruction> instructions)
         {
@@ -320,6 +443,66 @@ namespace HarmonyChecker.Tests
         private static bool StubInequality(Object a, Object b) => !ReferenceEquals(a, b);
         private static bool StubExists(Object obj) => obj is not null;
         private static void StubSetText(object text, string value) => Texts[text] = value;
+        private static void StubSetColor(object text, Color value) => Colors[text] = value;
+        private static ColorBlock StubGetTints(Selectable button) => Tints.TryGetValue(button, out ColorBlock tints) ? tints : ColorBlock.defaultColorBlock;
+        private static void StubSetTints(Selectable button, ColorBlock value) => Tints[button] = value;
+        private static void StubSetSprite(Image image, Sprite sprite) => Sprites[image] = sprite is null ? null : "sprite";
+        private static GameObject StubGameObject(Component component) => NodeOf(component).GameObject;
+        private static Transform StubParent(Transform transform) => NodeOf(transform).Parent?.Transform;
+        private static void StubSetName(Object obj, string name) => NodeOf(obj).Name = name;
+        private static int StubGetSiblingIndex(Transform transform) => NodeOf(transform).Parent.Children.IndexOf(NodeOf(transform));
+
+        private static void StubSetSiblingIndex(Transform transform, int index)
+        {
+            Node node = NodeOf(transform);
+            node.Parent.Children.Remove(node);
+            node.Parent.Children.Insert(Math.Min(index, node.Parent.Children.Count), node);
+        }
+
+        private static void StubDestroy(Object obj)
+        {
+            Destroyed.Add((GameObject)obj);
+            Remove((GameObject)obj);
+        }
+
+        private static T[] StubGetComponentsInChildren<T>(object owner) =>
+            NodeOf(owner).SelfAndDescendants().SelectMany(n => n.Components).OfType<T>().ToArray();
+
+        private static readonly MethodInfo ShallowCopy = AccessTools.Method(typeof(object), "MemberwiseClone");
+
+        /// <summary>
+        /// Copies a GameObject and everything under it to the end of the parent's children, named as Unity
+        /// names copies. Components are shallow copies, so they share fields (events too) with the original
+        /// until the code under test replaces them.
+        /// </summary>
+        private static T StubInstantiate<T>(T original, Transform parent)
+        {
+            GameObject copy = CopyNode(NodeOf(original), NodeOf(parent).GameObject);
+            NodeOf(copy).Name += "(Clone)";
+            Instantiated.Add(copy);
+            return (T)(object)copy;
+        }
+
+        private static GameObject CopyNode(Node original, GameObject parent)
+        {
+            GameObject copy = NewObject(original.Name, parent);
+            Node node = NodeOf(copy);
+            foreach (Component component in original.Components.Where(c => c is not Transform))
+            {
+                Component clone = (Component)ShallowCopy.Invoke(component, null);
+                node.Components.Add(clone);
+                Nodes[clone] = node;
+                if (Texts.TryGetValue(component, out string text))
+                    Texts[clone] = text;
+                if (Tints.TryGetValue(component, out ColorBlock tints))
+                    Tints[clone] = tints;
+                if (Sprites.TryGetValue(component, out string sprite))
+                    Sprites[clone] = sprite;
+            }
+            foreach (Node child in original.Children)
+                CopyNode(child, copy);
+            return copy;
+        }
 
         private static Transform StubFind(Transform parent, string path)
         {

@@ -7,8 +7,9 @@ using Xunit;
 
 namespace ModMenus.Tests
 {
-    // Installing the button and building the popup need the game's UI (Unity ECalls),
-    // so they can't run outside the game and aren't tested here.
+    // Installing the Mod Settings button and building the popup's frame (GenerateMenuPopup) only move
+    // Unity UI objects around, so they aren't tested. MenuBuildTests and ApplyCancelTests cover the
+    // menu's rows, Apply and Cancel, through copies that run on a fake scene (see TestGame.cs).
     public class SliderRangeTests
     {
         private static (float min, float max, float def) Read(string json)
@@ -129,7 +130,8 @@ namespace ModMenus.Tests
         [MemberData(nameof(MenuFiles))]
         public void SliderDefaultsAreInRange(string menu)
         {
-            foreach (JSONNode item in Items(menu).Where(i => i[ModMenusUtils.JSON_FIELD_TYPE] == ModMenusUtils.JSON_TYPE_SLIDER))
+            // SimpleJSON's == compares references, so compare the type's text
+            foreach (JSONNode item in Items(menu).Where(i => i[ModMenusUtils.JSON_FIELD_TYPE].Value == ModMenusUtils.JSON_TYPE_SLIDER))
             {
                 ModMenusUtils.GetSliderRange(item, out float min, out float max, out float def);
                 Assert.True(min < max, $"{item[ModMenusUtils.JSON_FIELD_VARID]}: range {min}..{max}");
@@ -141,7 +143,7 @@ namespace ModMenus.Tests
         [MemberData(nameof(MenuFiles))]
         public void DropdownDefaultsAreInList(string menu)
         {
-            foreach (JSONNode item in Items(menu).Where(i => i[ModMenusUtils.JSON_FIELD_TYPE] == ModMenusUtils.JSON_TYPE_DROPDOWN))
+            foreach (JSONNode item in Items(menu).Where(i => i[ModMenusUtils.JSON_FIELD_TYPE].Value == ModMenusUtils.JSON_TYPE_DROPDOWN))
             {
                 int count = item[ModMenusUtils.JSON_FIELD_LIST].AsArray.Count;
                 Assert.InRange(item[ModMenusUtils.JSON_FIELD_DEF].AsInt, 0, count - 1);

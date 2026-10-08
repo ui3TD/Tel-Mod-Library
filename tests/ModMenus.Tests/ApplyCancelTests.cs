@@ -1,0 +1,257 @@
+using UnityEngine.UI;
+using Xunit;
+
+namespace ModMenus.Tests
+{
+    /// <summary>
+    /// The menu shows each setting's saved value, Apply saves what the player set, and Cancel throws it away.
+    /// The popup is built once and reused, so Cancel works by reopening it at the saved values.
+    /// </summary>
+    public class ApplyCancelTests
+    {
+        public ApplyCancelTests() => TestGame.Reset();
+
+        private const string Volume = "A_Volume";
+        private const string Loud = "A_Loud";
+        private const string Pick = "B_Pick";
+
+        /// <summary>
+        /// Opens two mods' settings: a 1 to 20 slider at 5 and an unticked checkbox, and a three-item dropdown on its first item.
+        /// </summary>
+        private static Menu OpenMenu()
+        {
+            TestGame.AddMod("Mod A", """
+                [
+                    { "type": "slider", "varID": "A_Volume", "labelID": "TEST__VOLUME", "minValue": 1, "maxValue": 20, "defaultValue": 5 },
+                    { "type": "checkbox", "varID": "A_Loud", "labelID": "TEST__LOUD" }
+                ]
+                """);
+            TestGame.AddMod("Mod B", """
+                [ { "type": "dropdown", "varID": "B_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND", "TEST__THIRD"] } ]
+                """);
+            Menu menu = TestGame.BuildMenu();
+            menu.Open();
+            return menu;
+        }
+
+        private static void ChangeEverything(Menu menu)
+        {
+            menu.Drag(Volume, 1f);
+            menu.Click(Loud);
+            menu.Select(Pick, 2);
+        }
+
+        /// <summary>
+        /// Checks what the menu shows, and the values Apply would save.
+        /// </summary>
+        private static void AssertShows(Menu menu, float volume, bool loud, int pick)
+        {
+            Assert.Equal((volume - 1) / 19.0, menu.SliderPosition(Volume), 5);
+            Assert.Equal("Volume: " + volume, menu.SliderText(Volume));
+            Assert.Equal(loud, menu.IsTicked(Loud));
+            Assert.Equal(pick, menu.Selected(Pick));
+            Assert.Equal(
+                (volume, loud ? 1f : 0f, (float)pick),
+                (menu.Item(Volume).tempValue, menu.Item(Loud).tempValue, menu.Item(Pick).tempValue));
+        }
+
+        private static (string, string, string) Saved() =>
+            (TestGame.Saved(Volume), TestGame.Saved(Loud), TestGame.Saved(Pick));
+
+        [Fact]
+        public void OpensAtTheDefaultsUntilSaved()
+        {
+            AssertShows(OpenMenu(), volume: 5, loud: false, pick: 0);
+            Assert.Equal((null, null, null), Saved());
+        }
+
+        [Fact]
+        public void OpensAtTheSavedSettings()
+        {
+            TestGame.Save(Volume, "12");
+            TestGame.Save(Loud, "1");
+            TestGame.Save(Pick, "2");
+
+            AssertShows(OpenMenu(), volume: 12, loud: true, pick: 2);
+        }
+
+        [Fact]
+        public void UnreadableSavedSettingsShowTheDefaults()
+        {
+            TestGame.Save(Volume, "loud");
+            TestGame.Save(Loud, "");
+            TestGame.Save(Pick, "second");
+
+            AssertShows(OpenMenu(), volume: 5, loud: false, pick: 0);
+        }
+
+        [Fact]
+        public void ApplySavesTheChangesAndCloses()
+        {
+            Menu menu = OpenMenu();
+            ChangeEverything(menu);
+
+            menu.Apply();
+
+            Assert.Equal(("20", "1", "2"), Saved());
+            Assert.Equal(1, Seams.PopupsClosed);
+        }
+
+        /// <summary>
+        /// Apply saves every setting, so mods read the values the menu showed even if the player changed nothing.
+        /// </summary>
+        [Fact]
+        public void ApplySavesUnchangedSettingsToo()
+        {
+            OpenMenu().Apply();
+
+            Assert.Equal(("5", "0", "0"), Saved());
+        }
+
+        [Fact]
+        public void CancelSavesNothingAndCloses()
+        {
+            TestGame.Save(Volume, "12");
+            Menu menu = OpenMenu();
+            ChangeEverything(menu);
+
+            menu.Cancel();
+
+            Assert.Equal(("12", null, null), Saved());
+            Assert.Equal(1, Seams.PopupsClosed);
+        }
+
+        [Fact]
+        public void ReopeningAfterCancelShowsTheSavedSettings()
+        {
+            TestGame.Save(Volume, "12");
+            TestGame.Save(Loud, "1");
+            TestGame.Save(Pick, "1");
+            Menu menu = OpenMenu();
+            menu.Drag(Volume, 0f);
+            menu.Click(Loud);
+            menu.Select(Pick, 2);
+            menu.Cancel();
+
+            menu.Open();
+
+            AssertShows(menu, volume: 12, loud: true, pick: 1);
+            menu.Apply();
+            Assert.Equal(("12", "1", "1"), Saved());
+        }
+
+        [Fact]
+        public void ReopeningAfterCancelShowsTheDefaultsIfNothingWasSaved()
+        {
+            Menu menu = OpenMenu();
+            ChangeEverything(menu);
+            menu.Cancel();
+
+            menu.Open();
+
+            AssertShows(menu, volume: 5, loud: false, pick: 0);
+        }
+
+        [Fact]
+        public void ReopeningAfterApplyShowsTheNewSettings()
+        {
+            Menu menu = OpenMenu();
+            ChangeEverything(menu);
+            menu.Apply();
+
+            menu.Open();
+
+            AssertShows(menu, volume: 20, loud: true, pick: 2);
+        }
+
+        /// <summary>
+        /// The slider's track runs from 0 to 1; its value is the nearest whole number in its range.
+        /// </summary>
+        [Theory]
+        [InlineData(0f, "1")]
+        [InlineData(1f, "20")]
+        [InlineData(0.25f, "6")]
+        [InlineData(0.6f, "12")]
+        public void SliderSavesWholeNumbersInItsRange(float position, string expected)
+        {
+            Menu menu = OpenMenu();
+
+            menu.Drag(Volume, position);
+
+            Assert.Equal("Volume: " + expected, menu.SliderText(Volume));
+            menu.Apply();
+            Assert.Equal(expected, TestGame.Saved(Volume));
+        }
+
+        /// <summary>
+        /// Reopening puts the slider back at its saved value whatever its range, and saving again keeps it.
+        /// </summary>
+        [Theory]
+        [InlineData(0, 100, 37)]
+        [InlineData(1, 20, 12)]
+        [InlineData(5, 200, 64)]
+        [InlineData(-10, 10, -3)]
+        [InlineData(-20, -10, -13)]
+        public void SliderReopensAtItsSavedValue(int min, int max, int saved)
+        {
+            TestGame.Save("A_Range", saved.ToString());
+            TestGame.AddMod("Mod A", $$"""
+                [ { "type": "slider", "varID": "A_Range", "labelID": "TEST__VOLUME", "minValue": {{min}}, "maxValue": {{max}}, "defaultValue": {{min}} } ]
+                """);
+            Menu menu = TestGame.BuildMenu();
+            menu.Open();
+            menu.Drag("A_Range", 1f);
+            menu.Cancel();
+
+            menu.Open();
+
+            Assert.Equal((double)(saved - min) / (max - min), menu.SliderPosition("A_Range"), 5);
+            Assert.Equal("Volume: " + saved, menu.SliderText("A_Range"));
+            menu.Apply();
+            Assert.Equal(saved.ToString(), TestGame.Saved("A_Range"));
+        }
+
+        [Fact]
+        public void SliderWithoutRangeOrDefaultOpensHalfway()
+        {
+            TestGame.AddMod("Mod A", """[ { "type": "slider", "varID": "A_Range", "labelID": "TEST__VOLUME" } ]""");
+            Menu menu = TestGame.BuildMenu();
+
+            menu.Open();
+
+            Assert.Equal(0.5f, menu.SliderPosition("A_Range"));
+            Assert.Equal("Volume: 50", menu.SliderText("A_Range"));
+            menu.Apply();
+            Assert.Equal("50", TestGame.Saved("A_Range"));
+        }
+
+        [Theory]
+        [InlineData(1, true, "1")]
+        [InlineData(2, false, "0")]
+        [InlineData(3, true, "1")]
+        public void CheckboxTogglesOnEachClick(int clicks, bool ticked, string saved)
+        {
+            Menu menu = OpenMenu();
+
+            for (int i = 0; i < clicks; i++)
+                menu.Click(Loud);
+
+            Assert.Equal(ticked, menu.IsTicked(Loud));
+            menu.Apply();
+            Assert.Equal(saved, TestGame.Saved(Loud));
+        }
+
+        [Fact]
+        public void ReopeningScrollsBackToTheTop()
+        {
+            Menu menu = OpenMenu();
+            ScrollRect scroll = Seams.GetComponentInChildren<ScrollRect>(menu.Panel);
+            Seams.ScrollPositions[scroll] = 0.2f;
+            menu.Cancel();
+
+            menu.Open();
+
+            Assert.Equal(1f, Seams.ScrollPositions[scroll]);
+        }
+    }
+}

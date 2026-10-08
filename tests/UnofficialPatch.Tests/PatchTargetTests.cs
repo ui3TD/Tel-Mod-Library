@@ -35,7 +35,17 @@ namespace UnofficialPatch.Tests
             // Their tests call the patch methods directly (or check the transpiled code).
             TestGame.Reset();
             Assert.Equal(
-                new[] { nameof(SaveManager_SaveData), nameof(vn_requirements_CheckGirl), nameof(vn_requirements_CheckGirl_Variable) },
+                new[]
+                {
+                    nameof(data_girls_textures_SetSprite),
+                    nameof(Popup_Audition_Close),
+                    nameof(Popup_Audition_LoadCards),
+                    nameof(Popup_Audition_OpenCard),
+                    nameof(Popup_Audition_PortraitsLoaded),
+                    nameof(SaveManager_SaveData),
+                    nameof(vn_requirements_CheckGirl),
+                    nameof(vn_requirements_CheckGirl_Variable),
+                },
                 TestGame.NotApplied.Select(t => t.Name).OrderBy(n => n));
         }
     }

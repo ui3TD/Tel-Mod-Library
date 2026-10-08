@@ -123,6 +123,11 @@ namespace FanAttrition
         /// <returns>The modified fan count.</returns>
         public static float Infix(Shows._show __this, float num2)
         {
+            if (__this.medium != null && __this.medium.media_type == Shows._param._media_type.internet)
+            {
+                return num2;
+            }
+
             if (staticVars.IsHard())
             {
                 num2 *= 1f - __this.GetFatigue() * __this.GetFatigue() / SHOW_FATIGUE_COEFF_HARD;

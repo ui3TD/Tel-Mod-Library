@@ -1,6 +1,7 @@
 using CustomAuditions;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Xunit;
 using static CustomAuditions.CustomAuditions;
@@ -63,6 +64,65 @@ namespace TargetedAuditions.Tests
             Assert.Equal((18, 30), (minAge, maxAge));
             Assert.Equal("18", variables.Get(VARID_MINAGE));
             Assert.Equal("30", variables.Get(VARID_MAXAGE));
+        }
+
+        /// <summary>
+        /// A setting the mod can't read (e.g. a hand-edited save) falls back to its default instead of
+        /// stopping the audition. A decimal comma isn't read as a thousands separator.
+        /// </summary>
+        [Fact]
+        public void UnreadableValues_UseTheDefaults()
+        {
+            Seams.SetVariable(VARID_MINAGE, "abc");
+            Seams.SetVariable(VARID_MAXAGE, "");
+            Seams.SetVariable(VARID_COUNT, "NaN");
+            Seams.SetVariable(VARID_PRIO_PREFIX + "vocal", "1e40");
+            Seams.SetVariable(VARID_BICHANCE, "14,5");
+
+            Auditions auditions = StartAudition();
+
+            Assert.Equal((12, 23), (minAge, maxAge));
+            Assert.Equal(5, auditions.NumberOfGirls);
+            Assert.Equal(50, priorityDict[data_girls._paramType.vocal]);
+            Assert.Equal((int)Math.Floor(14 / 93.0 * 100), chanceBi);
+        }
+
+        [Fact]
+        public void FractionalValues_AreRounded()
+        {
+            Seams.SetVariable(VARID_MINAGE, "15.6");
+            Seams.SetVariable(VARID_COUNT, "7.2");
+
+            Auditions auditions = StartAudition();
+
+            Assert.Equal(16, minAge);
+            Assert.Equal(7, auditions.NumberOfGirls);
+        }
+
+        /// <summary>
+        /// On a decimal-comma locale, settings still read the same, and corrected values are saved without one.
+        /// </summary>
+        [Fact]
+        public void DecimalCommaLocale_ReadsAndSavesTheSame()
+        {
+            CultureInfo culture = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+            try
+            {
+                Seams.SetVariable(VARID_MINAGE, "16");
+                Seams.SetVariable(VARID_LESCHANCE, "75");
+                Seams.SetVariable(VARID_BICHANCE, "50");
+
+                StartAudition();
+
+                Assert.Equal(16, minAge);
+                Assert.Equal("60", variables.Get(VARID_LESCHANCE));
+                Assert.Equal("40", variables.Get(VARID_BICHANCE));
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = culture;
+            }
         }
 
         /// <summary>

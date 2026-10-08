@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection.Emit;
 using UnityEngine;
 using UnityEngine.UI;
@@ -81,16 +82,16 @@ namespace CustomAuditions
             __state = false;
 
             // Set audition age limits (only if popup is not used)
-            bool toggle = int.Parse(variables.Get(VARID_AGELIMIT_POPUP_TOGGLE) ?? DEF_AGELIMIT_POPUP_TOGGLE) == 1;
+            bool toggle = ReadInt(VARID_AGELIMIT_POPUP_TOGGLE, DEF_AGELIMIT_POPUP_TOGGLE) == 1;
             if (!toggle)
             {
-                minAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MINAGE_STR);
-                maxAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MAXAGE_STR);
+                minAge = ReadInt(VARID_MINAGE, DEF_MINAGE_STR);
+                maxAge = ReadInt(VARID_MAXAGE, DEF_MAXAGE_STR);
                 if (maxAge < minAge)
                 {
                     // swap values
-                    maxAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MAXAGE_STR);
-                    minAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MINAGE_STR);
+                    maxAge = ReadInt(VARID_MINAGE, DEF_MAXAGE_STR);
+                    minAge = ReadInt(VARID_MAXAGE, DEF_MINAGE_STR);
 
                     // correct default variables
                     defaultMaxAge = maxAge;
@@ -101,15 +102,15 @@ namespace CustomAuditions
             }
 
             // Set sexual orientation
-            float varLesbian = float.Parse(variables.Get(VARID_LESCHANCE) ?? DEF_CHANCE_LES_STR);
-            float varBi = float.Parse(variables.Get(VARID_BICHANCE) ?? DEF_CHANCE_BI_STR);
+            float varLesbian = ReadFloat(VARID_LESCHANCE, DEF_CHANCE_LES_STR);
+            float varBi = ReadFloat(VARID_BICHANCE, DEF_CHANCE_BI_STR);
 
             if (varLesbian + varBi > 100)
             {
                 varLesbian = Mathf.Floor(varLesbian / (varLesbian + varBi) * 100);
                 varBi = 100 - varLesbian;
-                variables.Set(VARID_LESCHANCE, varLesbian.ToString());
-                variables.Set(VARID_BICHANCE, varBi.ToString());
+                variables.Set(VARID_LESCHANCE, varLesbian.ToString(CultureInfo.InvariantCulture));
+                variables.Set(VARID_BICHANCE, varBi.ToString(CultureInfo.InvariantCulture));
             }
             chanceLesbian = (int)varLesbian;
             chanceBi = (int)Mathf.Floor(varBi / (100 - chanceLesbian) * 100);
@@ -118,12 +119,12 @@ namespace CustomAuditions
             // Set stat priorities
             foreach (data_girls._paramType param in paramTypes)
             {
-                int value = int.Parse(variables.Get($"{VARID_PRIO_PREFIX}{param}") ?? DEF_PRIO);
+                int value = ReadInt($"{VARID_PRIO_PREFIX}{param}", DEF_PRIO);
                 priorityDict[param] = value;
             }
 
             // Set girl count
-            __instance.NumberOfGirls = int.Parse(variables.Get(VARID_COUNT) ?? DEF_COUNT);
+            __instance.NumberOfGirls = ReadInt(VARID_COUNT, DEF_COUNT);
 
             BeginAuditionGeneration();
             __state = true;
@@ -321,16 +322,16 @@ namespace CustomAuditions
         /// </summary>
         public static void Postfix()
         {
-            bool toggle = int.Parse(variables.Get(VARID_AGELIMIT_POPUP_TOGGLE) ?? DEF_AGELIMIT_POPUP_TOGGLE) == 1;
+            bool toggle = ReadInt(VARID_AGELIMIT_POPUP_TOGGLE, DEF_AGELIMIT_POPUP_TOGGLE) == 1;
             if (toggle)
             {
-                defaultMinAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MINAGE_STR);
-                defaultMaxAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MAXAGE_STR);
+                defaultMinAge = ReadInt(VARID_MINAGE, DEF_MINAGE_STR);
+                defaultMaxAge = ReadInt(VARID_MAXAGE, DEF_MAXAGE_STR);
                 if (defaultMaxAge < defaultMinAge)
                 {
                     // swap values
-                    defaultMaxAge = int.Parse(variables.Get(VARID_MINAGE) ?? DEF_MAXAGE_STR);
-                    defaultMinAge = int.Parse(variables.Get(VARID_MAXAGE) ?? DEF_MINAGE_STR);
+                    defaultMaxAge = ReadInt(VARID_MINAGE, DEF_MAXAGE_STR);
+                    defaultMinAge = ReadInt(VARID_MAXAGE, DEF_MINAGE_STR);
 
                     // correct variables
                     variables.Set(VARID_MAXAGE, maxAge.ToString());
@@ -377,6 +378,30 @@ namespace CustomAuditions
 
         public static bool agePopup = false;
         public static bool inputValid = false;
+
+        /// <summary>
+        /// Reads a Mod Menu setting as a number. A missing or unreadable value (e.g. a hand-edited save,
+        /// or "14,5" from a decimal-comma locale) gives the default instead of throwing.
+        /// </summary>
+        /// <param name="varID">The setting's variable ID.</param>
+        /// <param name="def">The default value, as written in the constants above.</param>
+        public static float ReadFloat(string varID, string def)
+        {
+            if (float.TryParse(variables.Get(varID), NumberStyles.Float, CultureInfo.InvariantCulture, out float value) &&
+                !float.IsNaN(value) && !float.IsInfinity(value))
+            {
+                return value;
+            }
+            return float.Parse(def, CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// Reads a Mod Menu setting as a whole number, rounding any fraction. See <see cref="ReadFloat"/>.
+        /// </summary>
+        public static int ReadInt(string varID, string def)
+        {
+            return (int)Math.Round(ReadFloat(varID, def));
+        }
 
         /// <summary>
         /// Parses the age range string and sets the minAge and maxAge values.

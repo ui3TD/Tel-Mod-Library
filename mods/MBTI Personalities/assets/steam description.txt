@@ -24,16 +24,12 @@ Randomly assigns MBTI types to girls, which have minor gameplay effects. They're
 - ENTJ: Driven: +5 to all stats when the girl is pushed
 
 [h3]Save File Editing[/h3]
-This mod writes the MBTI to the "Variables" parameter of each girl in the save file. To edit the MBTI find the "Variables" parameter. It should look like something this:
-[code]"Variables": [
-    "ENFJ"
-],[/code]
+This mod writes the MBTI to the 'Variables' parameter of each girl in the save file. To edit it, see the [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/MBTIPersonalities.md]MBTI editing guide[/url].
 
 The old _mbti.json files are now obsolete and are safe to delete.
 
 [h3]Unique Idols[/h3]
-You can make unique idols have a specific MBTI type by adding a line in params.json like so:
-"mbti": "INTJ"
+You can make unique idols have a specific MBTI type by adding an 'mbti' line to params.json. Example: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/MBTIPersonalities.md]MBTI editing guide[/url]
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 

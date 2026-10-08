@@ -7,15 +7,6 @@ This mod helps you decide when your mod's JSON files load, so you can make them 
 
 This mod allows modders to adjust the JSON load order of their mods with respect to other mods. Just add a JSONLoadOrder attribute to info.json. The default JSONLoadOrder number is 0. Lower numbers load early, and higher numbers load late.
 
-Example info.json for a mod that loads late:
-[code]{
-  "Title": "JSON Load Order Tool",
-  "Description": "Allows modders to adjust the JSON load order of their mod. Just add a JSONLoadOrder attribute to info.json. Default JSONLoadOrder number is 0. Lower numbers load early, and higher numbers load late.",
-  "Author": "Tel",
-  "Version": "1.0",
-  "Tags": ["modding"],
-  "HarmonyID": "com.tel.jsonloadorder",
-  "JSONLoadOrder": 100
-}[/code]
+Example info.json and more details: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/JSONLoadOrder.md]JSON Load Order guide[/url]
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]

@@ -1027,7 +1027,6 @@ namespace ModMenus
             {
                 if (settingsSlider != null)
                 {
-                    onUpdateSlider(slider.value);
                     RenderSlider();
                 }
                 if (checkboxText != null)
@@ -1043,14 +1042,17 @@ namespace ModMenus
             }
 
             /// <summary>
-            /// Renders the current state of a slider item.
+            /// Renders the current state of a slider item. Vanilla's Settings_Slider.Render_100 isn't used: it
+            /// needs the label to be a constant and divides by the maximum, which can be 0.
             /// </summary>
             public void RenderSlider()
             {
-                float savedValue = GetSavedFloat();
-                float normalizedValue = (savedValue - settingsSlider.Min_Value) / (settingsSlider.Max_Value - settingsSlider.Min_Value) * settingsSlider.Max_Value;
-                settingsSlider.Render_100(normalizedValue);
-                sliderText.text = $"{Language.Data[settingsSlider.Title_Text]}: {savedValue}";
+                float range = settingsSlider.Max_Value - settingsSlider.Min_Value;
+                float position = range > 0 ? Mathf.Clamp01((GetSavedFloat() - settingsSlider.Min_Value) / range) : 0;
+                slider.value = position;
+
+                // Shows and keeps the whole number the slider saves, even if the slider didn't move
+                onUpdateSlider(position);
             }
 
             /// <summary>
@@ -1092,7 +1094,7 @@ namespace ModMenus
                 if(settingsSlider != null)
                 {
                     tempValue = Mathf.Round(settingsSlider.Min_Value + val * (settingsSlider.Max_Value - settingsSlider.Min_Value));
-                    sliderText.text = Language.Data[settingsSlider.Title_Text] + ": " + tempValue;
+                    sliderText.text = SliderLabel() + ": " + tempValue;
                 }
             }
 
@@ -1115,6 +1117,14 @@ namespace ModMenus
             private float GetSavedFloat()
             {
                 return float.TryParse(variables.Get(varID), out float savedValue) ? savedValue : defValue;
+            }
+
+            /// <summary>
+            /// The slider's label, or its labelID as written if it isn't a constant.
+            /// </summary>
+            private string SliderLabel()
+            {
+                return Language.Data.TryGetValue(settingsSlider.Title_Text, out string text) ? text : settingsSlider.Title_Text;
             }
 
             public string varID;

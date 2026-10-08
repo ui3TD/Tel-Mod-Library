@@ -91,3 +91,4 @@ Dropdown elements output an index (0, 1, 2, etc.) as a string to an in-game vari
 
 [h3]Changelog[/h3]
 - 1.1.0: Mod Settings button now sits under Settings; sliders without a default start at the midpoint.
+- 1.2.0: Fixed blank text rows, and sliders with raw-text labels, ranges ending at 0 or no default.

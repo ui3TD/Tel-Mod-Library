@@ -10,3 +10,6 @@ The criteria for promotion tiers increased to be more challenging.
 - Promotion lvl 9 requires 3 idols with 9 fame instead of 5 fame
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.1.0: A cancelled show that ran its 6 episodes now counts towards its promotion tier.

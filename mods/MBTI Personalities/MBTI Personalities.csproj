@@ -6,6 +6,7 @@
 		<ModDescription>Randomly assigns MBTI types to girls, which have minor gameplay effects.</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.1.0</Version>
+		<WorkshopID>2982853830</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

@@ -6,6 +6,7 @@
 		<ModDescription>Adds zodiac signs for some flavor and minor effects to girls' relationships.</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.1.0</Version>
+		<WorkshopID>2981776133</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

@@ -6,6 +6,7 @@
 		<ModDescription>Idol relationships with the player reduce over time.</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.1.0</Version>
+		<WorkshopID>2977860788</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

@@ -6,6 +6,7 @@
 		<ModDescription>Rebalances the theater. Theater shows go stale over time. Release a single every month to keep the theater shows fresh.</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.1.0</Version>
+		<WorkshopID>2977861222</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

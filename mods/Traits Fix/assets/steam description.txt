@@ -30,4 +30,4 @@ Let me know of any bugs.
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.2.0: Perfectionist's tour penalty now works; Meme Queen's viral campaign bonus matches its description; Defeatist and Underdog no longer trigger when the latest single topped the charts; Indiscreet leaks each couple only once and names both idols.
+- 1.2.0: Fixes for the Perfectionist, Meme Queen, Defeatist, Underdog and Indiscreet traits.

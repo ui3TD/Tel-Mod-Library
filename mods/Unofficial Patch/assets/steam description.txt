@@ -30,4 +30,4 @@ Also recommended mods by magier:
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.4.0: Fixes for senbatsu stats, breakups, event checks, concert estimates, fan opinion and failed loads.
+- 1.4.0: Fixes senbatsu stats, breakups, event checks, concert estimates, fan opinion, failed loads.

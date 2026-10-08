@@ -10,6 +10,14 @@
 		<Reference Include="UnityEngine.InputLegacyModule">
 			<HintPath>$(dllDir)\UnityEngine.InputLegacyModule.dll</HintPath>
 		</Reference>
+		<!--mainScript's static fields (text colours) need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+		<!--ActiveDialogueController's static fields (hotkey blocking) need it to initialise-->
+		<Reference Include="Unity.ResourceManager">
+			<HintPath>$(dllDir)\Unity.ResourceManager.dll</HintPath>
+		</Reference>
 		<!--staticVars' initializer loads Steamworks types-->
 		<Reference Include="Steamworks.NET">
 			<HintPath>$(dllDir)\Steamworks.NET.dll</HintPath>

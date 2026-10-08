@@ -1,21 +1,12 @@
 using System.Globalization;
 using System.Threading;
 using Xunit;
+using static FastForward.Tests.TestGame;
 
 namespace FastForward.Tests
 {
-    // The OnClick/Update patches reference Camera.main and Input (Unity ECalls),
-    // so they can't be JIT-compiled outside the game and aren't tested here.
     public class MultiplierTests
     {
-        // variables.Set needs the game running, so edit the list directly.
-        private static void SetMultiplier(string value)
-        {
-            variables.variable.RemoveAll(v => v.name == FastForward.VARID);
-            if (value != null)
-                variables.variable.Add(new variables._variable { name = FastForward.VARID, value = value });
-        }
-
         [Theory]
         [InlineData(null, 5d)]
         [InlineData("", 5d)]

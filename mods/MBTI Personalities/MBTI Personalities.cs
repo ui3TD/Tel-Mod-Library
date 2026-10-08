@@ -303,7 +303,7 @@ namespace MBTIPersonalities
         /// Harmony patch for generating sales for a single.
         /// Applies the INFP bonus to handshake events.
         /// </summary>
-        public static void Postfix()
+        public static void Finalizer()
         {
             patchGetFan_Count_INFP = false;
         }
@@ -367,7 +367,7 @@ namespace MBTIPersonalities
         /// </summary>
         /// <param name="_proposal">Business proposal being set up.</param>
         /// <param name="__state">Original stamina cost state.</param>
-        public static void Postfix(ref business._proposal _proposal, ref int __state)
+        public static void Finalizer(ref business._proposal _proposal, ref int __state)
         {
             if (__state == 0)
                 return;
@@ -429,7 +429,7 @@ namespace MBTIPersonalities
         /// Harmony patch for calculating parameter changes during birthdays.
         /// Applies the INTJ bonus to stat growth.
         /// </summary>
-        public static void Postfix()
+        public static void Finalizer()
         {
             patchSetVal_INTJ = false;
             patchSet_INTJ = false;
@@ -614,7 +614,7 @@ namespace MBTIPersonalities
         /// Harmony patch for generating results for the SSK event.
         /// Applies the ENFJ bonus to vote counts.
         /// </summary>
-        public static void Postfix()
+        public static void Finalizer()
         {
             patchGetFan_Count_ENFJ = false;
         }
@@ -669,7 +669,7 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the proposal.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static void Finalizer()
         {
             patchGetVal = false;
         }
@@ -699,7 +699,7 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the parameter value.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static void Finalizer()
         {
             patchGetVal = false;
             isShow = false;
@@ -729,7 +729,7 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the parameters.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static void Finalizer()
         {
             patchGetVal = false;
             isShow = false;
@@ -761,7 +761,7 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the parameters and handles risky marketing.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static void Finalizer()
         {
             patchGetVal = false;
             isRisky = null;
@@ -790,7 +790,7 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the skill value.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static void Finalizer()
         {
             patchGetVal = false;
         }
@@ -817,7 +817,7 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the skill value.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Postfix()
+        public static void Finalizer()
         {
 
             patchGetVal = false;
@@ -873,7 +873,8 @@ namespace MBTIPersonalities
         public const float ESTPStatBonus = 5;
         public const float INFJStatBonus = 5;
 
-        // Toggle flags for patching specific game behaviors
+        // Toggle flags for patching specific game behaviors. Prefixes set them and finalizers clear them,
+        // so they're cleared even when the game's method throws.
         public static bool patchGetVal = false;
         public static bool patchAddParam = false;
         public static bool patchGetFan_Count_INFP = false;

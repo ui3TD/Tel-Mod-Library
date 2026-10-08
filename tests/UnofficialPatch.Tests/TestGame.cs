@@ -1,5 +1,6 @@
 using HarmonyLib;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -144,6 +145,11 @@ namespace UnofficialPatch.Tests
         }
 
         /// <summary>
+        /// Makes a live component read as destroyed under Unity's == operator.
+        /// </summary>
+        public static void Kill(Object component) => AccessTools.Field(typeof(Object), "m_CachedPtr").SetValue(component, IntPtr.Zero);
+
+        /// <summary>
         /// Calls a private game method, unwrapping exceptions it throws.
         /// </summary>
         public static object CallPrivate(object instance, Type type, string method, params object[] args)
@@ -226,6 +232,20 @@ namespace UnofficialPatch.Tests
         public static readonly Dictionary<GameObject, Image> Images = new(new SameObject<GameObject>());
         public static readonly Dictionary<Image, float> Fills = new(new SameObject<Image>());
 
+        /// <summary>
+        /// Sprites of the stub Images, other components of GameObjects, and the components their children hold.
+        /// </summary>
+        public static readonly Dictionary<Image, Sprite> Sprites = new(new SameObject<Image>());
+        public static readonly Dictionary<GameObject, List<object>> Components = new(new SameObject<GameObject>());
+        public static readonly Dictionary<GameObject, List<object>> Children = new(new SameObject<GameObject>());
+
+        /// <summary>
+        /// Coroutines started and objects destroyed since the last Reset, and the real-time clock.
+        /// </summary>
+        public static readonly List<(MonoBehaviour host, IEnumerator routine)> Coroutines = new();
+        public static readonly List<Object> Destroyed = new();
+        public static float Now;
+
         private static readonly (MethodBase target, string stub)[] Redirects =
         {
             (AccessTools.Method(typeof(Theaters._theater), nameof(Theaters._theater.GetRoom)), nameof(StubGetRoom)),
@@ -239,6 +259,10 @@ namespace UnofficialPatch.Tests
             (AccessTools.PropertySetter(typeof(Image), nameof(Image.fillAmount)), nameof(StubSetFill)),
             (AccessTools.Method(typeof(UnityEngine.Random), nameof(UnityEngine.Random.Range), new[] { typeof(int), typeof(int) }), nameof(StubRange)),
             (AccessTools.Method(typeof(Auditions), nameof(Auditions.GetPointsByType)), nameof(StubPoints)),
+            (AccessTools.PropertyGetter(typeof(Image), nameof(Image.sprite)), nameof(StubGetSprite)),
+            (AccessTools.PropertySetter(typeof(Image), nameof(Image.sprite)), nameof(StubSetSprite)),
+            (AccessTools.Method(typeof(MonoBehaviour), nameof(MonoBehaviour.StartCoroutine), new[] { typeof(IEnumerator) }), nameof(StubStartCoroutine)),
+            (AccessTools.Method(typeof(Object), nameof(Object.Destroy), new[] { typeof(Object) }), nameof(StubDestroy)),
         };
 
         private static readonly MethodBase[] Patched =
@@ -250,6 +274,12 @@ namespace UnofficialPatch.Tests
             AccessTools.Method(typeof(Tour_New_Popup_Render), nameof(Tour_New_Popup_Render.Postfix)),
             AccessTools.Method(typeof(data_girls), "GenerateParams"),
             AccessTools.Method(typeof(data_girls), "GeneratePotential"),
+            AccessTools.Method(typeof(PortraitLoading), nameof(PortraitLoading.ShowOpenedPortrait)),
+            AccessTools.Method(typeof(PortraitLoading), "SetSprite"),
+            AccessTools.Method(typeof(PortraitLoading), nameof(PortraitLoading.DestroyRenderer)),
+            AccessTools.EnumeratorMoveNext(AccessTools.Method(typeof(PortraitLoading), "FinishLateRender")),
+            AccessTools.Method(typeof(Popup_Audition_PortraitsLoaded), nameof(Popup_Audition_PortraitsLoaded.Postfix)),
+            AccessTools.Method(typeof(Popup_Audition_OpenCard), nameof(Popup_Audition_OpenCard.Postfix)),
         };
 
         /// <summary>
@@ -297,6 +327,13 @@ namespace UnofficialPatch.Tests
             ColorsSet.Clear();
             Images.Clear();
             Fills.Clear();
+            Sprites.Clear();
+            Components.Clear();
+            Children.Clear();
+            Coroutines.Clear();
+            Destroyed.Clear();
+            Now = 0f;
+            PortraitLoading.Clock = () => Now;
         }
 
         private static IEnumerable<CodeInstruction> Redirect(IEnumerable<CodeInstruction> instructions)
@@ -310,6 +347,14 @@ namespace UnofficialPatch.Tests
                     // GetComponent<T>() calls native code; the JIT can inline it, so every one is redirected
                     instruction.opcode = OpCodes.Call;
                     instruction.operand = AccessTools.Method(typeof(Seams), nameof(StubGetComponent)).MakeGenericMethod(getComponent.GetGenericArguments());
+                }
+                else if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) && instruction.operand is MethodInfo inChildren
+                    && inChildren.Name == nameof(GameObject.GetComponentsInChildren) && inChildren.IsGenericMethod
+                    && inChildren.GetParameters().Select(p => p.ParameterType).SequenceEqual(new[] { typeof(bool) })
+                    && inChildren.DeclaringType == typeof(GameObject))
+                {
+                    instruction.opcode = OpCodes.Call;
+                    instruction.operand = AccessTools.Method(typeof(Seams), nameof(StubGetComponentsInChildren)).MakeGenericMethod(inChildren.GetGenericArguments());
                 }
                 else if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) && instruction.operand is MethodInfo shuffle
                     && shuffle.DeclaringType == typeof(ExtensionMethods) && shuffle.Name == nameof(ExtensionMethods.Shuffle))
@@ -420,11 +465,59 @@ namespace UnofficialPatch.Tests
         {
             if (typeof(T) == typeof(Image) && owner is GameObject obj && Images.TryGetValue(obj, out Image image))
                 return (T)(object)image;
+            if (owner is GameObject holder && Components.TryGetValue(holder, out List<object> components) && components.OfType<T>().Any())
+                return components.OfType<T>().First();
             return TestGame.Component<T>();
         }
 
+        private static T[] StubGetComponentsInChildren<T>(GameObject owner, bool includeInactive) =>
+            Children.TryGetValue(owner, out List<object> components) ? components.OfType<T>().ToArray() : new T[0];
+
         private static float StubGetFill(Image image) => Fills[image];
         private static void StubSetFill(Image image, float value) => Fills[image] = value;
+
+        private static Sprite StubGetSprite(Image image) => Sprites.TryGetValue(image, out Sprite sprite) ? sprite : null;
+        private static void StubSetSprite(Image image, Sprite sprite) => Sprites[image] = sprite;
+
+        private static Coroutine StubStartCoroutine(MonoBehaviour host, IEnumerator routine)
+        {
+            Coroutines.Add((host, routine));
+            return null;
+        }
+
+        /// <summary>
+        /// Records the object, and makes a live one read as destroyed.
+        /// </summary>
+        private static void StubDestroy(Object obj)
+        {
+            Destroyed.Add(obj);
+            if (obj is not null)
+                TestGame.Kill(obj);
+        }
+
+        /// <summary>
+        /// A live GameObject holding a live stub Image with this sprite (null for none).
+        /// </summary>
+        public static GameObject ImageWithSprite(Sprite sprite = null)
+        {
+            GameObject obj = TestGame.LiveComponent<GameObject>();
+            Image image = TestGame.LiveComponent<Image>();
+            Images[obj] = image;
+            Sprites[image] = sprite;
+            return obj;
+        }
+
+        public static Sprite SpriteOf(GameObject obj) => Sprites.TryGetValue(Images[obj], out Sprite sprite) ? sprite : null;
+
+        /// <summary>
+        /// A live GameObject whose GetComponent returns these components.
+        /// </summary>
+        public static GameObject Holding(params object[] components)
+        {
+            GameObject obj = TestGame.LiveComponent<GameObject>();
+            Components[obj] = components.ToList();
+            return obj;
+        }
 
     }
 }

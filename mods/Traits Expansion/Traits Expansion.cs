@@ -319,6 +319,8 @@ namespace TraitsExpansion
         public static void Prefix(ref business._proposal _proposal, ref int __state)
         {
             __state = 0;
+            if (_proposal?.girl == null)
+                return;
             if (_proposal.type != business._type.tv_drama || _proposal.girl.trait != (traits._trait._type)NewTraits.Thespian)
                 return;
 
@@ -326,9 +328,10 @@ namespace TraitsExpansion
             _proposal.stamina = Mathf.RoundToInt(_proposal.stamina * THESPIAN_COEFF);
         }
 
-        public static void Postfix(ref business._proposal _proposal, ref int __state)
+        // Finalizer so the stamina is restored even if Set throws
+        public static void Finalizer(ref business._proposal _proposal, ref int __state)
         {
-            if (__state == 0)
+            if (__state == 0 || _proposal == null)
                 return;
 
             _proposal.stamina = __state;
@@ -341,6 +344,8 @@ namespace TraitsExpansion
     {
         public static void Prefix(ref business __instance)
         {
+            if (__instance.ActiveProposal?.girl == null)
+                return;
             if (__instance.ActiveProposal.type != business._type.tv_drama || __instance.ActiveProposal.girl.trait != (traits._trait._type)NewTraits.Thespian)
                 return;
 

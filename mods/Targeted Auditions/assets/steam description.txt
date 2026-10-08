@@ -17,3 +17,4 @@ Using the ModMenu menu, you will be able to customise:
 
 [h3]Changelog[/h3]
 - 2.1.0: Ages stay within the set range; rivals are no longer affected; fixed a freeze on some gold/platinum candidates; fewer repeated looks in large auditions; unique idols no longer appear twice.
+- 2.2.0: The gold/platinum freeze fix moved to Unofficial Patch, which also covers rivals and Aya.

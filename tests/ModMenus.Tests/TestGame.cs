@@ -400,7 +400,6 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnEnable))] = Stub(nameof(ManagerOnEnable)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnApply))] = Stub(nameof(ManagerOnApply)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnCancel))] = Stub(nameof(ManagerOnCancel)),
-            [AccessTools.Method(typeof(Settings_Slider), nameof(Settings_Slider.Render_100))] = Stub(nameof(Render100)),
             [AccessTools.Method(typeof(Checkbox_Text), nameof(Checkbox_Text.SetCheck))] = Stub(nameof(SetCheck)),
             [AccessTools.Method(typeof(ExtensionMethods), nameof(ExtensionMethods.SetColor), new[] { typeof(GameObject), typeof(Color32) })] = Stub(nameof(SetColor)),
         };
@@ -524,9 +523,6 @@ namespace ModMenus.Tests
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ManagerOnCancel(ModMenuManager instance) => throw NotInstalled();
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void Render100(Settings_Slider instance, float val) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void SetCheck(Checkbox_Text instance, bool val) => throw NotInstalled();

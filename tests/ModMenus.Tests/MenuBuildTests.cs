@@ -88,9 +88,9 @@ namespace ModMenus.Tests
         /// </summary>
         [Theory]
         [InlineData("""{ "labelID": "TEST__INTRO" }""")]
-        [InlineData("""{ "type": "text" }""")]
         [InlineData("""{ "type": "button", "labelID": "TEST__INTRO" }""")]
         [InlineData("""{ "type": "slider", "labelID": "TEST__VOLUME" }""")]
+        [InlineData("""{ "type": "slider", "varID": "A_Volume", "labelID": "" }""")]
         [InlineData("""{ "type": "checkbox", "labelID": "TEST__LOUD" }""")]
         [InlineData("""{ "type": "dropdown", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST"] }""")]
         [InlineData("""{ "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK" }""")]
@@ -100,6 +100,27 @@ namespace ModMenus.Tests
         public void IncompleteItemsAreLeftOut(string item)
         {
             Assert.Equal(new[] { "ModMenuText_Mod A" }, Build("[" + item + "]").RowNames);
+        }
+
+        /// <summary>
+        /// The Steam description's tip for vertical spacing: a text item with an empty label. The game's JSON
+        /// parser drops empty strings, so a text item with no label at all does the same.
+        /// </summary>
+        [Theory]
+        [InlineData(", \"labelID\": \"\"")]
+        [InlineData("")]
+        public void TextWithoutALabelAddsABlankRow(string labelField)
+        {
+            Menu menu = Build($$"""
+                [
+                    { "type": "text", "labelID": "TEST__INTRO" },
+                    { "type": "text"{{labelField}} },
+                    { "type": "checkbox", "varID": "A_Loud", "labelID": "TEST__LOUD" }
+                ]
+                """);
+
+            Assert.Equal(new[] { "ModMenuText_Mod A", "ModMenuText_TEST__INTRO", "ModMenuText_", "ModMenuCheckbox_A_Loud" }, menu.RowNames);
+            Assert.Equal("", TextOf(menu.Rows[2]).text);
         }
 
         [Fact]

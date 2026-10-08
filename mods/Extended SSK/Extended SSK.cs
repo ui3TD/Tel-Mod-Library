@@ -2,6 +2,7 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Reflection;
@@ -12,7 +13,16 @@ namespace ExtendedSSK
     public class ExtendedSSK
     {
         public const string varID = "ExtendedSSK_Limit";
-        public const string defaultRankingsStr = "64";
+        public const int defaultRankings = 64;
+
+        /// <summary>
+        /// The configured number of ranks. A missing or unreadable value (e.g. a hand-edited save) gives the default,
+        /// so the election results can still be generated.
+        /// </summary>
+        public static int GetLimit()
+        {
+            return int.TryParse(variables.Get(varID), NumberStyles.Integer, CultureInfo.InvariantCulture, out int limit) ? limit : defaultRankings;
+        }
     }
 
     /// <summary>
@@ -57,7 +67,7 @@ namespace ExtendedSSK
         /// <returns>The new configurable limit for idols.</returns>
         public static int Infix(int i)
         {
-            int limit = int.Parse(variables.Get(varID) ?? defaultRankingsStr);
+            int limit = GetLimit();
             return limit;
         }
     }
@@ -87,7 +97,7 @@ namespace ExtendedSSK
             }
             if(girlCount > 10)
             {
-                int limit = int.Parse(variables.Get(varID) ?? defaultRankingsStr);
+                int limit = GetLimit();
                 List<int> list = __instance.FameBonus;
 
                 int fameBaseVal = (int)GetFameBaseValInfo.Invoke(__instance, null);

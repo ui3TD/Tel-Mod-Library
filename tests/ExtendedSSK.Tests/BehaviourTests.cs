@@ -126,6 +126,17 @@ namespace ExtendedSSK.Tests
             Assert.Equal(16, RunRecalc(SEvent_SSK._broadcast.localTV).Count);
         }
 
+        /// <summary>
+        /// An unreadable limit (e.g. a hand-edited save) uses the default instead of failing the election.
+        /// </summary>
+        [Fact]
+        public void UnreadableLimit_UsesTheDefault()
+        {
+            AddIdols(100);
+            variables.variable.Add(new variables._variable { name = varID, value = "abc" });
+            Assert.Equal(64, RunRecalc(SEvent_SSK._broadcast.localTV).Count);
+        }
+
         [Fact]
         public void GraduatedIdols_DoNotCount()
         {
@@ -183,6 +194,20 @@ namespace ExtendedSSK.Tests
         {
             variables.variable.Add(new variables._variable { name = varID, value = "32" });
             Assert.Equal(32, SSK_GenerateResultsPatch.Infix(10));
+        }
+
+        /// <summary>
+        /// An unreadable limit (e.g. a hand-edited save) uses the default instead of stopping the results.
+        /// </summary>
+        [Theory]
+        [InlineData("abc")]
+        [InlineData("14.5")]
+        [InlineData("14,5")]
+        [InlineData("99999999999")]
+        public void Infix_UnreadableLimit_DefaultsTo64(string value)
+        {
+            variables.variable.Add(new variables._variable { name = varID, value = value });
+            Assert.Equal(64, SSK_GenerateResultsPatch.Infix(10));
         }
     }
 

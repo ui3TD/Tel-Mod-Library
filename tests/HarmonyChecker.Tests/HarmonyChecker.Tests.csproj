@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Harmony Checker\**\*.cs" Exclude="..\..\mods\Harmony Checker\obj\**;..\..\mods\Harmony Checker\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--Type-forwarding facade; Harmony needs it to compile patched methods that reference it-->
+		<Reference Include="UnityEngine">
+			<HintPath>$(dllDir)\UnityEngine.dll</HintPath>
+		</Reference>
+		<!--For Canvas (the button's text components)-->
+		<Reference Include="UnityEngine.UIModule">
+			<HintPath>$(dllDir)\UnityEngine.UIModule.dll</HintPath>
+		</Reference>
+		<!--For TextMesh, which Lang_Button.ResetText also writes to-->
+		<Reference Include="UnityEngine.TextRenderingModule">
+			<HintPath>$(dllDir)\UnityEngine.TextRenderingModule.dll</HintPath>
+		</Reference>
+		<!--mainScript's static fields (text colours) need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+		<!--Mods.LoadModsCoroutine releases Steam queries-->
+		<Reference Include="Steamworks.NET">
+			<HintPath>$(dllDir)\Steamworks.NET.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

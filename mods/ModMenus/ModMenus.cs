@@ -512,16 +512,18 @@ namespace ModMenus
                 for (int i = jsonArray.Count - 1; i >= 0; i--)
                 {
                     JSONNode item = jsonArray[i];
-                    if (string.IsNullOrEmpty(item[JSON_FIELD_TYPE]) || string.IsNullOrEmpty(item[JSON_FIELD_LABELID]) || item[JSON_FIELD_IGNORE].AsBool) continue;
-
                     string type = item[JSON_FIELD_TYPE];
                     string label = item[JSON_FIELD_LABELID];
+
+                    // Text without a label is a blank row, the documented way to add spacing.
+                    // (The game's JSON parser drops empty strings, so an empty labelID reads as missing.)
+                    if (string.IsNullOrEmpty(type) || (string.IsNullOrEmpty(label) && type != JSON_TYPE_TEXT) || item[JSON_FIELD_IGNORE].AsBool) continue;
                     string id;
 
                     switch (type)
                     {
                         case JSON_TYPE_TEXT:
-                            AddMenuText(label, parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
+                            AddMenuText(label ?? "", parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
                             break;
 
                         case JSON_TYPE_SLIDER:

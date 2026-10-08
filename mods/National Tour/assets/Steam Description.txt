@@ -12,9 +12,12 @@ I wanted to preserve the original costs and regional discounts. Where there were
 
 Regions:
 - Hokkaido + Tohoku
-- Kanto + Hokuriku
+- Kanto + Hokuriku + Tokai
 - Kansai + Chugoku + Shikoku
 - Kyushu
 - Okinawa
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 2.1.0: Regions list includes Tokai; Aya no longer mentions jet lag after a national tour.

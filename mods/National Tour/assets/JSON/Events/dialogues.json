@@ -4591,5 +4591,1314 @@
             ]
          }
       ]
+   },
+   {
+      "latestID":79,
+      "parent":"story_chapter_3_aya_favors",
+      "type":"dialogue",
+      "id":"story_chapter_3_aya_favors_10",
+      "location":"CG/aya_plane",
+      "music":"aya_theme",
+      "random":false,
+      "conditions":[
+         
+      ],
+      "actors":[
+         
+      ],
+      "setup":[
+         {
+            "tag":"story_aya",
+            "posX":0,
+            "facing":"default",
+            "startHidden":true,
+            "sprite":"default"
+         }
+      ],
+      "scene_params":[
+         
+      ],
+      "script":[
+         null,
+         null,
+         null,
+         {
+            "id":0,
+            "type":"message",
+            "actor":null,
+            "val":"\"On the plane ride home, you happen to have a seat next to Aya Naya.\"",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":1,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Phew! I'm pooped.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_033_Shocked2"
+         },
+         {
+            "id":2,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I was planning to record an hour-long video on the plane-ride back, but I don't really want to have to be 'on' for the camera, you know?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":3,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Time to let my hair down, so to speak.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":4,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Or, well, maybe literally.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":5,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"But, sad news, you don't get to be part of my final vlog.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_022_Apology3"
+         },
+         {
+            "id":6,
+            "type":"choice",
+            "actor":null,
+            "val":"That's a relief",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":7,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Hehe, so you're saying you wouldn't want to be a part of my final vlog?",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"popup_left",
+                        "formula":"default suspicious none none"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_039_Calling2"
+               },
+               {
+                  "id":8,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Is that the kind of comments I get from you when the cameras aren't rolling?",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"popup_left",
+                        "formula":"suspicious suspicious_af none none"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":9,
+            "type":"choice",
+            "actor":null,
+            "val":"That's disappointing",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":10,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Hey, we can always do something like that for the next big story I get from [groupname], right?",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"popup_left",
+                        "formula":"default happy none none"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_035_Worried1"
+               }
+            ]
+         },
+         {
+            "id":11,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"But hey, I guess we're seat-mates, so if you need to pass gas, please go out into the aisle to do it.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_045_Greeting3"
+         },
+         {
+            "id":12,
+            "type":"message",
+            "actor":null,
+            "val":"\"Aya pulls out her phone and begins flipping through a notes file, but she doesn't really seem to be paying attention to what's on the screen.\"",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":13,
+            "type":"message",
+            "actor":null,
+            "val":"\"She seems bored.\"",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":14,
+            "type":"message",
+            "actor":null,
+            "val":"\"She looks up at you, as if expecting you to entertain her.\"",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":15,
+            "type":"choice",
+            "actor":null,
+            "val":"So, why did you become a journalist?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":16,
+            "type":"choice",
+            "actor":null,
+            "val":"Why are you the way that you are?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":17,
+            "type":"choice",
+            "actor":null,
+            "val":"What are you looking at?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":18,
+            "type":"choice",
+            "actor":null,
+            "val":"What's your real name?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":19,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I guess from a young age, I've always wanted attention. The problem was that I was never any good at any of the things that people usually do to get attention.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"default happy none none"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_036_Worried2"
+         },
+         {
+            "id":20,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"If I'd had a talent for dancing, or singing, or acting, I could have done something like that.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":21,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I wanted to be a performer, but I had no performance. How are you supposed to get people to pay attention to you when you have nothing to offer them?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":22,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"But around the time that I turned 13 years old, something wonderful happened.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":23,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I discovered the internet. A platform full of people that I could perform for.",
+            "effect":[
+               {
+                  "target":null,
+                  "parameter":null,
+                  "formula":""
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_049_Affirmation1"
+         },
+         {
+            "id":24,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"People whose attention I could try to win.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":25,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"People who could love me, or hate me, or be annoyed by me, but whatever their reaction was, when I posted things online, people paid attention to me.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"default intence none none"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":26,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I showed up everywhere. Message boards, comment sections, social media...",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":27,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I was online, all the time, always looking for ways to get clicks, views, follows. It was like a drug for my teenage brain.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_014_Fun2"
+         },
+         {
+            "id":28,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"After a childhood of not getting attention, suddenly I had all the attention I wanted and more.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":29,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"When I was little, I always thought that television and movies and music and all of the other forms of media were for people who were at the top of their fields.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":30,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"You had to be a good actor to star in movies. You had to be a good singer to be on a record. So many things required talent. You had to be the best.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_053_Negation2"
+         },
+         {
+            "id":31,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"But when it came to the news, you didn't have to be the best. You just had to be first.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"default suspicious none none"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_013_Fun1"
+         },
+         {
+            "id":32,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Any time an event happened, I was online, ready to be the first to have a story about it.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":33,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"And at the top of every story, there would be my byline, letting everyone know that I was first.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":34,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"The real breakthrough came when I realized that you didn't even have to have an event to come up with a story.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_050_Affirmation2"
+         },
+         {
+            "id":35,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Any time a celebrity posted something, I would find a way to turn it into a post.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":36,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"[random_name] would post, 'Had a great cup of coffee to start the morning,' and I'd write a post about their morning routine.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":37,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Someone would have an opinion about a movie, and I'd figure out how to get 500 words out of it.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":38,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Anything could be content. It was like spinning straw into gold.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_014_Fun2"
+         },
+         {
+            "id":39,
+            "type":"choice",
+            "actor":null,
+            "val":"Your stories were 'gold?'",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":40,
+            "type":"choice",
+            "actor":null,
+            "val":"Not quite like spinning straw into gold...",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":41,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Hey, I was getting paid [yen]1,000 per 500-word article as a 15-year-old. That's more than some authors get paid for award-winning short-stories.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"default happy sparkle none"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_002_Joy2"
+         },
+         {
+            "id":42,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"And if you can crank out ten of those per day, you're making more money than you would getting a job at a convenience store or whatever.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":43,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Really, the money didn't have much to do with it. I was in it for the rush.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"happy intence none none"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":44,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Posting stories, getting people talking about you, watching the numbers go up, more views, more comments, more shares...",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":45,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"it was like a limitless supply of dopamine.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_014_Fun2"
+         },
+         {
+            "id":46,
+            "type":"choice",
+            "actor":null,
+            "val":"You weren't doing listicles when I met you",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":47,
+            "type":"choice",
+            "actor":null,
+            "val":"You've never done content like that about [groupname]",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":48,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"You're right. I started by doing content. But I realized that what I was doing needed to have a real purpose.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"intence default none none"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_049_Affirmation1"
+         },
+         {
+            "id":49,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Over time, I realized that the content based on people's comments was empty calories.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":50,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"No, the real story was what people weren't willing to post online.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_051_Affirmation3"
+         },
+         {
+            "id":51,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"So I, the girl who had spent most of her waking life online since age 13, realized I had to get away from the keyboard.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":52,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Go to events, and see what I could catch people saying in an unguarded moment. It felt so much more real.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":53,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"That's the kind of thing that can actually change minds.",
+            "effect":[
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"default intence none none"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_002_Joy2"
+         },
+         {
+            "id":54,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"If you post about what a celebrity's favorite coffee is, you haven't done anything to leave your mark on the world, not really.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":55,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"But if you could find something about a celebrity that everybody loved, and make them hate that person instead...",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":56,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"that was actually making an impact.",
+            "effect":[
+               {
+                  "target":"meta",
+                  "parameter":"continue",
+                  "formula":""
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":57,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"It's the kind of thing that people can't ignore.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_014_Fun2"
+         },
+         {
+            "id":58,
+            "type":"choice",
+            "actor":null,
+            "val":"You just want to sow hatred?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":59,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Not necessarily. All you need to do is get people to change their mind about something.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_054_Negation3"
+               },
+               {
+                  "id":60,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"But it's harder to take something that someone hates and make them love it instead, you know?",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               }
+            ]
+         },
+         {
+            "id":61,
+            "type":"choice",
+            "actor":null,
+            "val":"You just want to get people fired up?",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":62,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Yeah. It doesn't have to be negative.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_049_Affirmation1"
+               },
+               {
+                  "id":63,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"People can get fired up for a new movie they're excited to see, or a new musical act they're following.",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ]
+               },
+               {
+                  "id":64,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"But negative is easier.",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"popup_left",
+                        "formula":"default happy none none"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_038_Calling1"
+               }
+            ]
+         },
+         {
+            "id":65,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"All that matters in this world is what people think of you. All the goodness in your heart won't matter if people think you're evil.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":66,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"And some of the most black-hearted people in the world have stellar reputations, thanks to the efforts of their PR teams.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_036_Worried2"
+         },
+         {
+            "id":67,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"So I decided to pursue what would let me control the one thing that really matters.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":68,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"I think that's why I was so drawn to the idol world. You and I are the same, in a lot of ways.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_013_Fun1"
+         },
+         {
+            "id":69,
+            "type":"choice",
+            "actor":null,
+            "val":"We're really not the same",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":70,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"Aren't we, though?",
+                  "effect":[
+                     {
+                        "target":"story_aya",
+                        "parameter":"popup_left",
+                        "formula":"default surprised none none"
+                     }
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_026_Question1"
+               }
+            ]
+         },
+         {
+            "id":71,
+            "type":"choice",
+            "actor":null,
+            "val":"We do have similar jobs.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               {
+                  "id":72,
+                  "type":"message",
+                  "actor":"story_aya",
+                  "val":"I know, right?",
+                  "effect":[
+                     
+                  ],
+                  "requirements":[
+                     
+                  ],
+                  "script":[
+                     
+                  ],
+                  "vo":"Aya_051_Affirmation3"
+               }
+            ]
+         },
+         {
+            "id":73,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"After all, you manage talent. You know how important good PR is. What matters is what the fans think.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":74,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"'Objectively good' music doesn't exist. What matters is how many people are willing to listen. If crap sells, then you sell crap.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":75,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"That's exactly like my motto: what matters is what the public believes, and the only real power you can have is the power to shape public opinion.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_002_Joy2"
+         },
+         {
+            "id":76,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"If you can convince people that your music is worth listening to, or your tickets are worth buying, that matters more than any objective measure of talent.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ]
+         },
+         {
+            "id":77,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"Anyway, we've reached the part of the flight where I put on my face mask and try to get a few hours of sleep so that I don't feel too exhausted when we touch down.",
+            "effect":[
+               
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_037_Worried3"
+         },
+         {
+            "id":78,
+            "type":"message",
+            "actor":"story_aya",
+            "val":"It was good having a chance to talk to you. We should do this on the record some time.",
+            "effect":[
+               {
+                  "target":"meta",
+                  "parameter":"add_task_continue",
+                  "formula":"story_chapter_3_aya_favors_20 2"
+               },
+               {
+                  "target":"story_aya",
+                  "parameter":"popup_left",
+                  "formula":"default happy none none"
+               },
+               {
+                  "target":"meta",
+                  "parameter":"trigger_event",
+                  "formula":"story_chapter_3_aya_tour"
+               }
+            ],
+            "requirements":[
+               
+            ],
+            "script":[
+               
+            ],
+            "vo":"Aya_019_Thanks3"
+         }
+      ]
    }
 ]

@@ -32,3 +32,4 @@ Also recommended mods by magier:
 
 [h3]Changelog[/h3]
 - 1.4.0: Fixes senbatsu stats, breakups, event checks, concert estimates, fan opinion, failed loads.
+- 1.5.0: Fixes a freeze when the game generates some platinum or gold idols.

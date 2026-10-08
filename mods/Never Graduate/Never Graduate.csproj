@@ -6,6 +6,7 @@
 		<ModDescription>This makes the game never check for graduations, unless the girl is fired.</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
+		<WorkshopID>2977892324</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

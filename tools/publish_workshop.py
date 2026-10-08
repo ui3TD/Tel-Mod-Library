@@ -1,0 +1,207 @@
+"""Build a mod and publish it as an update to its Steam Workshop item.
+
+Uploads the content, title, full description and change note in one step with
+SteamCMD, so nothing is copy-pasted and the game does not need to be open:
+
+    title       <ModName> from the mod's csproj
+    description assets/steam description.txt (BBCode, as shown on Steam)
+    change note the "- <Version>: ..." line under [h3]Changelog[/h3] in that file
+    content     the deployed mod folder (LocalLow/Glitch Pitch/Idol Manager/Mods/<ModName>)
+    preview     thumb.png in that folder
+
+The Workshop item is the csproj's <WorkshopID>. Tags and visibility are left as
+they are on Steam. After uploading, the item is read back from the public Steam
+Web API and its description compared with the local one.
+
+One-time setup: install SteamCMD (default C:\\steamcmd\\steamcmd.exe, or set
+STEAMCMD) and log in once with `steamcmd +login <user> +quit` to cache the
+Steam Guard approval.
+
+Usage:
+    python tools/publish_workshop.py "<Mod Name>" [--user USER] [--dry-run] [--no-build]
+"""
+
+import argparse
+import glob
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.parse
+import urllib.request
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODS = os.path.join(REPO, "mods")
+APP_ID = "821880"
+DEPLOY_DIR = os.path.join(os.environ.get("APPDATA", ""), "..", "LocalLow", "Glitch Pitch", "Idol Manager", "Mods")
+DEFAULT_STEAMCMD = os.environ.get("STEAMCMD", r"C:\steamcmd\steamcmd.exe")
+DETAILS_API = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
+
+# Steam Workshop limits.
+MAX_TITLE = 128
+MAX_DESCRIPTION = 8000
+
+
+def read_csproj(mod_dir):
+    projects = glob.glob(os.path.join(mod_dir, "*.csproj"))
+    if len(projects) != 1:
+        sys.exit("Expected one .csproj in " + mod_dir)
+    with open(projects[0], encoding="utf-8-sig") as f:
+        text = f.read()
+    props = {}
+    for name in ("ModName", "Version", "WorkshopID"):
+        match = re.search(r"<{0}>([^<]+)</{0}>".format(name), text)
+        props[name] = match.group(1).strip() if match else None
+    if not props["ModName"] or not props["Version"]:
+        sys.exit("No <ModName> or <Version> in " + projects[0])
+    if not props["WorkshopID"]:
+        sys.exit("No <WorkshopID> in {}; add the item's id from its Workshop URL.".format(projects[0]))
+    return projects[0], props
+
+
+def read_description(mod_dir):
+    assets = os.path.join(mod_dir, "assets")
+    names = [n for n in os.listdir(assets) if n.lower() == "steam description.txt"]
+    if not names:
+        sys.exit("No steam description.txt in " + assets)
+    with open(os.path.join(assets, names[0]), encoding="utf-8-sig") as f:
+        return f.read().replace("\r\n", "\n").strip()
+
+
+def change_note(description, version):
+    _, found, changelog = description.partition("[h3]Changelog[/h3]")
+    if not found:
+        sys.exit("No [h3]Changelog[/h3] section in the steam description.")
+    match = re.search(r"^- {}:\s*(.+)$".format(re.escape(version)), changelog, re.MULTILINE)
+    if not match:
+        sys.exit("No '- {}: ...' line in the changelog; add one before publishing.".format(version))
+    return match.group(1).strip()
+
+
+def vdf_string(value):
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def write_vdf(fields):
+    lines = ['"workshopitem"', "{"]
+    lines += ["\t{} {}".format(vdf_string(k), vdf_string(v)) for k, v in fields.items()]
+    lines.append("}")
+    fd, path = tempfile.mkstemp(suffix=".vdf", prefix="workshop_")
+    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    return path, "\n".join(lines)
+
+
+def build(csproj):
+    subprocess.run(["dotnet", "build", csproj, "-c", "Release", "-nologo",
+                    "-p:SolutionDir=" + REPO + os.sep], check=True)
+
+
+def check_deployed(content_dir, version):
+    info_path = os.path.join(content_dir, "info.json")
+    if not os.path.isfile(info_path):
+        sys.exit("Mod not deployed: " + info_path)
+    with open(info_path, encoding="utf-8-sig") as f:
+        deployed = json.load(f).get("Version")
+    if deployed != version:
+        sys.exit("Deployed info.json is version {}, csproj is {}; rebuild.".format(deployed, version))
+    if not os.path.isfile(os.path.join(content_dir, "thumb.png")):
+        sys.exit("No thumb.png in " + content_dir)
+
+
+def upload(steamcmd, user, vdf_path):
+    if not os.path.isfile(steamcmd):
+        sys.exit("SteamCMD not found at {}; install it or set STEAMCMD.".format(steamcmd))
+    # stdin stays attached so SteamCMD can ask for a password or Steam Guard code if the login has expired.
+    proc = subprocess.Popen([steamcmd, "+login", user, "+workshop_build_item", vdf_path, "+quit"],
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+    assert proc.stdout is not None
+    output = []
+    for line in proc.stdout:
+        print(line, end="")
+        output.append(line)
+    proc.wait()
+    text = "".join(output)
+    if "ERROR" in text or "Success." not in text:
+        sys.exit("SteamCMD did not report success; the Workshop item may not have been updated.")
+
+
+def fetch_details(workshop_id):
+    data = urllib.parse.urlencode({"itemcount": 1, "publishedfileids[0]": workshop_id}).encode()
+    with urllib.request.urlopen(DETAILS_API, data, timeout=30) as response:
+        return json.load(response)["response"]["publishedfiledetails"][0]
+
+
+def verify(workshop_id, title, description):
+    # The public API can lag the upload by a few seconds.
+    for attempt in range(3):
+        try:
+            details = fetch_details(workshop_id)
+        except Exception as e:
+            print("Could not read the item back from Steam ({}); check the page manually.".format(e))
+            return
+        remote = details.get("description", "").replace("\r\n", "\n").strip()
+        if remote == description and details.get("title") == title:
+            print("Verified: Steam shows the new title and description.")
+            return
+        time.sleep(5)
+    if details.get("result") != 1:
+        print("Steam did not return the item (it may be private); check the page manually.")
+    else:
+        print("WARNING: Steam's title or description differs from the local one; check the page.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=(__doc__ or "").partition("\n")[0])
+    parser.add_argument("mod", help="mod folder name under mods/")
+    parser.add_argument("--user", default=os.environ.get("STEAM_USER"), help="Steam login (default: STEAM_USER)")
+    parser.add_argument("--steamcmd", default=DEFAULT_STEAMCMD)
+    parser.add_argument("--dry-run", action="store_true", help="print the upload instead of running it")
+    parser.add_argument("--no-build", action="store_true", help="publish the already deployed build")
+    args = parser.parse_args()
+
+    mod_dir = os.path.join(MODS, args.mod)
+    if not os.path.isdir(mod_dir):
+        sys.exit("No mod folder " + mod_dir)
+    csproj, props = read_csproj(mod_dir)
+    description = read_description(mod_dir)
+    note = change_note(description, props["Version"])
+    if len(props["ModName"]) > MAX_TITLE:
+        sys.exit("Title is over {} characters.".format(MAX_TITLE))
+    if len(description) > MAX_DESCRIPTION:
+        sys.exit("Description is {} characters; Steam allows {}.".format(len(description), MAX_DESCRIPTION))
+
+    if not args.no_build:
+        build(csproj)
+    content_dir = os.path.normpath(os.path.join(DEPLOY_DIR, props["ModName"]))
+    check_deployed(content_dir, props["Version"])
+
+    # Forward slashes keep paths free of VDF escapes; Windows accepts them.
+    vdf_path, vdf_text = write_vdf({
+        "appid": APP_ID,
+        "publishedfileid": props["WorkshopID"],
+        "contentfolder": content_dir.replace("\\", "/"),
+        "previewfile": os.path.join(content_dir, "thumb.png").replace("\\", "/"),
+        "title": props["ModName"],
+        "description": description,
+        "changenote": "{}: {}".format(props["Version"], note),
+    })
+    try:
+        print("Publishing {} {} to https://steamcommunity.com/sharedfiles/filedetails/?id={}".format(
+            props["ModName"], props["Version"], props["WorkshopID"]))
+        if args.dry_run:
+            print(vdf_text)
+            return
+        if not args.user:
+            sys.exit("No Steam login; pass --user or set STEAM_USER.")
+        upload(args.steamcmd, args.user, vdf_path)
+    finally:
+        os.remove(vdf_path)
+    verify(props["WorkshopID"], props["ModName"], description)
+
+
+if __name__ == "__main__":
+    main()

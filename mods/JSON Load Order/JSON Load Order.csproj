@@ -6,6 +6,7 @@
 		<ModDescription>Allows modders to adjust the JSON load order of their mods. Just add a JSONLoadOrder attribute to info.json. Default JSONLoadOrder number is 0. Lower numbers load early, and higher numbers load late.</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
+		<WorkshopID>3103303375</WorkshopID>
 		<Tags>["modding"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

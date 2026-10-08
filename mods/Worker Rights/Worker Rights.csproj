@@ -6,6 +6,7 @@
 		<ModDescription>Employee rights! Idols will demand fair wages! Brand new staff cannot be blamed for scandals!</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.1.0</Version>
+		<WorkshopID>2977860966</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

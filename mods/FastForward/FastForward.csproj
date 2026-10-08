@@ -6,6 +6,7 @@
 		<ModDescription>Press '4' or click the fast-forward button twice to go faster!</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.3.0</Version>
+		<WorkshopID>2976136928</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

@@ -6,6 +6,7 @@
 		<ModDescription>World Tour has a 100 stamina limit. Fans increased 3.5x to compensate.</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
+		<WorkshopID>2977861566</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

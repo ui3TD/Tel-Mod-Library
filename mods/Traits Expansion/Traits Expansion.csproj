@@ -6,6 +6,7 @@
 		<ModDescription>A bunch of new traits that expand upon the existing set of traits. They affect stats, appeal, businesses, special events and more.</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.1.0</Version>
+		<WorkshopID>2985475895</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

@@ -6,6 +6,7 @@
 		<ModDescription>Unofficial bugfixes</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.4.0</Version>
+		<WorkshopID>2976384244</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

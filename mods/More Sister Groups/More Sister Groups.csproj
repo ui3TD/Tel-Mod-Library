@@ -6,6 +6,7 @@
 		<ModDescription>Unlimited sister groups, but they're nerfed to maintain balance.</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
+		<WorkshopID>2977860875</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

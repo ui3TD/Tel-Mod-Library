@@ -233,7 +233,7 @@ namespace MBTIPersonalities.Tests
             Business_Popup_Set.Prefix(ref proposal, ref state);
             Assert.Equal(18, proposal.stamina);
 
-            Business_Popup_Set.Postfix(ref proposal, ref state);
+            Business_Popup_Set.Finalizer(ref proposal, ref state);
             Assert.Equal(20, proposal.stamina);
         }
 

@@ -160,6 +160,10 @@ namespace UnofficialPatch.Tests
         }
     }
 
+    public class HangException : Exception
+    {
+    }
+
     /// <summary>
     /// Compares Unity objects by reference. Objects made outside Unity all equal each other (and null) under
     /// Unity's own Equals, because none of them has a native object.
@@ -197,6 +201,19 @@ namespace UnofficialPatch.Tests
     {
         public static Func<int, bool> Chance;
 
+        /// <summary>
+        /// Unity's Random.Range(int, int), and the points the stat roll asks Auditions.GetPointsByType for.
+        /// </summary>
+        public static Func<int, int, int> Range;
+        public static Func<Auditions.data._girl._type, int> Points;
+
+        /// <summary>
+        /// Range calls since the last Reset. The game's stat roll spins forever when its points can't fit;
+        /// past this limit the stub throws instead, so tests can detect the hang.
+        /// </summary>
+        public static int RangeCalls;
+        public const int HangLimit = 1_000_000;
+
         public static readonly List<long> MoneyAdded = new();
         public static readonly List<Floats.type> FloatsShown = new();
         public static readonly List<(data_girls.girls girl, data_girls._paramType type, float val)> ParamsAdded = new();
@@ -220,6 +237,8 @@ namespace UnofficialPatch.Tests
             (AccessTools.Method(typeof(ExtensionMethods), nameof(ExtensionMethods.SetColor), new[] { typeof(GameObject), typeof(Color32) }), nameof(StubSetColor)),
             (AccessTools.PropertyGetter(typeof(Image), nameof(Image.fillAmount)), nameof(StubGetFill)),
             (AccessTools.PropertySetter(typeof(Image), nameof(Image.fillAmount)), nameof(StubSetFill)),
+            (AccessTools.Method(typeof(UnityEngine.Random), nameof(UnityEngine.Random.Range), new[] { typeof(int), typeof(int) }), nameof(StubRange)),
+            (AccessTools.Method(typeof(Auditions), nameof(Auditions.GetPointsByType)), nameof(StubPoints)),
         };
 
         private static readonly MethodBase[] Patched =
@@ -229,6 +248,8 @@ namespace UnofficialPatch.Tests
             AccessTools.Method(typeof(Relationships._relationship), nameof(Relationships._relationship.BreakUp)),
             AccessTools.Method(typeof(Profile_Fans_Pies_Render_Pies), nameof(Profile_Fans_Pies_Render_Pies.Postfix)),
             AccessTools.Method(typeof(Tour_New_Popup_Render), nameof(Tour_New_Popup_Render.Postfix)),
+            AccessTools.Method(typeof(data_girls), "GenerateParams"),
+            AccessTools.Method(typeof(data_girls), "GeneratePotential"),
         };
 
         /// <summary>
@@ -238,6 +259,7 @@ namespace UnofficialPatch.Tests
         public static void Install()
         {
             Harmony harmony = new("tests.UnofficialPatch.Seams");
+
             HarmonyMethod transpiler = new(typeof(Seams), nameof(Redirect)) { priority = Priority.Last };
             List<string> failed = new();
             foreach (MethodBase method in Patched)
@@ -253,6 +275,10 @@ namespace UnofficialPatch.Tests
             }
             if (failed.Count > 0)
                 throw new InvalidOperationException(string.Join("; ", failed));
+
+            // The game's stat roll as it is without the mod, for comparison
+            Harmony.ReversePatch(AccessTools.Method(typeof(data_girls), "GenerateParams"),
+                new HarmonyMethod(typeof(Seams), nameof(VanillaGenerateParams)), AccessTools.Method(typeof(Seams), nameof(Redirect)), ilmanipulator: null);
         }
 
         /// <summary>
@@ -261,6 +287,9 @@ namespace UnofficialPatch.Tests
         public static void Reset()
         {
             Chance = _ => false;
+            Range = (min, max) => throw new InvalidOperationException("Set Seams.Range first");
+            Points = _ => throw new InvalidOperationException("Set Seams.Points first");
+            RangeCalls = 0;
             MoneyAdded.Clear();
             FloatsShown.Clear();
             ParamsAdded.Clear();
@@ -281,6 +310,13 @@ namespace UnofficialPatch.Tests
                     // GetComponent<T>() calls native code; the JIT can inline it, so every one is redirected
                     instruction.opcode = OpCodes.Call;
                     instruction.operand = AccessTools.Method(typeof(Seams), nameof(StubGetComponent)).MakeGenericMethod(getComponent.GetGenericArguments());
+                }
+                else if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) && instruction.operand is MethodInfo shuffle
+                    && shuffle.DeclaringType == typeof(ExtensionMethods) && shuffle.Name == nameof(ExtensionMethods.Shuffle))
+                {
+                    // Shuffle draws from Random.Range inside the game's assembly
+                    instruction.opcode = OpCodes.Call;
+                    instruction.operand = AccessTools.Method(typeof(Seams), nameof(StubShuffle)).MakeGenericMethod(shuffle.GetGenericArguments());
                 }
                 else if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) && instruction.operand is MethodBase target)
                 {
@@ -320,6 +356,45 @@ namespace UnofficialPatch.Tests
         }
 
         private static bool StubChance(int num) => Chance(num);
+
+        /// <summary>
+        /// The game's own data_girls.GenerateParams, without the mod's patch, calling the stubs.
+        /// </summary>
+        public static void VanillaGenerateParams(data_girls instance, data_girls.girls Girl, Auditions.data._girl._type Type) =>
+            throw new NotImplementedException("Replaced by a reverse patch");
+
+        /// <summary>
+        /// Draws every Range roll, and every chance roll, from a seeded generator, the way the game does.
+        /// </summary>
+        public static void Seeded(int seed)
+        {
+            System.Random rng = new(seed);
+            Range = (min, max) => rng.Next(min, max);
+            Chance = num => num >= 100 || (num > 0 && StubRange(0, 100) < num);
+            RangeCalls = 0;
+        }
+
+        private static int StubRange(int min, int max)
+        {
+            if (++RangeCalls > HangLimit)
+                throw new HangException();
+            return Range(min, max);
+        }
+
+        private static int StubPoints(Auditions.data._girl._type type) => Points(type);
+
+        /// <summary>
+        /// Same logic as ExtensionMethods.Shuffle.
+        /// </summary>
+        private static void StubShuffle<T>(IList<T> ts)
+        {
+            int count = ts.Count;
+            for (int i = 0; i < count - 1; i++)
+            {
+                int index = StubRange(i, count);
+                (ts[i], ts[index]) = (ts[index], ts[i]);
+            }
+        }
         private static void StubAddParam(data_girls.girls girl, data_girls._paramType type, float val, bool ignorePotential) => ParamsAdded.Add((girl, type, val));
         private static void StubNotification(string text, Color32 color, NotificationManager._notification._type type) => Notifications.Add(text);
         private static void StubSetColor(GameObject obj, Color32 color) => ColorsSet.Add((obj, color));

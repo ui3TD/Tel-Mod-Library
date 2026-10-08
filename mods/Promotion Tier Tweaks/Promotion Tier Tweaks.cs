@@ -11,6 +11,7 @@ namespace PromotionTierTweaks
         public const int lvl3Eps = 6;
         public const int lvl4Eps = 6;
         public const int lvl6Eps = 6;
+        public const int lvl4audience = 6000;
         public const int lvl9Fame = 9;
         public const string lvl3Label = "UNFAIR_PLUS__ACTIVITIES__INTERNETSHOW";
         public const string lvl4Label = "UNFAIR_PLUS__ACTIVITIES__RADIOSHOW";
@@ -18,10 +19,11 @@ namespace PromotionTierTweaks
 
         // Standard game values
         public const int lvl3mags = 3;
-        public const int lvl4audience = 6000;
         public const int lvl6mags = 24;
         public const int lvl9IdolCount = 3;
 
+        // Episodes aired by the longest-running show of this type. Shows still in production don't count;
+        // cancelled shows keep the episodes they aired.
         public static int CountEpisodesOfShowsWithType(Shows._param._media_type type)
         {
             int maxEpisodes = 0;
@@ -43,11 +45,23 @@ namespace PromotionTierTweaks
         }
     }
 
-    // In hard mode, level 3 requires 6 internet episodes, level 4 requires 6000 internet show viewers and 6 radio episodes, level 6 requires 6 tv episodes,
+    // Level 3 requires 6 internet episodes, level 4 requires 6000 internet show viewers and 6 radio episodes, level 6 requires 6 tv episodes,
     // level 9 Promotion requires 3 idols with 9 fame instead of 5
     [HarmonyPatch(typeof(Activities), "GetMaxLevel_Promotion")]
     public class Activities_GetMaxLevel_Promotion
     {       
+        public static bool Running;
+
+        public static void Prefix()
+        {
+            Running = true;
+        }
+
+        public static void Finalizer()
+        {
+            Running = false;
+        }
+
         public static void Postfix(ref int __result, Activities._activity act)
         {
             int output = __result;
@@ -72,7 +86,21 @@ namespace PromotionTierTweaks
         }
     }
 
-    // In hard mode, level 3 requires 6 internet episodes, level 4 requires 6000 internet show viewers and 6 radio episodes, level 6 requires 6 tv episodes,
+    // While the promotion level is worked out, a cancelled show that aired episodes still counts as a launched show,
+    // so a show that ran its 6 episodes meets its tier even after it's cancelled
+    [HarmonyPatch(typeof(Shows), "CountShowsWithType")]
+    public class Shows_CountShowsWithType
+    {
+        public static void Postfix(ref int __result, Shows._param._media_type type)
+        {
+            if (Activities_GetMaxLevel_Promotion.Running && __result == 0 && CountEpisodesOfShowsWithType(type) > 0)
+            {
+                __result = 1;
+            }
+        }
+    }
+
+    // Level 3 requires 6 internet episodes, level 4 requires 6000 internet show viewers and 6 radio episodes, level 6 requires 6 tv episodes,
     // level 9 Promotion requires 3 idols with 9 fame instead of 5
     [HarmonyPatch(typeof(Activities), "GetPromotionDescription")]
     public class Activities_GetPromotionDescription

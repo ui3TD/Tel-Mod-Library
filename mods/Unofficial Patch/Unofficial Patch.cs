@@ -912,6 +912,147 @@ namespace UnofficialPatch
         }
     }
 
+    // Fixed a freeze when generating some platinum and gold idols (auditions, Aya, hiring a rival).
+    // The stat roll reserves up to 3 stats, then spends the rest of the points on the other stats, up to 99 each.
+    // When the points can't fit (about 1 in 12 platinum rolls), the spending loop never ends.
+    // The roll that can't fit is thrown away and the game rolls again, so every idol is one the game could make.
+    [HarmonyPatch(typeof(data_girls), "GenerateParams")]
+    public class data_girls_GenerateParams
+    {
+        // Highest value a stat can hold.
+        private const int MaxStat = 99;
+        // Points the game takes off for the 8 stats starting at 1.
+        private const int StatCount = 8;
+        // Rerolls before giving up and dropping the points that can't fit. Only reached if another mod
+        // raises the points so far that no roll can fit; the game's points fail about 1 time in 12.
+        private const int MaxRerolls = 100;
+
+        // Rerolls in a row for the idol being generated.
+        private static int rerolls;
+
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+        {
+            MethodInfo getPoints = AccessTools.Method(typeof(Auditions), nameof(Auditions.GetPointsByType));
+            ConstructorInfo newList = AccessTools.Constructor(typeof(List<int>), Type.EmptyTypes);
+            MethodInfo shouldReroll = AccessTools.Method(typeof(data_girls_GenerateParams), nameof(ShouldReroll));
+            MethodInfo fitBudget = AccessTools.Method(typeof(data_girls_GenerateParams), nameof(FitBudget));
+            if (getPoints == null || newList == null || shouldReroll == null || fitBudget == null)
+            {
+                PatchLog.WarnOncePerPatch<data_girls_GenerateParams>("method lookup failed.");
+                return instructions;
+            }
+
+            var matcher = new CodeMatcher(instructions, generator);
+
+            // The points left to spend: GetPointsByType(Type) - 8.
+            matcher.MatchForward(false,
+                new CodeMatch(ci => IlHelpers.IsCallTo(ci, getPoints)),
+                new CodeMatch(ci => IlHelpers.IsLdcI4(ci, StatCount)),
+                new CodeMatch(OpCodes.Sub),
+                new CodeMatch(ci => IlHelpers.IsStloc(ci)));
+            if (matcher.IsInvalid)
+            {
+                PatchLog.WarnOncePerPatch<data_girls_GenerateParams>("points local not found.");
+                return instructions;
+            }
+            CodeInstruction storeBudget = matcher.InstructionAt(3);
+
+            // The stat list.
+            matcher.Start();
+            matcher.MatchForward(false,
+                new CodeMatch(ci => ci.opcode == OpCodes.Newobj && ci.operand is ConstructorInfo ctor && ctor == newList),
+                new CodeMatch(ci => IlHelpers.IsStloc(ci)));
+            if (matcher.IsInvalid)
+            {
+                PatchLog.WarnOncePerPatch<data_girls_GenerateParams>("stat list local not found.");
+                return instructions;
+            }
+            CodeInstruction storeList = matcher.InstructionAt(1);
+
+            // The end of the loop that adds a 1 for each stat that isn't reserved: i < 8 - reserved.
+            // The spending loop starts right after it.
+            matcher.Start();
+            matcher.MatchForward(false,
+                new CodeMatch(ci => IlHelpers.IsLdcI4(ci, StatCount)),
+                new CodeMatch(ci => IlHelpers.IsLdloc(ci)),
+                new CodeMatch(OpCodes.Sub),
+                new CodeMatch(ci => ci.opcode == OpCodes.Blt || ci.opcode == OpCodes.Blt_S));
+            if (matcher.IsInvalid)
+            {
+                PatchLog.WarnOncePerPatch<data_girls_GenerateParams>("spending loop not found.");
+                return instructions;
+            }
+            CodeInstruction loadReserved = matcher.InstructionAt(1);
+            matcher.Advance(4);
+            if (matcher.IsInvalid)
+            {
+                PatchLog.WarnOncePerPatch<data_girls_GenerateParams>("spending loop start not found.");
+                return instructions;
+            }
+
+            // A reroll jumps back to the method's first instruction.
+            Label start = generator.DefineLabel();
+            matcher.InstructionAt(-matcher.Pos).labels.Add(start);
+
+            // Before spending: if (ShouldReroll(list, reserved, points)) start again;
+            // then points = FitBudget(list, reserved, points).
+            var labels = matcher.Instruction.labels.ToList();
+            matcher.Instruction.labels.Clear();
+            var firstInserted = IlHelpers.LoadOfStore(storeList);
+            firstInserted.labels.AddRange(labels);
+            matcher.Insert(
+                firstInserted,
+                new CodeInstruction(loadReserved.opcode, loadReserved.operand),
+                IlHelpers.LoadOfStore(storeBudget),
+                new CodeInstruction(OpCodes.Call, shouldReroll),
+                new CodeInstruction(OpCodes.Brtrue, start),
+                IlHelpers.LoadOfStore(storeList),
+                new CodeInstruction(loadReserved.opcode, loadReserved.operand),
+                IlHelpers.LoadOfStore(storeBudget),
+                new CodeInstruction(OpCodes.Call, fitBudget),
+                new CodeInstruction(storeBudget.opcode, storeBudget.operand));
+            return matcher.InstructionEnumeration();
+        }
+
+        // How many more points the stats that aren't reserved can hold.
+        public static int Room(List<int> stats, int reserved)
+        {
+            int room = 0;
+            for (int i = reserved; i < stats.Count; i++)
+            {
+                room += Math.Max(0, MaxStat - stats[i]);
+            }
+            return room;
+        }
+
+        // True when the points can't fit, so the game should roll this idol again.
+        public static bool ShouldReroll(List<int> stats, int reserved, int budget)
+        {
+            if (budget <= Room(stats, reserved))
+            {
+                rerolls = 0;
+                return false;
+            }
+
+            if (rerolls >= MaxRerolls)
+            {
+                // FitBudget drops the points that can't fit instead.
+                rerolls = 0;
+                PatchLog.WarnOncePerPatch<data_girls_GenerateParams>("no roll fit its points after " + MaxRerolls + " rerolls; dropped the extra points.");
+                return false;
+            }
+
+            rerolls++;
+            return true;
+        }
+
+        // The points to spend: unchanged when they fit, otherwise only what fits.
+        public static int FitBudget(List<int> stats, int reserved, int budget)
+        {
+            return Math.Min(budget, Room(stats, reserved));
+        }
+    }
+
 
     // Dating status is visible for underage members.
     // A postfix is safer than a transpiler here and avoids invalid IL after upstream changes.

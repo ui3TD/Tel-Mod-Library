@@ -26,6 +26,7 @@ Also recommended mods by magier:
 - Fixed display for Stamina cost of Performances to be correct for 'Energetic' performance policy
 - Fixed event and dialogue checks for having a staffer of a specific type
 - Fixed loading a missing or corrupt save: during play, autosave keeps working; from the main menu, autosave is off for that session so the empty game can't overwrite your saves.
+- Fixed a freeze when generating some platinum and gold idols (auditions, Aya, hiring a rival): a roll whose points can't fit is rolled again instead of looping forever.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 

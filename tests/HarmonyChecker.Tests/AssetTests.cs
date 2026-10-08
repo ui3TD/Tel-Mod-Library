@@ -15,18 +15,21 @@ namespace HarmonyChecker.Tests
         public AssetTests() => TestGame.Reset();
 
         /// <summary>
-        /// The mod ships two labels: the game's own Mods label, changed to say IM-HI isn't installed (shown when
-        /// only the mod's JSON loads), and the label the patches switch to.
+        /// The mod ships four labels: the game's own Mods label, changed to say IM-HI isn't installed (shown when
+        /// only the mod's JSON loads), the two labels the patches switch to, and the update button's label
+        /// with the required version (@2), worded like the mod's fallback.
         /// </summary>
         [Fact]
-        public void Constants_DefineBothLabels()
+        public void Constants_DefineAllLabels()
         {
             JSONNode constants = TestGame.LoadJson("JSON/Constants/constants.json");
 
             Dictionary<string, string> text = Enumerable.Range(0, constants.Count).ToDictionary(i => constants[i]["id"].Value, i => constants[i]["text"].Value);
-            Assert.Equal(2, text.Count);
+            Assert.Equal(4, text.Count);
             Assert.Equal(TestGame.NotInstalledText, text[TestGame.VanillaConstant]);
             Assert.Equal("Mods [IM-HI installed]", text[HarmonyCheckerStatus.BUTTON_LABEL]);
+            Assert.Equal("Mods [IM-HI out-of-date]", text[IMHIUpdate.MODS_LABEL]);
+            Assert.Equal(IMHIUpdate.FALLBACK_LABEL, text[IMHIUpdate.BUTTON_LABEL]);
         }
 
         /// <summary>

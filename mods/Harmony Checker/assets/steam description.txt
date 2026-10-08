@@ -1,5 +1,6 @@
 [h1] IMPORTANT[/h1] 
 This Steam Workshop mod only checks if IM-HarmonyIntegration (IM-HI) is installed on your system. The result is shown in the screenshot above.
+If your IM-HI is out of date, the label says IM-HI out-of-date and a yellow Update IM-HI button appears under Mods. Click it to open the IM-HI download page.
 
 You must install the IM-HI plugin manually. Follow the instructions at this link:
 - [b][url=https://github.com/ui3TD/IM-HarmonyIntegration]IM-HarmonyIntegration GitHub page[/url][/b]
@@ -12,3 +13,4 @@ And don't forget to set this mod as a 'Required Item' in Steam Workshop.
 
 [h3]Changelog[/h3]
 - 1.1.0: The IM-HI installed label now shows when Workshop mods finish loading after the main menu.
+- 1.2.0: When IM-HI is out of date, the label says so and a yellow button links to the update.

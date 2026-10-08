@@ -10,3 +10,6 @@ This mod allows modders to adjust the JSON load order of their mods with respect
 Example info.json and more details: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/JSONLoadOrder.md]JSON Load Order guide[/url]
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.1.0: Mods are sorted as soon as the game loads them, so all JSON files follow the order.

@@ -1,3 +1,5 @@
+using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -262,6 +264,68 @@ namespace JSONLoadOrder.Tests
             TestGame.LoadLanguage();
 
             Assert.Equal(new[] { "A" }, ConstantsFiles());
+        }
+    }
+
+    /// <summary>
+    /// The list is sorted as soon as the mod is applied (right after the game loads its mods), because the game
+    /// reads some JSON (e.g. policies, trivia, dialogues) before it reloads the constants when a save loads.
+    /// </summary>
+    public class ActivationTests
+    {
+        // Not "tests.JSONLoadOrder": PatchTargetTests unpatches everything under that ID
+        private const string HarmonyId = "tests.JSONLoadOrder.Activation";
+
+        public ActivationTests() => TestGame.Reset();
+
+        [Fact]
+        public void ApplyingTheMod_SortsTheModsRightAway()
+        {
+            TestGame.Mod("Late", "100");
+            TestGame.Mod("Default");
+            TestGame.Mod("Early", "-10");
+
+            // Language._Load reads Unity's streamingAssetsPath, so it can't be compiled outside the game. Harmony
+            // runs Prepare before it compiles the target, so the sort has already happened when that fails.
+            Exception error = Record.Exception(() => new Harmony(HarmonyId).CreateClassProcessor(typeof(Language__Load)).Patch());
+            Assert.True(error is null || error.InnerException is System.Security.SecurityException, error?.ToString());
+
+            Assert.Equal(new[] { "Early", "Default", "Late" }, TestGame.LoadedNames());
+        }
+
+        /// <summary>
+        /// Harmony also calls Prepare once per patched method; the list is only read once.
+        /// </summary>
+        [Fact]
+        public void PrepareForAMethod_LeavesTheListAlone()
+        {
+            TestGame.Mod("Late", "100");
+            TestGame.Mod("Early", "-10");
+
+            Language__Load.Prepare(AccessTools.Method(typeof(Language), "_Load"));
+
+            Assert.Equal(new[] { "Late", "Early" }, TestGame.LoadedNames());
+        }
+
+        /// <summary>
+        /// A mod folder that loses its info.json can't stop the mod from being applied.
+        /// </summary>
+        [Fact]
+        public void UnreadableMod_DoesNotStopTheModBeingApplied()
+        {
+            Mods._mod broken = TestGame.Mod("Broken", "1");
+            File.Delete(Path.Combine(broken.Path, "info.json"));
+            UnityEngine.Debug.unityLogger.logEnabled = false;
+            try
+            {
+                Language__Load.Prepare(null);
+            }
+            finally
+            {
+                UnityEngine.Debug.unityLogger.logEnabled = true;
+            }
+
+            Assert.Equal(new[] { "Broken" }, TestGame.LoadedNames());
         }
     }
 }

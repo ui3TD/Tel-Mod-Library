@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Menu Hotkeys\**\*.cs" Exclude="..\..\mods\Menu Hotkeys\obj\**;..\..\mods\Menu Hotkeys\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--For Input (hotkey patch)-->
+		<Reference Include="UnityEngine.InputLegacyModule">
+			<HintPath>$(dllDir)\UnityEngine.InputLegacyModule.dll</HintPath>
+		</Reference>
+		<!--mainScript's static fields (text colours) need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+		<!--ActiveDialogueController's static fields (hotkey blocking) need it to initialise-->
+		<Reference Include="Unity.ResourceManager">
+			<HintPath>$(dllDir)\Unity.ResourceManager.dll</HintPath>
+		</Reference>
+		<!--staticVars' initializer loads Steamworks types-->
+		<Reference Include="Steamworks.NET">
+			<HintPath>$(dllDir)\Steamworks.NET.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

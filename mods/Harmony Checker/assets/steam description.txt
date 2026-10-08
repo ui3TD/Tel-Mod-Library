@@ -8,3 +8,6 @@ You must install the IM-HI plugin manually. Follow the instructions at this link
 See [b][url=https://github.com/ui3TD/IM-FastForward]IM-FastForward[/url][/b] for an example and tutorial for creating compatible mods.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.1.0: The IM-HI installed label now shows when Workshop mods finish loading after the main menu.

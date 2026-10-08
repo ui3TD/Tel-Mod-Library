@@ -3,4 +3,20 @@
 		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
 		<Compile Include="..\..\mods\Fan Attrition\**\*.cs" Exclude="..\..\mods\Fan Attrition\obj\**;..\..\mods\Fan Attrition\bin\**" LinkBase="Mod" />
 	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--mainScript's static fields (text colours) need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+		<!--For Canvas (fan tooltip patches)-->
+		<Reference Include="UnityEngine.UIModule">
+			<HintPath>$(dllDir)\UnityEngine.UIModule.dll</HintPath>
+		</Reference>
+		<!--Type-forwarding facade; Harmony needs it to compile patched methods that reference it-->
+		<Reference Include="UnityEngine">
+			<HintPath>$(dllDir)\UnityEngine.dll</HintPath>
+		</Reference>
+	</ItemGroup>
 </Project>

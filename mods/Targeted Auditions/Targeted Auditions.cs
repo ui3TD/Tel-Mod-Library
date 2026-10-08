@@ -201,265 +201,61 @@ namespace CustomAuditions
     [HarmonyPatch(typeof(data_girls), "GenerateParams")]
     public static class data_girls_GenerateParams
     {
-        private const int MaxStatValue = 99;
-        private const int MaxNoProgressIterations = 4096;
-
         /// <summary>
-        /// Reproduces vanilla audition stat generation while preventing its unreachable-budget loop.
-        /// Vanilla reserves up to three stats, then spends the entire remaining point budget only on
-        /// the other stats. Gold/platinum rolls can request more points than those adjustable stats can
-        /// hold, causing the main thread to spin forever once they all reach 99.
+        /// Calls Infix on the stat list right after the game shuffles it.
         /// </summary>
-        public static bool Prefix(data_girls __instance, data_girls.girls Girl, Auditions.data._girl._type Type)
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            if (!IsGeneratingAudition)
-            {
-                return true;
-            }
+            List<CodeInstruction> instructionList = new(instructions);
 
-            GenerateParamsSafely(Girl, Type);
-            return false;
-        }
-
-        private static void GenerateParamsSafely(data_girls.girls girl, Auditions.data._girl._type type)
-        {
-            int requestedPoints = Auditions.GetPointsByType(type);
-            int pointsRemaining = requestedPoints - 8;
-            List<int> statValues = new List<int>();
-
-            int reservedCount = 0;
-            if (mainScript.chance(20))
+            int index = -1;
+            for (int i = 1; i < instructionList.Count; i++)
             {
-                reservedCount = 1;
-            }
-            else if (mainScript.chance(20))
-            {
-                reservedCount = 2;
-            }
-            else if (mainScript.chance(5))
-            {
-                reservedCount = 3;
-            }
-
-            int potentialLow = 90;
-            int potentialHigh = 99;
-            const int reservedMin = 40;
-            const int reservedMax = 80;
-
-            if (type == Auditions.data._girl._type.golden)
-            {
-                potentialLow = 70;
-                potentialHigh = 95;
-            }
-            else if (type == Auditions.data._girl._type.silver)
-            {
-                potentialLow = 55;
-                potentialHigh = 85;
-            }
-            else if (type == Auditions.data._girl._type.normal)
-            {
-                potentialLow = 10;
-                potentialHigh = 80;
-            }
-
-            for (int i = 0; i < reservedCount; i++)
-            {
-                int value = UnityEngine.Random.Range(reservedMin, reservedMax);
-                statValues.Add(value);
-                pointsRemaining -= value;
-            }
-
-            for (int i = 0; i < 8 - reservedCount; i++)
-            {
-                statValues.Add(1);
-            }
-
-            int adjustableCapacity = 0;
-            for (int i = reservedCount; i < statValues.Count; i++)
-            {
-                adjustableCapacity += MaxStatValue - statValues[i];
-            }
-
-            // Spend exactly as vanilla does whenever the requested budget is reachable. If it is not,
-            // cap the vanilla phase at the physical capacity of the adjustable stats and carry the
-            // impossible residual into the originally reserved stats afterward.
-            int residualForReservedStats = Math.Max(0, pointsRemaining - adjustableCapacity);
-            int adjustableBudget = pointsRemaining - residualForReservedStats;
-            SpendVanillaBudget(statValues, reservedCount, statValues.Count, ref adjustableBudget);
-
-            if (adjustableBudget > 0)
-            {
-                // This should only be reachable after an extreme run of zero-progress RNG. Keep the
-                // mod hard-safe even then instead of recreating vanilla's unbounded loop.
-                int forced = ForceSpendBudget(statValues, reservedCount, statValues.Count, adjustableBudget);
-                adjustableBudget -= forced;
-                if (adjustableBudget > 0)
+                if (instructionList[i].opcode == OpCodes.Call &&
+                    instructionList[i].operand is System.Reflection.MethodInfo method &&
+                    method.DeclaringType == typeof(ExtensionMethods) &&
+                    method.Name == nameof(ExtensionMethods.Shuffle) &&
+                    StoreOf(instructionList[i - 1]) != null)
                 {
-                    residualForReservedStats += adjustableBudget;
-                    adjustableBudget = 0;
-                }
-            }
-
-            if (residualForReservedStats > 0)
-            {
-                int recovered = ForceSpendBudget(statValues, 0, reservedCount, residualForReservedStats);
-                residualForReservedStats -= recovered;
-
-            }
-
-            bool foundOne = false;
-            for (int i = 0; i < statValues.Count; i++)
-            {
-                if (statValues[i] == 1 && foundOne)
-                {
-                    statValues[i] = UnityEngine.Random.Range(1, 20);
-                }
-                else if (statValues[i] == 1)
-                {
-                    foundOne = true;
-                }
-            }
-
-            ExtensionMethods.Shuffle<int>(statValues);
-            statValues = Infix(statValues);
-
-            girl.setParam(data_girls._paramType.cute, statValues[0]);
-            girl.setParam(data_girls._paramType.cool, statValues[1]);
-            girl.setParam(data_girls._paramType.sexy, statValues[2]);
-            girl.setParam(data_girls._paramType.pretty, statValues[3]);
-            girl.setParam(data_girls._paramType.vocal, statValues[4]);
-            girl.setParam(data_girls._paramType.dance, statValues[5]);
-            girl.setParam(data_girls._paramType.funny, statValues[6]);
-            girl.setParam(data_girls._paramType.smart, statValues[7]);
-
-            if (type == Auditions.data._girl._type.platinum)
-            {
-                foreach (data_girls._paramType paramType in paramTypes)
-                {
-                    girl.getParam(paramType).potential = 99;
-                }
-                return;
-            }
-
-            girl.getParam(data_girls._paramType.cute).potential = GeneratePotential(statValues[0], potentialLow, potentialHigh);
-            girl.getParam(data_girls._paramType.cool).potential = GeneratePotential(statValues[1], potentialLow, potentialHigh);
-            girl.getParam(data_girls._paramType.sexy).potential = GeneratePotential(statValues[2], potentialLow, potentialHigh);
-            girl.getParam(data_girls._paramType.pretty).potential = GeneratePotential(statValues[3], potentialLow, potentialHigh);
-            girl.getParam(data_girls._paramType.vocal).potential = GeneratePotential(statValues[4], potentialLow, potentialHigh);
-            girl.getParam(data_girls._paramType.dance).potential = GeneratePotential(statValues[5], potentialLow, potentialHigh);
-            girl.getParam(data_girls._paramType.funny).potential = GeneratePotential(statValues[6], potentialLow, potentialHigh);
-            girl.getParam(data_girls._paramType.smart).potential = GeneratePotential(statValues[7], potentialLow, potentialHigh);
-        }
-
-        private static void SpendVanillaBudget(List<int> statValues, int startIndex, int endExclusive, ref int budget)
-        {
-            if (budget <= 0 || startIndex >= endExclusive)
-            {
-                return;
-            }
-
-            int index = startIndex;
-            int noProgressIterations = 0;
-
-            while (budget > 0 && noProgressIterations < MaxNoProgressIterations)
-            {
-                int roll = UnityEngine.Random.Range(0, 20);
-                int add;
-
-                if (statValues[index] >= MaxStatValue)
-                {
-                    add = 0;
-                }
-                else if (statValues[index] >= 90)
-                {
-                    add = mainScript.chance(50) ? 1 : 0;
-                }
-                else if (budget <= roll)
-                {
-                    add = budget;
-                }
-                else
-                {
-                    add = roll;
-                }
-
-                if (statValues[index] + add > MaxStatValue)
-                {
-                    add = 0;
-                }
-
-                statValues[index] += add;
-                budget -= add;
-                noProgressIterations = add == 0 ? noProgressIterations + 1 : 0;
-
-                index++;
-                if (index == endExclusive)
-                {
-                    index = startIndex;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Deterministically spends as much of a residual budget as the selected stat range can hold.
-        /// This is used only for the impossible-budget recovery path (or an extreme RNG no-progress
-        /// guard), so ordinary reachable vanilla rolls retain their normal random distribution.
-        /// </summary>
-        private static int ForceSpendBudget(List<int> statValues, int startIndex, int endExclusive, int budget)
-        {
-            if (budget <= 0 || startIndex >= endExclusive)
-            {
-                return 0;
-            }
-
-            int originalBudget = budget;
-            int index = startIndex;
-
-            while (budget > 0)
-            {
-                bool addedAny = false;
-                for (int visited = 0; visited < endExclusive - startIndex && budget > 0; visited++)
-                {
-                    if (statValues[index] < MaxStatValue)
-                    {
-                        statValues[index]++;
-                        budget--;
-                        addedAny = true;
-                    }
-
-                    index++;
-                    if (index == endExclusive)
-                    {
-                        index = startIndex;
-                    }
-                }
-
-                if (!addedAny)
-                {
+                    index = i;
                     break;
                 }
             }
 
-            return originalBudget - budget;
+            if (index == -1)
+            {
+                Debug.LogWarning("[Targeted Auditions] data_girls.GenerateParams: stat shuffle not found; skill priorities are off.");
+                return instructionList;
+            }
+
+            CodeInstruction loadList = instructionList[index - 1];
+            instructionList.InsertRange(index + 1, new[]
+            {
+                new CodeInstruction(loadList.opcode, loadList.operand),
+                new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_GenerateParams), nameof(Infix))),
+                StoreOf(loadList),
+            });
+
+            return instructionList;
         }
 
-        private static int GeneratePotential(int value, int lowVal, int highVal)
+        /// <summary>
+        /// The instruction that stores to the local this instruction loads, or null if it doesn't load a local.
+        /// </summary>
+        private static CodeInstruction StoreOf(CodeInstruction load)
         {
-            if (value > lowVal)
-            {
-                lowVal = value;
-            }
-            if (lowVal >= highVal)
-            {
-                return lowVal;
-            }
-            return UnityEngine.Random.Range(lowVal, highVal);
+            if (load.opcode == OpCodes.Ldloc_0) return new CodeInstruction(OpCodes.Stloc_0);
+            if (load.opcode == OpCodes.Ldloc_1) return new CodeInstruction(OpCodes.Stloc_1);
+            if (load.opcode == OpCodes.Ldloc_2) return new CodeInstruction(OpCodes.Stloc_2);
+            if (load.opcode == OpCodes.Ldloc_3) return new CodeInstruction(OpCodes.Stloc_3);
+            if (load.opcode == OpCodes.Ldloc_S) return new CodeInstruction(OpCodes.Stloc_S, load.operand);
+            if (load.opcode == OpCodes.Ldloc) return new CodeInstruction(OpCodes.Stloc, load.operand);
+            return null;
         }
 
         /// <summary>
         /// Reassigns the generated stat values according to Targeted Auditions priorities.
-        /// This is the same priority behavior the previous transpiler applied after vanilla shuffled
-        /// the generated values.
+        /// Only during auditions; other generated girls (unique idols, rivals) keep the game's order.
         /// </summary>
         public static List<int> Infix(List<int> statValues)
         {

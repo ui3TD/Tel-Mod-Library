@@ -16,10 +16,11 @@ using static CustomAuditions.CustomAuditions;
 namespace TargetedAuditions.Tests
 {
     /// <summary>
-    /// The mod calls Unity's Random (directly and through mainScript.chance, Shuffle and
-    /// GetPointsByType), which is native code that can't run outside the game. The mod's methods,
-    /// and the vanilla GenerateParams they replace, are patched to call these stubs instead.
-    /// Both sides draw from the same stub, so a seeded run gives identical rolls to each.
+    /// The mod and the game's stat roll call Unity's Random (directly and through mainScript.chance,
+    /// Shuffle and GetPointsByType), which is native code that can't run outside the game. Those
+    /// methods are patched to call these stubs instead. The game's stat roll is tested with the mod's
+    /// patch on it, and compared with an unpatched copy (VanillaGenerateParams) that draws from the
+    /// same stubs, so a seeded run gives identical rolls to each.
     /// </summary>
     public static class Seams
     {
@@ -44,9 +45,6 @@ namespace TargetedAuditions.Tests
 
         private static readonly MethodBase[] Patched =
         {
-            AccessTools.Method(typeof(data_girls_GenerateParams), "GenerateParamsSafely"),
-            AccessTools.Method(typeof(data_girls_GenerateParams), "SpendVanillaBudget"),
-            AccessTools.Method(typeof(data_girls_GenerateParams), "GeneratePotential"),
             AccessTools.Method(typeof(data_girls_GenerateParams), nameof(data_girls_GenerateParams.Infix)),
             AccessTools.Method(typeof(data_girls_GenerateGirl), nameof(data_girls_GenerateGirl.Postfix)),
             AccessTools.Method(typeof(Auditions_GenerateGirls), nameof(Auditions_GenerateGirls.Finalizer)),
@@ -57,12 +55,27 @@ namespace TargetedAuditions.Tests
 
         private static readonly Lazy<bool> Installed = new(() =>
         {
+            // Not "tests.CustomAuditions": PatchTargetTests unpatches everything under that ID
             Harmony harmony = new("tests.TargetedAuditions.Seams");
-            HarmonyMethod transpiler = new(typeof(Seams), nameof(Redirect));
+
+            // The game's stat roll as it is without the mod, for comparison
+            Harmony.ReversePatch(AccessTools.Method(typeof(data_girls), "GenerateParams"),
+                new HarmonyMethod(typeof(Seams), nameof(VanillaGenerateParams)), AccessTools.Method(typeof(Seams), nameof(Redirect)), ilmanipulator: null);
+
+            // The mod's priorities go on the game's stat roll, as in the game. The stubs run after the
+            // mod's transpiler, which looks for the game's Shuffle call.
+            harmony.CreateClassProcessor(typeof(data_girls_GenerateParams)).Patch();
+            HarmonyMethod transpiler = new(typeof(Seams), nameof(Redirect)) { priority = Priority.Last };
             foreach (MethodBase method in Patched)
                 harmony.Patch(method, transpiler: transpiler);
             return true;
         });
+
+        /// <summary>
+        /// The game's own data_girls.GenerateParams, without the mod's patch, calling the stubs.
+        /// </summary>
+        public static void VanillaGenerateParams(data_girls instance, data_girls.girls Girl, Auditions.data._girl._type Type) =>
+            throw new NotImplementedException("Replaced by a reverse patch");
 
         /// <summary>
         /// Installs the stubs once per test run and resets the mod's and game's shared state.

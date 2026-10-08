@@ -6,6 +6,7 @@
 		<ModDescription>This mod checks if you have IM-HarmonyIntegration (IM-HI) installed. If it is not installed, please visit the IM-HarmonyIntegration github page for instructions.</ModDescription>
 		<Authors>Tel, Shelon</Authors>
 		<Version>1.1.0</Version>
+		<WorkshopID>3102983863</WorkshopID>
 		<Tags>["example", "patches"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

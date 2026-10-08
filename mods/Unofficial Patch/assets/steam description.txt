@@ -27,9 +27,11 @@ Also recommended mods by magier:
 - Fixed event and dialogue checks for having a staffer of a specific type
 - Fixed loading a missing or corrupt save: during play, autosave keeps working; from the main menu, autosave is off for that session so the empty game can't overwrite your saves.
 - Fixed a freeze when generating some platinum and gold idols (auditions, Aya, hiring a rival): a roll whose points can't fit is rolled again instead of looping forever.
+- Fixed auditions waiting forever when a portrait won't load: after 2 seconds the cards unlock, and any portrait still loading appears when it's ready. A slow portrait render no longer stops portraits elsewhere in the game from loading.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
 - 1.4.0: Fixes senbatsu stats, breakups, event checks, concert estimates, fan opinion, failed loads.
 - 1.5.0: Fixes a freeze when the game generates some platinum or gold idols.
+- 1.6.0: Auditions no longer stall waiting for portraits; slow portraits appear when ready.

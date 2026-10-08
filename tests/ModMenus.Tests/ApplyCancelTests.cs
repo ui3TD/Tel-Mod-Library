@@ -192,6 +192,8 @@ namespace ModMenus.Tests
         [InlineData(5, 200, 64)]
         [InlineData(-10, 10, -3)]
         [InlineData(-20, -10, -13)]
+        [InlineData(-10, 0, -4)]
+        [InlineData(-10, 0, 0)]
         public void SliderReopensAtItsSavedValue(int min, int max, int saved)
         {
             TestGame.Save("A_Range", saved.ToString());
@@ -223,6 +225,40 @@ namespace ModMenus.Tests
             Assert.Equal("Volume: 50", menu.SliderText("A_Range"));
             menu.Apply();
             Assert.Equal("50", TestGame.Saved("A_Range"));
+        }
+
+        /// <summary>
+        /// The default is halfway, 10.5, but sliders save whole numbers, so it shows the 10 it saves.
+        /// </summary>
+        [Fact]
+        public void SliderWithoutDefaultShowsTheWholeNumberItSaves()
+        {
+            TestGame.AddMod("Mod A", """[ { "type": "slider", "varID": "A_Range", "labelID": "TEST__VOLUME", "minValue": 1, "maxValue": 20 } ]""");
+            Menu menu = TestGame.BuildMenu();
+
+            menu.Open();
+
+            Assert.Equal("Volume: 10", menu.SliderText("A_Range"));
+            menu.Apply();
+            Assert.Equal("10", TestGame.Saved("A_Range"));
+        }
+
+        /// <summary>
+        /// A label that isn't in constants.json is shown as written, as for the other items.
+        /// </summary>
+        [Fact]
+        public void SliderShowsALabelThatIsNotAConstant()
+        {
+            TestGame.AddMod("Mod A", """[ { "type": "slider", "varID": "A_Range", "labelID": "Raw volume", "defaultValue": 50 } ]""");
+            Menu menu = TestGame.BuildMenu();
+
+            menu.Open();
+            Assert.Equal("Raw volume: 50", menu.SliderText("A_Range"));
+
+            menu.Drag("A_Range", 0.2f);
+            Assert.Equal("Raw volume: 20", menu.SliderText("A_Range"));
+            menu.Apply();
+            Assert.Equal("20", TestGame.Saved("A_Range"));
         }
 
         [Theory]

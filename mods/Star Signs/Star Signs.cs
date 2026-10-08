@@ -315,7 +315,8 @@ namespace StarSigns
                         targetAge = asset.Age;
                     }
 
-                    while (DateToZodiac(__result.birthday) != data.zodiac)
+                    // Going back 11 months and up to 29 days can cross February into the year before
+                    while (DateToZodiac(__result.birthday) != data.zodiac || __result.GetAge() != targetAge)
                     {
                         int targetMonth = months[UnityEngine.Random.Range(0, 3)];
                         int monthsToSubtract = (currentMonth - targetMonth + 12) % 12;

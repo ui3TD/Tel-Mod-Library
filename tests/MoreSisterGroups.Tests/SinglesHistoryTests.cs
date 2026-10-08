@@ -3,6 +3,7 @@ using SisterGroups;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Xunit;
 using static singles._single._status;
 
@@ -29,7 +30,7 @@ namespace MoreSisterGroups.Tests
         public static TheoryData<string> ReleaseSteps => new() { "AddOpinion", "GenerateSales" };
 
         /// <summary>
-        /// Runs the action between the release step's prefix and postfix, as if inside the game's method.
+        /// Runs the action between the release step's prefix and finalizer, as if inside the game's method.
         /// (Neither method runs outside the game.)
         /// </summary>
         private static void During(string step, singles._single single, Action action)
@@ -45,9 +46,9 @@ namespace MoreSisterGroups.Tests
             finally
             {
                 if (step == "AddOpinion")
-                    singles_AddOpinion.Postfix();
+                    singles_AddOpinion.Finalizer();
                 else
-                    singles_GenerateSales.Postfix();
+                    singles_GenerateSales.Finalizer();
             }
         }
 
@@ -138,6 +139,43 @@ namespace MoreSisterGroups.Tests
             singles._single m1 = TestGame.Single(main);
 
             During(step, s1, () => { });
+
+            Assert.True(Utility.groupSales is null);
+            SameSingles(new[] { m1, o1, s1 }, singles.GetLatestReleasedSingles(5));
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ReleaseStepThatThrows(singles._single single) => throw new InvalidOperationException("release step failed");
+
+        /// <summary>
+        /// If the game's release step throws, the error still reaches the game, and the filter doesn't stay on
+        /// for everything else that reads the latest singles. The patch is applied to a stand-in method that
+        /// throws, because the game's methods don't run outside the game.
+        /// </summary>
+        [Theory]
+        [InlineData(typeof(singles_AddOpinion))]
+        [InlineData(typeof(singles_GenerateSales))]
+        public void AfterAFailedRelease_AllGroupsSinglesCountAgain(Type patchClass)
+        {
+            singles._single s1 = TestGame.Single(sister);
+            singles._single o1 = TestGame.Single(other);
+            singles._single m1 = TestGame.Single(main);
+            Assert.Null(AccessTools.Method(patchClass, "Postfix"));
+
+            Harmony harmony = new(TestGame.HarmonyId + ".FailedRelease");
+            try
+            {
+                MethodInfo standIn = AccessTools.Method(typeof(SinglesHistoryTests), nameof(ReleaseStepThatThrows));
+                harmony.Patch(standIn,
+                    prefix: new HarmonyMethod(AccessTools.Method(patchClass, "Prefix")),
+                    finalizer: new HarmonyMethod(AccessTools.Method(patchClass, "Finalizer")));
+
+                Assert.Throws<InvalidOperationException>(() => ReleaseStepThatThrows(s1));
+            }
+            finally
+            {
+                harmony.UnpatchSelf();
+            }
 
             Assert.True(Utility.groupSales is null);
             SameSingles(new[] { m1, o1, s1 }, singles.GetLatestReleasedSingles(5));

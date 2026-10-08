@@ -41,7 +41,7 @@ namespace SisterGroups
             groupSales = single.GetGroup();
         }
 
-        public static void Postfix()
+        public static void Finalizer()
         {
             groupSales = null;
         }
@@ -56,7 +56,7 @@ namespace SisterGroups
             groupSales = single.GetGroup();
         }
 
-        public static void Postfix()
+        public static void Finalizer()
         {
             groupSales = null;
         }
@@ -80,6 +80,7 @@ namespace SisterGroups
         public const float FAN_PENALTY = 5;
         public const float MEMBER_PENALTY_THR = 10;
 
+        // Set by the release steps' prefixes and cleared by their finalizers, so it's cleared even if the step throws
         public static Groups._group groupSales = null;
 
         // This method gets latest released singles of a given group. It is based on singles.GetReleasedSingles(int count)

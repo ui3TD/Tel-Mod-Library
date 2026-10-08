@@ -10,6 +10,15 @@ namespace MoreSisterGroups.Tests
     /// </summary>
     public class GroupCreationTests
     {
+        /// <summary>
+        /// Applies the mod before any test method is compiled. In Release, the JIT inlines the small
+        /// GetIdolsNeededForNewGroup into a test method, which skips the patch if that test applied it.
+        /// </summary>
+        public GroupCreationTests()
+        {
+            TestGame.Reset();
+        }
+
         [Theory]
         [InlineData(1, 2)]
         [InlineData(2, 3)]

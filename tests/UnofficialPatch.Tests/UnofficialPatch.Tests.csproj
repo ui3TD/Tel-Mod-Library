@@ -1,4 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
+	<!--
+	Run these tests in Debug: dotnet test -c Debug.
+	In Release every test fails during setup (Seams.Install: "Theaters_CompleteDay.Postfix: ECall methods must
+	be packaged into a system module"). This isn't caused by a test or the mod: it also happens on commits
+	where the suite passes in Debug (checked 2026-10-08).
+	-->
 	<ItemGroup>
 		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
 		<Compile Include="..\..\mods\Unofficial Patch\**\*.cs" Exclude="..\..\mods\Unofficial Patch\obj\**;..\..\mods\Unofficial Patch\bin\**" LinkBase="Mod" />

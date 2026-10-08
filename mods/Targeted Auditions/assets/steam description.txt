@@ -3,7 +3,7 @@ Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyInt
 
 Update v2: This mod now requires the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url]
 
-This mod was formerly called "Audition Age Limits".
+This mod was formerly called 'Audition Age Limits'.
 
 Using the ModMenu menu, you will be able to customise:
 [list]

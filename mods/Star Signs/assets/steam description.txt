@@ -18,8 +18,7 @@ Aquarius: 20% less penalty to relationship if pushed girl has less skills than h
 Pisces: All relationships improve about 5% more
 
 [h3]Unique Idols[/h3]
-You can make unique idols have a specific zodiac star sign by adding a line in params.json like so:
-"starsign": "Capricorn"
+You can make unique idols have a specific zodiac star sign by adding a 'starsign' line to params.json. Example: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/StarSigns.md]Star Signs guide[/url]
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\National Tour\**\*.cs" Exclude="..\..\mods\National Tour\obj\**;..\..\mods\National Tour\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--For CanvasGroup (the tour results background fade)-->
+		<Reference Include="UnityEngine.UIModule">
+			<HintPath>$(dllDir)\UnityEngine.UIModule.dll</HintPath>
+		</Reference>
+		<!--Type-forwarding facade; Harmony needs it to compile patched methods that reference it-->
+		<Reference Include="UnityEngine">
+			<HintPath>$(dllDir)\UnityEngine.dll</HintPath>
+		</Reference>
+		<!--mainScript's static fields (text colours) need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+		<!--Mods._mod has Steam ID fields-->
+		<Reference Include="Steamworks.NET">
+			<HintPath>$(dllDir)\Steamworks.NET.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

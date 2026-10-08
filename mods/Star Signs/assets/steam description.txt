@@ -22,3 +22,6 @@ You can make unique idols have a specific zodiac star sign by adding a line in p
 "starsign": "Capricorn"
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.1.0: Unique idols keep their set age; misspelled star signs no longer break idol generation.

@@ -273,9 +273,10 @@ namespace StarSigns
                 return;
 
             string zodiacStr = jsonnode["starsign"];
-            if (!Enum.TryParse(zodiacStr, true, out Zodiac tryZodiac))
+            if (!Enum.TryParse(zodiacStr, true, out Zodiac tryZodiac) || tryZodiac == Zodiac.None || !Enum.IsDefined(typeof(Zodiac), tryZodiac))
             {
-                tryZodiac = Zodiac.None;
+                Debug.LogWarning("Star sign not found: " + zodiacStr);
+                return;
             }
             ZodiacTextureData zodiacTextureData = new()
             {

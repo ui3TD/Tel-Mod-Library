@@ -89,29 +89,28 @@ namespace InGameTests.TelMods
                 yield break;
 
             Type utility = mod.GetType(Utility, true);
-            IList packs = Traverse.Create(utility).Field("MBTITextureReferenceList").GetValue<IList>();
+            IDictionary packs = Traverse.Create(utility).Field("UniqueIdolTypes").GetValue<IDictionary>();
             data_girls_textures._textureAsset body = null;
             string packType = null;
-            foreach (object data in packs)
+            foreach (DictionaryEntry entry in packs)
             {
-                packType = Traverse.Create(data).Field("mbti").GetValue<object>().ToString();
+                // Keys are "mod/body"; the mod name can't hold a "/" as a folder name, so split at the last one
+                string key = (string)entry.Key;
+                int slash = key.LastIndexOf('/');
+                packType = entry.Value.ToString();
                 body = data_girls_textures.GetTextureAssets(data_girls_textures._spriteType.body,
-                    Traverse.Create(data).Field("body_id").GetValue<int>(), Traverse.Create(data).Field("ModName").GetValue<string>()).FirstOrDefault();
-                if (body != null && packType != "None")
+                    int.Parse(key.Substring(slash + 1)), key.Substring(0, slash)).FirstOrDefault();
+                if (body != null)
                     break;
-                body = null;
             }
 
-            object added = null;
+            string added = null;
             if (body == null)
             {
                 body = data_girls_textures.GetTextureAssets(data_girls_textures._spriteType.body).First();
                 packType = "ESTJ";
-                added = Activator.CreateInstance(utility.GetNestedType("MBTITextureData"));
-                Traverse.Create(added).Field("ModName").SetValue(body.ModName);
-                Traverse.Create(added).Field("body_id").SetValue(body.body_id);
-                Traverse.Create(added).Field("mbti").SetValue(Enum.Parse(utility.GetNestedType("MBTI"), packType));
-                packs.Insert(0, added);
+                added = (string)AccessTools.Method(utility, "UniqueIdolKey").Invoke(null, new object[] { body.ModName, body.body_id });
+                packs[added] = Enum.Parse(utility.GetNestedType("MBTI"), packType);
                 ctx.Note("No installed idol pack sets an MBTI type; gave body " + body.body_id + " " + packType + " for the check");
             }
             ctx.Record("body", (body.ModName == "" ? "game" : body.ModName) + " #" + body.body_id + " = " + packType);

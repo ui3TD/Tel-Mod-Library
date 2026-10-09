@@ -228,12 +228,11 @@ namespace MBTIPersonalities.Tests
         public void PopupShowsReducedStaminaThenRestores()
         {
             business._proposal proposal = new() { girl = Make(MBTI.ENFP), stamina = 20 };
-            int state = 0;
 
-            Business_Popup_Set.Prefix(ref proposal, ref state);
+            Business_Popup_Set.Prefix(proposal, out int? state);
             Assert.Equal(18, proposal.stamina);
 
-            Business_Popup_Set.Finalizer(ref proposal, ref state);
+            Business_Popup_Set.Finalizer(proposal, state);
             Assert.Equal(20, proposal.stamina);
         }
 
@@ -246,7 +245,7 @@ namespace MBTIPersonalities.Tests
             business biz = (business)FormatterServices.GetUninitializedObject(typeof(business));
             biz.ActiveProposal = new business._proposal { girl = Make(MBTI.ENFP), stamina = 20 };
 
-            business_Accept.Prefix(ref biz);
+            business_Accept.Prefix(biz);
             Assert.Equal(18, biz.ActiveProposal.stamina);
         }
 
@@ -254,9 +253,25 @@ namespace MBTIPersonalities.Tests
         public void OtherTypesAreUnchanged()
         {
             business._proposal proposal = new() { girl = Make(MBTI.ESTJ), stamina = 20 };
-            int state = 0;
-            Business_Popup_Set.Prefix(ref proposal, ref state);
+            Business_Popup_Set.Prefix(proposal, out int? state);
             Assert.Equal(20, proposal.stamina);
+            Assert.Null(state);
+        }
+
+        /// <summary>
+        /// A proposal that ENFP brings down to 0 stamina is still put back: "nothing to restore" is
+        /// no longer told apart by a stamina of 0.
+        /// </summary>
+        [Fact]
+        public void TinyCostIsStillRestored()
+        {
+            business._proposal proposal = new() { girl = Make(MBTI.ENFP), stamina = 0 };
+
+            Business_Popup_Set.Prefix(proposal, out int? state);
+            proposal.stamina = 5;
+            Business_Popup_Set.Finalizer(proposal, state);
+
+            Assert.Equal(0, proposal.stamina);
         }
     }
 
@@ -486,7 +501,7 @@ namespace MBTIPersonalities.Tests
             }
             finally
             {
-                isRisky = null;
+                isRisky = false;
             }
         }
 

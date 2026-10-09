@@ -5,6 +5,11 @@ using UnityEngine;
 
 namespace StatLimits
 {
+    // Traits Fix, MBTI Personalities and Traits Expansion each compile and apply their own copy of these
+    // patches, so every mod works on its own and keeps working when another is switched off in game. With
+    // more than one on, each limit runs once per mod, so every patch here must give the same result however
+    // many times it runs (clamping is fine; adding or multiplying is not). Release all three mods together
+    // after changing a limit, or the strictest copy installed wins.
 
     // Limits for business proposal stats
     [HarmonyPatch(typeof(business._proposal), "GetGirlCoeff")]

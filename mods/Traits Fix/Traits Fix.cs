@@ -116,47 +116,24 @@ namespace TraitFix
                 mainScript.red32,
                 NotificationManager._notification._type.idol_relationship_change);
 
-            __instance.getParam(data_girls._paramType.mentalStamina)?.add(-30f, false);
+            __instance.getParam(data_girls._paramType.mentalStamina)?.add(INDISCREET_MENTAL, false);
             __instance.DatingData.Is_Partner_Status_Known = true;
             __instance.DatingData.Partner_Status_Known_To_Player = __instance.DatingData.Partner_Status;
         }
     }
 
-    [HarmonyPatch(typeof(Relationships._relationship), "CheckDating")]
-    public class Relationships__relationship_CheckDating
+    // The game's weekly dating check stops at the first couple that starts or ends, so a patch on each
+    // couple's own check would miss the couples after it. Every couple gets its leak roll here instead.
+    [HarmonyPatch(typeof(Relationships), "CheckDating")]
+    public class Relationships_CheckDating
     {
-        public static void Postfix(Relationships._relationship __instance)
+        public static void Postfix()
         {
-            if (!TryGetRelationshipGirls(__instance, out data_girls.girls girl0, out data_girls.girls girl1) || !__instance.Dating)
+            if (Relationships.RelationshipsData == null)
                 return;
 
-            if (__instance.IsRelationshipKnown())
-                return;
-
-            // A leak marks both idols as dating an idol, so this stops the same couple leaking every week.
-            // Knowing only one of them is dating (but not who) leaves the couple secret.
-            if (IsKnownToDateIdol(girl0) && IsKnownToDateIdol(girl1))
-                return;
-
-            if (!mainScript.chance(INDISCREET_CHANCE) || !HasIndiscreetLeaker(girl0, girl1))
-                return;
-
-            string labelID = INDISCREET_LABEL_INSIDE;
-            if (IsDatingForbidden())
-            {
-                labelID = INDISCREET_LABEL_INSIDE_SCANDAL;
-                girl0.addParam(data_girls._paramType.scandalPoints, 1f, false);
-                girl1.addParam(data_girls._paramType.scandalPoints, 1f, false);
-            }
-
-            NotificationManager.AddNotification(
-                Language.Insert(labelID, new string[] { girl0.GetName(), girl1.GetName() }),
-                mainScript.red32,
-                NotificationManager._notification._type.idol_relationship_change);
-
-            girl0.getParam(data_girls._paramType.mentalStamina)?.add(-30f, false);
-            girl1.getParam(data_girls._paramType.mentalStamina)?.add(-30f, false);
-            MarkIdolRelationshipKnown(girl0, girl1);
+            foreach (Relationships._relationship relationship in Relationships.RelationshipsData)
+                TryLeakCouple(relationship);
         }
     }
 
@@ -189,6 +166,8 @@ namespace TraitFix
             if (Relationships.RelationshipsData == null)
                 return;
 
+            // Every pair asks whether its idols are center; the singles are looked up once for all of them
+            TraitLookups lookups = new TraitLookups();
             foreach (Relationships._relationship relationship in Relationships.RelationshipsData)
             {
                 if (!TryGetRelationshipGirls(relationship, out data_girls.girls girl0, out data_girls.girls girl1))
@@ -197,24 +176,24 @@ namespace TraitFix
                 if (relationship.Dynamic == Relationships._relationship._dynamic.positive)
                     AdjustForAgeTraits(relationship, girl0, girl1);
 
-                if (IsCenter(girl0) && girl0.trait == traits._trait._type.Arrogant)
-                    relationship.Add(ARROGANT_PENALTY / 2f);
-                else if (IsCenter(girl1) && girl1.trait == traits._trait._type.Arrogant)
-                    relationship.Add(ARROGANT_PENALTY / 2f);
+                if (girl0.trait == traits._trait._type.Arrogant && IsCenter(girl0, lookups))
+                    relationship.Add(ARROGANT_WEEKLY_PENALTY);
+                else if (girl1.trait == traits._trait._type.Arrogant && IsCenter(girl1, lookups))
+                    relationship.Add(ARROGANT_WEEKLY_PENALTY);
             }
         }
 
         private static void AdjustForAgeTraits(Relationships._relationship relationship, data_girls.girls girl0, data_girls.girls girl1)
         {
             if (girl0.trait == traits._trait._type.Maternal && girl0.GetAge() > girl1.GetAge())
-                relationship.Add(MATERNAL_BONUS / 2);
+                relationship.Add(MATERNAL_WEEKLY_BONUS);
             else if (girl1.trait == traits._trait._type.Maternal && girl1.GetAge() > girl0.GetAge())
-                relationship.Add(MATERNAL_BONUS / 2);
+                relationship.Add(MATERNAL_WEEKLY_BONUS);
 
             if (girl0.trait == traits._trait._type.Precocious && girl0.GetAge() < girl1.GetAge())
-                relationship.Add(PRECOCIOUS_BONUS / 2);
+                relationship.Add(PRECOCIOUS_WEEKLY_BONUS);
             else if (girl1.trait == traits._trait._type.Precocious && girl1.GetAge() < girl0.GetAge())
-                relationship.Add(PRECOCIOUS_BONUS / 2);
+                relationship.Add(PRECOCIOUS_WEEKLY_BONUS);
         }
     }
 
@@ -354,7 +333,7 @@ namespace TraitFix
 
             foreach (data_girls.girls girl in single.girls)
             {
-                if (girl != null && !girl.IsSick() && girl.trait == traits._trait._type.Misandry && mainScript.chance(20))
+                if (girl != null && !girl.IsSick() && girl.trait == traits._trait._type.Misandry && mainScript.chance(MISANDRY_CHANCE))
                     girl.AddAppeal(resources.fanType.male, MISANDRY_MODIFIER);
             }
         }
@@ -496,7 +475,7 @@ namespace TraitFix
         {
             if (!IsTraitCalculationActive || __instance == null)
                 return;
-            __result += GetTraitModifier(__instance.Parent, __instance.type, CurrentTraitCast);
+            __result += GetCurrentTraitModifier(__instance.Parent, __instance.type);
         }
     }
 
@@ -523,7 +502,13 @@ namespace TraitFix
         public const float MATERNAL_BONUS = 0.3f;
         public const float PRECOCIOUS_BONUS = 0.3f;
         public const float ARROGANT_PENALTY = -0.5f;
+        // What Do_Dynamic adds to a relationship each week
+        public const float MATERNAL_WEEKLY_BONUS = MATERNAL_BONUS / 2;
+        public const float PRECOCIOUS_WEEKLY_BONUS = PRECOCIOUS_BONUS / 2;
+        public const float ARROGANT_WEEKLY_PENALTY = ARROGANT_PENALTY / 2;
         public const int INDISCREET_CHANCE = 2;
+        public const float INDISCREET_MENTAL = -30f;
+        public const int MISANDRY_CHANCE = 20;
         public const float TRENDY_ADULT_MODIFIER = 0.5f;
         public const float TRENDY_YA_MODIFIER = 1.5f;
         public const float TRENDY_TEEN_MODIFIER = 1.5f;
@@ -538,6 +523,63 @@ namespace TraitFix
         private sealed class TraitCalculationContext
         {
             public List<data_girls.girls> Cast;
+            public readonly TraitLookups Lookups = new TraitLookups();
+        }
+
+        /// <summary>
+        /// The game state trait modifiers depend on: upcoming events, the latest singles and their chart
+        /// results. A calculation reads stats many times, and each read would otherwise search the
+        /// events, singles and charts again. Each value is found the first time it's needed and reused
+        /// for the rest of the calculation.
+        /// </summary>
+        public sealed class TraitLookups
+        {
+            private bool? eventUpcoming;
+            private bool mainSingleFound;
+            private singles._single mainSingle;
+            private Dictionary<Groups._group, singles._single> groupSingles;
+            private Dictionary<singles._single, bool> missedNumberOne;
+
+            public bool EventUpcoming => eventUpcoming ??= IsEventUpcoming();
+
+            public singles._single MainSingle
+            {
+                get
+                {
+                    if (!mainSingleFound)
+                    {
+                        mainSingle = singles.GetLatestReleasedSingle(false, Groups.GetMainGroup());
+                        mainSingleFound = true;
+                    }
+                    return mainSingle;
+                }
+            }
+
+            public singles._single LatestSingle(Groups._group group)
+            {
+                if (group == null)
+                    return null;
+                groupSingles ??= new Dictionary<Groups._group, singles._single>();
+                if (!groupSingles.TryGetValue(group, out singles._single single))
+                {
+                    single = singles.GetLatestReleasedSingle(false, group);
+                    groupSingles[group] = single;
+                }
+                return single;
+            }
+
+            public bool MissedNumberOne(singles._single single)
+            {
+                if (single == null)
+                    return false;
+                missedNumberOne ??= new Dictionary<singles._single, bool>();
+                if (!missedNumberOne.TryGetValue(single, out bool missed))
+                {
+                    missed = DidSingleMissNumberOne(single);
+                    missedNumberOne[single] = missed;
+                }
+                return missed;
+            }
         }
 
         private sealed class BirthdayDeteriorationContext
@@ -553,15 +595,27 @@ namespace TraitFix
         public static bool IsTraitCalculationActive => traitCalculationContexts.Count > 0;
         public static List<data_girls.girls> CurrentTraitCast => IsTraitCalculationActive ? traitCalculationContexts.Peek().Cast : null;
 
-        public static int GetTraitModifier(data_girls.girls girl, data_girls._paramType type, List<data_girls.girls> cast = null)
+        /// <summary>
+        /// The trait modifier for a stat read inside the current trait calculation.
+        /// </summary>
+        public static int GetCurrentTraitModifier(data_girls.girls girl, data_girls._paramType type)
+        {
+            if (!IsTraitCalculationActive)
+                return 0;
+            TraitCalculationContext context = traitCalculationContexts.Peek();
+            return GetTraitModifier(girl, type, context.Cast, context.Lookups);
+        }
+
+        public static int GetTraitModifier(data_girls.girls girl, data_girls._paramType type, List<data_girls.girls> cast = null, TraitLookups lookups = null)
         {
             if (girl == null || !data_girls.IsStatParam(type))
                 return 0;
 
+            lookups ??= new TraitLookups();
             switch (girl.trait)
             {
                 case traits._trait._type.Anxiety:
-                    if (IsEventUpcoming()) return ANXIETY_MODIFIER;
+                    if (lookups.EventUpcoming) return ANXIETY_MODIFIER;
                     break;
                 case traits._trait._type.Clumsy:
                     if (type == data_girls._paramType.dance) return CLUMSY_DANCE_MODIFIER;
@@ -571,7 +625,7 @@ namespace TraitFix
                     if (resources.GetScandalPointsTotal() > 0L) return WORRIER_MODIFIER;
                     break;
                 case traits._trait._type.Complacent:
-                    if (IsCenter(girl) && (type == data_girls._paramType.vocal || type == data_girls._paramType.dance))
+                    if ((type == data_girls._paramType.vocal || type == data_girls._paramType.dance) && IsCenter(girl, lookups))
                         return COMPLACENT_MODIFIER;
                     break;
                 case traits._trait._type.Lone_Wolf:
@@ -591,25 +645,20 @@ namespace TraitFix
 
             if (girl.trait == traits._trait._type.Defeatist || girl.trait == traits._trait._type.Underdog)
             {
-                singles._single mainSingle = singles.GetLatestReleasedSingle(false, Groups.GetMainGroup());
-                Groups._group girlGroup = girl.GetGroup();
-                singles._single groupSingle = girlGroup != null ? singles.GetLatestReleasedSingle(false, girlGroup) : null;
-                singles._single recentSingle = GetRecentSingle(groupSingle, mainSingle);
-                if (DidSingleMissNumberOne(recentSingle))
+                singles._single recentSingle = GetRecentSingle(lookups.LatestSingle(girl.GetGroup()), lookups.MainSingle);
+                if (lookups.MissedNumberOne(recentSingle))
                     return girl.trait == traits._trait._type.Defeatist ? DEFEATIST_MODIFIER : UNDERDOG_MODIFIER;
             }
 
             return 0;
         }
 
-        public static bool IsCenter(data_girls.girls girl)
+        public static bool IsCenter(data_girls.girls girl, TraitLookups lookups = null)
         {
             if (girl == null)
                 return false;
-            singles._single mainSingle = singles.GetLatestReleasedSingle(false, Groups.GetMainGroup());
-            Groups._group girlGroup = girl.GetGroup();
-            singles._single groupSingle = girlGroup != null ? singles.GetLatestReleasedSingle(false, girlGroup) : null;
-            return groupSingle?.GetCenter() == girl || mainSingle?.GetCenter() == girl;
+            lookups ??= new TraitLookups();
+            return lookups.LatestSingle(girl.GetGroup())?.GetCenter() == girl || lookups.MainSingle?.GetCenter() == girl;
         }
 
         public static void BeginTraitCalculation(List<data_girls.girls> cast = null)
@@ -733,6 +782,43 @@ namespace TraitFix
             return girl?.DatingData != null
                 && girl.DatingData.Is_Partner_Status_Known
                 && girl.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.taken_idol;
+        }
+
+        /// <summary>
+        /// Rolls for an Indiscreet idol leaking that two idols are secretly dating each other.
+        /// </summary>
+        public static void TryLeakCouple(Relationships._relationship relationship)
+        {
+            if (!TryGetRelationshipGirls(relationship, out data_girls.girls girl0, out data_girls.girls girl1) || !relationship.Dating)
+                return;
+
+            if (relationship.IsRelationshipKnown())
+                return;
+
+            // A leak marks both idols as dating an idol, so this stops the same couple leaking every week.
+            // Knowing only one of them is dating (but not who) leaves the couple secret.
+            if (IsKnownToDateIdol(girl0) && IsKnownToDateIdol(girl1))
+                return;
+
+            if (!mainScript.chance(INDISCREET_CHANCE) || !HasIndiscreetLeaker(girl0, girl1))
+                return;
+
+            string labelID = INDISCREET_LABEL_INSIDE;
+            if (IsDatingForbidden())
+            {
+                labelID = INDISCREET_LABEL_INSIDE_SCANDAL;
+                girl0.addParam(data_girls._paramType.scandalPoints, 1f, false);
+                girl1.addParam(data_girls._paramType.scandalPoints, 1f, false);
+            }
+
+            NotificationManager.AddNotification(
+                Language.Insert(labelID, new string[] { girl0.GetName(), girl1.GetName() }),
+                mainScript.red32,
+                NotificationManager._notification._type.idol_relationship_change);
+
+            girl0.getParam(data_girls._paramType.mentalStamina)?.add(INDISCREET_MENTAL, false);
+            girl1.getParam(data_girls._paramType.mentalStamina)?.add(INDISCREET_MENTAL, false);
+            MarkIdolRelationshipKnown(girl0, girl1);
         }
 
         public static void MarkIdolRelationshipKnown(data_girls.girls girl0, data_girls.girls girl1)

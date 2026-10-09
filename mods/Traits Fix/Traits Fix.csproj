@@ -5,7 +5,7 @@
 		<HarmonyID>com.tel.traitsfix</HarmonyID>
 		<ModDescription>This mod adds implementations for all traits that don't work in the original game.</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.2.0</Version>
+		<Version>1.3.0</Version>
 		<WorkshopID>2976566623</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 

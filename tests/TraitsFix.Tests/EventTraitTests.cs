@@ -507,6 +507,64 @@ namespace TraitsFixTests
             Assert.Null(none);
         }
 
+        /// <summary>
+        /// Traits Fix, MBTI Personalities and Traits Expansion each apply their own copy of the shared
+        /// limits, so with all three on, each limit runs up to three times. A limit must give the same
+        /// result however many times it runs.
+        /// </summary>
+        [Fact]
+        public void Limits_GiveTheSameResultRunTwice()
+        {
+            foreach (float value in new[] { -5f, 0f, 10f, 20f, 25f, 100f, 130f })
+            {
+                float coeff = value, average = value, chemistry = value;
+                StatLimits.Business__proposal_GetGirlCoeff_Limits.Postfix(ref coeff);
+                StatLimits.Data_girls_GetAverageParam_Limits.Postfix(ref average);
+                StatLimits.data_girls_GetTeamChemistry_Patch.Postfix(ref chemistry);
+                float coeffOnce = coeff, averageOnce = average, chemistryOnce = chemistry;
+                StatLimits.Business__proposal_GetGirlCoeff_Limits.Postfix(ref coeff);
+                StatLimits.Data_girls_GetAverageParam_Limits.Postfix(ref average);
+                StatLimits.data_girls_GetTeamChemistry_Patch.Postfix(ref chemistry);
+                Assert.Equal(coeffOnce, coeff);
+                Assert.Equal(averageOnce, average);
+                Assert.Equal(chemistryOnce, chemistry);
+
+                int song = (int)value, mc = (int)value;
+                StatLimits.SEvent_Concerts__concert__song_GetSkillValue_Limits.Postfix(ref song);
+                StatLimits.SEvent_Concerts__concert__mc_GetSkillValue_Limits.Postfix(ref mc);
+                int songOnce = song, mcOnce = mc;
+                StatLimits.SEvent_Concerts__concert__song_GetSkillValue_Limits.Postfix(ref song);
+                StatLimits.SEvent_Concerts__concert__mc_GetSkillValue_Limits.Postfix(ref mc);
+                Assert.Equal(songOnce, song);
+                Assert.Equal(mcOnce, mc);
+
+                data_girls.girls.param single = new() { type = vocal, _val = value };
+                data_girls.girls.param show = new() { type = vocal, _val = value };
+                List<data_girls.girls.param> popupParams = new() { new data_girls.girls.param { type = cute, _val = value } };
+                Shows._show castShow = new() { girlParams = new List<data_girls.girls.param> { new data_girls.girls.param { type = cute, _val = value } } };
+                StatLimits.Singles__single_SenbatsuCalcParam_Limits.Postfix(ref single);
+                StatLimits.Shows__show_SenbatsuCalcParam_Limits.Postfix(ref show);
+                StatLimits.Show_Popup_AddCastParam_Limits.Postfix(popupParams);
+                StatLimits.Shows__show_AddCastParam_Limits.Postfix(castShow);
+                float[] once = { single._val, show._val, popupParams[0]._val, castShow.girlParams[0]._val };
+                StatLimits.Singles__single_SenbatsuCalcParam_Limits.Postfix(ref single);
+                StatLimits.Shows__show_SenbatsuCalcParam_Limits.Postfix(ref show);
+                StatLimits.Show_Popup_AddCastParam_Limits.Postfix(popupParams);
+                StatLimits.Shows__show_AddCastParam_Limits.Postfix(castShow);
+                Assert.Equal(once, new[] { single._val, show._val, popupParams[0]._val, castShow.girlParams[0]._val });
+            }
+        }
+
+        /// <summary>
+        /// The limit test above covers every limit in the shared file.
+        /// </summary>
+        [Fact]
+        public void Limits_AllCovered()
+        {
+            Assert.Equal(9, typeof(StatLimits.Business__proposal_GetGirlCoeff_Limits).Assembly.GetTypes()
+                .Count(t => t.Namespace == "StatLimits" && t.GetMethod("Postfix") != null));
+        }
+
         [Fact]
         public void CastParams_OnlyLastParamClamped()
         {

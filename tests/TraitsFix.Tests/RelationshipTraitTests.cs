@@ -337,7 +337,7 @@ namespace TraitsFixTests
             Relationships._relationship couple = Couple();
             Seams.Chance = _ => true;
 
-            Relationships__relationship_CheckDating.Postfix(couple);
+            TryLeakCouple(couple);
 
             Assert.Equal(new float[] { INDISCREET_CHANCE }, Seams.ChancesRolled);
             Assert.Equal(new[] { "An indiscreet person has leaked that Aya and Beth are dating each other. They both lost 30 mental stamina points." }, Seams.Notifications);
@@ -357,7 +357,7 @@ namespace TraitsFixTests
             Relationships._relationship couple = Couple();
             Seams.Chance = _ => true;
 
-            Relationships__relationship_CheckDating.Postfix(couple);
+            TryLeakCouple(couple);
 
             Assert.Equal(new[] { "An indiscreet person has leaked that Aya and Beth are dating each other. They both lost 30 mental stamina points and gained 1 scandal point." }, Seams.Notifications);
             Assert.Equal(new[] { (aya, data_girls._paramType.scandalPoints, 1f), (beth, data_girls._paramType.scandalPoints, 1f) }, Seams.ParamsAdded);
@@ -370,8 +370,8 @@ namespace TraitsFixTests
             Relationships._relationship couple = Couple();
             Seams.Chance = _ => true;
 
-            Relationships__relationship_CheckDating.Postfix(couple);
-            Relationships__relationship_CheckDating.Postfix(couple);
+            TryLeakCouple(couple);
+            TryLeakCouple(couple);
 
             Assert.Single(Seams.ChancesRolled);
             Assert.Single(Seams.Notifications);
@@ -388,14 +388,14 @@ namespace TraitsFixTests
             aya.DatingData.Is_Partner_Status_Known = true;
             aya.DatingData.Partner_Status_Known_To_Player = PartnerStatus.taken_idol;
 
-            Relationships__relationship_CheckDating.Postfix(couple);
+            TryLeakCouple(couple);
 
             Assert.Single(Seams.ChancesRolled);
             Assert.Empty(Seams.Notifications);
             Assert.False(beth.DatingData.Is_Partner_Status_Known);
 
             Seams.Chance = _ => true;
-            Relationships__relationship_CheckDating.Postfix(couple);
+            TryLeakCouple(couple);
             Assert.Single(Seams.Notifications);
             Assert.True(IsKnownToDateIdol(beth));
         }
@@ -413,7 +413,7 @@ namespace TraitsFixTests
             beth.DatingData.Is_Partner_Status_Known = true;
             beth.DatingData.Partner_Status_Known_To_Player = PartnerStatus.taken_idol;
 
-            Relationships__relationship_CheckDating.Postfix(couple);
+            TryLeakCouple(couple);
 
             Assert.Single(Seams.ChancesRolled);
             Assert.Equal(PartnerStatus.taken_outside_bf, aya.DatingData.Partner_Status_Known_To_Player);
@@ -427,7 +427,7 @@ namespace TraitsFixTests
             aya.RelationshipsKnown = true;
             Seams.Chance = _ => true;
 
-            Relationships__relationship_CheckDating.Postfix(couple);
+            TryLeakCouple(couple);
             Assert.Empty(Seams.ChancesRolled);
         }
 
@@ -439,7 +439,7 @@ namespace TraitsFixTests
             couple.Dating = false;
             Seams.Chance = _ => true;
 
-            Relationships__relationship_CheckDating.Postfix(couple);
+            TryLeakCouple(couple);
             Assert.Empty(Seams.ChancesRolled);
         }
 
@@ -450,7 +450,7 @@ namespace TraitsFixTests
             aya.trait = Indiscreet;
             Seams.Chance = _ => true;
 
-            Relationships__relationship_CheckDating.Postfix(couple);
+            TryLeakCouple(couple);
             Assert.Empty(Seams.Notifications);
         }
 
@@ -460,19 +460,51 @@ namespace TraitsFixTests
             TestGame.Hire(TestGame.Idol(Indiscreet));
             Relationships._relationship couple = Couple();
 
-            Relationships__relationship_CheckDating.Postfix(couple);
+            TryLeakCouple(couple);
 
             Assert.Empty(Seams.Notifications);
             Assert.False(aya.DatingData.Is_Partner_Status_Known);
             Assert.False(beth.DatingData.Is_Partner_Status_Known);
         }
 
+        /// <summary>
+        /// Fixed in 1.3.0: the leak roll was made on each couple's own weekly check, which the game stops
+        /// at the first couple that starts or ends. Now every couple gets its roll after the check.
+        /// </summary>
+        [Fact]
+        public void WeeklyCheck_RollsForEveryCouple()
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            Relationships._relationship first = Couple();
+            data_girls.girls cleo = TestGame.Hire(TestGame.Idol(name: "Cleo"));
+            data_girls.girls dana = TestGame.Hire(TestGame.Idol(name: "Dana"));
+            Relationships._relationship second = Pair.Of(cleo, dana);
+            second.Dating = true;
+            Relationships._relationship friends = Pair.Of(aya, cleo);
+            Relationships.RelationshipsData = new() { first, friends, second };
+            Seams.Chance = _ => false;
+
+            Relationships_CheckDating.Postfix();
+
+            Assert.Equal(new float[] { INDISCREET_CHANCE, INDISCREET_CHANCE }, Seams.ChancesRolled);
+        }
+
+        [Fact]
+        public void WeeklyCheck_NoRelationships_NoError()
+        {
+            Relationships.RelationshipsData = null;
+            Relationships_CheckDating.Postfix();
+            Relationships.RelationshipsData = new() { null };
+            Relationships_CheckDating.Postfix();
+            Assert.Empty(Seams.ChancesRolled);
+        }
+
         [Fact]
         public void IncompleteRelationship_NoError()
         {
-            Relationships__relationship_CheckDating.Postfix(null);
-            Relationships__relationship_CheckDating.Postfix(new Relationships._relationship { Dating = true });
-            Relationships__relationship_CheckDating.Postfix(new Relationships._relationship { Dating = true, Girls = new List<data_girls.girls> { TestGame.Idol(), null } });
+            TryLeakCouple(null);
+            TryLeakCouple(new Relationships._relationship { Dating = true });
+            TryLeakCouple(new Relationships._relationship { Dating = true, Girls = new List<data_girls.girls> { TestGame.Idol(), null } });
             Assert.Empty(Seams.ChancesRolled);
         }
     }

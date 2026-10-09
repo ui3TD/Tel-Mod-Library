@@ -220,6 +220,11 @@ namespace NationalTour.Tests
         public static readonly List<(string Method, string Path, float PixelsPerUnit, Object Result)> Loads = new();
 
         /// <summary>
+        /// Each fake sprite's texture, made the first time it's read.
+        /// </summary>
+        public static readonly Dictionary<object, Texture2D> SpriteTextures = new(new SameObject());
+
+        /// <summary>
         /// How many times the copies looked up a child by name.
         /// </summary>
         public static int Finds;
@@ -271,6 +276,7 @@ namespace NationalTour.Tests
             [AccessTools.PropertyGetter(typeof(IMG2Sprite), nameof(IMG2Sprite.instance))] = Stub(nameof(StubLoader)),
             [AccessTools.Method(typeof(IMG2Sprite), nameof(IMG2Sprite.LoadNewSprite))] = Stub(nameof(StubLoadSprite)),
             [AccessTools.Method(typeof(IMG2Sprite), nameof(IMG2Sprite.LoadTexture))] = Stub(nameof(StubLoadTexture)),
+            [AccessTools.PropertyGetter(typeof(Sprite), nameof(Sprite.texture))] = Stub(nameof(StubSpriteTexture)),
         };
 
         /// <summary>
@@ -294,7 +300,7 @@ namespace NationalTour.Tests
         });
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void NewTourReset(ref Tour_New_Popup __instance) => throw NotInstalled();
+        public static void NewTourReset(Tour_New_Popup __instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void TourResultsReset() => throw NotInstalled();
@@ -329,6 +335,7 @@ namespace NationalTour.Tests
             Tweens.Clear();
             TweenHandles.Clear();
             Loads.Clear();
+            SpriteTextures.Clear();
         }
 
         /// <summary>
@@ -453,6 +460,13 @@ namespace NationalTour.Tests
             Sprite sprite = Fake<Sprite>();
             Loads.Add((nameof(IMG2Sprite.LoadNewSprite), path, pixelsPerUnit, sprite));
             return sprite;
+        }
+
+        private static Texture2D StubSpriteTexture(Sprite sprite)
+        {
+            if (!SpriteTextures.TryGetValue(sprite, out Texture2D texture))
+                SpriteTextures[sprite] = texture = Fake<Texture2D>();
+            return texture;
         }
 
         private static Texture2D StubLoadTexture(IMG2Sprite loader, string path)

@@ -13,8 +13,12 @@ namespace NationalTour
     [HarmonyPatch(typeof(Tour_New_Popup), "Reset")]
     public class Tour_New_Popup_Reset
     {
-        public static void Postfix(ref Tour_New_Popup __instance)
+        public static void Postfix(Tour_New_Popup __instance)
         {
+            // Without the map picture, keep the game's world map and its country positions
+            if (TOUR_map_2 == null)
+                return;
+
             Image image = __instance.transform.Find("Panel").Find("BG").GetComponent<Image>();
             image.sprite = TOUR_map_2;
 
@@ -35,6 +39,9 @@ namespace NationalTour
     {
         public static void Postfix()
         {
+            if (World_tour_def_tex == null || World_tour_def_BG == null)
+                return;
+
             PopupManager popupManager = Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>();
             GameObject BGImage = popupManager.BGImage;
 
@@ -54,7 +61,7 @@ namespace NationalTour
     }
 
 
-    // Load assets
+    // Load assets. Once is enough: the pictures stay loaded from one save to the next.
     [HarmonyPatch(typeof(mainScript), "Start")]
     public class mainScript_Start
     {
@@ -63,23 +70,25 @@ namespace NationalTour
             if (mainScript.IsMainMenu())
                 return;
 
-            Mods._mod thisMod = null;
-            foreach (Mods._mod mod in Mods._Mods)
+            // Already loaded (Unity's == is also true for a picture the engine has since destroyed)
+            if (World_tour_def != null && World_tour_def_BG != null && TOUR_map_2 != null)
+                return;
+
+            string modDir = GetModDirectory(Path.GetDirectoryName(typeof(Utility).Assembly.Location));
+            if (modDir == null)
             {
-                if (mod.Title == MOD_TITLE)
-                {
-                    thisMod = mod;
-                    break;
-                }
+                Debug.LogError("[National Tour] Couldn't find the mod's Textures folder; tours keep the game's world pictures");
+                return;
             }
 
-            string imageDir = Path.Combine(thisMod.GetPath(), "Textures", MOD_TEXTURE_DIR);
+            string imageDir = Path.Combine(modDir, "Textures", MOD_TEXTURE_DIR);
             string path_World_tour_def = System.IO.Path.GetFullPath(System.IO.Path.Combine(imageDir, TOUR_POPUP_BG_FILE));
             string path_World_tour_def_BG = System.IO.Path.GetFullPath(System.IO.Path.Combine(imageDir, TOUR_POPUP_BG_BLURRED_FILE));
             string path_TOUR_map_2 = System.IO.Path.GetFullPath(System.IO.Path.Combine(imageDir, TOUR_MAP_FILE));
 
             World_tour_def = IMG2Sprite.instance.LoadNewSprite(path_World_tour_def, 100f);
-            World_tour_def_tex = IMG2Sprite.instance.LoadTexture(path_World_tour_def);
+            // The sprite covers the whole picture, so its texture is the picture itself
+            World_tour_def_tex = World_tour_def != null ? World_tour_def.texture : null;
             World_tour_def_BG = IMG2Sprite.instance.LoadNewSprite(path_World_tour_def_BG, 100f);
             TOUR_map_2 = IMG2Sprite.instance.LoadNewSprite(path_TOUR_map_2, 100f);
         }
@@ -100,7 +109,28 @@ namespace NationalTour
 
         public static Image tourPopupBGImage;
 
-        public static Dictionary<SEvent_Tour._country, Prefectures> tourLocations = new()
+        /// <summary>
+        /// The mod's folder: the one the running DLL was loaded from (IM-HarmonyIntegration loads
+        /// "&lt;mod folder&gt;/&lt;HarmonyID&gt;.dll"), so the pictures match the code. If that folder has no
+        /// pictures, the mod named MOD_TITLE in the game's mod list. Null if neither has them.
+        /// </summary>
+        public static string GetModDirectory(string assemblyDir)
+        {
+            if (HasPictures(assemblyDir))
+                return assemblyDir;
+
+            foreach (Mods._mod mod in Mods._Mods)
+            {
+                if (mod.Title == MOD_TITLE && HasPictures(mod.GetPath()))
+                    return mod.GetPath();
+            }
+            return null;
+        }
+
+        private static bool HasPictures(string dir) =>
+            !string.IsNullOrEmpty(dir) && Directory.Exists(Path.Combine(Path.Combine(dir, "Textures"), MOD_TEXTURE_DIR));
+
+        public static readonly Dictionary<SEvent_Tour._country, Prefectures> tourLocations = new()
                 {
                     { SEvent_Tour._country.china, Prefectures.saitama },
                     { SEvent_Tour._country.southKorea, Prefectures.kanagawa },
@@ -123,7 +153,7 @@ namespace NationalTour
                 };
 
 
-        public static Dictionary<Prefectures, Vector3> locationDict = new()
+        public static readonly Dictionary<Prefectures, Vector3> locationDict = new()
                 {
                     { Prefectures.ishikawa, new Vector3(0.1f, 0f, 0f) },
                     { Prefectures.hokkaido, new Vector3(4.8f, 2.5f, 0f) },

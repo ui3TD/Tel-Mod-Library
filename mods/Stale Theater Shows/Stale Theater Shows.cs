@@ -42,9 +42,10 @@ namespace StaleTheater
                 return;
 
             int daysSinceSingle;
-            if(singles.GetLatestReleasedSingle(false, __instance.GetGroup()) != null)
+            singles._single latestSingle = singles.GetLatestReleasedSingle(false, __instance.GetGroup());
+            if (latestSingle != null)
             {
-                daysSinceSingle = (staticVars.dateTime - singles.GetLatestReleasedSingle(false, __instance.GetGroup()).ReleaseData.ReleaseDate).Days;
+                daysSinceSingle = (staticVars.dateTime - latestSingle.ReleaseData.ReleaseDate).Days;
             }
             else
             {
@@ -100,39 +101,36 @@ namespace StaleTheater
     [HarmonyPatch(typeof(Theaters._theater), "GetNumberOfVisitors")]
     public class Theaters__theater_GetNumberOfVisitors
     {
+        // Before num *= GetPriceCoeff(Ticket_Price), replace the game's fan-type multiplier: num = Infix(this).
+        // That statement is where the ticket-price check (over 40000 sells nothing) jumps to.
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            List<CodeInstruction> instructionList = new(instructions);
+            MethodInfo getPriceCoeff = AccessTools.Method(typeof(Theaters._theater), "GetPriceCoeff");
+            FieldInfo ticketPrice = AccessTools.Field(typeof(Theaters._theater), nameof(Theaters._theater.Ticket_Price));
 
-            int index = -1;
-            for (int i = 0; i < instructionList.Count; i++)
+            CodeMatcher matcher = new CodeMatcher(instructions).MatchStartForward(
+                new CodeMatch(ci => ci.IsLdloc()),
+                new CodeMatch(OpCodes.Ldarg_0),
+                new CodeMatch(OpCodes.Ldarg_0),
+                new CodeMatch(ci => ci.LoadsField(ticketPrice)),
+                new CodeMatch(ci => ci.Calls(getPriceCoeff)),
+                new CodeMatch(OpCodes.Mul),
+                new CodeMatch(ci => ci.IsStloc()));
+            if (matcher.IsInvalid)
             {
-                if (instructionList[i].opcode == OpCodes.Ret)
-                {
-                    index = i;
-                }
-                if (instructionList[i].opcode == OpCodes.Call && (MethodInfo)instructionList[i].operand == AccessTools.Method(typeof(Theaters._theater), "GetPriceCoeff"))
-                {
-                    break;
-                }
+                Debug.LogError("[Stale Theater Shows] Couldn't find where the game applies the ticket price to visitors; attendance uses the game's multipliers");
+                return instructions;
             }
+            CodeInstruction storeMultiplier = matcher.InstructionAt(6);
 
-            if (index != -1 && index + 1 < instructionList.Count)
-            {
-                // The instruction after the early return is the branch target for the normal
-                // ticket-price path. Move its labels to our first injected instruction so
-                // branches execute the replacement attendance multiplier instead of skipping it.
-                CodeInstruction originalTarget = instructionList[index + 1];
-                CodeInstruction loadThis = new(OpCodes.Ldarg_0);
-                loadThis.labels.AddRange(originalTarget.labels);
-                originalTarget.labels.Clear();
-
-                instructionList.Insert(index + 1, loadThis);
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Theaters__theater_GetNumberOfVisitors), "Infix")));
-                instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Stloc_0));
-            }
-
-            return instructionList.AsEnumerable();
+            // Take over the jump target, so the normal path runs the new multiplier
+            CodeInstruction loadThis = new(OpCodes.Ldarg_0);
+            loadThis.MoveLabelsFrom(matcher.Instruction);
+            matcher.Insert(
+                loadThis,
+                new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Theaters__theater_GetNumberOfVisitors), nameof(Infix))),
+                new CodeInstruction(storeMultiplier.opcode, storeMultiplier.operand));
+            return matcher.InstructionEnumeration();
         }
 
         public static float Infix(Theaters._theater __this)

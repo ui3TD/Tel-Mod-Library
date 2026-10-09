@@ -239,7 +239,7 @@ namespace TraitsFixTests
         {
             AccessTools.Method(typeof(Data_girls_AgeDeterioration), nameof(Data_girls_AgeDeterioration.Postfix)),
             AccessTools.Method(typeof(Data_girls_girls_UpdateDatingStatus), nameof(Data_girls_girls_UpdateDatingStatus.Postfix)),
-            AccessTools.Method(typeof(Relationships__relationship_CheckDating), nameof(Relationships__relationship_CheckDating.Postfix)),
+            AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.TryLeakCouple)),
             AccessTools.Method(typeof(Show_Popup_SetParam), nameof(Show_Popup_SetParam.Postfix)),
             AccessTools.Method(typeof(Shows__show_SetStamina), nameof(Shows__show_SetStamina.Postfix)),
             AccessTools.Method(typeof(Singles_ReleaseSingle), nameof(Singles_ReleaseSingle.Postfix)),

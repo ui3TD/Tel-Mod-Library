@@ -31,3 +31,4 @@ Let me know of any bugs.
 
 [h3]Changelog[/h3]
 - 1.2.0: Fixes for the Perfectionist, Meme Queen, Defeatist, Underdog and Indiscreet traits.
+- 1.3.0: Indiscreet now gives every secret idol couple its weekly chance to leak.

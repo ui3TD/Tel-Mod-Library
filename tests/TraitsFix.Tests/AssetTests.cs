@@ -36,7 +36,7 @@ namespace TraitsFixTests
         {
             new object[] { "Clumsy", $"{CLUMSY_DANCE_MODIFIER} to dance, +{CLUMSY_FUNNY_MODIFIER} to comedy" },
             new object[] { "Annoying", Invariant($"{1 + ANNOYING_MODIFIER}x more stamina") },
-            new object[] { "Misandry", "20% chance for a negative opinion" },
+            new object[] { "Misandry", $"{MISANDRY_CHANCE}% chance for a negative opinion" },
             new object[] { "Underdog", $"+{UNDERDOG_MODIFIER} to all stats if latest single didn't top the chart" },
             new object[] { "Defeatist", $"{DEFEATIST_MODIFIER} to all stats if latest single didn't top the chart" },
             new object[] { "Worrier", $"{WORRIER_MODIFIER} to all stats when group has scandal points" },
@@ -85,10 +85,11 @@ namespace TraitsFixTests
             Dictionary<string, string> text = Enumerable.Range(0, constants.Count).ToDictionary(i => (string)constants[i]["id"], i => (string)constants[i]["text"]);
 
             // One name is filled into "@", two into "@1" and "@2"
-            Assert.Equal("An indiscreet person has leaked that @ is dating. She lost 30 mental stamina points.", text[INDISCREET_LABEL_OUTSIDE]);
-            Assert.Equal("An indiscreet person has leaked that @ is dating. She lost 30 mental stamina points and gained 1 scandal point.", text[INDISCREET_LABEL_OUTSIDE_SCANDAL]);
-            Assert.Equal("An indiscreet person has leaked that @1 and @2 are dating each other. They both lost 30 mental stamina points.", text[INDISCREET_LABEL_INSIDE]);
-            Assert.Equal("An indiscreet person has leaked that @1 and @2 are dating each other. They both lost 30 mental stamina points and gained 1 scandal point.", text[INDISCREET_LABEL_INSIDE_SCANDAL]);
+            float lost = -INDISCREET_MENTAL;
+            Assert.Equal($"An indiscreet person has leaked that @ is dating. She lost {lost} mental stamina points.", text[INDISCREET_LABEL_OUTSIDE]);
+            Assert.Equal($"An indiscreet person has leaked that @ is dating. She lost {lost} mental stamina points and gained 1 scandal point.", text[INDISCREET_LABEL_OUTSIDE_SCANDAL]);
+            Assert.Equal($"An indiscreet person has leaked that @1 and @2 are dating each other. They both lost {lost} mental stamina points.", text[INDISCREET_LABEL_INSIDE]);
+            Assert.Equal($"An indiscreet person has leaked that @1 and @2 are dating each other. They both lost {lost} mental stamina points and gained 1 scandal point.", text[INDISCREET_LABEL_INSIDE_SCANDAL]);
         }
 
         /// <summary>
@@ -98,7 +99,7 @@ namespace TraitsFixTests
         public void SteamDescription_MatchesCode()
         {
             string text = File.ReadAllText(TestGame.ModAsset("steam description.txt"));
-            float ageTraitSpeed = (VanillaPositiveDrift + MATERNAL_BONUS / 2 / 2) / VanillaPositiveDrift;
+            float ageTraitSpeed = (VanillaPositiveDrift + MATERNAL_WEEKLY_BONUS / 2) / VanillaPositiveDrift;
             Assert.Equal(MATERNAL_BONUS, PRECOCIOUS_BONUS);
 
             string[] expected =
@@ -118,9 +119,9 @@ namespace TraitsFixTests
                 "- Forgiving: will never dislike or hate any other girls.",
                 $"- Meme Queen: +{MEME_INT_SHOW} to all stats for internet shows and get +{MEME_VIRAL_SUCCESS}% success rate and +{MEME_VIRAL_SUCCESS_CRIT}% crit success rate",
                 Invariant($"- Annoying: causes other members to spend {1 + ANNOYING_MODIFIER}x physical stamina in shows."),
-                "- Misandry: 20% chance of receiving bad opinions from Male fans",
+                $"- Misandry: {MISANDRY_CHANCE}% chance of receiving bad opinions from Male fans",
                 $"- Perfectionist: {PERFECTIONIST_MENTAL} to mental stamina when world tours end with less than {PERFECTIONIST_TOUR_ATT}% attendance, or when they participate in concerts with less than {PERFECTIONIST_HYPE}% hype.",
-                $"- Indiscreet: girls in dating relationships unknown to the player have a {INDISCREET_CHANCE}% chance of having the relationship revealed each week. The girls revealed to be dating lose 30 mental stamina.",
+                $"- Indiscreet: girls in dating relationships unknown to the player have a {INDISCREET_CHANCE}% chance of having the relationship revealed each week. The girls revealed to be dating lose {-INDISCREET_MENTAL} mental stamina.",
             };
             foreach (string line in expected)
                 Assert.Contains(line, text);

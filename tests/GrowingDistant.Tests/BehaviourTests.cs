@@ -51,7 +51,7 @@ namespace GrowingDistant.Tests
                 Rel_Romance_Points = romance,
                 Rel_Friendship_Points = friendship
             };
-            Patch.Postfix(ref girl);
+            Patch.Postfix(girl);
             return girl;
         }
 

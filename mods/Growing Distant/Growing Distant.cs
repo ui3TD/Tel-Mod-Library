@@ -8,7 +8,7 @@ namespace GrowingDistant
     /// <summary>
     /// This class contains a patch for updating the relationship weekly based on salary.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls.girls), "UpdateRelationshipBasedOnSalary")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.UpdateRelationshipBasedOnSalary))]
     public class data_girls_girls_UpdateRelationshipBasedOnSalary
     {
         public const int INFLUENCE_BONUS = 1;
@@ -24,7 +24,11 @@ namespace GrowingDistant
         /// <summary>
         /// Harmony patch for the UpdateRelationshipBasedOnSalary method in data_girls.girls.
         /// </summary>
-        public static void Postfix(ref data_girls.girls __instance)
+        /// <remarks>
+        /// The points are changed directly, not through Relationships_Player.AddPoints: that shows the game's
+        /// relationship-change popup for every change, which would be two or three popups per idol every week.
+        /// </remarks>
+        public static void Postfix(data_girls.girls __instance)
         {
             if (staticVars.IsEasy())
                 return;

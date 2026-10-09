@@ -8,3 +8,4 @@ Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyInt
 
 [h3]Changelog[/h3]
 - 1.1.0: Well-paid idols' influence no longer climbs past the maximum.
+- 1.1.1: Code tidy-up; no change in play.

@@ -6,3 +6,6 @@ Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyInt
 - World tours give 3.5x more fans to compensate for stamina limitation.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.0.1: An error in a tour tooltip can no longer leave the stamina cap warning on other screens.

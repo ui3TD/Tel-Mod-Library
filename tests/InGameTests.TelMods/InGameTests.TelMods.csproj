@@ -42,6 +42,14 @@
 			<HintPath>$(GameDllDir)\Assembly-CSharp-firstpass.dll</HintPath>
 			<Private>false</Private>
 		</Reference>
+		<Reference Include="Unity.TextMeshPro">
+			<HintPath>$(GameDllDir)\Unity.TextMeshPro.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="UnityEngine.UI">
+			<HintPath>$(GameDllDir)\UnityEngine.UI.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
 	</ItemGroup>
 
 	<!--Deploy next to the runner, which loads InGameTests.*.dll in test mode only-->

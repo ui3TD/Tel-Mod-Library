@@ -1,3 +1,5 @@
+using HarmonyLib;
+using System;
 using System.Linq;
 using TourStamina;
 using UnityEngine;
@@ -290,6 +292,28 @@ namespace TourStaminaLimit.Tests
 
             Assert.Equal("Stamina", Language.Data["STAMINA"]);
             Assert.Equal(Warning + GameTooltip(TestGame.Country(_country.US)), Tooltip(TestGame.Country(_country.US), full));
+        }
+
+        /// <summary>
+        /// If the game's tooltip code fails after the warning went in, the "Stamina" text is still put
+        /// back, so other screens don't show the warning for the rest of the session.
+        /// </summary>
+        [Fact]
+        public void GameFails_StaminaTextIsStillRestored()
+        {
+            Tour_Star star = TestGame.Star(TestGame.Countries(6)[5], TestGame.Tour(TestGame.Countries(5)));
+            Seams.TooltipFails = true;
+
+            Assert.Throws<InvalidOperationException>(() => star.SetTooltip());
+
+            Assert.Equal("Stamina", Language.Data["STAMINA"]);
+        }
+
+        [Fact]
+        public void TextIsRestoredInAFinalizer()
+        {
+            Assert.NotNull(AccessTools.Method(typeof(Tour_Star_SetTooltip), "Finalizer"));
+            Assert.Null(AccessTools.Method(typeof(Tour_Star_SetTooltip), "Postfix"));
         }
     }
 

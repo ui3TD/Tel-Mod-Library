@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using System;
+using System.Globalization;
 using UnityEngine;
 using System.Reflection;
 using static TourStamina.TourStamina;
@@ -43,11 +44,12 @@ namespace TourStamina
         }
     }
 
-    // Set tooltip if at max stamina
-    [HarmonyPatch(typeof(Tour_Star), "SetTooltip")]
+    // Set tooltip if at max stamina. The game builds the tooltip from the shared "Stamina" text, so the
+    // warning goes in front of that text while the tooltip is built.
+    [HarmonyPatch(typeof(Tour_Star), nameof(Tour_Star.SetTooltip))]
     public class Tour_Star_SetTooltip
     {
-        public static bool Prefix(ref string __state, Tour_Country ___TourCountry)
+        public static void Prefix(out string __state, Tour_Country ___TourCountry)
         {
             __state = Language.Data["STAMINA"];
 
@@ -55,23 +57,18 @@ namespace TourStamina
             SEvent_Tour.tour tour = ___TourCountry.TourPopup.Tour;
             if (country.GetStaminaCost() + tour.Stamina > TOUR_STAM_CAP && tour.GetCountry(country) == null)
             {
-                Language.Data["STAMINA"] = string.Concat(new string[]
-                {
-                    "<color=",
-                    mainScript.red,
-                    ">",
-                    Language.Data[TOUR_STAM_TOOLTIP_ID],
-                    "</color>\n",
-                    Language.Data["STAMINA"]
-                });
+                Language.Data["STAMINA"] = "<color=" + mainScript.red + ">"
+                    + Language.Insert(TOUR_STAM_TOOLTIP_ID, TOUR_STAM_CAP.ToString(CultureInfo.InvariantCulture))
+                    + "</color>\n" + __state;
             }
-
-            return true;
         }
 
-        public static void Postfix(ref string __state)
+        // A finalizer, not a postfix: it runs even if SetTooltip throws, so the warning can't stay in
+        // every "Stamina" label for the rest of the session
+        public static void Finalizer(string __state)
         {
-            Language.Data["STAMINA"] = __state;
+            if (__state != null)
+                Language.Data["STAMINA"] = __state;
         }
     }
 

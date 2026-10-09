@@ -196,6 +196,11 @@ namespace TourStaminaLimit.Tests
         public static readonly List<string> Tooltips = new();
 
         /// <summary>
+        /// When set, setting a tooltip throws, as if the game's tooltip code failed.
+        /// </summary>
+        public static bool TooltipFails;
+
+        /// <summary>
         /// The country buttons under each popup's countries container, and the ones redrawn since the last Reset.
         /// </summary>
         public static readonly Dictionary<object, Tour_Country[]> Children = new(new SameObject());
@@ -281,6 +286,7 @@ namespace TourStaminaLimit.Tests
             Range = (min, max) => throw new InvalidOperationException($"Unexpected roll Range({min}, {max})");
             RangesRolled.Clear();
             Tooltips.Clear();
+            TooltipFails = false;
             Children.Clear();
             Updated.Clear();
             Transforms.Clear();
@@ -336,7 +342,12 @@ namespace TourStaminaLimit.Tests
             return Children.TryGetValue(owner, out Tour_Country[] children) ? (T[])(object)children : new T[0];
         }
 
-        private static void StubSetTooltip(ButtonDefault button, string text) => Tooltips.Add(text);
+        private static void StubSetTooltip(ButtonDefault button, string text)
+        {
+            if (TooltipFails)
+                throw new InvalidOperationException("game method failed");
+            Tooltips.Add(text);
+        }
         private static Transform StubTransform(object owner) => TransformOf(owner);
         private static void StubUpdateData(Tour_Country country) => Updated.Add(country);
     }

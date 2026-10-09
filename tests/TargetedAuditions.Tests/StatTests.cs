@@ -46,6 +46,9 @@ namespace TargetedAuditions.Tests
         private static float[] SortedValues(data_girls.girls girl) =>
             paramTypes.Select(p => girl.getParam(p).val).OrderBy(v => v).ToArray();
 
+        private static string[] SortedPairs(data_girls.girls girl) =>
+            paramTypes.Select(p => girl.getParam(p).val + "/" + girl.getParam(p).potential).OrderBy(s => s).ToArray();
+
         /// <summary>
         /// The game's stat roll with the mod's patch on it. Returns null when the game would hang.
         /// </summary>
@@ -140,6 +143,36 @@ namespace TargetedAuditions.Tests
                         data_girls.girls patched = RunPatched(seed, type, points);
                         Assert.Equal(SortedValues(vanilla), SortedValues(patched));
                         AssertValid(patched, type);
+                        compared++;
+                    }
+                }
+            }
+
+            Assert.True(compared > 300, $"Only {compared} rolls compared");
+        }
+
+        /// <summary>
+        /// Each value moves with the potential the game rolled for it: the candidate has exactly the game's
+        /// (stat, potential) pairs, only on different skills.
+        /// </summary>
+        [Fact]
+        public void DuringAudition_EachValueKeepsTheGamesPotential()
+        {
+            BeginAuditionGeneration();
+            priorityDict[data_girls._paramType.vocal] = 500;
+            int compared = 0;
+
+            foreach (GirlType type in Types)
+            {
+                foreach (int points in PointsToTry(type))
+                {
+                    for (int seed = 0; seed < 30; seed++)
+                    {
+                        data_girls.girls vanilla = RunVanilla(seed, type, points);
+                        if (vanilla == null)
+                            continue;
+                        data_girls.girls patched = RunPatched(seed, type, points);
+                        Assert.Equal(SortedPairs(vanilla), SortedPairs(patched));
                         compared++;
                     }
                 }

@@ -29,7 +29,8 @@ namespace InGameTests.TelMods
         // With vocal at 100 and the other skills at 1, a candidate's best rolled value goes to vocal
         // 100 times in 107; by chance alone, about 1 time in 8. Out of 16, fewer than 10 with the mod
         // working, or 10 or more by chance, are each under 1 in 3000. Other mods change skills as
-        // they're read, so the stored values are read as GenerateParams leaves them.
+        // they're read, so the stored values are read as GenerateParams leaves them, after every
+        // patch on it (the mod reassigns the skills in a postfix).
         private const int AtLeastVocalBest = 10;
         private static readonly List<bool> vocalBestAtGeneration = new List<bool>();
 
@@ -53,7 +54,7 @@ namespace InGameTests.TelMods
             {
                 vocalBestAtGeneration.Clear();
                 using (TestTools.Spy(AccessTools.Method(typeof(data_girls), "GenerateParams"),
-                           postfix: AccessTools.Method(typeof(TargetedAuditionsTests), nameof(RecordSkills))))
+                           postfix: AccessTools.Method(typeof(TargetedAuditionsTests), nameof(RecordSkills)), priority: Priority.Last))
                 {
                     yield return Game.OpenAudition(ctx, Auditions.type.nationwide);
                 }

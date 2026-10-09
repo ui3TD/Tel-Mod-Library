@@ -45,7 +45,7 @@ namespace TargetedAuditions.Tests
 
         private static readonly MethodBase[] Patched =
         {
-            AccessTools.Method(typeof(data_girls_GenerateParams), nameof(data_girls_GenerateParams.Infix)),
+            AccessTools.Method(typeof(data_girls_GenerateParams), nameof(data_girls_GenerateParams.AssignByPriority)),
             AccessTools.Method(typeof(data_girls_GenerateGirl), nameof(data_girls_GenerateGirl.Postfix)),
             AccessTools.Method(typeof(Auditions_GenerateGirls), nameof(Auditions_GenerateGirls.Finalizer)),
             AccessTools.Method(typeof(CustomAuditions.CustomAuditions), nameof(ApplyRandomBirthdayInConfiguredRange)),
@@ -62,8 +62,7 @@ namespace TargetedAuditions.Tests
             Harmony.ReversePatch(AccessTools.Method(typeof(data_girls), "GenerateParams"),
                 new HarmonyMethod(typeof(Seams), nameof(VanillaGenerateParams)), AccessTools.Method(typeof(Seams), nameof(Redirect)), ilmanipulator: null);
 
-            // The mod's priorities go on the game's stat roll, as in the game. The stubs run after the
-            // mod's transpiler, which looks for the game's Shuffle call.
+            // The mod's priorities go on the game's stat roll, as in the game (a postfix).
             harmony.CreateClassProcessor(typeof(data_girls_GenerateParams)).Patch();
             HarmonyMethod transpiler = new(typeof(Seams), nameof(Redirect)) { priority = Priority.Last };
             foreach (MethodBase method in Patched)

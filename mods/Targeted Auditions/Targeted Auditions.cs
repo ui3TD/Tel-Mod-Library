@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Reflection.Emit;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
@@ -185,76 +184,45 @@ namespace CustomAuditions
     public static class data_girls_GenerateParams
     {
         /// <summary>
-        /// Calls Infix on the stat list right after the game shuffles it.
-        /// </summary>
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-        {
-            List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            for (int i = 1; i < instructionList.Count; i++)
-            {
-                if (instructionList[i].opcode == OpCodes.Call &&
-                    instructionList[i].operand is System.Reflection.MethodInfo method &&
-                    method.DeclaringType == typeof(ExtensionMethods) &&
-                    method.Name == nameof(ExtensionMethods.Shuffle) &&
-                    StoreOf(instructionList[i - 1]) != null)
-                {
-                    index = i;
-                    break;
-                }
-            }
-
-            if (index == -1)
-            {
-                Debug.LogWarning("[Targeted Auditions] data_girls.GenerateParams: stat shuffle not found; skill priorities are off.");
-                return instructionList;
-            }
-
-            CodeInstruction loadList = instructionList[index - 1];
-            instructionList.InsertRange(index + 1, new[]
-            {
-                new CodeInstruction(loadList.opcode, loadList.operand),
-                new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_GenerateParams), nameof(Infix))),
-                StoreOf(loadList),
-            });
-
-            return instructionList;
-        }
-
-        /// <summary>
-        /// The instruction that stores to the local this instruction loads, or null if it doesn't load a local.
-        /// </summary>
-        private static CodeInstruction StoreOf(CodeInstruction load)
-        {
-            if (load.opcode == OpCodes.Ldloc_0) return new CodeInstruction(OpCodes.Stloc_0);
-            if (load.opcode == OpCodes.Ldloc_1) return new CodeInstruction(OpCodes.Stloc_1);
-            if (load.opcode == OpCodes.Ldloc_2) return new CodeInstruction(OpCodes.Stloc_2);
-            if (load.opcode == OpCodes.Ldloc_3) return new CodeInstruction(OpCodes.Stloc_3);
-            if (load.opcode == OpCodes.Ldloc_S) return new CodeInstruction(OpCodes.Stloc_S, load.operand);
-            if (load.opcode == OpCodes.Ldloc) return new CodeInstruction(OpCodes.Stloc, load.operand);
-            return null;
-        }
-
-        /// <summary>
-        /// Reassigns the generated stat values according to Targeted Auditions priorities.
+        /// Reassigns the candidate's stats to skills by priority, after the game has rolled them. Each value
+        /// moves with the potential the game rolled for it, so a high stat keeps a matching potential.
         /// Only during auditions; other generated girls (unique idols, rivals) keep the game's order.
         /// </summary>
-        public static List<int> Infix(List<int> statValues)
+        public static void Postfix(data_girls.girls Girl)
         {
-            if (!IsGeneratingAudition)
+            if (!IsGeneratingAudition || Girl == null)
             {
-                return statValues;
+                return;
             }
 
-            List<int> output = new List<int>(statValues);
-            Dictionary<data_girls._paramType, int> priorityDictTemp = new Dictionary<data_girls._paramType, int>(priorityDict);
-            List<data_girls._paramType> remainingParamTypes = priorityDictTemp.Keys.ToList();
-            List<int> sortedStatValues = statValues.OrderByDescending(v => v).ToList();
+            // _val, not val: val adds trait and award bonuses, and the game set these as whole numbers
+            List<data_girls.girls.param> stats = paramTypes.Select(Girl.getParam).ToList();
+            float[] values = stats.Select(stat => stat._val).ToArray();
+            int[] potentials = stats.Select(stat => stat.potential).ToArray();
 
-            foreach (int statValue in sortedStatValues)
+            int[] source = AssignByPriority(values.Select(v => (int)v).ToList());
+            for (int i = 0; i < paramTypes.Count; i++)
             {
-                int totalPriority = remainingParamTypes.Sum(p => priorityDictTemp[p]);
+                Girl.setParam(paramTypes[i], values[source[i]]);
+                stats[i].potential = potentials[source[i]];
+            }
+        }
+
+        /// <summary>
+        /// For each skill (in paramTypes order), the index of the value it gets. Values go highest first,
+        /// each to a remaining skill rolled with probability priority / remaining total. If the remaining
+        /// priorities add up to nothing (hand-edited settings), the rest keep their order.
+        /// </summary>
+        public static int[] AssignByPriority(List<int> statValues)
+        {
+            int[] source = new int[statValues.Count];
+            List<int> byValue = Enumerable.Range(0, statValues.Count).OrderByDescending(i => statValues[i]).ToList();
+            List<data_girls._paramType> remainingParamTypes = new List<data_girls._paramType>(paramTypes);
+
+            int next = 0;
+            for (; next < byValue.Count; next++)
+            {
+                int totalPriority = remainingParamTypes.Sum(p => priorityDict[p]);
                 if (totalPriority <= 0)
                 {
                     break;
@@ -267,14 +235,28 @@ namespace CustomAuditions
                     cumulativePriority += priorityDict[remainingParamTypes[i]];
                     if (roll <= cumulativePriority)
                     {
-                        output[paramTypes.IndexOf(remainingParamTypes[i])] = statValue;
+                        source[paramTypes.IndexOf(remainingParamTypes[i])] = byValue[next];
                         remainingParamTypes.RemoveAt(i);
                         break;
                     }
                 }
             }
 
-            return output;
+            // Anything left: the remaining values, highest first, to the remaining skills in order
+            for (int i = 0; next < byValue.Count; next++, i++)
+            {
+                source[paramTypes.IndexOf(remainingParamTypes[i])] = byValue[next];
+            }
+
+            return source;
+        }
+
+        /// <summary>
+        /// The values as AssignByPriority would arrange them across skills (paramTypes order).
+        /// </summary>
+        public static List<int> ArrangeByPriority(List<int> statValues)
+        {
+            return AssignByPriority(statValues).Select(i => statValues[i]).ToList();
         }
     }
 
@@ -376,13 +358,13 @@ namespace CustomAuditions
             }
         }
 
-        private static readonly System.Reflection.FieldInfo textureAssetsField =
-            AccessTools.Field(typeof(data_girls_textures), "textureAssets");
+        // The game's private static list of every portrait asset
+        private static readonly AccessTools.FieldRef<List<data_girls_textures._textureAsset>> TextureAssets =
+            AccessTools.StaticFieldRefAccess<List<data_girls_textures._textureAsset>>(AccessTools.Field(typeof(data_girls_textures), "textureAssets"));
 
         public static bool HasUnusedEligibleBody()
         {
-            List<data_girls_textures._textureAsset> textureAssets =
-                textureAssetsField?.GetValue(null) as List<data_girls_textures._textureAsset>;
+            List<data_girls_textures._textureAsset> textureAssets = TextureAssets();
             if (textureAssets == null)
             {
                 return false;
@@ -403,8 +385,7 @@ namespace CustomAuditions
         /// </summary>
         public static void ClearUsedBodiesExceptUnique()
         {
-            List<data_girls_textures._textureAsset> textureAssets =
-                textureAssetsField?.GetValue(null) as List<data_girls_textures._textureAsset>;
+            List<data_girls_textures._textureAsset> textureAssets = TextureAssets();
             HashSet<int> uniqueBodyIDs = new();
             if (textureAssets != null)
             {

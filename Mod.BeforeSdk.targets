@@ -1,0 +1,7 @@
+<Project>
+	<!--Imported right after each mod's csproj (via BeforeMicrosoftNETSdkTargets in Directory.Build.props), so
+	HarmonyID is known here, and before the SDK defaults AssemblyName to the project name.-->
+	<PropertyGroup Condition="'$(HarmonyID)' != ''">
+		<AssemblyName>$(HarmonyID)</AssemblyName>
+	</PropertyGroup>
+</Project>

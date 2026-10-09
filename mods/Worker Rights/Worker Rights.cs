@@ -29,6 +29,8 @@ namespace WorkerRights
     }
     // 20000 yen/wk is the expected starting salary for 100% satisfaction
     // Never lower a larger expectation from vanilla or another mod
+    // Why twice DEF_SALARY: the game's GetExpectedSalary_Total clamps an idol's average earnings to between
+    // half and double this base. A new idol earns nothing, so she expects half of it: exactly DEF_SALARY.
     [HarmonyPatch(typeof(data_girls.girls), "GetExpectedSalary")]
     public class data_girls_girls_GetExpectedSalary
     {

@@ -155,7 +155,7 @@ namespace HarmonyChecker.Tests
             Menu menu = TestGame.BuildMenu();
             MainMenu_Buttons_Controller controller = menu.Controller;
 
-            Seams.StartPostfix(ref controller);
+            Seams.StartPostfix(controller);
             Seams.StopSpinnerPostfix();
             Seams.StopSpinnerPostfix();
 

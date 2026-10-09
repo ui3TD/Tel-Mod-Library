@@ -44,7 +44,7 @@ namespace HarmonyChecker.Tests
             Menu menu = TestGame.BuildMenu();
             MainMenu_Buttons_Controller controller = menu.Controller;
 
-            Seams.StartPostfix(ref controller);
+            Seams.StartPostfix(controller);
 
             AssertInstalled(menu);
         }
@@ -71,7 +71,7 @@ namespace HarmonyChecker.Tests
             Menu menu = TestGame.BuildMenu();
             MainMenu_Buttons_Controller controller = menu.Controller;
 
-            Seams.StartPostfix(ref controller);
+            Seams.StartPostfix(controller);
             Seams.StopSpinnerPostfix();
             Seams.StopSpinnerPostfix();
 
@@ -186,7 +186,7 @@ namespace HarmonyChecker.Tests
             menu.Controller.Main_Container = null;
             MainMenu_Buttons_Controller controller = menu.Controller;
 
-            Seams.StartPostfix(ref controller);
+            Seams.StartPostfix(controller);
             Seams.StopSpinnerPostfix();
 
             AssertUnchanged(menu);
@@ -199,7 +199,7 @@ namespace HarmonyChecker.Tests
             Seams.Remove(menu.ModsButton);
             MainMenu_Buttons_Controller controller = menu.Controller;
 
-            Seams.StartPostfix(ref controller);
+            Seams.StartPostfix(controller);
             Seams.StopSpinnerPostfix();
 
             AssertUnchanged(menu);
@@ -212,7 +212,7 @@ namespace HarmonyChecker.Tests
             Seams.Remove(menu.Label);
             MainMenu_Buttons_Controller controller = menu.Controller;
 
-            Seams.StartPostfix(ref controller);
+            Seams.StartPostfix(controller);
             Seams.StopSpinnerPostfix();
 
             AssertUnchanged(menu);

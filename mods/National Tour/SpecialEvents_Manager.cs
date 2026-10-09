@@ -7,7 +7,7 @@ namespace NationalTour
 {
 
     // ovverride tab button click operation to render continue button
-    [HarmonyPatch(typeof(SpecialEvents_Manager), "OpenTab_WorldTour")]
+    [HarmonyPatch(typeof(SpecialEvents_Manager), nameof(SpecialEvents_Manager.OpenTab_WorldTour))]
     public class SpecialEvents_Manager_OpenTab_WorldTour
     {
         public static void Prefix()
@@ -27,7 +27,7 @@ namespace NationalTour
 
 
     // Set create new image, if opened directly
-    [HarmonyPatch(typeof(SpecialEvents_Manager), "OpenSpecialEventsPopup")]
+    [HarmonyPatch(typeof(SpecialEvents_Manager), nameof(SpecialEvents_Manager.OpenSpecialEventsPopup))]
     public class SpecialEvents_Manager_OpenSpecialEventsPopup
     {
         public static void Postfix(SpecialEvents_Manager __instance)

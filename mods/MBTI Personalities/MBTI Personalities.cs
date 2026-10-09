@@ -14,7 +14,7 @@ namespace MBTIPersonalities
     /// Harmony patch for rendering the extras tab in the profile popup.
     /// Adds MBTI information to the profile extras tab if applicable.
     /// </summary>
-    [HarmonyPatch(typeof(Profile_Popup), "RenderTab_Extras")]
+    [HarmonyPatch(typeof(Profile_Popup), nameof(Profile_Popup.RenderTab_Extras))]
     public class Profile_Popup_RenderTab_Extras
     {
 
@@ -42,7 +42,7 @@ namespace MBTIPersonalities
     /// Harmony patch for showing traits on the audition data card.
     /// Adds MBTI information to the audition card if applicable.
     /// </summary>
-    [HarmonyPatch(typeof(Audition_Data_Card), "ShowTrait")]
+    [HarmonyPatch(typeof(Audition_Data_Card), nameof(Audition_Data_Card.ShowTrait))]
     public class Audition_Data_Card_ShowTrait
     {
         /// <summary>
@@ -68,7 +68,7 @@ namespace MBTIPersonalities
     /// Harmony patch for getting tooltip text when hovering over a girl's profile.
     /// Adds MBTI information to the tooltip if applicable.
     /// </summary>
-    [HarmonyPatch(typeof(GirlProfileOnHover), "GetTooltipText")]
+    [HarmonyPatch(typeof(GirlProfileOnHover), nameof(GirlProfileOnHover.GetTooltipText))]
     public class GirlProfileOnHover_GetTooltipText
     {
         /// <summary>
@@ -91,7 +91,7 @@ namespace MBTIPersonalities
     /// Harmony patch for getting tooltip text for a girl.
     /// Adds MBTI information to the tooltip if applicable.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls.girls), "GetTooltipText")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetTooltipText))]
     public class data_girls_girls_GetTooltipText
     {
         /// <summary>
@@ -114,7 +114,7 @@ namespace MBTIPersonalities
     /// Harmony patch for generating a girl.
     /// Assigns an MBTI type to the generated girl based on texture data if applicable.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls), "GenerateGirl")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.GenerateGirl))]
     public class data_girls_GenerateGirl
     {
         /// <summary>
@@ -144,7 +144,7 @@ namespace MBTIPersonalities
     /// Harmony patch for calculating the accident success chance during concerts.
     /// Reduces the failure chance if any girl in the group has the ISTP MBTI type.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts._concert), "AccidentSuccessChance")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.AccidentSuccessChance))]
     public class SEvent_Concerts__concert_AccidentSuccessChance
     {
 
@@ -191,7 +191,7 @@ namespace MBTIPersonalities
     /// Harmony patch for calculating the accident stamina reduction during concerts.
     /// Reduces the accident chance based on the number of girls with the ISTJ MBTI type.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts._concert), "Accident_Stamina")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Accident_Stamina))]
     public class SEvent_Concerts__concert_Accident_Stamina
     {
 
@@ -230,7 +230,7 @@ namespace MBTIPersonalities
     /// Harmony patch for adding points in player relationships.
     /// Increases the influence gain if the girl has the ISFJ MBTI type.
     /// </summary>
-    [HarmonyPatch(typeof(Relationships_Player), "AddPoints")]
+    [HarmonyPatch(typeof(Relationships_Player), nameof(Relationships_Player.AddPoints))]
     public class Relationships_Player_AddPoints
     {
 
@@ -258,7 +258,7 @@ namespace MBTIPersonalities
     /// Harmony patch for getting the appeal of a stat for a girl.
     /// Increases the appeal to hardcore fans if the girl has the ISFP MBTI type.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls.girls), "GetAppealOfStat")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetAppealOfStat))]
     public class Data_girls_girls_GetAppealOfStat
     {
 
@@ -286,7 +286,7 @@ namespace MBTIPersonalities
     /// Harmony patch for generating sales for a single.
     /// Applies the INFP bonus to handshake events.
     /// </summary>
-    [HarmonyPatch(typeof(singles), "GenerateSales")]
+    [HarmonyPatch(typeof(singles), nameof(singles.GenerateSales))]
     public class singles_GenerateSales
     {
         /// <summary>
@@ -316,7 +316,7 @@ namespace MBTIPersonalities
     /// Harmony patch for getting the fan count for a girl.
     /// Increases the fan count if the girl has the INFP MBTI type and it's a handshake event.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls.girls), "GetFan_Count", new Type[] { typeof(resources.fanType), typeof(resources.fanType), typeof(resources.fanType) })]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetFan_Count), new Type[] { typeof(resources.fanType), typeof(resources.fanType), typeof(resources.fanType) })]
     public class data_girls_girls_GetFan_Count_INFP
     {
 
@@ -343,7 +343,7 @@ namespace MBTIPersonalities
     /// Harmony patch for setting up a business proposal.
     /// Reduces the stamina cost if the girl has the ENFP MBTI type.
     /// </summary>
-    [HarmonyPatch(typeof(Business_Popup), "Set")]
+    [HarmonyPatch(typeof(Business_Popup), nameof(Business_Popup.Set))]
     public class Business_Popup_Set
     {
 
@@ -384,7 +384,7 @@ namespace MBTIPersonalities
     /// Harmony patch for accepting a business proposal.
     /// Reduces the stamina cost if the girl has the ENFP MBTI type.
     /// </summary>
-    [HarmonyPatch(typeof(business), "Accept")]
+    [HarmonyPatch(typeof(business), nameof(business.Accept))]
     public class business_Accept
     {
         /// <summary>
@@ -405,7 +405,7 @@ namespace MBTIPersonalities
     /// Harmony patch for calculating parameter changes during birthdays.
     /// Applies the INTJ bonus to stat growth.
     /// </summary>
-    [HarmonyPatch(typeof(Birthday_Popup), "DoParam")]
+    [HarmonyPatch(typeof(Birthday_Popup), nameof(Birthday_Popup.DoParam))]
     public class Birthday_Popup_DoParam
     {
         /// <summary>
@@ -443,7 +443,7 @@ namespace MBTIPersonalities
     /// Harmony patch for setting the value of a girl's parameter.
     /// Applies the INTJ bonus to stat growth.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls.girls.param), "setVal")]
+    [HarmonyPatch(typeof(data_girls.girls.param), nameof(data_girls.girls.param.setVal))]
     public class data_girls_girls_param_setVal
     {
         /// <summary>
@@ -466,7 +466,7 @@ namespace MBTIPersonalities
     /// Harmony patch for setting the stat value during a birthday.
     /// Applies the INTJ bonus to stat growth.
     /// </summary>
-    [HarmonyPatch(typeof(Birthday_Stat), "Set")]
+    [HarmonyPatch(typeof(Birthday_Stat), nameof(Birthday_Stat.Set))]
     public class Birthday_Stat_Set
     {
         /// <summary>
@@ -488,7 +488,7 @@ namespace MBTIPersonalities
     /// Harmony patch for reducing novelty decreases of a cafe dish.
     /// Applies the INTP bonus to dish novelty.
     /// </summary>
-    [HarmonyPatch(typeof(Cafes._cafe._dish), "AddNovelty")]
+    [HarmonyPatch(typeof(Cafes._cafe._dish), nameof(Cafes._cafe._dish.AddNovelty))]
     public class Cafes__cafe__dish_AddNovelty
     {
 
@@ -514,7 +514,7 @@ namespace MBTIPersonalities
     /// Harmony patch for calculating the duration of a girl's training.
     /// Reduces the duration if the girl has the ESTJ MBTI type.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls.girls.param), "GetDuration")]
+    [HarmonyPatch(typeof(data_girls.girls.param), nameof(data_girls.girls.param.GetDuration))]
     public class data_girls_girls_param_GetDuration
     {
         /// <summary>
@@ -536,7 +536,7 @@ namespace MBTIPersonalities
     /// Harmony patch for calculating the price coefficient for a theater.
     /// Increases the price coefficient based on the number of girls with the ESFP MBTI type.
     /// </summary>
-    [HarmonyPatch(typeof(Theaters._theater), "GetPriceCoeff")]
+    [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetPriceCoeff))]
     public class Theaters__theater_GetPriceCoeff
     {
         /// <summary>
@@ -566,7 +566,7 @@ namespace MBTIPersonalities
     /// Harmony patch for calculating team chemistry.
     /// Increases team chemistry based on the number of girls with the ESFJ MBTI type.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls), "GetTeamChemistry")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.GetTeamChemistry))]
     public class data_girls_GetTeamChemistry
     {
 
@@ -601,7 +601,7 @@ namespace MBTIPersonalities
     /// Harmony patch for generating results for the SSK event.
     /// Applies the ENFJ bonus to vote counts.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_SSK._SSK), "GenerateResults")]
+    [HarmonyPatch(typeof(SEvent_SSK._SSK), nameof(SEvent_SSK._SSK.GenerateResults))]
     public class SEvent_SSK__SSK_GenerateResults
     {
         /// <summary>
@@ -627,7 +627,7 @@ namespace MBTIPersonalities
     /// Harmony patch for getting the fan count for a girl during the SSK event.
     /// Increases the fan count if the girl has the ENFJ MBTI type.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls.girls), "GetFan_Count", new Type[] { typeof(resources.fanType) })]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetFan_Count), new Type[] { typeof(resources.fanType) })]
     public class data_girls_girls_GetFan_Count_ENFJ
     {
         /// <summary>
@@ -654,7 +654,7 @@ namespace MBTIPersonalities
     /// Harmony patch for getting the girl coefficient for a business proposal.
     /// Applies MBTI-related bonuses to the proposal.
     /// </summary>
-    [HarmonyPatch(typeof(business._proposal), "GetGirlCoeff")]
+    [HarmonyPatch(typeof(business._proposal), nameof(business._proposal.GetGirlCoeff))]
     public class Business__proposal_GetGirlCoeff
     {
         /// <summary>
@@ -683,7 +683,7 @@ namespace MBTIPersonalities
     /// Harmony patch for getting the average parameter value for a group of girls.
     /// Applies MBTI-related bonuses to the parameter value.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls), "GetAverageParam")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.GetAverageParam))]
     public class Data_girls_GetAverageParam
     {
         /// <summary>
@@ -713,7 +713,7 @@ namespace MBTIPersonalities
     /// Harmony patch for calculating parameters for a show's senbatsu.
     /// Applies MBTI-related bonuses to the parameters.
     /// </summary>
-    [HarmonyPatch(typeof(Shows._show), "SenbatsuCalcParam")]
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.SenbatsuCalcParam))]
     public class Shows__show_SenbatsuCalcParam
     {
         /// <summary>
@@ -743,7 +743,7 @@ namespace MBTIPersonalities
     /// Harmony patch for calculating parameters for a single's senbatsu.
     /// Applies MBTI-related bonuses to the parameters and handles risky marketing.
     /// </summary>
-    [HarmonyPatch(typeof(singles._single), "SenbatsuCalcParam")]
+    [HarmonyPatch(typeof(singles._single), nameof(singles._single.SenbatsuCalcParam))]
     public class Singles__single_SenbatsuCalcParam
     {
         /// <summary>
@@ -775,7 +775,7 @@ namespace MBTIPersonalities
     /// Harmony patch for getting the skill value for a concert song.
     /// Applies MBTI-related bonuses to the skill value.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._song), "GetSkillValue")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._song), nameof(SEvent_Concerts._concert._song.GetSkillValue))]
     public class SEvent_Concerts__concert__song_GetSkillValue
     {
         /// <summary>
@@ -803,7 +803,7 @@ namespace MBTIPersonalities
     /// Harmony patch for getting the skill value for a concert MC.
     /// Applies MBTI-related bonuses to the skill value.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), "GetSkillValue")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), nameof(SEvent_Concerts._concert._mc.GetSkillValue))]
     public class SEvent_Concerts__concert__mc_GetSkillValue
     {
         /// <summary>
@@ -830,7 +830,7 @@ namespace MBTIPersonalities
     /// <summary>
     /// Harmony patch to modify game parameters based on MBTI traits assigned to idols.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls.girls.param), "GetVal")]
+    [HarmonyPatch(typeof(data_girls.girls.param), nameof(data_girls.girls.param.GetVal))]
     public class data_girls_girls_param_GetVal
     {
         /// <summary>

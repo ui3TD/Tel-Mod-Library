@@ -42,7 +42,7 @@ namespace ModMenus
     /// The defaults are saved straight away, so mods read the menu's default even if the player
     /// never opens Mod Settings.
     /// </summary>
-    [HarmonyPatch(typeof(variables), "Awake")]
+    [HarmonyPatch(typeof(variables), nameof(variables.Awake))]
     public class variables_Awake
     {
         public static void Postfix()

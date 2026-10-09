@@ -12,7 +12,7 @@ namespace FanAttrition
     /// <summary>
     /// Modifies the fan gain from shows based on the MC's fame.
     /// </summary>
-    [HarmonyPatch(typeof(Shows._show), "SetSales")]
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.SetSales))]
     public class Shows__show_SetSales_MC
     {
         /// <summary>
@@ -73,7 +73,7 @@ namespace FanAttrition
     /// <summary>
     /// Implements fan attrition based on show fatigue.
     /// </summary>
-    [HarmonyPatch(typeof(Shows._show), "SetSales")]
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.SetSales))]
     public class Shows__show_SetSales_Fatigue
     {
         /// <summary>
@@ -88,7 +88,7 @@ namespace FanAttrition
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             CodeMatcher matcher = new CodeMatcher(instructions)
-                .MatchEndForward(new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(Shows._show), "GetAllNewFans"))))
+                .MatchEndForward(new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(Shows._show), nameof(Shows._show.GetAllNewFans)))))
                 .MatchEndForward(new CodeMatch(ci => ci.IsStloc()));
             if (matcher.IsInvalid)
             {
@@ -133,7 +133,7 @@ namespace FanAttrition
     /// <summary>
     /// Modifies the success chance for single PVs.
     /// </summary>
-    [HarmonyPatch(typeof(singles._param), "GetSuccessChance", new Type[] { typeof(Single_Marketing_Roll._result), typeof(int), typeof(singles._single) })]
+    [HarmonyPatch(typeof(singles._param), nameof(singles._param.GetSuccessChance), new Type[] { typeof(Single_Marketing_Roll._result), typeof(int), typeof(singles._single) })]
     public class singles__param_GetSuccessChance
     {
         /// <summary>
@@ -190,7 +190,7 @@ namespace FanAttrition
     /// <summary>
     /// Modifies the success modifier for Fake Scandal single types.
     /// </summary>
-    [HarmonyPatch(typeof(singles._param), "GetSuccessModifier", new Type[] { typeof(Single_Marketing_Roll._result), typeof(bool), typeof(int) })]
+    [HarmonyPatch(typeof(singles._param), nameof(singles._param.GetSuccessModifier), new Type[] { typeof(Single_Marketing_Roll._result), typeof(bool), typeof(int) })]
     public class singles__param_GetSuccessModifier
     {
         /// <summary>

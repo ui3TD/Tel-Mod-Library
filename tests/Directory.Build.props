@@ -14,7 +14,7 @@
 
 	<ItemGroup>
 		<!--Game assemblies are copied next to the tests so game types can load. Never commit them.-->
-		<Reference Include="Assembly-CSharp">
+		<Reference Include="Assembly-CSharp" Publicize="true">
 			<HintPath>$(dllDir)\Assembly-CSharp.dll</HintPath>
 		</Reference>
 		<Reference Include="Assembly-CSharp-firstpass">
@@ -58,7 +58,23 @@
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
 		<PackageReference Include="xunit" Version="2.9.2" />
 		<PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+		<!--The mods name game members with nameof, so they compile against a public copy of Assembly-CSharp-->
+		<PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" ExcludeAssets="contentFiles" />
 	</ItemGroup>
+
+	<!--Compile against the public copy only: no IgnoresAccessChecksTo or unsafe code, and the tests run
+	against the game's real Assembly-CSharp, copied over the public one after each build.-->
+	<Target Name="PublicizeNamesOnly" AfterTargets="Publicize">
+		<ItemGroup>
+			<Compile Remove="$(GeneratedIgnoresAccessChecksToFile)" />
+		</ItemGroup>
+		<PropertyGroup>
+			<AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+		</PropertyGroup>
+	</Target>
+	<Target Name="CopyRealGameAssembly" AfterTargets="Build">
+		<Copy SourceFiles="$(dllDir)\Assembly-CSharp.dll" DestinationFolder="$(OutDir)" />
+	</Target>
 
 	<ItemGroup>
 		<Compile Include="$(MSBuildThisFileDirectory)Common\**\*.cs" LinkBase="Common" />

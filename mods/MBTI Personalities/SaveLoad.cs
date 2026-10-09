@@ -11,7 +11,7 @@ namespace MBTIPersonalities
 {
     // Forget the previous game's types. Reset runs on every scene start (new game or load)
     // and inside LoadFunction; a new game restarts idol IDs at 0, so cached types would carry over.
-    [HarmonyPatch(typeof(data_girls), "Reset")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.Reset))]
     public class data_girls_Reset
     {
         public static void Postfix()
@@ -21,7 +21,7 @@ namespace MBTIPersonalities
     }
 
     // Load MBTI data
-    [HarmonyPatch(typeof(data_girls), "LoadFunction")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.LoadFunction))]
     public class data_girls_LoadFunction
     {
         public static void Postfix()
@@ -50,7 +50,7 @@ namespace MBTIPersonalities
 
 
     // Load MBTI from unique idol textures
-    [HarmonyPatch(typeof(data_girls_textures), "LoadAssetsData", new[] { typeof(string) })]
+    [HarmonyPatch(typeof(data_girls_textures), nameof(data_girls_textures.LoadAssetsData), new[] { typeof(string) })]
     public class data_girls_textures_LoadAssetsData
     {
         // After the game parses a body folder's params.json into a local, call Infix with it and that folder's body asset
@@ -58,7 +58,7 @@ namespace MBTIPersonalities
         {
             List<CodeInstruction> instructionList = new(instructions);
             CodeMatcher matcher = new CodeMatcher(instructionList).MatchEndForward(
-                new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(data_girls_textures), "ProcessInboundData"))),
+                new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(data_girls_textures), nameof(data_girls_textures.ProcessInboundData)))),
                 new CodeMatch(ci => ci.IsStloc()));
             if (matcher.IsInvalid)
             {

@@ -22,10 +22,13 @@
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
 		<PackageReference Include="UnityEngine.Modules" Version="2019.4.23" IncludeAssets="compile" />
+		<!--Compiles against a copy of Assembly-CSharp with every member public, so patch targets can use
+		nameof(...) and a renamed game member is a compile error. Runtime access still goes through reflection.-->
+		<PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" ExcludeAssets="contentFiles" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<Reference Include="Assembly-CSharp" private="false">
+		<Reference Include="Assembly-CSharp" private="false" Publicize="true">
 			<HintPath>$(dllDir)\Assembly-CSharp.dll</HintPath>
 		</Reference>
 		<Reference Include="Assembly-CSharp-firstpass" private="false">
@@ -54,6 +57,17 @@
 		<!--Release builds are what gets published: no warnings allowed-->
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 	</PropertyGroup>
+
+	<!--The publicizer also adds IgnoresAccessChecksTo and unsafe code, for accessing private members directly.
+	The mods only use the public copy for names, so leave both out: the DLLs stay as they were.-->
+	<Target Name="PublicizeNamesOnly" AfterTargets="Publicize">
+		<ItemGroup>
+			<Compile Remove="$(GeneratedIgnoresAccessChecksToFile)" />
+		</ItemGroup>
+		<PropertyGroup>
+			<AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+		</PropertyGroup>
+	</Target>
 
 	<Target Name="CleanModOutputDir" BeforeTargets="Clean" Condition="'$(DeployToGame)' == 'true'">
 		<RemoveDir Directories="$(ModOutputDir)\$(ModName)" Condition="Exists('$(ModOutputDir)\$(ModName)')" />

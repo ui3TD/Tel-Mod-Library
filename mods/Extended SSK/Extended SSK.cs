@@ -31,7 +31,7 @@ namespace ExtendedSSK
     /// Patches the GenerateResults method of SEvent_SSK._SSK class to extend the idol limit.
     /// </summary>
     [HarmonyPatch(typeof(SEvent_SSK._SSK))]
-    [HarmonyPatch("GenerateResults")]
+    [HarmonyPatch(nameof(SEvent_SSK._SSK.GenerateResults))]
     public static class SSK_GenerateResultsPatch
     {
         /// <summary>
@@ -78,12 +78,12 @@ namespace ExtendedSSK
     /// Patches the RecalcFameBonus method of SEvent_SSK._SSK class to adjust fame bonuses for extended idol count.
     /// </summary>
     [HarmonyPatch(typeof(SEvent_SSK._SSK))]
-    [HarmonyPatch("RecalcFameBonus")]
+    [HarmonyPatch(nameof(SEvent_SSK._SSK.RecalcFameBonus))]
     public static class SSK_RecalcFameBonusPatch
     {
         // The game's private GetFameBaseVal (fame for 1st place, by broadcast tier), as a typed delegate
         static readonly Func<SEvent_SSK._SSK, int> GetFameBaseVal =
-            AccessTools.MethodDelegate<Func<SEvent_SSK._SSK, int>>(AccessTools.Method(typeof(SEvent_SSK._SSK), "GetFameBaseVal"));
+            AccessTools.MethodDelegate<Func<SEvent_SSK._SSK, int>>(AccessTools.Method(typeof(SEvent_SSK._SSK), nameof(SEvent_SSK._SSK.GetFameBaseVal)));
 
         /// <summary>
         /// Postfix method to recalculate fame bonuses after the original method execution.
@@ -118,7 +118,7 @@ namespace ExtendedSSK
 
 
     [HarmonyPatch(typeof(girl_wishes))]
-    [HarmonyPatch("GenerateWish")]
+    [HarmonyPatch(nameof(girl_wishes.GenerateWish))]
     public static class girl_wishes_GenerateWish
     {
         public static void Postfix(data_girls.girls Girl)

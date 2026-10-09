@@ -50,7 +50,7 @@ namespace JSONLoadOrder
     }
 
     // Set load order before loading the game constants
-    [HarmonyPatch(typeof(Language), "_Load")]
+    [HarmonyPatch(typeof(Language), nameof(Language._Load))]
     public class Language__Load
     {
         // Also sort as soon as the mod is applied, right after the game loads its mods: some of the game's JSON

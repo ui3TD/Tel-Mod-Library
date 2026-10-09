@@ -11,7 +11,7 @@ namespace FanAttrition
     /// <summary>
     /// Modifies the fan tooltip to include attrition information.
     /// </summary>
-    [HarmonyPatch(typeof(tooltip_fans), "Render", new Type[] { })]
+    [HarmonyPatch(typeof(tooltip_fans), nameof(tooltip_fans.Render), new Type[] { })]
     public class tooltip_fans_Render
     {
         /// <summary>
@@ -279,7 +279,7 @@ namespace FanAttrition
     /// <summary>
     /// Sets up the structure for the modified fan tooltip.
     /// </summary>
-    [HarmonyPatch(typeof(tooltip_fans), "Start", new Type[] { })]
+    [HarmonyPatch(typeof(tooltip_fans), nameof(tooltip_fans.Start), new Type[] { })]
     public class tooltip_fans_Start
     {
         /// <summary>
@@ -290,7 +290,7 @@ namespace FanAttrition
         public static void Prefix(tooltip_fans __instance)
         {
             // An open delegate: Render passes the tooltip, so it never calls into an older, destroyed one
-            MethodInfo RenderFanChange = AccessTools.Method(typeof(tooltip_fans), "RenderFanChange", Type.EmptyTypes);
+            MethodInfo RenderFanChange = AccessTools.Method(typeof(tooltip_fans), nameof(tooltip_fans.RenderFanChange), Type.EmptyTypes);
             RenderFanChangeDelegate = AccessTools.MethodDelegate<Action<tooltip_fans>>(RenderFanChange);
 
             for (int i = 0; i < 15; i++)
@@ -317,7 +317,7 @@ namespace FanAttrition
     /// <summary>
     /// Modifies the rendering of fan change information in the tooltip.
     /// </summary>
-    [HarmonyPatch(typeof(tooltip_fans), "RenderFanChange", new Type[] { })]
+    [HarmonyPatch(typeof(tooltip_fans), nameof(tooltip_fans.RenderFanChange), new Type[] { })]
     public class tooltip_fans_RenderFanChange
     {
         /// <summary>

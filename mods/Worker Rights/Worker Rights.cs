@@ -16,7 +16,7 @@ namespace WorkerRights
     }
 
     // Staff cannot be fired using scandal points within the first month
-    [HarmonyPatch(typeof(staff._staff), "CanFire")]
+    [HarmonyPatch(typeof(staff._staff), nameof(staff._staff.CanFire))]
     public class staff__staff_CanFire
     {
         public static void Postfix(staff._staff __instance, ref bool __result)
@@ -31,7 +31,7 @@ namespace WorkerRights
     // Never lower a larger expectation from vanilla or another mod
     // Why twice DEF_SALARY: the game's GetExpectedSalary_Total clamps an idol's average earnings to between
     // half and double this base. A new idol earns nothing, so she expects half of it: exactly DEF_SALARY.
-    [HarmonyPatch(typeof(data_girls.girls), "GetExpectedSalary")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetExpectedSalary))]
     public class data_girls_girls_GetExpectedSalary
     {
         public static void Postfix(ref int __result, data_girls.girls __instance)
@@ -45,7 +45,7 @@ namespace WorkerRights
 
     //In hard and normal mode, penalty for low salary satisfaction increased 10x
     // Vanilla's own salary adjustment is a no-op (it discards the result of AddDays), so apply the full penalty here
-    [HarmonyPatch(typeof(data_girls.girls), "Graduation_Date_Update")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.Graduation_Date_Update))]
     public class data_girls_girls_Graduation_Date_Update
     {
         public static void Postfix(data_girls.girls __instance)
@@ -75,7 +75,7 @@ namespace WorkerRights
 
     // In hard mode, idols at 10 fame will expect at least 10% of their earnings as salary
     // Never lower a larger expectation from vanilla or another mod
-    [HarmonyPatch(typeof(data_girls.girls), "GetExpectedSalary_Total")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetExpectedSalary_Total))]
     public class data_girls_girls_GetExpectedSalary_Total
     {
         public static void Postfix(ref long __result, data_girls.girls __instance)
@@ -97,7 +97,7 @@ namespace WorkerRights
 
 
     // Default salary set to 20000
-    [HarmonyPatch(typeof(data_girls), "GenerateGirl")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.GenerateGirl))]
     public class data_girls_GenerateGirl
     {
         public static void Postfix(ref data_girls.girls __result)

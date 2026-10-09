@@ -47,7 +47,7 @@ namespace PromotionTierTweaks
 
     // Level 3 requires 6 internet episodes, level 4 requires 6000 internet show viewers and 6 radio episodes, level 6 requires 6 tv episodes,
     // level 9 Promotion requires 3 idols with 9 fame instead of 5
-    [HarmonyPatch(typeof(Activities), "GetMaxLevel_Promotion")]
+    [HarmonyPatch(typeof(Activities), nameof(Activities.GetMaxLevel_Promotion))]
     public class Activities_GetMaxLevel_Promotion
     {       
         public static bool Running;
@@ -88,7 +88,7 @@ namespace PromotionTierTweaks
 
     // While the promotion level is worked out, a cancelled show that aired episodes still counts as a launched show,
     // so a show that ran its 6 episodes meets its tier even after it's cancelled
-    [HarmonyPatch(typeof(Shows), "CountShowsWithType")]
+    [HarmonyPatch(typeof(Shows), nameof(Shows.CountShowsWithType))]
     public class Shows_CountShowsWithType
     {
         public static void Postfix(ref int __result, Shows._param._media_type type)
@@ -102,7 +102,7 @@ namespace PromotionTierTweaks
 
     // Level 3 requires 6 internet episodes, level 4 requires 6000 internet show viewers and 6 radio episodes, level 6 requires 6 tv episodes,
     // level 9 Promotion requires 3 idols with 9 fame instead of 5
-    [HarmonyPatch(typeof(Activities), "GetPromotionDescription")]
+    [HarmonyPatch(typeof(Activities), nameof(Activities.GetPromotionDescription))]
     public class Activities_GetPromotionDescription
     {
         private static string GenerateRequirementString(string label, long current, long required, string clr)

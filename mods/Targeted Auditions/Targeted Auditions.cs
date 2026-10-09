@@ -14,7 +14,7 @@ namespace CustomAuditions
     /// Patches the Popup_Audition class to allow scrolling cards in the audition popup.
     /// </summary>
     // Set up audition popup to allow scrolling cards
-    [HarmonyPatch(typeof(Popup_Audition), "Start")]
+    [HarmonyPatch(typeof(Popup_Audition), nameof(Popup_Audition.Start))]
     public class Popup_Audition_Start
     {
 
@@ -69,7 +69,7 @@ namespace CustomAuditions
     /// <summary>
     /// Patches the Auditions class to set variables at the start of an audition.
     /// </summary>
-    [HarmonyPatch(typeof(Auditions), "GenerateGirls")]
+    [HarmonyPatch(typeof(Auditions), nameof(Auditions.GenerateGirls))]
     public class Auditions_GenerateGirls
     {
         /// <summary>
@@ -132,7 +132,7 @@ namespace CustomAuditions
     /// <summary>
     /// Patches the data_girls class to apply girl sexuality.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls), "GenerateGirl")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.GenerateGirl))]
     public class data_girls_GenerateGirl
     {
         /// <summary>
@@ -180,7 +180,7 @@ namespace CustomAuditions
     /// <summary>
     /// Patches the data_girls class to apply custom girl stats.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls), "GenerateParams")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.GenerateParams))]
     public static class data_girls_GenerateParams
     {
         /// <summary>
@@ -263,7 +263,7 @@ namespace CustomAuditions
     /// <summary>
     /// Patches the data_girls.girls class to apply age limits.
     /// </summary>
-    [HarmonyPatch(typeof(data_girls.girls), "GenerateBirthday")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GenerateBirthday))]
     public class data_girls_girls_GenerateBirthday
     {
         public static void Postfix(ref data_girls.girls __instance)
@@ -360,7 +360,7 @@ namespace CustomAuditions
 
         // The game's private static list of every portrait asset
         private static readonly AccessTools.FieldRef<List<data_girls_textures._textureAsset>> TextureAssets =
-            AccessTools.StaticFieldRefAccess<List<data_girls_textures._textureAsset>>(AccessTools.Field(typeof(data_girls_textures), "textureAssets"));
+            AccessTools.StaticFieldRefAccess<List<data_girls_textures._textureAsset>>(AccessTools.Field(typeof(data_girls_textures), nameof(data_girls_textures.textureAssets)));
 
         public static bool HasUnusedEligibleBody()
         {

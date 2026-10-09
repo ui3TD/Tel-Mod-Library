@@ -12,7 +12,7 @@ using static StarSigns.StarSigns;
 
 namespace StarSigns
 {
-    [HarmonyPatch(typeof(Profile_Popup), "RenderTab_Extras")]
+    [HarmonyPatch(typeof(Profile_Popup), nameof(Profile_Popup.RenderTab_Extras))]
     public class Profile_Popup_RenderTab_Extras
     {
         [HarmonyPriority(Priority.LowerThanNormal)]
@@ -34,7 +34,7 @@ namespace StarSigns
 
 
     // Show on audition card
-    [HarmonyPatch(typeof(Audition_Data_Card), "Show")]
+    [HarmonyPatch(typeof(Audition_Data_Card), nameof(Audition_Data_Card.Show))]
     public class Audition_Data_Card_Show
     {
         public static void Postfix(ref Audition_Data_Card __instance)
@@ -50,7 +50,7 @@ namespace StarSigns
     }
 
     // Show on audition card
-    [HarmonyPatch(typeof(Audition_Data_Card), "Show_Fast")]
+    [HarmonyPatch(typeof(Audition_Data_Card), nameof(Audition_Data_Card.Show_Fast))]
     public class Audition_Data_Card_Show_Fast
     {
         public static void Postfix(ref Audition_Data_Card __instance)
@@ -67,7 +67,7 @@ namespace StarSigns
 
 
     // Dynamic relationships changes
-    [HarmonyPatch(typeof(Relationships), "Do_Dynamic")]
+    [HarmonyPatch(typeof(Relationships), nameof(Relationships.Do_Dynamic))]
     public class Relationships_Do_Dynamic
     {
         public static void Postfix()
@@ -131,7 +131,7 @@ namespace StarSigns
 
 
     // Dynamic relationships changes
-    [HarmonyPatch(typeof(Relationships._relationship), "Add")]
+    [HarmonyPatch(typeof(Relationships._relationship), nameof(Relationships._relationship.Add))]
     public class Relationships__relationship_Add
     {
         public static void Prefix(Relationships._relationship __instance, ref float val)
@@ -168,7 +168,7 @@ namespace StarSigns
     }
 
     // apply leader bonus to Leo
-    [HarmonyPatch(typeof(data_girls.girls.param), "GetVal")]
+    [HarmonyPatch(typeof(data_girls.girls.param), nameof(data_girls.girls.param.GetVal))]
     public class data_girls_girls_param_GetVal
     {
         public static void Postfix(ref float __result, data_girls.girls.param __instance)
@@ -185,7 +185,7 @@ namespace StarSigns
     }
 
     // patch bully chance
-    [HarmonyPatch(typeof(Relationships._clique), "AddBulliedGirl")]
+    [HarmonyPatch(typeof(Relationships._clique), nameof(Relationships._clique.AddBulliedGirl))]
     public class Relationships__clique_AddBulliedGirl
     {
         public static bool Prefix(data_girls.girls Girl)
@@ -202,7 +202,7 @@ namespace StarSigns
     }
 
     // patch push jealousy
-    [HarmonyPatch(typeof(Pushes), "OnNewDay")]
+    [HarmonyPatch(typeof(Pushes), nameof(Pushes.OnNewDay))]
     public class Pushes_OnNewDay
     {
         [HarmonyPriority(Priority.First)]
@@ -220,7 +220,7 @@ namespace StarSigns
     }
 
     // apply aquarius bonus
-    [HarmonyPatch(typeof(data_girls.girls), "AddRelationship")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.AddRelationship))]
     public class data_girls_girls_AddRelationship
     {
         public static void Prefix(data_girls.girls __instance, ref float val)
@@ -239,7 +239,7 @@ namespace StarSigns
 
 
     // Load starsign from unique idol textures
-    [HarmonyPatch(typeof(data_girls_textures), "LoadAssetsData", new[] { typeof(string) })]
+    [HarmonyPatch(typeof(data_girls_textures), nameof(data_girls_textures.LoadAssetsData), new[] { typeof(string) })]
     public class data_girls_textures_LoadAssetsData
     {
         // After the game parses a body folder's params.json into a local, call Infix with it and that folder's body asset
@@ -247,7 +247,7 @@ namespace StarSigns
         {
             List<CodeInstruction> instructionList = new(instructions);
             CodeMatcher matcher = new CodeMatcher(instructionList).MatchEndForward(
-                new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(data_girls_textures), "ProcessInboundData"))),
+                new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(data_girls_textures), nameof(data_girls_textures.ProcessInboundData)))),
                 new CodeMatch(ci => ci.IsStloc()));
             if (matcher.IsInvalid)
             {
@@ -288,7 +288,7 @@ namespace StarSigns
     }
 
     // Load texture on generation
-    [HarmonyPatch(typeof(data_girls), "GenerateGirl")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.GenerateGirl))]
     public class data_girls_GenerateGirl
     {
         public static void Postfix(ref data_girls.girls __result, bool genTextures)

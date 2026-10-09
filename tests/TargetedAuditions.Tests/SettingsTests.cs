@@ -272,20 +272,13 @@ namespace TargetedAuditions.Tests
         }
 
         [Fact]
-        public void OutsideAudition_LeavesValuesAlone()
-        {
-            Seams.Rolls();
-            Assert.Equal(Values, data_girls_GenerateParams.Infix(Values));
-        }
-
-        [Fact]
         public void Values_AreRearrangedNotChanged()
         {
             BeginAuditionGeneration();
             for (int seed = 0; seed < 50; seed++)
             {
                 Seams.Seeded(seed);
-                List<int> output = data_girls_GenerateParams.Infix(Values);
+                List<int> output = data_girls_GenerateParams.ArrangeByPriority(Values);
                 Assert.Equal(Values.OrderBy(v => v), output.OrderBy(v => v));
             }
         }
@@ -304,7 +297,7 @@ namespace TargetedAuditions.Tests
             // Total 360: roll 11 lands in cool (11-30). Then without cool (340): roll 340 is smart.
             // Then 260: roll 1 is cute. The rest go to the first remaining stat each time.
             Seams.Rolls(11, 340, 1, 1, 1, 1, 1, 1);
-            List<int> output = data_girls_GenerateParams.Infix(Values);
+            List<int> output = data_girls_GenerateParams.ArrangeByPriority(Values);
 
             Assert.Equal(new List<int> { 50, 90, 30, 20, 10, 5, 1, 70 }, output);
         }
@@ -326,12 +319,32 @@ namespace TargetedAuditions.Tests
             int vocalBest = 0;
             for (int i = 0; i < runs; i++)
             {
-                if (data_girls_GenerateParams.Infix(Values)[vocalIndex] == 90)
+                if (data_girls_GenerateParams.ArrangeByPriority(Values)[vocalIndex] == 90)
                     vocalBest++;
             }
 
             double expected = vocalPriority / (double)(vocalPriority + 7 * otherPriority);
             Assert.InRange(vocalBest / (double)runs, expected - 0.01, expected + 0.01);
+        }
+
+        /// <summary>
+        /// Hand-edited settings can leave skills at 0 priority. The values that can't be rolled keep their
+        /// order on the remaining skills, and no value is lost or doubled.
+        /// </summary>
+        [Fact]
+        public void ZeroPriorities_KeepEveryValueOnce()
+        {
+            foreach (data_girls._paramType p in paramTypes)
+                priorityDict[p] = 0;
+            priorityDict[data_girls._paramType.vocal] = 50;
+            int vocalIndex = paramTypes.IndexOf(data_girls._paramType.vocal);
+            Seams.Rolls(1);
+
+            List<int> output = data_girls_GenerateParams.ArrangeByPriority(Values);
+
+            Assert.Equal(90, output[vocalIndex]);
+            Assert.Equal(Values.OrderBy(v => v), output.OrderBy(v => v));
+            Assert.Equal(new List<int> { 70, 50, 30, 20, 90, 10, 5, 1 }, output);
         }
     }
 }

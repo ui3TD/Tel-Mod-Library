@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using UnityEngine;
 using Xunit;
+using Object = UnityEngine.Object;
 using static staticVars._playerData;
 
 namespace FanAttrition.Tests
@@ -406,7 +408,7 @@ namespace FanAttrition.Tests
     }
 
     /// <summary>
-    /// Every day the fan base loses the churn worked out the day before, and works out the next day's.
+    /// Every day the fan base loses a day of churn, worked out from the fans it has that day.
     /// </summary>
     public class ChurnTests
     {
@@ -419,39 +421,38 @@ namespace FanAttrition.Tests
         /// </summary>
         [Theory]
         [InlineData(_difficulty.normal, 0, 0)]
-        [InlineData(_difficulty.normal, 1000, -3)]
-        [InlineData(_difficulty.normal, 100000, -68)]
-        [InlineData(_difficulty.normal, 500000, -226)]
-        [InlineData(_difficulty.hard, 0, -2)]
-        [InlineData(_difficulty.hard, 1000, -6)]
-        [InlineData(_difficulty.hard, 100000, -172)]
-        [InlineData(_difficulty.hard, 500000, -647)]
+        [InlineData(_difficulty.normal, 1000, 3)]
+        [InlineData(_difficulty.normal, 100000, 68)]
+        [InlineData(_difficulty.normal, 500000, 226)]
+        [InlineData(_difficulty.hard, 0, 2)]
+        [InlineData(_difficulty.hard, 1000, 6)]
+        [InlineData(_difficulty.hard, 100000, 172)]
+        [InlineData(_difficulty.hard, 500000, 647)]
         public void Churn_GrowsWithFans(_difficulty difficulty, long fans, long expected)
         {
             TestGame.SetDifficulty(difficulty);
             TestGame.FanBase(fans);
 
-            Utility.DailyFanChurn();
-
-            Assert.Equal(expected, resources.FansChange);
+            Assert.Equal(expected, Utility.GetDailyChurn());
         }
 
+        /// <summary>
+        /// Fixed in 1.4.0: the churn was worked out one day and taken the next.
+        /// </summary>
         [Fact]
-        public void Churn_IsLostTheNextDay()
+        public void Churn_IsLostTheSameDay()
         {
             TestGame.FanBase(100000);
 
             Utility.DailyFanChurn();
-            Assert.Equal(100000, FansTotal());
 
-            Utility.DailyFanChurn();
             Assert.Equal(100000 - 68, FansTotal());
-            Assert.Equal(new[] { (resources.type.fans, 0L), (resources.type.fans, -68L) }, Seams.ResourcesAdded);
+            Assert.Equal(new[] { (resources.type.fans, -68L) }, Seams.ResourcesAdded);
         }
 
         /// <summary>
-        /// The next day's churn comes from the fan base after today's loss. 10,001 fans churn 12.0009 a day,
-        /// rounded up to 13; the 9,988 left churn 11.99, rounded up to 12.
+        /// Each day's churn comes from that day's fan base. 10,001 fans churn 12.0009 a day, rounded up
+        /// to 13; the 9,988 left churn 11.99, rounded up to 12.
         /// </summary>
         [Fact]
         public void Churn_FollowsTheShrinkingFanBase()
@@ -459,11 +460,10 @@ namespace FanAttrition.Tests
             TestGame.FanBase(10001);
 
             Utility.DailyFanChurn();
-            Assert.Equal(-13, resources.FansChange);
+            Assert.Equal(10001 - 13, FansTotal());
 
             Utility.DailyFanChurn();
-            Assert.Equal(10001 - 13, FansTotal());
-            Assert.Equal(-12, resources.FansChange);
+            Assert.Equal(10001 - 13 - 12, FansTotal());
         }
 
         [Fact]
@@ -475,59 +475,130 @@ namespace FanAttrition.Tests
             Utility.DailyFanChurn();
             Utility.DailyFanChurn();
 
+            Assert.Equal(0, Utility.GetDailyChurn());
             Assert.Equal(100000, FansTotal());
-            Assert.Equal(0, resources.FansChange);
             Assert.Empty(Seams.ResourcesAdded);
         }
 
         /// <summary>
-        /// The game sets FansChange to 0 at the start of every day; the mod removes that, so the churn
-        /// survives to the next day.
+        /// Fixed in 1.4.0: the churn was kept in the game's static FansChange, which nothing resets when
+        /// another save is loaded in the same session, so the first day after a load took the old save's churn.
         /// </summary>
         [Fact]
-        public void NewDay_NoLongerClearsTheChurn()
+        public void Churn_IgnoresFansChange()
         {
-            MethodInfo onNewDay = AccessTools.Method(typeof(resources), nameof(resources.OnNewDay));
-            FieldInfo fansChange = AccessTools.Field(typeof(resources), nameof(resources.FansChange));
-            List<CodeInstruction> game = PatchProcessor.GetOriginalInstructions(onNewDay);
-            List<CodeInstruction> mod = resources_OnNewDay.Transpiler(PatchProcessor.GetOriginalInstructions(onNewDay)).ToList();
+            TestGame.FanBase(100000);
+            resources.FansChange = -5000;
 
-            // FansChange = 0L is the day's only write to it, and all three of its instructions go
-            int store = game.FindIndex(i => i.opcode == OpCodes.Stsfld && Equals(i.operand, fansChange));
-            Assert.Single(game, i => Equals(i.operand, fansChange));
-            Assert.Equal(new[] { OpCodes.Ldc_I4_0, OpCodes.Conv_I8, OpCodes.Stsfld }, game.Skip(store - 2).Take(3).Select(i => i.opcode));
+            Utility.DailyFanChurn();
 
-            Assert.Equal(game.Count, mod.Count);
-            for (int i = 0; i < game.Count; i++)
-            {
-                if (i >= store - 2 && i <= store)
-                {
-                    Assert.Equal(OpCodes.Nop, mod[i].opcode);
-                }
-                else
-                {
-                    Assert.Equal(game[i].opcode, mod[i].opcode);
-                    Assert.Equal(game[i].operand, mod[i].operand);
-                }
-            }
+            Assert.Equal(100000 - 68, FansTotal());
         }
 
         /// <summary>
-        /// Each new day recounts the fans from every source for the tooltip, then takes the churn.
+        /// The game's own start-of-day reset of FansChange is left in.
         /// </summary>
         [Fact]
-        public void NewDay_CountsFansThenTakesChurn()
+        public void NewDay_LeavesTheGamesCodeAlone()
+        {
+            Assert.Null(AccessTools.Method(typeof(resources_OnNewDay), "Transpiler"));
+        }
+
+        [Fact]
+        public void NewDay_TakesChurn()
         {
             TestGame.FanBase(100000);
-            resources.FansChange = -68;
-            TestGame.Business.ActiveProposals.Add(new business.active_proposal { Type = business._type.ad, Fans_per_week = 300 });
 
             resources_OnNewDay.Postfix();
 
-            Assert.Equal(300, Utility.adFans);
             Assert.Equal(100000 - 68, FansTotal());
-            Assert.Equal(-68, resources.FansChange);
         }
+    }
+
+    /// <summary>
+    /// The show transpilers find their place by what the game's code does, and leave the code alone with an
+    /// error in the log if they can't.
+    /// </summary>
+    public class TranspilerTests
+    {
+        public TranspilerTests()
+        {
+            Debug.unityLogger.logHandler = new Log();
+            Log.Messages.Clear();
+        }
+
+        private static List<CodeInstruction> SetSales() =>
+            PatchProcessor.GetOriginalInstructions(AccessTools.Method(typeof(Shows._show), "SetSales"));
+
+        private static int CallTo(List<CodeInstruction> code, System.Type patch) =>
+            code.FindIndex(i => i.Calls(AccessTools.Method(patch, "Infix")));
+
+        /// <summary>
+        /// Right after sales.sales = (long)num6, num6 becomes Infix(this, num6).
+        /// </summary>
+        [Fact]
+        public void Mc_BoostsTheAudienceAfterItsStored()
+        {
+            List<CodeInstruction> mod = Shows__show_SetSales_MC.Transpiler(SetSales()).ToList();
+            int call = CallTo(mod, typeof(Shows__show_SetSales_MC));
+
+            Assert.Equal(SetSales().Count + 4, mod.Count);
+            Assert.True(mod[call - 3].StoresField(AccessTools.Field(typeof(singles._single._sales), nameof(singles._single._sales.sales))));
+            Assert.Equal(OpCodes.Conv_I8, mod[call - 4].opcode);
+            Assert.True(mod[call - 5].IsLdloc());
+            Assert.Equal(OpCodes.Ldarg_0, mod[call - 2].opcode);
+            Assert.Equal(mod[call - 5].opcode, mod[call - 1].opcode);
+            Assert.Equal(mod[call - 5].operand, mod[call - 1].operand);
+            Assert.Equal(OpCodes.Stloc_S, mod[call + 1].opcode);
+            Assert.Equal(mod[call - 5].operand, mod[call + 1].operand);
+            Assert.Empty(Log.Messages);
+        }
+
+        /// <summary>
+        /// num2 = Infix((... + GetAllNewFans()) / 12, this).
+        /// </summary>
+        [Fact]
+        public void Fatigue_ChangesTheBaseAudienceBeforeItsStored()
+        {
+            List<CodeInstruction> mod = Shows__show_SetSales_Fatigue.Transpiler(SetSales()).ToList();
+            int call = CallTo(mod, typeof(Shows__show_SetSales_Fatigue));
+            int newFans = mod.FindIndex(i => i.Calls(AccessTools.Method(typeof(Shows._show), "GetAllNewFans")));
+
+            Assert.Equal(SetSales().Count + 2, mod.Count);
+            Assert.InRange(newFans, 0, call);
+            Assert.Equal(OpCodes.Ldarg_0, mod[call - 1].opcode);
+            Assert.Equal(OpCodes.Stloc_1, mod[call + 1].opcode);
+            Assert.DoesNotContain(mod.Skip(newFans).Take(call - newFans), i => i.IsStloc());
+            Assert.Empty(Log.Messages);
+        }
+
+        /// <summary>
+        /// On code that doesn't match, as after a game update, the code is left as it was and the log says so.
+        /// </summary>
+        [Fact]
+        public void NotFound_LeavesTheCodeAndLogs()
+        {
+            List<CodeInstruction> other = PatchProcessor.GetOriginalInstructions(AccessTools.Method(typeof(resources), nameof(resources.OnNewDay)));
+
+            Assert.Same(other, Shows__show_SetSales_MC.Transpiler(other));
+            Assert.Same(other, Shows__show_SetSales_Fatigue.Transpiler(other));
+            Assert.Equal(2, Log.Messages.Count);
+            Assert.All(Log.Messages, m => Assert.StartsWith("[Fan Attrition] Couldn't find", m));
+        }
+    }
+
+    /// <summary>
+    /// Unity's logger writes through native code; the transpilers log when they can't find their place.
+    /// </summary>
+    public class Log : ILogHandler
+    {
+        public static readonly List<string> Messages = new();
+
+        public void LogFormat(LogType logType, Object context, string format, params object[] args) =>
+            Messages.Add(string.Format(format, args));
+
+        public void LogException(System.Exception exception, Object context) =>
+            Messages.Add(exception.ToString());
     }
 
     /// <summary>

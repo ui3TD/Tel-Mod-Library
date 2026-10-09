@@ -18,38 +18,32 @@ namespace FanAttrition
         /// <summary>
         /// Transpiler method to inject custom logic for fan calculation.
         /// </summary>
+        /// <remarks>
+        /// The game stores each fan type's audience (num6) in sales.sales (as a long) and then uses it only to work
+        /// out that fan type's new fans. Boosting it right after that store boosts new fans but not the audience.
+        /// </remarks>
         /// <param name="instructions">The original IL instructions.</param>
         /// <returns>Modified IL instructions.</returns>
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            object num6Operand = null;
-            bool breakFlag = false;
-            for (int i = 0; i < instructionList.Count; i++)
+            CodeMatcher matcher = new CodeMatcher(instructions).MatchEndForward(
+                new CodeMatch(ci => ci.IsLdloc()),
+                new CodeMatch(OpCodes.Conv_I8),
+                new CodeMatch(ci => ci.StoresField(AccessTools.Field(typeof(singles._single._sales), nameof(singles._single._sales.sales)))));
+            if (matcher.IsInvalid)
             {
-                if (breakFlag && instructionList[i].opcode == OpCodes.Stloc_S && instructionList[i].operand is LocalVariableInfo localVariable && localVariable.LocalIndex == 12)
-                {
-                    index = i;
-                    break;
-                }
-                if (instructionList[i].opcode == OpCodes.Stloc_S && instructionList[i].operand is LocalVariableInfo localVariable2 && localVariable2.LocalIndex == 11)
-                {
-                    num6Operand = instructionList[i].operand;
-                    breakFlag = true;
-                }
+                LogPatchNotFound("the audience store for the MC bonus");
+                return instructions;
             }
 
-            if (index != -1)
-            {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldarg_0));
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Ldloc_S, num6Operand));
-                instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Shows__show_SetSales_MC), "Infix")));
-                instructionList.Insert(index + 4, new CodeInstruction(OpCodes.Stloc_S, num6Operand));
-            }
+            CodeInstruction loadAudience = matcher.InstructionAt(-2);
+            matcher.Advance(1).Insert(
+                new CodeInstruction(OpCodes.Ldarg_0),
+                new CodeInstruction(loadAudience.opcode, loadAudience.operand),
+                new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Shows__show_SetSales_MC), nameof(Infix))),
+                StoreTo(loadAudience));
 
-            return instructionList.AsEnumerable();
+            return matcher.InstructionEnumeration();
         }
 
         /// <summary>
@@ -85,43 +79,37 @@ namespace FanAttrition
         /// <summary>
         /// Transpiler method to inject custom logic for fan attrition.
         /// </summary>
+        /// <remarks>
+        /// The game works out the base audience (num2) as (... + GetAllNewFans()) / 12 and stores it. The fatigue
+        /// is applied to that value on the stack, just before the store.
+        /// </remarks>
         /// <param name="instructions">The original IL instructions.</param>
         /// <returns>Modified IL instructions.</returns>
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            for (int i = 0; i < instructionList.Count; i++)
+            CodeMatcher matcher = new CodeMatcher(instructions)
+                .MatchEndForward(new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(Shows._show), "GetAllNewFans"))))
+                .MatchEndForward(new CodeMatch(ci => ci.IsStloc()));
+            if (matcher.IsInvalid)
             {
-                if (instructionList[i].opcode == OpCodes.Stloc_1)
-                {
-                    index = i;
-                }
-                if (instructionList[i].opcode == OpCodes.Stloc_2)
-                {
-                    break;
-                }
+                LogPatchNotFound("the base audience for show fatigue");
+                return instructions;
             }
 
-            if (index != -1)
-            {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldarg_0));
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Ldloc_1));
-                instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Shows__show_SetSales_Fatigue), "Infix")));
-                instructionList.Insert(index + 4, new CodeInstruction(OpCodes.Stloc_1));
-            }
+            matcher.Insert(
+                new CodeInstruction(OpCodes.Ldarg_0),
+                new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Shows__show_SetSales_Fatigue), nameof(Infix))));
 
-            return instructionList.AsEnumerable();
+            return matcher.InstructionEnumeration();
         }
 
         /// <summary>
         /// Calculates the modified fan count based on show fatigue.
         /// </summary>
-        /// <param name="__this">The current show instance.</param>
         /// <param name="num2">The original fan count.</param>
+        /// <param name="__this">The current show instance.</param>
         /// <returns>The modified fan count.</returns>
-        public static float Infix(Shows._show __this, float num2)
+        public static float Infix(float num2, Shows._show __this)
         {
             if (__this.medium != null && __this.medium.media_type == Shows._param._media_type.internet)
             {
@@ -243,46 +231,15 @@ namespace FanAttrition
     /// <summary>
     /// Implements daily fan attrition.
     /// </summary>
-    [HarmonyPatch(typeof(resources), "OnNewDay")]
+    [HarmonyPatch(typeof(resources), nameof(resources.OnNewDay))]
     public class resources_OnNewDay
     {
         /// <summary>
-        /// Postfix method to update fan count and apply daily fan churn.
+        /// Postfix method to apply daily fan churn.
         /// </summary>
         public static void Postfix()
         {
-            UpdateFanCount();
             DailyFanChurn();
-        }
-
-        /// <summary>
-        /// Transpiler method to modify the original fan change calculation.
-        /// </summary>
-        /// <param name="instructions">The original IL instructions.</param>
-        /// <returns>Modified IL instructions.</returns>
-        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-        {
-            List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            for (int i = 0; i < instructionList.Count; i++)
-            {
-                if (instructionList[i].opcode == OpCodes.Stsfld && (FieldInfo)instructionList[i].operand == AccessTools.Field(typeof(resources), "FansChange"))
-                {
-                    //Debug.Log($"Fan Attrition Transpiler: FansChange code found at {i}");
-                    index = i;
-                    break;
-                }
-            }
-
-            if (index != -1)
-            {
-                instructionList[index].opcode = OpCodes.Nop;
-                instructionList[index - 1].opcode = OpCodes.Nop;
-                instructionList[index - 2].opcode = OpCodes.Nop;
-            }
-
-            return instructionList.AsEnumerable();
         }
     }
 
@@ -298,7 +255,7 @@ namespace FanAttrition
         public static long radioFans = 0;
         public static long netFans = 0;
         public static long cafeFans = 0;
-        public static Action RenderFanChangeDelegate;
+        public static Action<tooltip_fans> RenderFanChangeDelegate;
 
         private const float CHURN_POWER_HARD = 0.83f;
         private const float CHURN_COEFF_HARD = 0.012f;
@@ -332,13 +289,24 @@ namespace FanAttrition
         /// </summary>
         public static void DailyFanChurn()
         {
-            if(staticVars.IsEasy())
-                return;
+            long churn = GetDailyChurn();
+            if (churn > 0)
+            {
+                resources.Add(resources.type.fans, -churn);
+            }
+        }
 
-            long fansTotal;
-
-            resources.Add(resources.type.fans, resources.FansChange);
-            fansTotal = resources.GetFansTotal();
+        /// <summary>
+        /// Works out how many fans the agency loses in a day at its current fan count.
+        /// </summary>
+        /// <remarks>
+        /// It's worked out from the current fans whenever it's needed rather than stored, so a value from
+        /// another save can't carry over after a load.
+        /// </remarks>
+        /// <returns>The number of fans lost, 0 in Easy mode.</returns>
+        public static long GetDailyChurn()
+        {
+            long fansTotal = resources.GetFansTotal();
 
             float churn = staticVars.PlayerData.Difficulty switch
             {
@@ -347,14 +315,31 @@ namespace FanAttrition
                 _ => 0f
             };
 
-            if (churn > 0f)
-            {
-                resources.FansChange = -(long)Mathf.Ceil(churn);
-            }
-            else
-            {
-                resources.FansChange = 0L;
-            }
+            return churn > 0f ? (long)Mathf.Ceil(churn) : 0L;
+        }
+
+        /// <summary>
+        /// Logs that a transpiler couldn't find the code it changes, which leaves that change out.
+        /// </summary>
+        /// <param name="what">What the transpiler looked for.</param>
+        public static void LogPatchNotFound(string what)
+        {
+            Debug.LogError("[Fan Attrition] Couldn't find " + what + " in the game's code, so that change is off. The game may have been updated.");
+        }
+
+        /// <summary>
+        /// Makes the instruction that stores into the local variable an ldloc instruction reads.
+        /// </summary>
+        /// <param name="load">An ldloc instruction.</param>
+        /// <returns>The matching stloc instruction.</returns>
+        public static CodeInstruction StoreTo(CodeInstruction load)
+        {
+            if (load.opcode == OpCodes.Ldloc_0) return new CodeInstruction(OpCodes.Stloc_0);
+            if (load.opcode == OpCodes.Ldloc_1) return new CodeInstruction(OpCodes.Stloc_1);
+            if (load.opcode == OpCodes.Ldloc_2) return new CodeInstruction(OpCodes.Stloc_2);
+            if (load.opcode == OpCodes.Ldloc_3) return new CodeInstruction(OpCodes.Stloc_3);
+            if (load.opcode == OpCodes.Ldloc_S) return new CodeInstruction(OpCodes.Stloc_S, load.operand);
+            return new CodeInstruction(OpCodes.Stloc, load.operand);
         }
 
         /// <summary>

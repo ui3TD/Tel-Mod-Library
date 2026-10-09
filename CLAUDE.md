@@ -7,3 +7,4 @@
 3. Run its in-game tests: `python tests/InGameTests.TelMods/run.py --scope "<Mod>"`. That runs every
    in-game test of the mod, from every suite, in one game boot; no list of suites is needed.
    `tests/InGameTests.TelMods/README.md` explains the in-game tests.
+4. Run `python tools/check_repo.py` (changelog line, description, info.json values).

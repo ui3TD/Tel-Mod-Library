@@ -36,13 +36,15 @@ Library of mods for Idol Manager
 
 To compile this project, follow these steps:
 
-1. **Configure Directories:** Set directories of `ModOutputDirDebug`, `ModOutputDirRelease` and `dllDir` in `Directory.Build.props`
+1. **Configure Directories:** Put the game's DLLs in a `dll` folder next to this repo (`dllDir` in `Directory.Build.props`). Builds deploy to the game's Mods folder (`ModOutputDirDebug`, `ModOutputDirRelease`); pass `-p:ModOutputDir=<folder>` to deploy elsewhere, or `-p:DeployToGame=false` to build without deploying.
 
 2. **Get Pre-requisites (if Visual Studio did not do it automatically):** 
    - .NET Framework 4.6: [https://www.nuget.org/packages/Microsoft.NETFramework.ReferenceAssemblies.net46](https://www.nuget.org/packages/Microsoft.NETFramework.ReferenceAssemblies.net46)
    - UnityEngine 2019.4.23 libraries: [https://nuget.bepinex.dev/packages/unityengine.modules/2019.4.23](https://nuget.bepinex.dev/packages/unityengine.modules/2019.4.23)
 
 3. **Build**
+
+4. **Check:** `python tools/check_repo.py` checks changelogs, descriptions and `info.json` values (CI runs it on every push).
 
 
 Check out [IM-FastForward](https://github.com/ui3TD/IM-FastForward) for a tutorial for beginners.

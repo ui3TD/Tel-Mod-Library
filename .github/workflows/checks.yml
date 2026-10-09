@@ -1,0 +1,22 @@
+# Checks that need no game DLLs. The game's DLLs must never be committed to this
+# public repo, so building and unit tests stay local (or on a self-hosted runner later).
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lint Python
+        run: |
+          pip install pyflakes
+          python -m pyflakes tools tests/InGameTests.TelMods
+      - name: Check mods (changelog, descriptions, info.json values)
+        run: python tools/check_repo.py

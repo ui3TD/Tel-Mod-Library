@@ -21,7 +21,7 @@ namespace FastForward.Tests
         [Fact]
         public void CodeDefault_MatchesTheModMenu()
         {
-            Assert.Equal(FastForward.DEFAULT_VAR, Setting()["defaultValue"].Value);
+            Assert.Equal(FastForward.DEFAULT_MULTIPLIER, Setting()["defaultValue"].AsDouble);
         }
     }
 }

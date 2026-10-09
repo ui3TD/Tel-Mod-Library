@@ -13,4 +13,4 @@ Rebalances the theater. Theater shows go stale over time. Release a single every
 
 [h3]Changelog[/h3]
 - 1.1.0: Attendance changes now apply; staleness levels off at 10%; fixed negative subscription income at very high revenue.
-- 1.1.1: Theater attendance changes are applied in a way that keeps working after game updates.
+- 1.1.1: Theater attendance changes are applied in a way that works alongside other mods.

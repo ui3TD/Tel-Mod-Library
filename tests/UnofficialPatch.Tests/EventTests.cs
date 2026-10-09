@@ -1,8 +1,10 @@
 using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace UnofficialPatch.Tests
@@ -74,11 +76,43 @@ namespace UnofficialPatch.Tests
             Assert.Empty(Log.Messages);
         }
 
-        private static bool Variable(data_girls.girls girl, string formula, out bool ranGame)
+        /// <summary>
+        /// The game's "variable" case, copied as it is in CheckGirl (same arguments, same code), because
+        /// CheckGirl reads the camera and can't run here. The tests patch it with the mod's transpiler.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static bool GameVariableCase(data_girls.girls girl, string parameter, string formula)
         {
-            bool result = false;
-            ranGame = vn_requirements_CheckGirl_Variable.Prefix(girl, "variable", formula, ref result);
-            return result;
+            bool flag = false;
+            if (formula.Substring(0, 1) == "!")
+            {
+                flag = true;
+                formula.Substring(1);
+            }
+            if (flag)
+            {
+                return !girl.IsVariable(formula);
+            }
+            return girl.IsVariable(formula);
+        }
+
+        private static readonly MethodInfo VariableCase = AccessTools.Method(typeof(IdolRequirementTests), nameof(GameVariableCase));
+        private static readonly MethodInfo Substring = AccessTools.Method(typeof(string), nameof(string.Substring), new[] { typeof(int) });
+
+        private static bool Variable(data_girls.girls girl, string formula, bool patched)
+        {
+            // Not "tests.UnofficialPatch": PatchTargetTests unpatches everything under that ID
+            Harmony harmony = new("tests.UnofficialPatch.VariableCase");
+            if (patched)
+                harmony.Patch(VariableCase, transpiler: new HarmonyMethod(typeof(vn_requirements_CheckGirl_Variable), nameof(vn_requirements_CheckGirl_Variable.Transpiler)));
+            try
+            {
+                return (bool)VariableCase.Invoke(null, new object[] { girl, "variable", formula });
+            }
+            finally
+            {
+                harmony.UnpatchSelf();
+            }
         }
 
         [Theory]
@@ -89,33 +123,51 @@ namespace UnofficialPatch.Tests
         [InlineData("!other", true)]
         public void Variable_HonoursNegation(string formula, bool expected)
         {
-            // The game dropped the "!", so "!met_fan" checked a variable named "!met_fan" and was always true
             data_girls.girls girl = TestGame.Idol();
             girl.Variables.Add("met_fan");
 
-            Assert.Equal(expected, Variable(girl, formula, out bool ranGame));
-            Assert.False(ranGame);
+            Assert.Equal(expected, Variable(girl, formula, patched: true));
+        }
+
+        /// <summary>
+        /// The game dropped the "!", so "!met_fan" checked a variable named "!met_fan" and was always true.
+        /// </summary>
+        [Fact]
+        public void Game_IgnoresNegation()
+        {
+            data_girls.girls girl = TestGame.Idol();
+            girl.Variables.Add("met_fan");
+
+            Assert.True(Variable(girl, "!met_fan", patched: false));
+        }
+
+        /// <summary>
+        /// In the real CheckGirl, the mod stores formula.Substring(1) back into formula (argument 2) and
+        /// changes nothing else.
+        /// </summary>
+        [Fact]
+        public void Patched_CheckGirlKeepsTheVariableName()
+        {
+            List<CodeInstruction> original = PatchProcessor.GetOriginalInstructions(CheckGirl);
+            List<CodeInstruction> patched = vn_requirements_CheckGirl_Variable.Transpiler(PatchProcessor.GetOriginalInstructions(CheckGirl)).ToList();
+
+            int call = patched.FindIndex(ci => (ci.opcode == OpCodes.Call || ci.opcode == OpCodes.Callvirt) && Equals(ci.operand, Substring));
+            Assert.True(call > 0, "Substring(1) not found");
+            Assert.Equal(OpCodes.Pop, original[call + 1].opcode);
+            Assert.Equal(OpCodes.Starg_S, patched[call + 1].opcode);
+            Assert.Equal(2, Convert.ToInt32(patched[call + 1].operand));
+            Assert.Equal(original.Count, patched.Count);
+            Assert.Equal(1, Enumerable.Range(0, original.Count).Count(i => original[i].ToString() != patched[i].ToString()));
         }
 
         [Fact]
-        public void Variable_GraduatedIdolNeverQualifies()
+        public void Patched_VariableTranspilingTwiceChangesNothing()
         {
-            data_girls.girls girl = TestGame.Idol();
-            girl.status = data_girls._status.graduated;
-            girl.Variables.Add("met_fan");
+            List<CodeInstruction> once = vn_requirements_CheckGirl_Variable.Transpiler(PatchProcessor.GetOriginalInstructions(CheckGirl)).ToList();
+            List<CodeInstruction> twice = vn_requirements_CheckGirl_Variable.Transpiler(once).ToList();
 
-            Assert.False(Variable(girl, "met_fan", out _));
-            Assert.False(Variable(girl, "!other", out _));
-        }
-
-        [Theory]
-        [InlineData("influence")]
-        [InlineData("cute")]
-        [InlineData("is_aoc")]
-        public void OtherParameters_RunTheGame(string parameter)
-        {
-            bool result = false;
-            Assert.True(vn_requirements_CheckGirl_Variable.Prefix(TestGame.Idol(), parameter, "> 10", ref result));
+            Assert.Equal(once.Select(ci => ci.ToString()), twice.Select(ci => ci.ToString()));
+            Assert.Empty(Log.Messages);
         }
     }
 
@@ -193,7 +245,7 @@ namespace UnofficialPatch.Tests
         {
             Activities._activity activity = new() { type = type, lvl = 1 };
             string result = vanilla;
-            Activities__activity_GetDescription.Postfix(ref activity, ref result);
+            Activities__activity_GetDescription.Postfix(activity, ref result);
             return result;
         }
 

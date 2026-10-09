@@ -18,8 +18,6 @@ namespace UnofficialPatch
         private const string LogPrefix = "[UnofficialPatch] ";
         // Marker used when Harmony metadata cannot be read.
         private const string UnknownTarget = "UnknownTarget";
-        // Empty-count sentinel for collection checks.
-        private const int EmptyCount = 0;
 
         // Protects the once-only warning cache.
         private static readonly object OnceLock = new object();
@@ -91,87 +89,46 @@ namespace UnofficialPatch
             Warn(patchType, message);
         }
 
-        // Builds a readable Harmony target name, falling back to UnknownTarget if metadata is missing.
+        // Builds a readable Harmony target name from the patch class's [HarmonyPatch] attributes, falling back to
+        // UnknownTarget if it has none.
         private static string GetTargetName(Type patchType, out bool usedFallback)
         {
             usedFallback = true;
             if (patchType == null)
                 return UnknownTarget;
 
-            object[] attrs = patchType.GetCustomAttributes(typeof(HarmonyPatch), true);
-            if (attrs == null || attrs.Length == EmptyCount)
-                return UnknownTarget;
-
-            List<string> targets = new List<string>();
-            foreach (object attr in attrs)
-            {
-                string target = GetTargetName(attr);
-                if (!string.IsNullOrEmpty(target))
-                {
-                    targets.Add(target);
-                }
-            }
-
-            if (targets.Count == EmptyCount)
+            List<string> targets = patchType.GetCustomAttributes(typeof(HarmonyPatch), true)
+                .Cast<HarmonyPatch>()
+                .Select(attribute => GetTargetName(attribute.info))
+                .Where(target => !string.IsNullOrEmpty(target))
+                .Distinct()
+                .ToList();
+            if (targets.Count == 0)
                 return UnknownTarget;
 
             usedFallback = false;
-            return string.Join(", ", targets.Distinct());
+            return string.Join(", ", targets.ToArray());
         }
 
-        // Extracts HarmonyPatch info without hard dependency on a specific Harmony version.
-        private static string GetTargetName(object patchAttribute)
+        // One attribute's target, from Harmony's public HarmonyMethod info.
+        private static string GetTargetName(HarmonyMethod info)
         {
-            if (patchAttribute == null)
+            if (info == null)
                 return null;
 
-            object info = GetMember(patchAttribute, "info");
-            Type declaringType = GetMember<Type>(info, "declaringType") ?? GetMember<Type>(patchAttribute, "declaringType");
-            string methodName = GetMember<string>(info, "methodName") ?? GetMember<string>(patchAttribute, "methodName");
-            Type[] argumentTypes = GetMember<Type[]>(info, "argumentTypes") ?? GetMember<Type[]>(patchAttribute, "argumentTypes");
-            object methodType = GetMember(info, "methodType") ?? GetMember(patchAttribute, "methodType");
+            string typeName = info.declaringType != null ? (info.declaringType.FullName ?? info.declaringType.Name) : null;
+            string signature = FormatArgs(info.argumentTypes);
 
-            string typeName = declaringType != null ? (declaringType.FullName ?? declaringType.Name) : null;
-            string signature = FormatArgs(argumentTypes);
-
-            if (!string.IsNullOrEmpty(typeName) && !string.IsNullOrEmpty(methodName))
-                return typeName + "." + methodName + signature;
+            if (!string.IsNullOrEmpty(typeName) && !string.IsNullOrEmpty(info.methodName))
+                return typeName + "." + info.methodName + signature;
 
             if (!string.IsNullOrEmpty(typeName))
                 return typeName;
 
-            if (!string.IsNullOrEmpty(methodName))
-                return methodName + signature;
+            if (!string.IsNullOrEmpty(info.methodName))
+                return info.methodName + signature;
 
-            if (methodType != null)
-                return methodType.ToString();
-
-            return null;
-        }
-
-        // Reads a private field/property by name using reflection.
-        private static object GetMember(object instance, string name)
-        {
-            if (instance == null)
-                return null;
-
-            Type type = instance.GetType();
-            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-            PropertyInfo property = type.GetProperty(name, flags);
-            if (property != null)
-                return property.GetValue(instance, null);
-
-            FieldInfo field = type.GetField(name, flags);
-            if (field != null)
-                return field.GetValue(instance);
-
-            return null;
-        }
-
-        // Strongly-typed wrapper around GetMember.
-        private static T GetMember<T>(object instance, string name) where T : class
-        {
-            return GetMember(instance, name) as T;
+            return info.methodType?.ToString();
         }
 
         // Formats argument type lists to help log target signatures.
@@ -179,7 +136,7 @@ namespace UnofficialPatch
         {
             if (argumentTypes == null)
                 return string.Empty;
-            if (argumentTypes.Length == EmptyCount)
+            if (argumentTypes.Length == 0)
                 return "()";
             return "(" + string.Join(", ", argumentTypes.Select(t => t != null ? t.Name : "null")) + ")";
         }
@@ -286,6 +243,22 @@ namespace UnofficialPatch
             return new CodeInstruction(OpCodes.Ldloc, store.operand);
         }
 
+        // Checks whether an instruction loads the argument at this index (static methods count from 0).
+        public static bool IsLdarg(CodeInstruction instruction, int index)
+        {
+            if (instruction == null)
+                return false;
+
+            if (instruction.opcode == OpCodes.Ldarg_0) return index == 0;
+            if (instruction.opcode == OpCodes.Ldarg_1) return index == 1;
+            if (instruction.opcode == OpCodes.Ldarg_2) return index == 2;
+            if (instruction.opcode == OpCodes.Ldarg_3) return index == 3;
+            if (instruction.opcode == OpCodes.Ldarg_S || instruction.opcode == OpCodes.Ldarg)
+                return Convert.ToInt32(instruction.operand) == index;
+
+            return false;
+        }
+
         // Checks for conditional branches that jump when the stack value is true.
         public static bool IsBranchTrue(CodeInstruction instruction)
         {
@@ -347,7 +320,7 @@ namespace UnofficialPatch
     public class Tour_New_Popup_Render
     {
         // Keeps the expected revenue color consistent by always evaluating profitability after savings.
-        public static void Postfix(ref Tour_New_Popup __instance)
+        public static void Postfix(Tour_New_Popup __instance)
         {
             // Apply savings before comparing against expected revenue.
             long effectiveCost = __instance.Tour.ProductionCost - __instance.Tour.Saving;
@@ -357,36 +330,41 @@ namespace UnofficialPatch
         }
     }
 
-    // Restores stamina costs for theater schedules.
-    [HarmonyPatch(typeof(Theaters), "GetStaminaCost")]
+    // Restores stamina costs for theater schedules. The game works out the cost (5 for a performance, 2 for
+    // manzai, doubled on hard), then returns 0 instead of it; return the cost it worked out.
+    [HarmonyPatch(typeof(Theaters), nameof(Theaters.GetStaminaCost))]
     public class Theaters_GetStaminaCost
     {
-        // Stamina costs for theater schedules.
-        private const float NoStaminaCost = 0f;
-        private const float PerformanceStaminaCost = 5f;
-        private const float ManzaiStaminaCost = 2f;
-        private const float HardModeMultiplier = 2f;
-
-        // Fixes the vanilla method which always returned 0.
-        public static void Postfix(Theaters._theater._schedule._type Type, ref float __result)
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            // Start with no stamina cost by default.
-            float staminaCost = NoStaminaCost;
-            if (Type == Theaters._theater._schedule._type.performance)
+            var matcher = new CodeMatcher(instructions);
+
+            // The cost local: float num = 0f, the method's first store.
+            matcher.MatchStartForward(
+                new CodeMatch(ci => ci.opcode == OpCodes.Ldc_R4 && ci.operand is float value && value == 0f),
+                new CodeMatch(ci => IlHelpers.IsStloc(ci)));
+            if (matcher.IsInvalid)
             {
-                staminaCost = PerformanceStaminaCost;
+                PatchLog.WarnOncePerPatch<Theaters_GetStaminaCost>("cost local not found.");
+                return instructions;
             }
-            else if (Type == Theaters._theater._schedule._type.manzai)
+            CodeInstruction storeCost = matcher.InstructionAt(1);
+
+            // The last return: return 0f.
+            matcher.End().MatchStartBackwards(
+                new CodeMatch(ci => ci.opcode == OpCodes.Ldc_R4 && ci.operand is float value && value == 0f),
+                new CodeMatch(OpCodes.Ret));
+            if (matcher.IsInvalid)
             {
-                staminaCost = ManzaiStaminaCost;
+                // Already returns the cost: patched twice, or the game fixed it.
+                return matcher.InstructionEnumeration();
             }
-            // Hard mode doubles the cost.
-            if (staticVars.IsHard())
-            {
-                staminaCost *= HardModeMultiplier;
-            }
-            // Return the corrected stamina cost.
-            __result = staminaCost;
+
+            // Load the cost instead, keeping any jump into this instruction.
+            CodeInstruction loadCost = IlHelpers.LoadOfStore(storeCost);
+            matcher.Instruction.opcode = loadCost.opcode;
+            matcher.Instruction.operand = loadCost.operand;
+            return matcher.InstructionEnumeration();
         }
     }
 
@@ -396,21 +374,15 @@ namespace UnofficialPatch
     {
         // Day-of-month used by the base game for subscription revenue.
         private const int FirstDayOfMonth = 1;
-        // Sentinel values for revenue and counts.
-        private const long NoRevenue = 0L;
-        private const int NoGirls = 0;
-        // Offset for accessing the latest stats entry.
-        private const int LastIndexOffset = 1;
 
         // Fixed Theater so that revenue stats are not offset by one day
-        public static bool Prefix()
+        public static void Prefix()
         {
             foreach (Theaters._theater theater in Theaters.Theaters_)
             {
                 // Fix so that auto schedules contribute revenue on the day of
                 theater.Doing_Now = theater.GetSchedule().Type;
             }
-            return true;
         }
 
         // Fixes revenue accounting and income distribution after the base method completes.
@@ -435,7 +407,7 @@ namespace UnofficialPatch
                     }
                 }
 
-                Theaters._theater._stat latestStat = theater.Stats[theater.Stats.Count - LastIndexOffset];
+                Theaters._theater._stat latestStat = theater.Stats[theater.Stats.Count - 1];
                 if (latestStat == null || latestStat.Schedule == null)
                 {
                     continue;
@@ -444,7 +416,7 @@ namespace UnofficialPatch
                 // Days off should contribute zero revenue to stats.
                 if (latestStat.Schedule.Type == Theaters._theater._schedule._type.day_off)
                 {
-                    latestStat.Revenue = NoRevenue;
+                    latestStat.Revenue = 0L;
                     continue;
                 }
 
@@ -464,8 +436,8 @@ namespace UnofficialPatch
                 }
 
                 List<data_girls.girls> girls = group.GetGirls(true, false, null);
-                int girlCount = girls != null ? girls.Count : NoGirls;
-                if (girlCount <= NoGirls)
+                int girlCount = girls != null ? girls.Count : 0;
+                if (girlCount <= 0)
                 {
                     continue;
                 }
@@ -478,13 +450,13 @@ namespace UnofficialPatch
                     payout += theater.GetSubRevenue();
                 }
 
-                if (payout <= NoRevenue)
+                if (payout <= 0L)
                 {
                     continue;
                 }
 
                 long split = payout / (long)girlCount;
-                if (split <= NoRevenue)
+                if (split <= 0L)
                 {
                     continue;
                 }
@@ -500,88 +472,60 @@ namespace UnofficialPatch
         }
     }
 
+    // Averages over a theater's last 7 days that leave out days off. The game counts them as 0.
+    internal static class TheaterAverages
+    {
+        // Rolling window size for averages.
+        private const int DaysInWeek = 7;
+
+        // The rounded average of this value over the last week's show days, 0 if there were none, or null
+        // without stats. Summed in double: revenue is a long, and a float drops whole yen above ~16.7 million.
+        public static int? OfShowDays(Theaters._theater theater, Func<Theaters._theater._stat, double> value)
+        {
+            if (theater.Stats.Count == 0)
+                return null;
+
+            double total = 0;
+            int countedDays = 0;
+            for (int index = theater.Stats.Count - 1; index >= Math.Max(0, theater.Stats.Count - DaysInWeek); index--)
+            {
+                Theaters._theater._stat stat = theater.Stats[index];
+                if (stat.Schedule.Type != Theaters._theater._schedule._type.day_off)
+                {
+                    total += value(stat);
+                    countedDays++;
+                }
+            }
+            if (countedDays != 0)
+            {
+                total /= countedDays;
+            }
+            // Halves round to even, as Mathf.RoundToInt does.
+            return (int)Math.Round(total);
+        }
+    }
+
 	// Fixed Theater so that average stats ignore days off
     [HarmonyPatch(typeof(Theaters._theater), "GetAvgAttendance")]
     public class Theaters__theater_GetAvgAttendance
     {
-        // Rolling window size for averages.
-        private const int DaysInWeek = 7;
-        private const int NoStats = 0;
-        private const int NoDaysCounted = 0;
-        private const int LastIndexOffset = 1;
-        private const float ZeroAverage = 0f;
-
         public static void Postfix(ref int __result, Theaters._theater __instance)
         {
-            // Skip if there are no stats to average.
-            if (__instance.Stats.Count == NoStats)
-                return;
-
-            // Only inspect the most recent week (or fewer days if not enough data).
-            int daysToCheck = Mathf.Min(__instance.Stats.Count, DaysInWeek);
-            float totalAttendance = ZeroAverage;
-            int countedDays = NoDaysCounted;
-            int index = __instance.Stats.Count - LastIndexOffset;
-            while (index >= __instance.Stats.Count - daysToCheck)
-            {
-                // Ignore day-off entries so the average reflects performance days.
-                if (__instance.Stats[index].Schedule.Type != Theaters._theater._schedule._type.day_off)
-                {
-                    totalAttendance += __instance.Stats[index].Attendance;
-                    countedDays++;
-                }
-                index--;
-            }
-            // Only divide if at least one valid day was counted.
-            if (countedDays != NoDaysCounted)
-            {
-                totalAttendance /= countedDays;
-            }
-            // Return a rounded attendance average.
-            __result = Mathf.RoundToInt(totalAttendance);
+            int? average = TheaterAverages.OfShowDays(__instance, stat => stat.Attendance);
+            if (average != null)
+                __result = average.Value;
         }
-
     }
 
 	// Fixed Theater so that average stats ignore days off
     [HarmonyPatch(typeof(Theaters._theater), "GetAvgRevenue")]
     public class Theaters__theater_GetAvgRevenue
     {
-        // Rolling window size for averages.
-        private const int DaysInWeek = 7;
-        private const int NoStats = 0;
-        private const int NoDaysCounted = 0;
-        private const int LastIndexOffset = 1;
-        private const float ZeroAverage = 0f;
-
         public static void Postfix(ref int __result, Theaters._theater __instance)
         {
-            // Skip if there are no stats to average.
-            if (__instance.Stats.Count == NoStats)
-                return;
-
-            // Only inspect the most recent week (or fewer days if not enough data).
-            int daysToCheck = Mathf.Min(__instance.Stats.Count, DaysInWeek);
-            float totalRevenue = ZeroAverage;
-            int countedDays = NoDaysCounted;
-            int index = __instance.Stats.Count - LastIndexOffset;
-            while (index >= __instance.Stats.Count - daysToCheck)
-            {
-                // Ignore day-off entries so the average reflects earning days.
-                if (__instance.Stats[index].Schedule.Type != Theaters._theater._schedule._type.day_off)
-                {
-                    totalRevenue += __instance.Stats[index].Revenue;
-                    countedDays++;
-                }
-                index--;
-            }
-            // Only divide if at least one valid day was counted.
-            if (countedDays != NoDaysCounted)
-            {
-                totalRevenue /= countedDays;
-            }
-            // Return a rounded revenue average.
-            __result = Mathf.RoundToInt(totalRevenue);
+            int? average = TheaterAverages.OfShowDays(__instance, stat => stat.Revenue);
+            if (average != null)
+                __result = average.Value;
         }
     }
 
@@ -763,7 +707,7 @@ namespace UnofficialPatch
         // Absorbs float error so exact percents (e.g. 0.29) don't floor one point low.
         private const float FloorTolerance = 0.0001f;
 
-        public static bool Prefix(ref float _val)
+        public static void Prefix(ref float _val)
         {
             // Clamp ratios so hype does not exceed its intended 200% cap.
             if (_val > MaxRatio)
@@ -773,7 +717,6 @@ namespace UnofficialPatch
             // The game rounds to the nearest percent, so 99.5-99.9% attendance showed as 100% (sold out).
             // Round down instead; the game's rounding then keeps the whole percent.
             _val = Mathf.Floor(_val * PercentScale + FloorTolerance) / PercentScale;
-            return true;
         }
     }
 
@@ -881,35 +824,36 @@ namespace UnofficialPatch
 
     }
 
-    // Fix senbatsu parameter queries to use the requested param type.
-    [HarmonyPatch(typeof(singles._single), "GetSenbatsuParamValue")]
+    // Fix senbatsu parameter queries to use the requested param type. The game passes cute (0) to
+    // SenbatsuCalcParam whatever type was asked for; pass the Type argument instead.
+    [HarmonyPatch(typeof(singles._single), nameof(singles._single.GetSenbatsuParamValue))]
     public class singles__single_GetSenbatsuParamValue
     {
-        // Cache the private calculator so we can call it with the correct param type.
-        private static readonly MethodInfo SenbatsuCalcParam = AccessTools.Method(
-            typeof(singles._single),
-            "SenbatsuCalcParam",
-            new Type[] { typeof(List<data_girls.girls>), typeof(data_girls._paramType), typeof(Groups._group) });
-
-        public static bool Prefix(singles._single __instance, data_girls._paramType Type, ref float __result)
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            // Fall back to vanilla behavior if reflection fails.
-            if (SenbatsuCalcParam == null)
-                return true;
+            MethodInfo calcParam = AccessTools.Method(typeof(singles._single), "SenbatsuCalcParam",
+                new Type[] { typeof(List<data_girls.girls>), typeof(data_girls._paramType), typeof(Groups._group) });
+            if (calcParam == null)
+            {
+                PatchLog.WarnOncePerPatch<singles__single_GetSenbatsuParamValue>("SenbatsuCalcParam lookup failed.");
+                return instructions;
+            }
 
-            try
+            // SenbatsuCalcParam(girls, cute, null): the type is the second argument pushed before the call.
+            var matcher = new CodeMatcher(instructions).MatchStartForward(
+                new CodeMatch(ci => IlHelpers.IsLdcI4(ci, (int)data_girls._paramType.cute)),
+                new CodeMatch(OpCodes.Ldnull),
+                new CodeMatch(ci => IlHelpers.IsCallTo(ci, calcParam)));
+            if (matcher.IsInvalid)
             {
-                // Compute the value using the requested param type (instead of always "cute").
-                var param = (data_girls.girls.param)SenbatsuCalcParam.Invoke(__instance, new object[] { __instance.girls, Type, null });
-                __result = param.val;
-                return false;
+                // Already passes the type: patched twice, or the game fixed it.
+                return instructions;
             }
-            catch (Exception ex)
-            {
-                // Log once so repeated failures do not spam the log.
-                PatchLog.WarnOncePerPatch<singles__single_GetSenbatsuParamValue>("failed: " + ex);
-                return true;
-            }
+
+            // GetSenbatsuParamValue(Type) is an instance method, so Type is argument 1.
+            matcher.Instruction.opcode = OpCodes.Ldarg_1;
+            matcher.Instruction.operand = null;
+            return matcher.InstructionEnumeration();
         }
     }
 
@@ -1055,102 +999,26 @@ namespace UnofficialPatch
     }
 
 
-    // Dating status is visible for underage members.
-    // A postfix is safer than a transpiler here and avoids invalid IL after upstream changes.
-    [HarmonyPatch(typeof(data_girls.girls), "GetPartnerString")]
+    // Dating status is visible for underage members. The game returns "" unless the idol is an adult
+    // (Is_AOC); treat every idol as one, so the rest of the game's own method builds the text.
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetPartnerString))]
     public class data_girls_girls_GetPartnerString
     {
-        public static void Postfix(data_girls.girls __instance, ref string __result)
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            if (__instance == null)
+            MethodInfo isAoc = AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.Is_AOC));
+            var matcher = new CodeMatcher(instructions).MatchStartForward(new CodeMatch(ci => IlHelpers.IsCallTo(ci, isAoc)));
+            if (matcher.IsInvalid)
             {
-                return;
+                // Already gone: patched twice, or the game fixed it.
+                return instructions;
             }
 
-            // Keep vanilla behavior for AOC members.
-            if (__instance.Is_AOC())
-            {
-                return;
-            }
-
-            __result = BuildPartnerString(__instance);
-        }
-
-        private static string BuildPartnerString(data_girls.girls girl)
-        {
-            string text = "";
-            if (!girl.DatingData.Is_Partner_Status_Known)
-            {
-                text += Language.Data["PROFILE__DATING_UNKNOWN"];
-            }
-            else if (girl.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.free)
-            {
-                text += Language.Data["PROFILE__DATING_NOT_DATING"];
-            }
-            else if (girl.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.taken_idol)
-            {
-                data_girls.girls girlfriend = girl.GetGirlfriend();
-                if (girlfriend != null)
-                {
-                    text += Language.Insert("PROFILE__DATING_IDOL", new string[]
-                    {
-                        girlfriend.GetName(true)
-                    });
-                }
-                else
-                {
-                    text += Language.Data["PROFILE__DATING_IDOL_UNKNOWN"];
-                }
-            }
-            else if (girl.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.taken_outside_bf)
-            {
-                text += Language.Data["PROFILE__DATING_HAS_BF"];
-            }
-            else if (girl.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.taken_outside_gf)
-            {
-                text += Language.Data["PROFILE__DATING_HAS_GF"];
-            }
-            else if (girl.DatingData.Partner_Status_Known_To_Player == data_girls.girls._dating_data._partner_status.taken_player)
-            {
-                text += Language.Data["PROFILE__DATING_YOU"];
-            }
-
-            text += "\n";
-            if (girl.DatingData.Is_Sexuality_Known)
-            {
-                if (girl.sexuality == data_girls.girls._sexuality.straight)
-                {
-                    text += Language.Data["PROFILE__DATING_STRAIGHT"];
-                }
-                else if (girl.sexuality == data_girls.girls._sexuality.lesbian)
-                {
-                    text += Language.Data["PROFILE__DATING_LESBIAN"];
-                }
-                else
-                {
-                    text += Language.Data["PROFILE__DATING_BI"];
-                }
-            }
-            else
-            {
-                text += Language.Data["PROFILE__DATING_PREF_UNKNOWN"];
-            }
-
-            if (girl.DatingData.Previous_Attempt != Date_Flirt._flirt._category.NONE
-                && girl.DatingData.Partner_Status_Known_To_Player != data_girls.girls._dating_data._partner_status.taken_player)
-            {
-                text += "\n";
-                if (girl.DatingData.Is_Uninterested || (girl.DatingData.Is_Sexuality_Known && !Date_Flirt.IsCompatibleSexuality(girl)))
-                {
-                    text += Language.Data["PROFILE__DATING_NOT_INTERESTED"];
-                }
-                else
-                {
-                    text += Language.Data["PROFILE__DATING_INTERESTED"];
-                }
-            }
-
-            return text;
+            // this.Is_AOC() becomes true: drop "this", push 1.
+            matcher.Instruction.opcode = OpCodes.Pop;
+            matcher.Instruction.operand = null;
+            matcher.Advance(1).Insert(new CodeInstruction(OpCodes.Ldc_I4_1));
+            return matcher.InstructionEnumeration();
         }
     }
 
@@ -1185,19 +1053,15 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Date_Gossip), "GetAvailableGossips")]
     public class Date_Gossip_GetAvailableGossips
     {
-        // Sentinel values for list bounds.
-        private const int NoGossips = 0;
-        private const int LastIndexOffset = 1;
-
         public static void Postfix(ref List<Date_Gossip._gossip> __result, data_girls.girls Snitch)
         {
             // Nothing to filter if the list is empty.
-            if (__result.Count == NoGossips)
+            if (__result.Count == 0)
             {
                 return;
             }
             // Walk backwards so removals do not affect remaining indices.
-            for (int i = __result.Count - LastIndexOffset; i >= NoGossips; i--)
+            for (int i = __result.Count - 1; i >= 0; i--)
             {
                 // Remove any gossip targeting the snitch herself.
                 if (__result[i].BullyingTarget == Snitch)
@@ -1215,13 +1079,6 @@ namespace UnofficialPatch
     {
         // Requirement key used by the game for influence checks.
         private const string InfluenceParameter = "influence";
-        // Enum values from Relationships_Player._type used in the original IL.
-        private const int RelationshipFriendshipValue = 1;
-        private const int RelationshipInfluenceValue = 2;
-        // Sentinel for FindIndex failures.
-        private const int NotFoundIndex = -1;
-        // Offset to move from a marker instruction to the next instruction.
-        private const int NextInstructionOffset = 1;
 
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
@@ -1230,103 +1087,100 @@ namespace UnofficialPatch
                 typeof(vn_requirements),
                 "CheckRelationship",
                 new Type[] { typeof(data_girls.girls), typeof(string), typeof(Relationships_Player._type) });
-            if (checkRelationship == null)
+            MethodInfo stringEquals = AccessTools.Method(typeof(string), "op_Equality", new Type[] { typeof(string), typeof(string) });
+            if (checkRelationship == null || stringEquals == null)
             {
-                PatchLog.WarnOncePerPatch<vn_requirements_CheckGirl>("CheckRelationship method lookup failed.");
+                PatchLog.WarnOncePerPatch<vn_requirements_CheckGirl>("CheckRelationship or string equality lookup failed.");
                 return instructions;
             }
 
-            List<CodeInstruction> instructionList = new List<CodeInstruction>(instructions);
-            // Find the "influence" branch marker in the IL.
-            int influenceIndex = instructionList.FindIndex(ci =>
-                ci.opcode == OpCodes.Ldstr && ci.operand is string text && text == InfluenceParameter);
+            List<CodeInstruction> code = new List<CodeInstruction>(instructions);
 
-            if (influenceIndex == NotFoundIndex)
+            // The switch compares the parameter with "influence", then branches: to the case on true, or past
+            // it on false (the case then follows the branch).
+            int compare = code.FindIndex(ci => ci.opcode == OpCodes.Ldstr && ci.operand is string text && text == InfluenceParameter);
+            if (compare < 0 || compare + 2 >= code.Count || !IlHelpers.IsCallTo(code[compare + 1], stringEquals))
             {
-                PatchLog.WarnOncePerPatch<vn_requirements_CheckGirl>("\"influence\" marker not found.");
-                return instructionList.AsEnumerable();
+                PatchLog.WarnOncePerPatch<vn_requirements_CheckGirl>("\"influence\" comparison not found.");
+                return code;
+            }
+            CodeInstruction branch = code[compare + 2];
+            int caseStart;
+            if (IlHelpers.IsBranchTrue(branch))
+            {
+                caseStart = code.FindIndex(ci => ci.labels.Contains((Label)branch.operand));
+            }
+            else if (branch.opcode == OpCodes.Brfalse || branch.opcode == OpCodes.Brfalse_S)
+            {
+                caseStart = compare + 3;
+            }
+            else
+            {
+                caseStart = -1;
+            }
+            if (caseStart < 0)
+            {
+                PatchLog.WarnOncePerPatch<vn_requirements_CheckGirl>("\"influence\" case not found.");
+                return code;
             }
 
-            // Locate the call to CheckRelationship that follows the influence branch.
-            int callIndex = NotFoundIndex;
-            for (int i = influenceIndex + NextInstructionOffset; i < instructionList.Count; i++)
+            // The case's call: CheckRelationship(girl, formula, Friendship), the type pushed just before it.
+            int call = code.FindIndex(caseStart, ci => IlHelpers.IsCallTo(ci, checkRelationship) || ci.opcode == OpCodes.Ret);
+            if (call <= caseStart || code[call].opcode == OpCodes.Ret)
             {
-                if (IlHelpers.IsCallTo(instructionList[i], checkRelationship))
-                {
-                    callIndex = i;
-                    break;
-                }
+                PatchLog.WarnOncePerPatch<vn_requirements_CheckGirl>("CheckRelationship call not found in the \"influence\" case.");
+                return code;
             }
 
-            if (callIndex == NotFoundIndex)
-            {
-                PatchLog.WarnOncePerPatch<vn_requirements_CheckGirl>("CheckRelationship call not found after \"influence\" marker.");
-                return instructionList.AsEnumerable();
-            }
-
-            // The relationship enum should be the last integer pushed before the call.
-            int enumIndex = callIndex - NextInstructionOffset;
-            if (enumIndex <= influenceIndex)
-            {
-                PatchLog.WarnOncePerPatch<vn_requirements_CheckGirl>("enum constant not found before CheckRelationship call.");
-                return instructionList.AsEnumerable();
-            }
-
-            CodeInstruction enumInstruction = instructionList[enumIndex];
-            if (IlHelpers.IsLdcI4(enumInstruction, RelationshipFriendshipValue))
+            CodeInstruction type = code[call - 1];
+            if (IlHelpers.IsLdcI4(type, (int)Relationships_Player._type.Friendship))
             {
                 // Replace Friendship with Influence.
-                enumInstruction.opcode = OpCodes.Ldc_I4_2;
-                // Clear the operand to match the ldc.i4.2 opcode form.
-                enumInstruction.operand = null;
-                instructionList[enumIndex] = enumInstruction;
-                return instructionList.AsEnumerable();
+                type.opcode = OpCodes.Ldc_I4_2;
+                type.operand = null;
+                return code;
             }
 
-            if (IlHelpers.IsLdcI4(enumInstruction, RelationshipInfluenceValue))
+            if (IlHelpers.IsLdcI4(type, (int)Relationships_Player._type.Influence))
             {
                 // Already patched or game fixed it upstream.
-                return instructionList.AsEnumerable();
+                return code;
             }
 
-            PatchLog.WarnOncePerPatch<vn_requirements_CheckGirl>("unexpected enum opcode before CheckRelationship call.");
-            return instructionList.AsEnumerable();
+            PatchLog.WarnOncePerPatch<vn_requirements_CheckGirl>("unexpected type before the \"influence\" CheckRelationship call.");
+            return code;
         }
     }
 
-    // Fix "variable" requirements to respect leading negation.
+    // Fix "variable" requirements to respect leading negation. The game sees the "!", then throws away
+    // formula.Substring(1), so "!met_fan" checks a variable named "!met_fan". Store it back into formula.
     [HarmonyPatch(typeof(vn_requirements), "CheckGirl", new Type[] { typeof(data_girls.girls), typeof(string), typeof(string) })]
     public class vn_requirements_CheckGirl_Variable
     {
-        // Prefix used by dialogue scripts to negate variable requirements.
-        private const char NegationPrefix = '!';
-        private const int PrefixIndex = 0;
-        private const int NegationPrefixLength = 1;
+        // CheckGirl(girl, parameter, formula) is static, so formula is argument 2.
+        private const int FormulaArgument = 2;
 
-        public static bool Prefix(data_girls.girls girl, string parameter, string formula, ref bool __result)
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            // Only override the "variable" branch; let the rest of CheckGirl run normally.
-            if (parameter != "variable")
-                return true;
+            MethodInfo substring = AccessTools.Method(typeof(string), nameof(string.Substring), new Type[] { typeof(int) });
 
-            // Preserve base behavior for graduated girls.
-            if (girl.status == data_girls._status.graduated)
+            // formula.Substring(1); with the result dropped.
+            var matcher = new CodeMatcher(instructions).MatchStartForward(
+                new CodeMatch(ci => IlHelpers.IsLdarg(ci, FormulaArgument)),
+                new CodeMatch(ci => IlHelpers.IsLdcI4(ci, 1)),
+                new CodeMatch(ci => IlHelpers.IsCallTo(ci, substring)),
+                new CodeMatch(OpCodes.Pop));
+            if (matcher.IsInvalid)
             {
-                __result = false;
-                return false;
+                // Already stored: patched twice, or the game fixed it.
+                return instructions;
             }
 
-            bool negate = false;
-            if (!string.IsNullOrEmpty(formula) && formula[PrefixIndex] == NegationPrefix)
-            {
-                negate = true;
-                formula = formula.Substring(NegationPrefixLength);
-            }
-
-            // Evaluate the variable and apply negation if requested.
-            bool hasVariable = girl.IsVariable(formula);
-            __result = negate ? !hasVariable : hasVariable;
-            return false;
+            // formula = formula.Substring(1);
+            matcher.Advance(3);
+            matcher.Instruction.opcode = OpCodes.Starg_S;
+            matcher.Instruction.operand = (byte)FormulaArgument;
+            return matcher.InstructionEnumeration();
         }
     }
 
@@ -1335,17 +1189,18 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Activities._activity), "GetDescription")]
     public class Activities__activity_GetDescription
     {
-        // Energetic policy overrides the displayed stamina cost.
+        // The Energetic policy's stamina cost, as Activities.GetStaminaCost charges it (-4f). The unit tests
+        // check the two match; that method needs the scene's Activities component, which a description can't reach.
         private const int EnergeticStaminaCost = 4;
         private const string PointsKey = "PT";
         private const string StaminaKey = "STAMINA";
         private const string CostPrefix = "-";
         private const string CostSeparator = " ";
 
-        public static void Postfix(ref Activities._activity __instance, ref string __result)
+        public static void Postfix(Activities._activity __instance, ref string __result)
         {
             // Only adjust performance activities when Energetic policy is active.
-            if (__instance.type == Activity._type.performance && policies.GetSelectedPolicyValue(policies._type.performances).Value == policies._value.performances_energy)
+            if (__instance.type == Activity._type.performance && policies.GetSelectedPolicyValue(policies._type.performances)?.Value == policies._value.performances_energy)
             {
                 // Build a localized "-4 PT stamina" string for the thumbnail.
                 __result = string.Concat(new object[]

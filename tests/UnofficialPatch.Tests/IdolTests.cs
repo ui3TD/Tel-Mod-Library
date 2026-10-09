@@ -135,9 +135,25 @@ namespace UnofficialPatch.Tests
         [Fact]
         public void Adult_IsTheGamesText()
         {
-            // The patch returns early for adults, so this is the game's own text
+            // The game's own method builds the text; the mod only lets underage idols past its age check
             data_girls.girls girl = Idol(20, true, _partner_status.taken_idol, _sexuality.bi, true, false);
             Assert.Equal("[dates Girlfriend]\n[PROFILE__DATING_BI]\n[PROFILE__DATING_INTERESTED]", girl.GetPartnerString());
+        }
+
+        /// <summary>
+        /// The mod replaces the one age check; transpiling again (or a game without the check) changes nothing.
+        /// </summary>
+        [Fact]
+        public void Transpiler_ReplacesOnlyTheAgeCheck_AndOnlyOnce()
+        {
+            System.Reflection.MethodInfo method = AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.GetPartnerString));
+            List<CodeInstruction> original = PatchProcessor.GetOriginalInstructions(method);
+            List<CodeInstruction> once = data_girls_girls_GetPartnerString.Transpiler(PatchProcessor.GetOriginalInstructions(method)).ToList();
+            List<CodeInstruction> twice = data_girls_girls_GetPartnerString.Transpiler(once).ToList();
+
+            Assert.Equal(original.Count + 1, once.Count);
+            Assert.DoesNotContain(once, ci => ci.operand is System.Reflection.MethodInfo m && m.Name == nameof(data_girls.girls.Is_AOC));
+            Assert.Equal(once.Select(ci => ci.ToString()), twice.Select(ci => ci.ToString()));
         }
     }
 

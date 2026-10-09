@@ -1,3 +1,4 @@
+using HarmonyLib;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
@@ -143,6 +144,22 @@ namespace UnofficialPatch.Tests
         {
             singles._single single = Single(Hired(95f));
             Assert.Equal(100f, single.GetSenbatsuParamValue(sexy), 3);
+        }
+
+        /// <summary>
+        /// The mod changes one instruction (cute becomes the Type argument); transpiling again changes nothing.
+        /// </summary>
+        [Fact]
+        public void ParamValueTranspiler_ChangesOneInstruction_AndOnlyOnce()
+        {
+            System.Reflection.MethodInfo method = AccessTools.Method(typeof(singles._single), nameof(singles._single.GetSenbatsuParamValue));
+            List<CodeInstruction> original = PatchProcessor.GetOriginalInstructions(method);
+            List<CodeInstruction> once = singles__single_GetSenbatsuParamValue.Transpiler(PatchProcessor.GetOriginalInstructions(method)).ToList();
+            List<CodeInstruction> twice = singles__single_GetSenbatsuParamValue.Transpiler(once).ToList();
+
+            Assert.Equal(original.Count, once.Count);
+            Assert.Equal(1, Enumerable.Range(0, original.Count).Count(i => original[i].ToString() != once[i].ToString()));
+            Assert.Equal(once.Select(ci => ci.ToString()), twice.Select(ci => ci.ToString()));
         }
     }
 }

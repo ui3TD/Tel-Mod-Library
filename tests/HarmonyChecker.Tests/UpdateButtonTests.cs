@@ -16,7 +16,8 @@ namespace HarmonyChecker.Tests
     public class UpdateButtonTests
     {
         private static readonly Version Old = new(1, 1, 0);
-        private const string OutdatedText = "Update IM-HI to 1.2.0";
+        // MIN_VERSION goes up with each IM-HI release (tools/update_harmony_checker.py), so tests follow it.
+        private static readonly string OutdatedText = "Update IM-HI to " + IMHIUpdate.MIN_VERSION;
 
         public UpdateButtonTests()
         {
@@ -162,10 +163,19 @@ namespace HarmonyChecker.Tests
             Assert.Single(Seams.ChildNames(menu.Container), IMHIUpdate.BUTTON_NAME);
         }
 
+        /// <summary>
+        /// The asked-for version, a patch above it, and a two-part version of the next major.
+        /// </summary>
+        public static IEnumerable<object[]> UpToDateVersions()
+        {
+            Version min = IMHIUpdate.MIN_VERSION;
+            yield return new object[] { min.ToString() };
+            yield return new object[] { new Version(min.Major, min.Minor, min.Build + 1).ToString() };
+            yield return new object[] { new Version(min.Major + 1, 0).ToString() };
+        }
+
         [Theory]
-        [InlineData("1.2.0")]
-        [InlineData("1.2.1")]
-        [InlineData("2.0")]
+        [MemberData(nameof(UpToDateVersions))]
         public void UpToDate_NoButton(string installed)
         {
             IMHIUpdate.InstalledVersion = () => Version.Parse(installed);

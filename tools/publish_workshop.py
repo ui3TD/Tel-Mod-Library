@@ -15,7 +15,8 @@ Web API and its description compared with the local one.
 
 One-time setup: install SteamCMD (default C:\\steamcmd\\steamcmd.exe, or set
 STEAMCMD) and log in once with `steamcmd +login <user> +quit` to cache the
-Steam Guard approval.
+Steam Guard approval. Without --user or STEAM_USER, the one account SteamCMD
+has cached is used.
 
 Usage:
     python tools/publish_workshop.py "<Mod Name>" [--user USER] [--dry-run] [--no-build]
@@ -112,6 +113,18 @@ def check_deployed(content_dir, version):
         sys.exit("No thumb.png in " + content_dir)
 
 
+def cached_user(steamcmd):
+    """The account SteamCMD has a cached login for, if it has exactly one."""
+    try:
+        with open(os.path.join(os.path.dirname(steamcmd), "config", "config.vdf"), encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    except OSError:
+        return None
+    block = re.search(r'"Accounts"\s*\{(.*?)\n\t*\}', text, re.S)
+    names = re.findall(r'^\s*"([^"]+)"\s*\n\s*\{', block.group(1), re.M) if block else []
+    return names[0] if len(names) == 1 else None
+
+
 def upload(steamcmd, user, vdf_path):
     if not os.path.isfile(steamcmd):
         sys.exit("SteamCMD not found at {}; install it or set STEAMCMD.".format(steamcmd))
@@ -195,9 +208,10 @@ def main():
         if args.dry_run:
             print(vdf_text)
             return
-        if not args.user:
+        user = args.user or cached_user(args.steamcmd)
+        if not user:
             sys.exit("No Steam login; pass --user or set STEAM_USER.")
-        upload(args.steamcmd, args.user, vdf_path)
+        upload(args.steamcmd, user, vdf_path)
     finally:
         os.remove(vdf_path)
     verify(props["WorkshopID"], props["ModName"], description)

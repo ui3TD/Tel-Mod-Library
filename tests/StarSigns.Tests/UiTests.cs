@@ -1,5 +1,7 @@
+using HarmonyLib;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using TMPro;
 using UnityEngine;
 using Xunit;
@@ -16,18 +18,21 @@ namespace StarSigns.Tests
 
         private const string TraitText = "<color=#777bba>Trait: </color>Trait description.";
 
+        // The trait block's text before Star Signs runs
+        private string popupText = TraitText;
+
         public static IEnumerable<object[]> AllSigns() => TestGame.Signs.Select(s => new object[] { s });
 
         /// <summary>
         /// Renders the Extras tab on top of the game's first text block (the trait), and returns that block.
         /// </summary>
-        private static string Render(data_girls.girls girl, out Profile_Popup popup)
+        private string Render(data_girls.girls girl, out Profile_Popup popup)
         {
             popup = TestGame.Component<Profile_Popup>();
             popup.Girl = girl;
             popup.Extras_Container = TestGame.Component<GameObject>();
             TextMeshProUGUI text = TraitBlock(popup);
-            Seams.SetText(text, TraitText);
+            Seams.SetText(text, popupText);
 
             Seams.ProfileExtrasPostfix(popup);
             return Seams.TextOf(text);
@@ -68,6 +73,38 @@ namespace StarSigns.Tests
             Assert.StartsWith(Label("Trait: ") + "Trait description.\n", text);
             Assert.DoesNotContain(mainScript.blue, text);
             Assert.Equal(new[] { "Text(Clone)" }, Seams.FoundChildren);
+        }
+
+        /// <summary>
+        /// A label another mod added to the trait's block before Star Signs runs (as MBTI does) turns black
+        /// too, and no description changes colour.
+        /// </summary>
+        [Fact]
+        public void OtherModsLabels_TurnBlackToo()
+        {
+            popupText = TraitText + "\n" + ExtensionMethods.color("Other mod: ", mainScript.blue) + "Its description.";
+
+            string text = Render(TestGame.Idol(Zodiac.Leo), out _);
+
+            Assert.StartsWith(Label("Trait: ") + "Trait description.\n" + Label("Other mod: ") + "Its description.\n" + Label("Leo: "), text);
+            Assert.DoesNotContain(mainScript.blue, text);
+        }
+
+        /// <summary>
+        /// The game writes the trait label in mainScript.blue, the blue the mod turns black. If a game update
+        /// changes that colour, the trait label would keep it and no longer match the sign's.
+        /// </summary>
+        [Fact]
+        public void GameWritesTheTraitLabelInBlue()
+        {
+            List<CodeInstruction> code = PatchProcessor.GetOriginalInstructions(AccessTools.Method(typeof(Profile_Popup), "RenderTab_Extras"));
+            MethodInfo color = AccessTools.Method(typeof(ExtensionMethods), nameof(ExtensionMethods.color));
+
+            int firstColour = code.FindIndex(i => i.Calls(color));
+
+            Assert.True(firstColour > 0, "RenderTab_Extras no longer colours the trait label");
+            Assert.True(code[firstColour - 1].LoadsField(AccessTools.Field(typeof(mainScript), nameof(mainScript.blue))),
+                "The trait label's colour is now " + code[firstColour - 1]);
         }
 
         [Fact]

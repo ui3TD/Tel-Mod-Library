@@ -97,8 +97,6 @@ namespace TargetedAuditions.Tests
 
             minAge = 12;
             maxAge = 23;
-            defaultMinAge = 12;
-            defaultMaxAge = 23;
             chanceLesbian = 7;
             chanceBi = 14;
             priorityDict.Clear();

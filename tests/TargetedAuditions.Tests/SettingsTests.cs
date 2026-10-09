@@ -126,12 +126,12 @@ namespace TargetedAuditions.Tests
         }
 
         /// <summary>
-        /// With the (hidden) per-audition popup on, the range typed into the popup is kept.
+        /// A save with the retired per-audition popup switched on still uses the Mod Menu range.
         /// </summary>
         [Fact]
-        public void AgePopupOn_KeepsThePopupRange()
+        public void RetiredAgePopupOn_StillUsesTheModMenuRange()
         {
-            Seams.SetVariable(VARID_AGELIMIT_POPUP_TOGGLE, "1");
+            Seams.SetVariable("AuditionAgeLimit_TogglePopup", "1");
             Seams.SetVariable(VARID_MINAGE, "16");
             Seams.SetVariable(VARID_MAXAGE, "20");
             minAge = 14;
@@ -139,7 +139,7 @@ namespace TargetedAuditions.Tests
 
             StartAudition();
 
-            Assert.Equal((14, 15), (minAge, maxAge));
+            Assert.Equal((16, 20), (minAge, maxAge));
         }
 
         [Theory]
@@ -332,48 +332,6 @@ namespace TargetedAuditions.Tests
 
             double expected = vocalPriority / (double)(vocalPriority + 7 * otherPriority);
             Assert.InRange(vocalBest / (double)runs, expected - 0.01, expected + 0.01);
-        }
-    }
-
-    /// <summary>
-    /// The age range text box of the per-audition popup (hidden in the Mod Menu).
-    /// </summary>
-    public class AgePopupInputTests
-    {
-        public AgePopupInputTests()
-        {
-            Seams.Reset();
-        }
-
-        [Theory]
-        [InlineData("12 - 23", true)]
-        [InlineData("12-23", true)]
-        [InlineData("18-18", true)]
-        [InlineData("23 - 12", false)]
-        [InlineData("0 - 12", false)]
-        [InlineData("12", false)]
-        [InlineData("12 - 23 - 30", false)]
-        [InlineData("a - b", false)]
-        [InlineData("", false)]
-        public void Input_IsValidated(string input, bool valid)
-        {
-            Assert.Equal(valid, IsInputValid(input));
-        }
-
-        [Fact]
-        public void ValidInput_SetsTheRange()
-        {
-            ParseAgeRange("15 - 19");
-            Assert.Equal((15, 19), (minAge, maxAge));
-        }
-
-        [Fact]
-        public void InvalidInput_FallsBackToTheModMenuRange()
-        {
-            defaultMinAge = 14;
-            defaultMaxAge = 21;
-            ParseAgeRange("nonsense");
-            Assert.Equal((14, 21), (minAge, maxAge));
         }
     }
 }

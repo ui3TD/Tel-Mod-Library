@@ -47,14 +47,14 @@ namespace InGameTests.TelMods
             if (!ModTest.Require(ctx, HarmonyId, out _))
                 yield break;
 
-            agency._room room = Game.TrainingRoom(Trainee);
+            agency._room room = Training.Room(Trainee);
             using (Game.ClockSpeed(50))
             {
                 foreach (policies._value performances in new[] { policies._value.performances_neutral, policies._value.performances_quality })
                 {
                     using (Game.SelectPolicy(policies._type.performances, performances))
                     {
-                        float[] mental = Game.TrainingTickAddParams(room)
+                        float[] mental = Training.TickAddParams(room)
                             .Where(c => c.Key == data_girls._paramType.mentalStamina).Select(c => c.Value).ToArray();
                         ctx.Record(performances + ".mentalPerTick", mental.Length == 1 ? mental[0] : float.NaN);
 
@@ -63,7 +63,7 @@ namespace InGameTests.TelMods
                             ctx.Assert(mental.Length == 0, performances + ": a tick charged mental stamina " + mental.Length + " times, expected none");
                             continue;
                         }
-                        float expected = -0.5f / 7 / Game.TrainingTicksPerDay;
+                        float expected = -0.5f / 7 / Training.TicksPerDay;
                         if (mental.Length != 1)
                             ctx.Fail(performances + ": expected one mental stamina charge per tick, got " + mental.Length);
                         else
@@ -84,7 +84,7 @@ namespace InGameTests.TelMods
             if (!ModTest.Require(ctx, HarmonyId, out _))
                 yield break;
 
-            agency._room room = Game.TrainingRoom(Trainee);
+            agency._room room = Training.Room(Trainee);
             data_girls.girls.param param = room.girl.getParam(room.trainingParam().Value);
             float neutral, quality;
             using (Game.SelectPolicy(policies._type.performances, policies._value.performances_neutral))

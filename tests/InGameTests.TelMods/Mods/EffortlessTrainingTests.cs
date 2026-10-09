@@ -23,7 +23,7 @@ namespace InGameTests.TelMods
             if (!ModTest.Require(ctx, HarmonyId, out _))
                 yield break;
 
-            agency._room room = Game.TrainingRoom(Trainee);
+            agency._room room = Training.Room(Trainee);
             float moonlighter = room.girl.trait == traits._trait._type.Moonlighter ? 5f : 1f;
             using (Game.ClockSpeed(50))
             {
@@ -32,8 +32,8 @@ namespace InGameTests.TelMods
                     using (Game.SelectPolicy(policies._type.performances, performances))
                     {
                         float quality = performances == policies._value.performances_quality ? 1.3f : 1f;
-                        float expected = -1f / Game.TrainingTicksPerDay * quality * moonlighter;
-                        float[] physical = Game.TrainingTickAddParams(room)
+                        float expected = -1f / Training.TicksPerDay * quality * moonlighter;
+                        float[] physical = Training.TickAddParams(room)
                             .Where(c => c.Key == data_girls._paramType.physicalStamina).Select(c => c.Value).ToArray();
 
                         ctx.Record(performances + ".physicalPerTick", physical.Length == 1 ? physical[0] : float.NaN);
@@ -42,7 +42,7 @@ namespace InGameTests.TelMods
                         else
                             ctx.Assert(Mathf.Abs(physical[0] - expected) <= 1e-5f * Mathf.Abs(expected),
                                 performances + ": a tick charged " + physical[0] + " physical stamina, expected " + expected
-                                + " (1 per day over " + Game.TrainingTicksPerDay + " ticks)");
+                                + " (1 per day over " + Training.TicksPerDay + " ticks)");
                     }
                 }
             }

@@ -79,17 +79,19 @@ Each check skips itself with a note when its mod isn't enabled. Where another mo
 the expected value includes that mod's factor only when it's enabled, so `--only <Mod>` runs one mod's
 checks on their own. Checks put back what they change, apart from using up idol IDs. The session is never saved.
 
-Two runner helpers do most of the work:
-- `TestTools.Spy` patches a method ahead of every other patch, so it sees the caller's arguments or the
-  game's own result.
-- `Game.TrainingTickAddParams` records the stamina charges of one real training tick.
+Two helpers do most of the work:
+- `TestTools.Spy`, from the runner, patches a method ahead of every other patch, so it sees the caller's
+  arguments or the game's own result.
+- `Training.TickAddParams`, in `Shared/`, records the stamina charges of one real training tick.
 
 ## Writing checks
 
 Tests are static coroutines marked `[InGameTest(Suite = ..., Order = ...)]`; see the runner's README.
 Checks of every Tel mod against this checkout go in `AllMods/`. Checks of one mod go in
 `Mods/<Mod>Tests.cs`, one file per mod, and skip themselves when that mod isn't enabled (`ModTest.Require`).
-Keep mod-specific code out of `ModTest.cs`, so changing or retiring a mod touches only its own file. Reach
-mod types with `Assembly.GetType` and HarmonyLib's `AccessTools` and `Traverse`.
+Keep mod-specific code out of `ModTest.cs` and `Shared/`, so changing or retiring a mod touches only its
+own file. Reach mod types with `Assembly.GetType` and HarmonyLib's `AccessTools` and `Traverse`.
+Game helpers that several checks share go in `Shared/` unless they pass the runner's rules for helpers
+(its README, "Adding a helper to the runner"); then they belong in the runner.
 `TelMod.All()` reads each `mods\*\*.csproj` at run time. The path of this checkout is built into the
 DLL, so rebuild after moving the repo. `TelMod.Active()` returns the mods whose patches are live.

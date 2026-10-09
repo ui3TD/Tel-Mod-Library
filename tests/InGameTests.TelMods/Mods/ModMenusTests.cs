@@ -49,7 +49,7 @@ namespace InGameTests.TelMods
                 yield break;
             }
             button.GetComponent<Button>().onClick.Invoke();
-            yield return Game.WaitFor(ctx, () => PopupManager.GetOpenPopupType() == ModMenuPopup, 5f, "the mod menu popup to open");
+            yield return TestTools.WaitFor(ctx, () => PopupManager.GetOpenPopupType() == ModMenuPopup, 5f, "the mod menu popup to open");
 
             GameObject popup = Game.Main.Data.GetComponent<PopupManager>().GetByType(ModMenuPopup)?.obj;
             if (popup == null)

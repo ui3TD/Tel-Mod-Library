@@ -13,3 +13,6 @@ J - Research
 K - Policies
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.0.1: Internal tidy-up of the hotkey code; no change in game.

@@ -153,15 +153,41 @@ namespace FanAttrition.Tests
             Assert.Equal("Hardcore: " + Red("25%") + " of Total (" + Green("40%") + " Appeal)", lines[0]);
         }
 
+        /// <summary>
+        /// A loaded idol has no stored appeal until the game recalculates it. The tooltip works it out from
+        /// her stats, as the game does: hardcore fans like pretty (0.4 a point), casual fans like vocal (0.4).
+        /// </summary>
         [Fact]
         public void FanTypeLines_WorkOutMissingAppeal()
         {
-            data_girls.girls idol = TestGame.Idol();
+            data_girls.girls idol = TestGame.Idol(0f, TestGame.Fans(resources.fanType.male, resources.fanType.hardcore, resources.fanType.teen, 100));
             idol.FanAppeal.Clear();
+            idol.parameters.Add(new data_girls.girls.param { type = data_girls._paramType.pretty, val = 100f });
+            idol.parameters.Add(new data_girls.girls.param { type = data_girls._paramType.vocal, val = 50f });
+
+            string[] lines = Render();
+
+            Assert.Equal("Hardcore: " + Green("100%") + " of Total (" + Green("40%") + " Appeal)", lines[0]);
+            Assert.Equal("Casual: " + Red("0%") + " of Total (" + Red("20%") + " Appeal)", lines[1]);
+        }
+
+        /// <summary>
+        /// Fixed in 1.3.0: working out a loaded idol's appeal recalculated it, which also overwrote her fans'
+        /// saved appeal, so the values changed on every load.
+        /// </summary>
+        [Fact]
+        public void FanTypeLines_MissingAppeal_ChangeNothing()
+        {
+            resources._fan fans = TestGame.Fans(resources.fanType.male, resources.fanType.hardcore, resources.fanType.teen, 100);
+            fans.appeal = 0.123f;
+            data_girls.girls idol = TestGame.Idol(0f, fans);
+            idol.FanAppeal.Clear();
+            idol.parameters.Add(new data_girls.girls.param { type = data_girls._paramType.pretty, val = 100f });
 
             Render();
 
-            Assert.Equal(Enum.GetValues(typeof(resources.fanType)).Cast<resources.fanType>(), idol.FanAppeal.Select(a => a.type));
+            Assert.Equal(0.123f, fans.appeal);
+            Assert.Empty(idol.FanAppeal);
         }
 
         [Fact]

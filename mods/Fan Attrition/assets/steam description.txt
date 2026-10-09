@@ -27,3 +27,4 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 - 1.1.0: Fixed the MC fame bonus and the fan tooltip total.
 - 1.2.0: Fatigue no longer cuts the audience of internet shows, as described.
 - 1.2.1: Airing shows with no episodes no longer stop the daily fan count.
+- 1.3.0: Loading a save no longer changes the idols' fan appeal.

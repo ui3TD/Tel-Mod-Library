@@ -19,8 +19,8 @@ python tests/InGameTests.TelMods/run.py --build-mods   # build and deploy the in
 python tests/InGameTests.TelMods/run.py --weeks 12 -v  # any run_ingame_tests.py option works
 ```
 
-`run.py` runs `run_ingame_tests.py --build tests\InGameTests.TelMods\InGameTests.TelMods.csproj`, passing
-every other argument through. The build deploys the checks to `<game>\BepInEx\plugins\InGameTests\`.
+`run.py` builds this project, which deploys the checks to `<game>\BepInEx\plugins\InGameTests\`, then
+runs `run_ingame_tests.py` with every other argument. The runner tests whatever is deployed there.
 
 The mods are only built with `--build-mods`, which builds every mod that has a local copy in the
 game's Mods folder, in Release, and so deploys it. Without it, build a changed mod in Release

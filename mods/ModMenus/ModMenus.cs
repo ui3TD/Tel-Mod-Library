@@ -115,6 +115,7 @@ namespace ModMenus
         public const string SCROLLBAR_OBJ_NAME = "VerticalScrollBar";
         public const string SCROLLRECT_OBJ_NAME = "ScrollContainer";
         public const string VIEWPORT_OBJ_NAME = "Viewport";
+        public const string DROPDOWN_LAYER_OBJ_NAME = "DropdownLayer";
 
         /// <summary>
         /// Returns true only after a gameplay scene is active and its game-only data exists.
@@ -508,8 +509,18 @@ namespace ModMenus
             // Create Menu Scroll objects
             GameObject menuContentContainer = GenerateScrollArea(panelTransform);
 
+            // An open list stays where it is while the rows scroll under it, so scrolling closes it first
+            panelTransform.GetComponentInChildren<ScrollRect>(true).onValueChanged.AddListener(_ => panelModMenuManager.CloseDropdownLists());
+
+            // An open dropdown's list moves here, the popup's last child, so it shows above every row and the
+            // buttons and isn't cut off by the scroll area. It moves back into its row when it closes.
+            GameObject dropdownLayer = new(DROPDOWN_LAYER_OBJ_NAME, typeof(RectTransform));
+            dropdownLayer.transform.SetParent(modMenuObj.transform, false);
+            SetRectTransform(dropdownLayer.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            dropdownLayer.transform.SetAsLastSibling();
+
             // Generate Menu Contents
-            AddMenuItems(menuContentContainer.transform);
+            AddMenuItems(menuContentContainer.transform, dropdownLayer.transform);
         }
 
         /// <summary>
@@ -536,33 +547,30 @@ namespace ModMenus
         /// Adds menu items to the mod menu based on JSON configuration files.
         /// </summary>
         /// <param name="parentTransform">The parent transform to add menu items to.</param>
-        public static void AddMenuItems(Transform parentTransform)
+        /// <param name="dropdownLayer">Where an open dropdown's list goes, above every row (see AddMenuDropdown).</param>
+        public static void AddMenuItems(Transform parentTransform, Transform dropdownLayer)
         {
 
             string relativePath = Path.Combine("JSON", JSON_DIR, JSON_FILE);
             string filepath;
 
-            int firstDropdown = -1;
-            GameObject dropdownItem;
-
-            // Reverse the for loops because the menu generates from the bottom up to ensure proper layering
-            List<Mods._mod> reversedMods = new(Mods._Mods);
-            reversedMods.Reverse();
-
-            foreach (Mods._mod mod in reversedMods)
+            // Rows are added top to bottom, in load order and file order
+            foreach (Mods._mod mod in Mods._Mods)
             {
-                if (!mod.IsEnabled()) 
+                if (!mod.IsEnabled())
                     continue;
 
                 filepath = Path.Combine(mod.Path, relativePath).Replace("\\", "/");
-                if (!File.Exists(filepath)) 
+                if (!File.Exists(filepath))
                     continue;
-                
+
                 JSONArray jsonArray = ReadMenuFile(mod.Title, filepath);
                 if (jsonArray == null)
                     continue;
 
-                for (int i = jsonArray.Count - 1; i >= 0; i--)
+                AddMenuText(mod.Title, parentTransform, TITLE_SIZE, mainScript.black32, TextAlignmentOptions.Center);
+
+                for (int i = 0; i < jsonArray.Count; i++)
                 {
                     JSONNode item = jsonArray[i];
                     string type = item[JSON_FIELD_TYPE];
@@ -621,29 +629,11 @@ namespace ModMenus
                                 itemList[j] = jsonArrayItems[j];
                             }
 
-                            dropdownItem = AddMenuDropdown(id, label, itemList, defaultSelect, parentTransform);
-
-                            if (firstDropdown < 0)
-                            {
-                                firstDropdown = dropdownItem.transform.GetSiblingIndex();
-                            }
+                            AddMenuDropdown(id, label, itemList, defaultSelect, parentTransform, dropdownLayer);
                             break;
                     }
                 }
-
-                AddMenuText(mod.Title, parentTransform, TITLE_SIZE, mainScript.black32, TextAlignmentOptions.Center);
-                
             }
-
-            // Add blank rows as padding if a dropdown list is too close to the bottom
-            if(firstDropdown > -1)
-            {
-                for (int i = 0; i < 2 - firstDropdown; i++)
-                {
-                    AddMenuText("", parentTransform, 15, mainScript.blue32, TextAlignmentOptions.Left).transform.SetAsFirstSibling();
-                }
-            }
-
         }
 
         /// <summary>
@@ -794,7 +784,7 @@ namespace ModMenus
             // Set text object alignment
             RectTransform contentRectTransform = menuTextObj.GetComponent<RectTransform>();
             SetRectTransform(contentRectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            contentRectTransform.sizeDelta = new Vector2(200, 20);
+            contentRectTransform.sizeDelta = new Vector2(200, MENUITEM_HEIGHT);
 
             // Format Text
             TextMeshProUGUI tmpText = menuTextObj.GetComponent<TextMeshProUGUI>();
@@ -835,7 +825,7 @@ namespace ModMenus
             GameObject modSlider = UnityEngine.Object.Instantiate(existingSlider, parentTransform);
             RectTransform modSliderRect = modSlider.GetComponent<RectTransform>();
             SetRectTransform(modSliderRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            modSliderRect.sizeDelta = new Vector2(400f, 40f);
+            modSliderRect.sizeDelta = new Vector2(400f, MENUITEM_HEIGHT);
             modSlider.name = MENU_SLIDER_OBJ_NAME + "_" + varID;
 
             // Configure Settings_Slider
@@ -884,7 +874,7 @@ namespace ModMenus
             GameObject modCheckbox = UnityEngine.Object.Instantiate(existingCheckbox, parentTransform);
             RectTransform modCheckboxRect = modCheckbox.GetComponent<RectTransform>();
             SetRectTransform(modCheckboxRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            modCheckboxRect.sizeDelta = new Vector2(400f, 40f);
+            modCheckboxRect.sizeDelta = new Vector2(400f, MENUITEM_HEIGHT);
             modCheckbox.name = MENU_CHECKBOX_OBJ_NAME + "_" + varID;
 
             // Configure Checkbox_Text
@@ -914,8 +904,9 @@ namespace ModMenus
         /// <param name="itemLabelIDs">An array of item label IDs for the dropdown options.</param>
         /// <param name="def">The default selected index of the dropdown.</param>
         /// <param name="parentTransform">The parent transform to add the dropdown to.</param>
+        /// <param name="dropdownLayer">Where the dropdown moves while its list is open, so the list shows above every row.</param>
         /// <returns>The GameObject representing the dropdown element.</returns>
-        public static GameObject AddMenuDropdown(string varID, string labelID, string[] itemLabelIDs, int def, Transform parentTransform)
+        public static GameObject AddMenuDropdown(string varID, string labelID, string[] itemLabelIDs, int def, Transform parentTransform, Transform dropdownLayer)
         {
             string labelText = Language.Data.TryGetValue(labelID, out string tx) ? tx : labelID;
 
@@ -928,7 +919,7 @@ namespace ModMenus
             GameObject modDropdown = UnityEngine.Object.Instantiate(existingDropdown, parentTransform);
             RectTransform modDropdownRect = modDropdown.GetComponent<RectTransform>();
             SetRectTransform(modDropdownRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            modDropdownRect.sizeDelta = new Vector2(400f, 60f);
+            modDropdownRect.sizeDelta = new Vector2(400f, MENUITEM_HEIGHT);
             modDropdown.name = MENU_DROPDOWN_OBJ_NAME + "_" + varID;
 
             // Configure label text
@@ -943,8 +934,7 @@ namespace ModMenus
 
 
             RectTransform modDropdownDropdownRect = modDropdown.transform.Find("Dropdown").GetComponent<RectTransform>();
-            SetRectTransform(modDropdownDropdownRect, Vector2.up, Vector2.up, Vector2.zero, new Vector2(0, -20), Vector2.up);
-            modDropdownDropdownRect.sizeDelta = new Vector2(300f, 20f);
+            PlaceDropdownInRow(modDropdownDropdownRect);
 
             // Configure dropdown events
             CustomDropdown modDropdownCustomDropdown = modDropdown.GetComponentInChildren<CustomDropdown>();
@@ -957,7 +947,20 @@ namespace ModMenus
             modDropdownCustomDropdown.dropdownEvent.AddListener(modDropdown.GetComponent<ModMenuItem>().onUpdateDropdown);
             modDropdownCustomDropdown.SetupDropdown();
 
+            // The game's dropdown moves itself to listParent while open and back to its row when closed
+            modDropdownCustomDropdown.isListItem = dropdownLayer != null;
+            modDropdownCustomDropdown.listParent = dropdownLayer;
+
             return modDropdown;
+        }
+
+        /// <summary>
+        /// Puts a dropdown's box under its label, in the top-left of its row.
+        /// </summary>
+        public static void PlaceDropdownInRow(RectTransform dropdown)
+        {
+            SetRectTransform(dropdown, Vector2.up, Vector2.up, Vector2.zero, new Vector2(0, -20), Vector2.up);
+            dropdown.sizeDelta = new Vector2(300f, 20f);
         }
 
         /// <summary>
@@ -968,7 +971,7 @@ namespace ModMenus
         public static GameObject GenerateScrollArea(Transform parentTransform)
         {
             // Create container to control layout
-            GameObject menuContentContainer = new(MENUCONTENT_OBJ_NAME, typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter), typeof(CanvasGroup));
+            GameObject menuContentContainer = new(MENUCONTENT_OBJ_NAME, typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter), typeof(CanvasGroup));
 
             // Set container alignment
             RectTransform menuContentRect = menuContentContainer.GetComponent<RectTransform>();
@@ -978,12 +981,16 @@ namespace ModMenus
             ContentSizeFitter menuContentFitter = menuContentContainer.GetComponent<ContentSizeFitter>();
             menuContentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             menuContentFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-            GridLayoutGroup menuContentLayoutGroup = menuContentContainer.GetComponent<GridLayoutGroup>();
-            menuContentLayoutGroup.startCorner = GridLayoutGroup.Corner.LowerLeft;
-            menuContentLayoutGroup.startAxis = GridLayoutGroup.Axis.Vertical;
-            menuContentLayoutGroup.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            menuContentLayoutGroup.constraintCount = 1;
-            menuContentLayoutGroup.spacing = new Vector2(0, MENUITEM_SPACING);
+            // One column, top to bottom: each row is the full width and its own height (MENUITEM_HEIGHT)
+            VerticalLayoutGroup menuContentLayoutGroup = menuContentContainer.GetComponent<VerticalLayoutGroup>();
+            menuContentLayoutGroup.childControlWidth = true;
+            menuContentLayoutGroup.childForceExpandWidth = true;
+            menuContentLayoutGroup.childControlHeight = false;
+            menuContentLayoutGroup.childForceExpandHeight = false;
+            menuContentLayoutGroup.spacing = MENUITEM_SPACING;
+            // A dropdown's box is drawn lower than its row's layout box, so the last row needs the same gap
+            // below it as between rows, or the bottom of the box is cut off when scrolled to the end
+            menuContentLayoutGroup.padding = new RectOffset(0, 0, 0, MENUITEM_SPACING);
 
             // Create the handle for the scrollbar
             GameObject vHandle = new(SCROLLHANDLE_OBJ_NAME, typeof(RectTransform), typeof(Image));
@@ -1051,8 +1058,6 @@ namespace ModMenus
             menuContentContainer.transform.SetParent(viewport.transform, false); // viewport > content container
             verticalScrollBar.transform.SetParent(scrollContainer.transform, false);  // Scroll container > scroll bar
             vHandle.transform.SetParent(verticalScrollBar.transform, false); // scroll bar > handle
-
-            menuContentLayoutGroup.cellSize = new Vector2(viewportTransform.rect.width, MENUITEM_HEIGHT);
 
             return menuContentContainer;
         }
@@ -1164,6 +1169,14 @@ namespace ModMenus
             /// <summary>
             /// Handles the cancel action for the mod menu.
             /// </summary>
+            public void CloseDropdownLists()
+            {
+                foreach (ModMenuItem item in GetComponentsInChildren<ModMenuItem>())
+                {
+                    item.CloseList();
+                }
+            }
+
             public void OnCancel()
             {
                 PopupManager.Close_();
@@ -1219,8 +1232,26 @@ namespace ModMenus
                 }
                 if (customDropdown != null)
                 {
+                    // A list left open when the menu closed would sit where it was, apart from its row,
+                    // after the menu reopens scrolled to the top
+                    CloseList();
                     RenderDropdown();
                 }
+            }
+
+            /// <summary>
+            /// Closes this dropdown's list if it's open. The game's dropdown moves back into its row keeping its
+            /// place on screen, which is wrong if the row has moved since it opened (the menu scrolled), so the
+            /// box is put back in its place in the row.
+            /// </summary>
+            public void CloseList()
+            {
+                if (customDropdown == null || !customDropdown.isOn)
+                {
+                    return;
+                }
+                customDropdown.Animate();
+                PlaceDropdownInRow((RectTransform)customDropdown.transform);
             }
 
             /// <summary>

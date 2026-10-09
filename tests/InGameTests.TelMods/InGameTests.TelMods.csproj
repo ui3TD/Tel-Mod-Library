@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net46</TargetFramework>
+		<AssemblyName>InGameTests.TelMods</AssemblyName>
+		<RootNamespace>InGameTests.TelMods</RootNamespace>
+		<Description>In-game checks of the Tel mods, run by IM-InGameTests.</Description>
+		<LangVersion>latest</LangVersion>
+	</PropertyGroup>
+
+	<!--Override with: dotnet build -p:GameDir="D:\SteamLibrary\steamapps\common\Idol Manager" -p:InGameTestsDir=...-->
+	<PropertyGroup>
+		<GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Idol Manager</GameDir>
+		<GameDllDir Condition="'$(GameDllDir)' == ''">$(GameDir)\IM_Data\Managed</GameDllDir>
+		<InGameTestsDir Condition="'$(InGameTestsDir)' == ''">$(IM_INGAMETESTS)</InGameTestsDir>
+		<InGameTestsDir Condition="'$(InGameTestsDir)' == ''">$(MSBuildThisFileDirectory)..\..\..\IM-InGameTests</InGameTestsDir>
+		<RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..'))</RepoRoot>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!--The tests read the mod projects from this checkout at run time-->
+		<AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+			<_Parameter1>RepoRoot</_Parameter1>
+			<_Parameter2>$(RepoRoot)</_Parameter2>
+		</AssemblyAttribute>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all" />
+		<PackageReference Include="UnityEngine.Modules" Version="2019.4.23" IncludeAssets="compile" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--The runner: [InGameTest], TestContext. Building this project builds and deploys it too.-->
+		<ProjectReference Include="$(InGameTestsDir)\source\InGameTests.csproj">
+			<Private>false</Private>
+		</ProjectReference>
+		<Reference Include="Assembly-CSharp">
+			<HintPath>$(GameDllDir)\Assembly-CSharp.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Assembly-CSharp-firstpass">
+			<HintPath>$(GameDllDir)\Assembly-CSharp-firstpass.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+	<!--Deploy next to the runner, which loads InGameTests.*.dll in test mode only-->
+	<Target Name="DeployToGame" AfterTargets="Build" Condition="Exists('$(GameDir)\BepInEx\plugins')">
+		<MakeDir Directories="$(GameDir)\BepInEx\plugins\InGameTests" />
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\InGameTests" />
+	</Target>
+</Project>

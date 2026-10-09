@@ -8,6 +8,7 @@ using System.IO;
 using Michsky.UI.ModernUIPack;
 using System.Linq;
 using System.Collections.Generic;
+using System.Globalization;
 using static ModMenus.ModMenusUtils;
 
 namespace ModMenus
@@ -19,9 +20,9 @@ namespace ModMenus
     [HarmonyPatch(typeof(Tabs_Manager), nameof(Tabs_Manager.OpenTab))]
     public class Tabs_Manager_OpenTab
     {
-        public static void Postfix(Tabs_Manager._tab._type __0)
+        public static void Postfix(Tabs_Manager._tab._type Type)
         {
-            if (__0 != Tabs_Manager._tab._type.settings || !ModMenusUtils.IsGameplayReady())
+            if (Type != Tabs_Manager._tab._type.settings || !ModMenusUtils.IsGameplayReady())
             {
                 return;
             }
@@ -37,10 +38,43 @@ namespace ModMenus
     }
 
     /// <summary>
+    /// Every new game and every loaded scene starts with no settings (variables.Awake clears them).
+    /// The defaults are saved straight away, so mods read the menu's default even if the player
+    /// never opens Mod Settings.
+    /// </summary>
+    [HarmonyPatch(typeof(variables), "Awake")]
+    public class variables_Awake
+    {
+        public static void Postfix()
+        {
+            ModMenusUtils.SaveMissingDefaults();
+        }
+    }
+
+    /// <summary>
+    /// Loading a save replaces the settings with the saved ones, which may be from before a mod was
+    /// installed or gained a setting.
+    /// </summary>
+    [HarmonyPatch(typeof(variables), nameof(variables.LoadFunction))]
+    public class variables_LoadFunction
+    {
+        public static void Postfix()
+        {
+            ModMenusUtils.SaveMissingDefaults();
+        }
+    }
+
+    /// <summary>
     /// Utility class containing methods for creating and managing mod menu elements.
     /// </summary>
     class ModMenusUtils
     {
+        /// <summary>
+        /// The popup type the mod menu is registered under. It's past the game's own popup types;
+        /// other mods adding popups should use a different number.
+        /// </summary>
+        public const PopupManager._type MOD_MENU_POPUP = (PopupManager._type)999;
+
         public const string BUTTON_LABEL = "MODMENU__BUTTON_LABEL";
         public const string APPLY_LABEL = "APPLY";
         public const string CANCEL_LABEL = "CANCEL";
@@ -394,20 +428,22 @@ namespace ModMenus
                     return;
                 }
 
-                GenerateMenuPopup();
-                PopupManager.OpenPopup((PopupManager._type)999);
+                if (GenerateMenuPopup() != null)
+                {
+                    PopupManager.OpenPopup(MOD_MENU_POPUP);
+                }
             });
         }
 
         /// <summary>
         /// Generates the main mod menu popup.
         /// </summary>
-        /// <returns>The GameObject representing the mod menu popup.</returns>
+        /// <returns>The GameObject representing the mod menu popup, or null if it couldn't be built.</returns>
         public static GameObject GenerateMenuPopup()
         {
             PopupManager mainPopupManager = Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>();
-            PopupManager._popup existingPopup = mainPopupManager.GetByType((PopupManager._type)999);
-            if (existingPopup != null) 
+            PopupManager._popup existingPopup = mainPopupManager.GetByType(MOD_MENU_POPUP);
+            if (existingPopup != null)
                 return existingPopup.obj;
 
             // Adapt existing popup
@@ -416,6 +452,39 @@ namespace ModMenus
             modMenuObj.transform.SetParent(originalModMenuObj.transform.parent, false);
             modMenuObj.name = POPUP_OBJ_NAME;
 
+            // The popup is only registered once it's fully built. If building fails (the game's own settings
+            // popup has changed, say), the half-built copy is removed, so the next click tries again cleanly
+            // instead of leaving another copy behind each time.
+            try
+            {
+                BuildMenuPopup(modMenuObj);
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Object.Destroy(modMenuObj);
+                Debug.LogError("[ModMenus] Couldn't build the Mod Settings menu: " + e);
+                return null;
+            }
+
+            // Incorporate popup into game
+            PopupManager._popup newPopup = new()
+            {
+                type = MOD_MENU_POPUP,
+                obj = modMenuObj,
+                BGBlur = true,
+                BGDarken = true
+            };
+            Array.Resize(ref mainPopupManager.popups, mainPopupManager.popups.Length + 1);
+            mainPopupManager.popups[mainPopupManager.popups.Length - 1] = newPopup;
+
+            return modMenuObj;
+        }
+
+        /// <summary>
+        /// Turns a copy of the game's difficulty settings popup into the mod menu.
+        /// </summary>
+        private static void BuildMenuPopup(GameObject modMenuObj)
+        {
             // Remove old child objects
             Transform panelTransform = modMenuObj.transform.Find("Panel");
             Transform panelSettingsContainerTransform = panelTransform.Find("Settings_Container");
@@ -441,19 +510,6 @@ namespace ModMenus
 
             // Generate Menu Contents
             AddMenuItems(menuContentContainer.transform);
-
-            // Incorporate popup into game
-            PopupManager._popup newPopup = new()
-            {
-                type = (PopupManager._type)999,
-                obj = modMenuObj,
-                BGBlur = true,
-                BGDarken = true
-            };
-            Array.Resize(ref mainPopupManager.popups, mainPopupManager.popups.Length + 1);
-            mainPopupManager.popups[mainPopupManager.popups.Length - 1] = newPopup;
-
-            return modMenuObj;
         }
 
         /// <summary>
@@ -485,10 +541,6 @@ namespace ModMenus
 
             string relativePath = Path.Combine("JSON", JSON_DIR, JSON_FILE);
             string filepath;
-            if (relativePath[0].ToString() == "/")
-            {
-                relativePath = relativePath.Substring(1);
-            }
 
             int firstDropdown = -1;
             GameObject dropdownItem;
@@ -506,8 +558,9 @@ namespace ModMenus
                 if (!File.Exists(filepath)) 
                     continue;
                 
-                string data = File.ReadAllText(filepath);
-                JSONArray jsonArray = JSON.Parse(data).AsArray;
+                JSONArray jsonArray = ReadMenuFile(mod.Title, filepath);
+                if (jsonArray == null)
+                    continue;
 
                 for (int i = jsonArray.Count - 1; i >= 0; i--)
                 {
@@ -594,6 +647,133 @@ namespace ModMenus
         }
 
         /// <summary>
+        /// Saves the default of every setting in the enabled mods' menus that has no saved value yet.
+        /// Saved values are never changed.
+        /// </summary>
+        public static void SaveMissingDefaults()
+        {
+            // This runs while a game is starting or loading, so nothing may escape into the game's own code
+            try
+            {
+                string relativePath = Path.Combine("JSON", JSON_DIR, JSON_FILE);
+                foreach (Mods._mod mod in Mods._Mods)
+                {
+                    if (mod == null || !mod.IsEnabled())
+                        continue;
+
+                    string filepath = Path.Combine(mod.Path, relativePath).Replace("\\", "/");
+                    if (!File.Exists(filepath))
+                        continue;
+
+                    JSONArray settings = ReadMenuFile(mod.Title, filepath);
+                    if (settings == null)
+                        continue;
+
+                    for (int i = 0; i < settings.Count; i++)
+                    {
+                        if (!TryGetDefault(settings[i], out string varID, out string value) || variables.Get(varID) != null)
+                            continue;
+
+                        // Not variables.Set: it also logs every setting and raises the game's task events,
+                        // which may not be ready while the scene is starting.
+                        variables.variable.Add(new variables._variable { name = varID, value = value });
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[ModMenus] Couldn't save the settings' defaults: " + e);
+            }
+        }
+
+        /// <summary>
+        /// The value a setting starts at, written as Apply would save it. Only settings the menu shows have one:
+        /// text, ignored items, items missing their varID or labelID, sliders whose default is outside their
+        /// range and dropdowns without items are left out, as they are from the menu.
+        /// </summary>
+        public static bool TryGetDefault(JSONNode item, out string varID, out string value)
+        {
+            varID = item?[JSON_FIELD_VARID];
+            value = null;
+            if (item == null
+                || string.IsNullOrEmpty(varID)
+                || string.IsNullOrEmpty(item[JSON_FIELD_LABELID])
+                || item[JSON_FIELD_IGNORE].AsBool)
+            {
+                return false;
+            }
+
+            bool hasDefault = !string.IsNullOrEmpty(item[JSON_FIELD_DEF]);
+            switch ((string)item[JSON_FIELD_TYPE])
+            {
+                case JSON_TYPE_SLIDER:
+                    GetSliderRange(item, out float min, out float max, out float def);
+                    if (max < min || def < min || def > max)
+                        return false;
+                    value = FormatSetting(Mathf.Round(def));
+                    return true;
+
+                case JSON_TYPE_CHECKBOX:
+                    value = hasDefault && item[JSON_FIELD_DEF].AsBool ? "1" : "0";
+                    return true;
+
+                case JSON_TYPE_DROPDOWN:
+                    JSONArray items = item[JSON_FIELD_LIST].AsArray;
+                    if (items == null || items.Count == 0)
+                        return false;
+                    int choice = hasDefault ? item[JSON_FIELD_DEF].AsInt : 0;
+                    value = FormatSetting(Mathf.Clamp(choice, 0, items.Count - 1));
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Reads a saved setting. Settings are saved the same way whatever the player's language, so a
+        /// comma-decimal language doesn't misread them.
+        /// </summary>
+        public static bool TryParseSetting(string text, out float value)
+        {
+            return float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+        }
+
+        /// <summary>
+        /// Writes a setting as plain digits ("7", "-2", "10000000"), never as "1E+07" or with a comma.
+        /// </summary>
+        public static string FormatSetting(float value)
+        {
+            return ((double)value).ToString("0.######", CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// Reads a mod's modmenu.json. A file that can't be read or isn't a list of settings is left out
+        /// with a warning, so one mod's broken file doesn't break the menu for every mod.
+        /// </summary>
+        /// <returns>The file's settings, or null if it's left out.</returns>
+        public static JSONArray ReadMenuFile(string modTitle, string filepath)
+        {
+            JSONNode root;
+            try
+            {
+                root = JSON.Parse(File.ReadAllText(filepath));
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[ModMenus] " + modTitle + "'s " + JSON_FILE + " couldn't be read, so its settings are left out: " + e.Message);
+                return null;
+            }
+
+            JSONArray settings = root?.AsArray;
+            if (settings == null)
+            {
+                Debug.LogWarning("[ModMenus] " + modTitle + "'s " + JSON_FILE + " isn't a list of settings ([ ... ]), so its settings are left out.");
+            }
+            return settings;
+        }
+
+        /// <summary>
         /// Adds a text element to the mod menu.
         /// </summary>
         /// <param name="textID">The ID of the text to display.</param>
@@ -641,10 +821,13 @@ namespace ModMenus
             string labelText = Language.Data.TryGetValue(labelID, out string tx) ? tx : labelID;
 
             if (max < min || def < min || def > max)
+            {
+                Debug.LogWarning("[ModMenus] The slider " + varID + " is left out: its range is " + min + " to " + max + " and its default is " + def + ".");
                 return null;
+            }
 
             // Define default value
-            float savedValue = float.TryParse(variables.Get(varID), out float savedFloat) ? savedFloat : def;
+            float savedValue = TryParseSetting(variables.Get(varID), out float savedFloat) ? savedFloat : def;
 
             // Set up main slider object
             GameObject existingUIObj = PopupManager.GetObject(PopupManager._type.main_menu_settings).transform.Find("Panel").Find("Tabs").Find("TabButton (3)").GetComponent<TabButton>().TabToOpen;
@@ -693,7 +876,7 @@ namespace ModMenus
             string labelText = Language.Data.TryGetValue(labelID, out string tx) ? tx : labelID;
 
             // Define default value
-            bool savedValue = float.TryParse(variables.Get(varID), out float savedFloat) ? savedFloat != 0 : def;
+            bool savedValue = TryParseSetting(variables.Get(varID), out float savedFloat) ? savedFloat != 0 : def;
 
             // Set up main object
             GameObject existingUIObj = PopupManager.GetObject(PopupManager._type.main_menu_settings).transform.Find("Panel").Find("Tabs").Find("TabButton (3)").GetComponent<TabButton>().TabToOpen;
@@ -993,7 +1176,7 @@ namespace ModMenus
             {
                 foreach(ModMenuItem item in GetComponentsInChildren<ModMenuItem>())
                 {
-                    variables.Set(item.varID, item.tempValue.ToString());
+                    variables.Set(item.varID, FormatSetting(item.tempValue));
                 }
                 PopupManager.Close_();
             }
@@ -1036,7 +1219,6 @@ namespace ModMenus
                 }
                 if (customDropdown != null)
                 {
-                    tempValue = GetSavedFloat();
                     RenderDropdown();
                 }
             }
@@ -1067,9 +1249,15 @@ namespace ModMenus
             /// <summary>
             /// Renders the current state of a dropdown item.
             /// </summary>
+            /// <remarks>
+            /// A saved choice past the end of the list (the mod's list got shorter, or its default is past the end)
+            /// shows and keeps the last item; the game's dropdown would throw on it every time the menu opened.
+            /// </remarks>
             public void RenderDropdown()
             {
-                int savedValue = (int)Mathf.Floor(GetSavedFloat());
+                int last = Mathf.Max(customDropdown.dropdownItems.Count - 1, 0);
+                int savedValue = Mathf.Clamp((int)Mathf.Floor(GetSavedFloat()), 0, last);
+                tempValue = savedValue;
                 customDropdown.ChangeDropdownInfo(savedValue);
             }
 
@@ -1116,7 +1304,7 @@ namespace ModMenus
             /// <returns>The saved float value or the default value if not found.</returns>
             private float GetSavedFloat()
             {
-                return float.TryParse(variables.Get(varID), out float savedValue) ? savedValue : defValue;
+                return TryParseSetting(variables.Get(varID), out float savedValue) ? savedValue : defValue;
             }
 
             /// <summary>

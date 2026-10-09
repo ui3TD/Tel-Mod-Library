@@ -1,3 +1,4 @@
+using System.Globalization;
 using UnityEngine.UI;
 using Xunit;
 
@@ -100,6 +101,44 @@ namespace ModMenus.Tests
         /// <summary>
         /// Apply saves every setting, so mods read the values the menu showed even if the player changed nothing.
         /// </summary>
+        /// <summary>
+        /// Fixed in 1.3.0: a saved choice past the end of a dropdown's list (the mod's list got shorter)
+        /// made the menu throw every time it opened. It now shows and keeps the last item.
+        /// </summary>
+        [Fact]
+        public void DropdownSavedPastTheEndShowsTheLastItem()
+        {
+            TestGame.Save(Pick, "5");
+            Menu menu = OpenMenu();
+
+            Assert.Equal(2, menu.Selected(Pick));
+            menu.Apply();
+            Assert.Equal("2", TestGame.Saved(Pick));
+        }
+
+        /// <summary>
+        /// Settings read and write the same in every language, including ones that write 1.5 as 1,5.
+        /// </summary>
+        [Fact]
+        public void SettingsReadAndSaveTheSameInCommaDecimalLanguages()
+        {
+            CultureInfo culture = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+            try
+            {
+                TestGame.Save(Volume, "12.0");
+                Menu menu = OpenMenu();
+                Assert.Equal(12f, menu.Item(Volume).tempValue);
+
+                menu.Apply();
+                Assert.Equal("12", TestGame.Saved(Volume));
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = culture;
+            }
+        }
+
         [Fact]
         public void ApplySavesUnchangedSettingsToo()
         {

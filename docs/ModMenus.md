@@ -90,10 +90,26 @@ Dropdown elements output an index (0, 1, 2, etc.) as a string to an in-game vari
 - **itemIDList**: Required array of strings. Each string is the ID for text defined in `JSON/Constants/constants.json`
 - **defaultValue**: Optional integer. Default: 0
 
+## How settings are stored
+
+- Settings are saved in the player's save file, so each save has its own. A new game starts with none saved.
+- When a game starts or a save loads, ModMenus saves the default of every setting that has no saved value yet (the `defaultValue`, or the default described above for each type). Saved values are never changed. So with ModMenus installed, `variables.Get(varID)` returns your setting from the start.
+- Without ModMenus, `variables.Get(varID)` returns null. If your mod works without ModMenus, give it a default in code that matches the `defaultValue` in your modmenu.json.
+- Values are saved as plain digits whatever the player's language (`"7"`, `"-2"`), so `int.Parse` and `float.Parse` with `CultureInfo.InvariantCulture` read them.
+- The menu is registered as popup type 999 (`(PopupManager._type)999`). If your mod adds its own popup, use a different number.
+
+## Mistakes in modmenu.json
+
+ModMenus skips what it can't use and writes a warning to the BepInEx log, starting with `[ModMenus]`:
+
+- A file that isn't valid JSON, or isn't a list (`[ ... ]`), is left out; other mods' settings still show.
+- A slider whose `defaultValue` is outside its range is left out.
+- A dropdown whose saved or default choice is past the end of its list shows its last item.
+
 ## Tips
 
 - Retrieve values using `variables.Get(varID)`, where `varID` is the element's varID.
-- Implement null checks for `variables.Get(varID)` to handle cases where ModMenus is not installed.
+- Implement null checks for `variables.Get(varID)` to handle cases where ModMenus is not installed, or the value was edited by hand.
 - To add vertical spacing, use a text element with an empty labelID (`""`).
 - Always define text in `constants.json` for translation support. If absolutely necessary, ModMenus can handle raw text from labelID or itemIDList fields.
 - For testing, add `"ignore": true` to any element to exclude it from parsing.

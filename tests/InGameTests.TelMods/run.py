@@ -8,6 +8,9 @@ IM-InGameTests' run_ingame_tests.py. Every argument except --build-mods is passe
     python tests/InGameTests.TelMods/run.py --only "Fan Attrition"
     python tests/InGameTests.TelMods/run.py --build-mods   # build and deploy the installed Tel mods first
 
+The runner's per-mod checks are limited to the Tel mods with --scope-file scope.txt; other
+installed mods stay loaded and are noted, not checked.
+
 Without --build-mods the mods are not built: build a changed mod in Release first, which deploys
 it. The LoadedBuildsMatchCheckout check fails when a loaded mod isn't this checkout's last build,
 but it can't see edits made since that build.
@@ -81,7 +84,7 @@ def main() -> int:
         if not build(project, f"-p:GameDir={game_dir}"):
             return 2
 
-    return subprocess.call([sys.executable, str(RUNNER), *runner_args])
+    return subprocess.call([sys.executable, str(RUNNER), "--scope-file", str(HERE / "scope.txt"), *runner_args])
 
 
 if __name__ == "__main__":

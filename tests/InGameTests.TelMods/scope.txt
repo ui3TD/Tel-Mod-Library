@@ -1,0 +1,4 @@
+# Scope rules for the runner's per-mod checks (patches applied, transpilers changing IL, texts
+# loaded): one .NET regex per line, matched against each mod's HarmonyID, title and folder name.
+# run.py passes this file with --scope-file. Other installed mods stay loaded and are noted, not checked.
+^com\.tel\.

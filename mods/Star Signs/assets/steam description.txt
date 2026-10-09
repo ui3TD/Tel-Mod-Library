@@ -24,3 +24,4 @@ You can make unique idols have a specific zodiac star sign by adding a 'starsign
 
 [h3]Changelog[/h3]
 - 1.1.0: Unique idols keep their set age; misspelled star signs no longer break idol generation.
+- 1.1.1: Less work each day with many idols; an error can't leave Leo/Aquarius bonuses stuck on.

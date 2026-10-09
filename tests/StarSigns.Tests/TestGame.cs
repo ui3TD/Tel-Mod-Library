@@ -89,7 +89,7 @@ namespace StarSigns.Tests
             Pushes.Days = new List<int> { 0, 0, 0 };
             AccessTools.Field(typeof(Pushes), "GirlsLastDay").SetValue(null, new List<data_girls.girls> { null, null, null });
 
-            ZodiacTextureReferenceList.Clear();
+            UniqueIdolSigns.Clear();
             patchGetVal = false;
             patchAddRelationship = false;
         }

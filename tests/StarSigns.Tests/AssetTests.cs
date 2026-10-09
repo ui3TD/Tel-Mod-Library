@@ -86,16 +86,19 @@ namespace StarSigns.Tests
         }
 
         /// <summary>
-        /// The params.json line the Steam description gives for unique idols sets the sign it names.
+        /// The Steam description links the guide (SteamCMD can't upload a description with double quotes,
+        /// so the params.json example lives there), and the guide's params.json line sets the sign it names.
         /// </summary>
         [Fact]
-        public void SteamDescription_StarsignExampleWorks()
+        public void Guide_StarsignExampleWorks()
         {
-            string line = File.ReadAllLines(TestGame.ModAsset("steam description.txt")).Single(l => l.Contains("\"starsign\""));
+            Assert.Contains("[url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/StarSigns.md]",
+                File.ReadAllText(TestGame.ModAsset("steam description.txt")));
+            string line = File.ReadAllLines(Path.Combine(TestGame.RepoRoot(), "docs", "StarSigns.md")).Single(l => l.Contains("\"starsign\""));
 
             data_girls_textures_LoadAssetsData.Infix(JSON.Parse("{" + line + "}"), new data_girls_textures._textureAsset());
 
-            Assert.Equal(Zodiac.Capricorn, Assert.Single(ZodiacTextureReferenceList).zodiac);
+            Assert.Equal(Zodiac.Capricorn, Assert.Single(UniqueIdolSigns).Value);
         }
 
         /// <summary>

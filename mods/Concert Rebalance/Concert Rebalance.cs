@@ -1,5 +1,8 @@
 ﻿using HarmonyLib;
 using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Reflection.Emit;
 using UnityEngine;
 using static ConcertRebalance.ConcertRebalance;
 
@@ -12,6 +15,8 @@ namespace ConcertRebalance
         public const float ATTENDANCE_MULT_HARD = 7.85f;
         public const int DOME_CAPACITY_HARD = 50000;
         public const int DOME_PRICE_HARD = 200000000;
+        // The game's variable for the FUJI ticket deal (+5% ticket revenue)
+        public const string FUJI_TICKETS_VARIABLE = "FUJI_3_TICKETS";
 
         /// <summary>
         /// Attendance rate per fan after the price adjustment. Above the price threshold, replaces vanilla's curve with an exponential falloff.
@@ -58,7 +63,7 @@ namespace ConcertRebalance
         /// <param name="audience">The number of attendees.</param>
         /// <param name="ticketPrice">The ticket price set by the player.</param>
         /// <param name="hype">The concert hype, in percent (above 100).</param>
-        /// <param name="fujiTickets">Whether the FUJI_3_TICKETS bonus is active.</param>
+        /// <param name="fujiTickets">Whether the FUJI ticket deal (FUJI_TICKETS_VARIABLE) is active.</param>
         public static long ClubRevenue(long audience, int ticketPrice, float hype, bool fujiTickets)
         {
             float num = HypeMultiplierAbove100(hype);
@@ -99,27 +104,47 @@ namespace ConcertRebalance
     }
 
     /// <summary>
-    /// Reduces the concert hype multiplier specifically for Club venues to balance smaller concerts.
+    /// Gives Club venues the game's diminishing hype multiplier above 100%. The game works out a concert's
+    /// revenue with <c>if (Hype &lt;= 100f || Venue == _venue.club)</c> linear hype, else the curve; this removes
+    /// the club condition, so clubs take the curve like every other venue.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts._concert), "RecalcProjectedValues")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.RecalcProjectedValues))]
     public class SEvent_Concerts__concert_RecalcProjectedValues
     {
-        /// <summary>
-        /// Recalculates projected values for Club venues, applying a reduced hype multiplier.
-        /// </summary>
-        /// <param name="__instance">The instance of the concert class.</param>
-        public static void Postfix(ref SEvent_Concerts._concert __instance)
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            if (__instance.Venue != SEvent_Concerts._venue.club || __instance.Hype <= 100f)
-                return;
+            FieldInfo hype = AccessTools.Field(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Hype));
+            FieldInfo venue = AccessTools.Field(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Venue));
 
-            __instance.ProjectedValues.Actual_Revenue = ClubRevenue(
-                __instance.ProjectedValues.Actual_Audience,
-                __instance.ProjectedValues.TicketPrice,
-                __instance.Hype,
-                variables.Get("FUJI_3_TICKETS") == "true");
+            // Hype <= 100f (to the linear branch), then this.Venue == club (0): brtrue skips to the curve
+            CodeMatcher matcher = new CodeMatcher(instructions).MatchStartForward(
+                new CodeMatch(ci => ci.LoadsField(hype)),
+                new CodeMatch(ci => ci.opcode == OpCodes.Ldc_R4 && ci.operand is float value && value == 100f),
+                new CodeMatch(ci => ci.opcode == OpCodes.Ble || ci.opcode == OpCodes.Ble_S || ci.opcode == OpCodes.Ble_Un || ci.opcode == OpCodes.Ble_Un_S),
+                new CodeMatch(OpCodes.Ldarg_0),
+                new CodeMatch(ci => ci.LoadsField(venue)),
+                new CodeMatch(ci => ci.opcode == OpCodes.Brtrue || ci.opcode == OpCodes.Brtrue_S));
+            if (matcher.IsInvalid)
+            {
+                // Already gone: this patch ran twice
+                if (new CodeMatcher(instructions).MatchStartForward(
+                        new CodeMatch(ci => ci.LoadsField(hype)),
+                        new CodeMatch(ci => ci.opcode == OpCodes.Ldc_R4 && ci.operand is float value && value == 100f),
+                        new CodeMatch(ci => ci.opcode == OpCodes.Ble || ci.opcode == OpCodes.Ble_S || ci.opcode == OpCodes.Ble_Un || ci.opcode == OpCodes.Ble_Un_S),
+                        new CodeMatch(OpCodes.Br)).IsValid)
+                    return instructions;
 
-            return;
+                Debug.LogError("[Concert Rebalance] Couldn't find the club hype check in RecalcProjectedValues; clubs keep the game's linear hype payout");
+                return instructions;
+            }
+
+            // ldarg.0; ldfld Venue; brtrue curve  becomes  br curve
+            object curve = matcher.InstructionAt(5).operand;
+            matcher.Advance(3);
+            matcher.Instruction.opcode = OpCodes.Br;
+            matcher.Instruction.operand = curve;
+            matcher.Advance(1).RemoveInstructions(2);
+            return matcher.InstructionEnumeration();
         }
     }
 
@@ -144,7 +169,7 @@ namespace ConcertRebalance
                 __instance.GetNumberOfSoldTickets(),
                 __instance.TicketPrice,
                 hype,
-                variables.Get("FUJI_3_TICKETS") == "true");
+                variables.Get(FUJI_TICKETS_VARIABLE) == "true");
         }
     }
 
@@ -155,18 +180,14 @@ namespace ConcertRebalance
     public class SEvent_Concerts_UpdateVenueUnlocked
     {
         /// <summary>
-        /// Prevents the default venue unlocking behavior, replaced by a more stringent check in the Finish method.
+        /// Lets the game unlock the next venue only for a finished concert. The game calls this when a concert
+        /// starts; the Finish postfix calls it again once the concert sold out without a loss.
         /// </summary>
         /// <param name="_Concert">The concert instance being checked for venue unlocking.</param>
-        /// <returns>Always returns false to skip the original method.</returns>
+        /// <returns>Whether the game's own unlock runs.</returns>
         public static bool Prefix(SEvent_Concerts._concert _Concert)
         {
-            if (_Concert.Status == SEvent_Tour.tour._status.finished && SEvent_Concerts.UnlockedVenue != SEvent_Concerts._venue.tokyoColiseum && _Concert.Venue == SEvent_Concerts.UnlockedVenue)
-            {
-                SEvent_Concerts.UnlockedVenue++;
-            }
-
-            return false;
+            return _Concert.Status == SEvent_Tour.tour._status.finished;
         }
     }
 

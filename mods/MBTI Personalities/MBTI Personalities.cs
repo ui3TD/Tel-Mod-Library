@@ -29,7 +29,7 @@ namespace MBTIPersonalities
             if (mBTI == MBTI.None)
                 return;
 
-            string txt = "\n" + ExtensionMethods.color(Language.Data[constantTitlePrefix + mBTI.ToString()] + ": ", mainScript.blue) + Language.Data[constantDescPrefix + mBTI.ToString()];
+            string txt = "\n" + ExtensionMethods.color(Text(constantTitlePrefix + mBTI.ToString()) + ": ", mainScript.blue) + Text(constantDescPrefix + mBTI.ToString());
 
             TextMeshProUGUI textComponent = __instance.Extras_Container.transform.Find("Text(Clone)").GetComponent<TextMeshProUGUI>();
             textComponent.text += txt;
@@ -50,14 +50,14 @@ namespace MBTIPersonalities
         /// Adds MBTI information to the audition card if applicable.
         /// </summary>
         /// <param name="__instance">Instance of the Audition_Data_Card class being patched.</param>
-        public static void Postfix(ref Audition_Data_Card __instance)
+        public static void Postfix(Audition_Data_Card __instance)
         {
             MBTI mBTI = GetGirlMBTI(__instance.Girl.girl);
             if (mBTI == MBTI.None)
                 return;
 
-            string title = " / " + Language.Data[constantTitlePrefix + mBTI.ToString()];
-            string desc = "\n" + Language.Data[constantDescPrefix + mBTI.ToString()];
+            string title = " / " + Text(constantTitlePrefix + mBTI.ToString());
+            string desc = "\n" + Text(constantDescPrefix + mBTI.ToString());
 
             __instance.Special_Skill_Title.GetComponent<TextMeshProUGUI>().text += title;
             __instance.Special_Skill_Description.GetComponent<TextMeshProUGUI>().text += desc;
@@ -83,7 +83,7 @@ namespace MBTIPersonalities
             if (mBTI == MBTI.None)
                 return;
 
-            __result += "\n" + Language.Data[constantTitlePrefix + mBTI.ToString()] + ": " + Language.Data[constantDescPrefix + mBTI.ToString()];
+            __result += "\n" + Text(constantTitlePrefix + mBTI.ToString()) + ": " + Text(constantDescPrefix + mBTI.ToString());
         }
     }
 
@@ -106,7 +106,7 @@ namespace MBTIPersonalities
             if (mBTI == MBTI.None)
                 return;
 
-            __result += "\n" + Language.Data[constantTitlePrefix + mBTI.ToString()] + ": " + Language.Data[constantDescPrefix + mBTI.ToString()];
+            __result += "\n" + Text(constantTitlePrefix + mBTI.ToString()) + ": " + Text(constantDescPrefix + mBTI.ToString());
         }
     }
 
@@ -128,13 +128,13 @@ namespace MBTIPersonalities
             if (!genTextures)
                 return;
 
-            foreach(MBTITextureData data in MBTITextureReferenceList)
+            if (__result.textureAssets == null || __result.textureAssets.Count == 0)
+                return;
+
+            data_girls_textures._textureAsset asset = __result.textureAssets[0].asset;
+            if (asset != null && UniqueIdolTypes.TryGetValue(UniqueIdolKey(asset.ModName, asset.body_id), out MBTI mbti))
             {
-                if (__result.textureAssets.Count != 0 && __result.textureAssets[0].asset != null && __result.textureAssets[0].asset.ModName == data.ModName && __result.textureAssets[0].asset.body_id == data.body_id)
-                {
-                    SetGirlMBTI(__result, data.mbti);
-                    break;
-                }
+                SetGirlMBTI(__result, mbti);
             }
         }
     }
@@ -155,6 +155,8 @@ namespace MBTIPersonalities
         /// <param name="__result">Calculated success chance.</param>
         public static void Postfix(ref int __result)
         {
+            // AccidentSuccessChance takes no song, so the song comes from the concert popup. That's right today
+            // because the game only calls it from the popup while it plays a song.
             Concert_Popup popup = Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>().GetByType(PopupManager._type.sevent_concert).obj.GetComponent<Concert_Popup>();
             List<data_girls.girls> girls = popup.CurrentSong.GetGirls(true);
             MBTI mBTI;
@@ -269,10 +271,11 @@ namespace MBTIPersonalities
         /// <param name="__instance">Instance of the girl being patched.</param>
         public static void Postfix(ref float __result, resources.fanType _FanType, data_girls.girls __instance)
         {
-            if (GetGirlMBTI(__instance) != MBTI.ISFP)
+            // The fan type first: it's cheaper than the type lookup, and this runs for every idol and stat
+            if (_FanType != resources.fanType.hardcore)
                 return;
 
-            if (_FanType == resources.fanType.hardcore)
+            if (GetGirlMBTI(__instance) == MBTI.ISFP)
             {
                 __result *= 1 + ISFPBonus;
             }
@@ -350,9 +353,9 @@ namespace MBTIPersonalities
         /// </summary>
         /// <param name="_proposal">Business proposal being set up.</param>
         /// <param name="__state">Original stamina cost state.</param>
-        public static void Prefix(ref business._proposal _proposal, ref int __state)
+        public static void Prefix(business._proposal _proposal, out int? __state)
         {
-            __state = 0;
+            __state = null;
             if (GetGirlMBTI(_proposal.girl) != MBTI.ENFP)
                 return;
 
@@ -367,12 +370,12 @@ namespace MBTIPersonalities
         /// </summary>
         /// <param name="_proposal">Business proposal being set up.</param>
         /// <param name="__state">Original stamina cost state.</param>
-        public static void Finalizer(ref business._proposal _proposal, ref int __state)
+        public static void Finalizer(business._proposal _proposal, int? __state)
         {
-            if (__state == 0)
+            if (__state == null)
                 return;
 
-            _proposal.stamina = __state;
+            _proposal.stamina = __state.Value;
 
         }
     }
@@ -389,7 +392,7 @@ namespace MBTIPersonalities
         /// Reduces the stamina cost if the girl has the ENFP MBTI type.
         /// </summary>
         /// <param name="__instance">Instance of the business being patched.</param>
-        public static void Prefix(ref business __instance)
+        public static void Prefix(business __instance)
         {
             if (GetGirlMBTI(__instance.ActiveProposal.girl) != MBTI.ENFP)
                 return;
@@ -764,7 +767,7 @@ namespace MBTIPersonalities
         public static void Finalizer()
         {
             patchGetVal = false;
-            isRisky = null;
+            isRisky = false;
         }
     }
 
@@ -883,12 +886,33 @@ namespace MBTIPersonalities
         public static bool patchSet_INTJ = false;
 
         // Other patch condition flags
-        public static bool? isRisky = null;
+        public static bool isRisky = false;
         public static bool isShow = false;
 
-        // Lists to store MBTI data references
-        public static List<MBTITextureData> MBTITextureReferenceList = new();
+        // Types set in unique idols' params.json, by UniqueIdolKey. Reading the files again overwrites, never duplicates.
+        public static Dictionary<string, MBTI> UniqueIdolTypes = new();
         public static Dictionary<int, MBTI> MBTIReferenceDict = new();
+
+        public static string UniqueIdolKey(string modName, int bodyId) => modName + "/" + bodyId;
+
+        // The 16 types by name, any case. Enum.TryParse would also take "3" or "ISTJ, ENFP".
+        private static readonly Dictionary<string, MBTI> TypesByName = Enum.GetValues(typeof(MBTI)).Cast<MBTI>()
+            .Where(m => m != MBTI.None).ToDictionary(m => m.ToString(), StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Reads a type name, such as "INTJ" or "intj". None and anything else isn't a type.
+        /// </summary>
+        public static bool TryParseMBTI(string name, out MBTI mbti)
+        {
+            mbti = MBTI.None;
+            return name != null && TypesByName.TryGetValue(name, out mbti);
+        }
+
+        /// <summary>
+        /// The game's text for a key, or the key itself if none is loaded (a missing entry would throw in the
+        /// game's tooltip and profile code).
+        /// </summary>
+        public static string Text(string key) => Language.Data.TryGetValue(key, out string text) ? text : key;
 
         /// <summary>
         /// Calculates the modifier to idol parameters based on their MBTI traits.
@@ -915,7 +939,7 @@ namespace MBTIPersonalities
                         break;
 
                     case MBTI.ESTP:
-                        if (isRisky ?? false)
+                        if (isRisky)
                             num += ESTPStatBonus;
                         break;
 
@@ -955,7 +979,11 @@ namespace MBTIPersonalities
         public static void SetGirlMBTI(data_girls.girls girls, MBTI mbti)
         {
             MBTIReferenceDict[girls.id] = mbti;
-            girls.SetVariable(mbti.ToString());
+            // One type per idol: a second one would be saved too, and the last one wins on load.
+            // "None" was written by older versions for an unreadable "mbti" in params.json.
+            girls.Variables.RemoveAll(v => TypesByName.ContainsKey(v) || string.Equals(v, nameof(MBTI.None), StringComparison.OrdinalIgnoreCase));
+            if (mbti != MBTI.None)
+                girls.SetVariable(mbti.ToString());
         }
 
         /// <summary>
@@ -998,16 +1026,6 @@ namespace MBTIPersonalities
                 }
             }
             return num;
-        }
-
-        /// <summary>
-        /// Class to store MBTI data associated with each unique idol.
-        /// </summary>
-        public class MBTITextureData
-        {
-            public string ModName;
-            public int body_id;
-            public MBTI mbti;
         }
 
         public enum MBTI

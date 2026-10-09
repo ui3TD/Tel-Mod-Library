@@ -30,12 +30,19 @@ namespace MBTIPersonalities
 
             foreach (data_girls.girls girl in data_girls.girl)
             {
+                // A save from an older version can hold more than one type; the last one wins, as it
+                // always did, and setting it removes the others
+                MBTI saved = MBTI.None;
                 foreach (string variable in girl.Variables)
                 {
-                    if(Enum.TryParse(variable, true, out MBTI mBTI))
+                    if (TryParseMBTI(variable, out MBTI mBTI))
                     {
-                        SetGirlMBTI(girl, mBTI);
+                        saved = mBTI;
                     }
+                }
+                if (saved != MBTI.None)
+                {
+                    SetGirlMBTI(girl, saved);
                 }
             }
         }
@@ -46,35 +53,34 @@ namespace MBTIPersonalities
     [HarmonyPatch(typeof(data_girls_textures), "LoadAssetsData", new[] { typeof(string) })]
     public class data_girls_textures_LoadAssetsData
     {
+        // After the game parses a body folder's params.json into a local, call Infix with it and that folder's body asset
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            object textureAssetOperand = null;
-            object jsonNodeOperand = null;
-            for (int i = 0; i < instructionList.Count; i++)
+            CodeMatcher matcher = new CodeMatcher(instructionList).MatchEndForward(
+                new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(data_girls_textures), "ProcessInboundData"))),
+                new CodeMatch(ci => ci.IsStloc()));
+            if (matcher.IsInvalid)
             {
-                if (instructionList[i].opcode == OpCodes.Stloc_S && instructionList[i].operand is LocalVariableInfo localVariable && localVariable.LocalIndex == 8)
-                {
-                    textureAssetOperand = instructionList[i].operand;
-                }
-                if (instructionList[i].opcode == OpCodes.Stloc_S && instructionList[i].operand is LocalVariableInfo localVariable2 && localVariable2.LocalIndex == 13)
-                {
-                    index = i;
-                    jsonNodeOperand = instructionList[i].operand;
-                    break;
-                }
+                UnityEngine.Debug.LogError("[MBTI Personalities] Couldn't find where the game reads params.json; \"mbti\" is ignored");
+                return instructionList;
+            }
+            object jsonNode = matcher.Operand;
+
+            // The body asset is the last one stored before params.json is read
+            object textureAsset = instructionList.Take(matcher.Pos).LastOrDefault(ci => ci.IsStloc() && ci.operand is LocalVariableInfo local
+                && local.LocalType == typeof(data_girls_textures._textureAsset))?.operand;
+            if (textureAsset == null)
+            {
+                UnityEngine.Debug.LogError("[MBTI Personalities] Couldn't find the body asset that params.json is read into; \"mbti\" is ignored");
+                return instructionList;
             }
 
-            if (index != -1)
-            {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldloc_S, jsonNodeOperand));
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Ldloc_S, textureAssetOperand));
-                instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), "Infix")));
-            }
-
-            return instructionList.AsEnumerable();
+            return matcher.Advance(1).Insert(
+                new CodeInstruction(OpCodes.Ldloc_S, jsonNode),
+                new CodeInstruction(OpCodes.Ldloc_S, textureAsset),
+                new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), nameof(Infix))))
+                .InstructionEnumeration();
         }
 
         public static void Infix(JSONNode jsonnode, data_girls_textures._textureAsset textureAsset)
@@ -83,17 +89,13 @@ namespace MBTIPersonalities
                 return;
 
             string mbtiString = jsonnode[MBTINodeID];
-
-            MBTI girlMBTI = Enum.TryParse(mbtiString, true, out MBTI tryMBTI) ? tryMBTI : MBTI.None;
-
-            MBTITextureData mBTITextureData = new()
+            if (!TryParseMBTI(mbtiString, out MBTI girlMBTI))
             {
-                ModName = textureAsset.ModName,
-                body_id = textureAsset.body_id,
-                mbti = girlMBTI
-            };
+                UnityEngine.Debug.LogWarning("[MBTI Personalities] MBTI type not found: " + mbtiString);
+                return;
+            }
 
-            MBTITextureReferenceList.Add(mBTITextureData);
+            UniqueIdolTypes[UniqueIdolKey(textureAsset.ModName, textureAsset.body_id)] = girlMBTI;
         }
     }
 

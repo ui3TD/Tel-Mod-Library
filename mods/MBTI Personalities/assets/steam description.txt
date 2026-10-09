@@ -37,3 +37,4 @@ You can make unique idols have a specific MBTI type by adding an 'mbti' line to 
 - 1.1.0: ISTP now halves the chance of failing concert accidents, instead of making them almost always fail.
 - 1.1.1: Bonuses can no longer stay on after a game error.
 - 1.2.0: A new game no longer gives idols the types of a previously played save.
+- 1.3.0: An idol keeps one type in her save; a misspelled unique idol type is skipped with a warning.

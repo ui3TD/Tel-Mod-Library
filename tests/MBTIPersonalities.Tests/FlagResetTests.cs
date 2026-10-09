@@ -44,7 +44,7 @@ namespace MBTIPersonalities.Tests
             patchSetVal_INTJ = false;
             patchSet_INTJ = false;
             isShow = false;
-            isRisky = null;
+            isRisky = false;
         }
 
         /// <summary>
@@ -124,7 +124,7 @@ namespace MBTIPersonalities.Tests
                 if (patchClass == typeof(Data_girls_GetAverageParam) || patchClass == typeof(Shows__show_SenbatsuCalcParam))
                     Assert.False(isShow);
                 if (patchClass == typeof(Singles__single_SenbatsuCalcParam))
-                    Assert.Null(isRisky);
+                    Assert.False(isRisky);
             }
             finally
             {

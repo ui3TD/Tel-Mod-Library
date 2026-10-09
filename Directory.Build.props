@@ -81,16 +81,33 @@
 		</ParameterGroup>
 		<Task>
 			<Using Namespace="System.IO"/>
+			<Using Namespace="System.Globalization"/>
+			<Using Namespace="System.Text.RegularExpressions"/>
 			<Code Type="Fragment" Language="cs">
 				<![CDATA[
+// Text values are escaped as JSON strings; Tags and JSONLoadOrder are raw JSON, so check their shape.
+Func<string, string> J = s => "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"")
+	.Replace("\r", "").Replace("\n", "\\n").Replace("\t", "\\t") + "\"";
+if (!Regex.IsMatch(Tags, @"^\[\s*(""[^""\\]*""\s*(,\s*""[^""\\]*""\s*)*)?\]$"))
+{
+	Log.LogError("<Tags> must be a JSON array of strings, like [\"gameplay\"]; got: " + Tags);
+	return false;
+}
+int loadOrder;
+if (!int.TryParse(JSONLoadOrder, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out loadOrder))
+{
+	Log.LogError("<JSONLoadOrder> must be a whole number; got: " + JSONLoadOrder);
+	return false;
+}
+
 var content = $@"{{
-	""Title"": ""{ModName}"",
-	""Description"": ""{ModDescription}"",
-	""Authors"": ""{Authors}"",
-	""Version"": ""{Version}"",
+	""Title"": {J(ModName)},
+	""Description"": {J(ModDescription)},
+	""Authors"": {J(Authors)},
+	""Version"": {J(Version)},
 	""Tags"": {Tags},
-	""JSONLoadOrder"": {JSONLoadOrder},
-	""HarmonyID"": ""{AssemblyName}""
+	""JSONLoadOrder"": {loadOrder},
+	""HarmonyID"": {J(AssemblyName)}
 }}";
 
 File.WriteAllText(OutputFilePath, content);

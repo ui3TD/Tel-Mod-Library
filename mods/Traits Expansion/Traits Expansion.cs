@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using System;
+using System.Globalization;
 using static TraitsExpansion.TraitsExpansion;
 using System.Reflection.Emit;
 using System.Reflection;
@@ -23,55 +24,54 @@ namespace TraitsExpansion
         }
     }
 
-    // Load traits from unique idols
+    // Load traits from unique idols. The game only knows its own traits: for one of this mod's, its
+    // Enum.Parse throws and it logs "Trait not found". Read the mod's traits right after the game parses
+    // params.json (the game's parse, later, still wins for its own traits), and only warn about traits
+    // neither knows.
     [HarmonyPatch(typeof(data_girls_textures), "LoadAssetsData", new[] {typeof(string)})]
     public class data_girls_textures_LoadAssetsData
     {
+        private const string TraitNotFound = "Trait not found: ";
+
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            object textureAssetOperand = null;
-            object jsonNodeOperand = null;
-            for (int i = 0; i < instructionList.Count; i++)
+            CodeMatcher matcher = new CodeMatcher(instructionList).MatchEndForward(
+                new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(data_girls_textures), "ProcessInboundData"))),
+                new CodeMatch(ci => ci.IsStloc()));
+            if (matcher.IsInvalid)
             {
-                if (instructionList[i].opcode == OpCodes.Ldloc_S && instructionList[i].operand is LocalVariableInfo localVariable && localVariable.LocalIndex == 8)
-                {
-                    textureAssetOperand = instructionList[i].operand;
-                }
-                if (instructionList[i].opcode == OpCodes.Ldloc_S && instructionList[i].operand is LocalVariableInfo localVariable2 && localVariable2.LocalIndex == 13)
-                {
-                    jsonNodeOperand = instructionList[i].operand;
-                }
-                if (instructionList[i].opcode == OpCodes.Pop)
-                {
-                    index = i;
-                }
-                if (instructionList[i].opcode == OpCodes.Ldstr && (string)instructionList[i].operand == "Trait not found: ")
-                {
-                    break;
-                }
+                Debug.LogError("[Traits Expansion] Couldn't find where the game reads params.json; idol packs can't set this mod's traits");
+                return instructionList;
+            }
+            object jsonNode = matcher.Operand;
+
+            // The body asset is the last one stored before params.json is read
+            object textureAsset = instructionList.Take(matcher.Pos).LastOrDefault(ci => ci.IsStloc() && ci.operand is LocalVariableInfo local
+                && local.LocalType == typeof(data_girls_textures._textureAsset))?.operand;
+            if (textureAsset == null)
+            {
+                Debug.LogError("[Traits Expansion] Couldn't find the body asset that params.json is read into; idol packs can't set this mod's traits");
+                return instructionList;
             }
 
-            if (index != -1)
+            matcher.Advance(1).Insert(
+                new CodeInstruction(OpCodes.Ldloc_S, textureAsset),
+                new CodeInstruction(OpCodes.Ldloc_S, jsonNode),
+                new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), nameof(Infix))));
+
+            // Debug.LogWarning("Trait not found: " + ...) becomes WarnUnlessModTrait(message, jsonNode)
+            MethodInfo logWarning = AccessTools.Method(typeof(Debug), nameof(Debug.LogWarning), new[] { typeof(object) });
+            matcher.MatchStartForward(new CodeMatch(ci => ci.Is(OpCodes.Ldstr, TraitNotFound)))
+                .MatchStartForward(new CodeMatch(ci => ci.Calls(logWarning)));
+            if (matcher.IsInvalid)
             {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldloc_S, textureAssetOperand));
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Ldloc_S, jsonNodeOperand));
-                instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), "Infix")));
-                instructionList.Insert(index + 4, new CodeInstruction(OpCodes.Stloc_S, textureAssetOperand));
-
-                // Only warn about traits that neither the game nor this mod knows
-                MethodInfo logWarning = AccessTools.Method(typeof(Debug), nameof(Debug.LogWarning), new[] { typeof(object) });
-                int warning = instructionList.FindIndex(index + 5, x => x.Calls(logWarning));
-                if (warning != -1)
-                {
-                    instructionList[warning].operand = AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), nameof(WarnUnlessModTrait));
-                    instructionList.Insert(warning, new CodeInstruction(OpCodes.Ldloc_S, jsonNodeOperand));
-                }
+                Debug.LogWarning("[Traits Expansion] Couldn't find the game's \"Trait not found\" warning; it will also name this mod's traits");
+                return matcher.InstructionEnumeration();
             }
-
-            return instructionList.AsEnumerable();
+            matcher.Operand = AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), nameof(WarnUnlessModTrait));
+            matcher.Insert(new CodeInstruction(OpCodes.Ldloc_S, jsonNode));
+            return matcher.InstructionEnumeration();
         }
 
         public static void WarnUnlessModTrait(object message, JSONNode jsonnode)
@@ -82,14 +82,12 @@ namespace TraitsExpansion
             }
         }
 
-        public static data_girls_textures._textureAsset Infix(data_girls_textures._textureAsset textureAsset, JSONNode jsonnode)
+        public static void Infix(data_girls_textures._textureAsset textureAsset, JSONNode jsonnode)
         {
-            if (Enum.TryParse(jsonnode["trait"], out NewTraits parsedEnum))
+            if (jsonnode["trait"] != null && Enum.TryParse(jsonnode["trait"], out NewTraits parsedEnum))
             {
                 textureAsset.Trait = (traits._trait._type)parsedEnum;
             }
-
-            return textureAsset;
         }
     }
 
@@ -231,7 +229,7 @@ namespace TraitsExpansion
     [HarmonyPatch(typeof(data_girls.girls), "Graduation_Set_Default_Date")]
     public class data_girls_girls_Graduation_Set_Default_Date
     {
-        public static void Postfix(ref data_girls.girls __instance)
+        public static void Postfix(data_girls.girls __instance)
         {
             if (__instance.trait != (traits._trait._type)NewTraits.Job_Hopper)
                 return;
@@ -269,7 +267,7 @@ namespace TraitsExpansion
                     if (girls != null && girls.trait == (traits._trait._type)NewTraits.Stage_Fright)
                     {
                         NotificationManager.AddNotification(
-                            Language.Insert("IDOL__STAGEFRIGHT", new string[] {girls.GetName()}), 
+                            Language.Insert("IDOL__STAGEFRIGHT", girls.GetName(), STAGEFRIGHT_PENALTY.ToString(CultureInfo.InvariantCulture)),
                             mainScript.red32,
                             NotificationManager._notification._type.idol_stat_change
                             );
@@ -316,9 +314,9 @@ namespace TraitsExpansion
     [HarmonyPatch(typeof(Business_Popup), "Set")]
     public class Business_Popup_Set
     {
-        public static void Prefix(ref business._proposal _proposal, ref int __state)
+        public static void Prefix(business._proposal _proposal, out int? __state)
         {
-            __state = 0;
+            __state = null;
             if (_proposal?.girl == null)
                 return;
             if (_proposal.type != business._type.tv_drama || _proposal.girl.trait != (traits._trait._type)NewTraits.Thespian)
@@ -329,12 +327,12 @@ namespace TraitsExpansion
         }
 
         // Finalizer so the stamina is restored even if Set throws
-        public static void Finalizer(ref business._proposal _proposal, ref int __state)
+        public static void Finalizer(business._proposal _proposal, int? __state)
         {
-            if (__state == 0 || _proposal == null)
+            if (__state == null || _proposal == null)
                 return;
 
-            _proposal.stamina = __state;
+            _proposal.stamina = __state.Value;
         }
     }
 
@@ -342,7 +340,7 @@ namespace TraitsExpansion
     [HarmonyPatch(typeof(business), "Accept")]
     public class business_Accept
     {
-        public static void Prefix(ref business __instance)
+        public static void Prefix(business __instance)
         {
             if (__instance.ActiveProposal?.girl == null)
                 return;
@@ -427,17 +425,15 @@ namespace TraitsExpansion
     public class Data_girls_GetAverageParam
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix(List<data_girls.girls> Girls)
+        public static void Prefix()
         {
             patchGetVal = true;
-            girlList = Girls;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
         public static Exception Finalizer(Exception __exception)
         {
             patchGetVal = false;
-            girlList = null;
             return __exception;
         }
     }
@@ -447,17 +443,15 @@ namespace TraitsExpansion
     public class Shows__show_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix(List<data_girls.girls> _girls)
+        public static void Prefix()
         {
             patchGetVal = true;
-            girlList = _girls;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
         public static Exception Finalizer(Exception __exception)
         {
             patchGetVal = false;
-            girlList = null;
             return __exception;
         }
     }
@@ -527,7 +521,7 @@ namespace TraitsExpansion
             if (!patchGetVal)
                 return;
 
-            __result += GetTraitModifier(__instance.Parent, __instance.type, girlList);
+            __result += GetTraitModifier(__instance.Parent, __instance.type);
         }
     }
 
@@ -559,13 +553,14 @@ namespace TraitsExpansion
         public const float POLYGLOT_BONUS = 0.2f;
 
 
+        // Set while the game works out a show, single, concert or proposal from idols' stats; the
+        // methods that set it never call each other, so a bool is enough. Cleared in finalizers.
         public static bool patchGetVal = false;
-        public static List<data_girls.girls> girlList = null;
         public static bool patchAddParam = false;
         public static bool patchGetFan_Count = false;
 
         // This method calculates the modifier to girl parameters based on their trait.
-        public static int GetTraitModifier(data_girls.girls girls, data_girls._paramType type, List<data_girls.girls> _1 = null)
+        public static int GetTraitModifier(data_girls.girls girls, data_girls._paramType type)
         {
             int num = 0;
             if (girls == null || !data_girls.IsStatParam(type))

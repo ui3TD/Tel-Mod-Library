@@ -79,12 +79,10 @@ namespace TraitsExpansionTests
         public void Popup_ShowsHalfStamina_ThenRestores(int stamina, int shown)
         {
             business._proposal proposal = new() { type = tv_drama, girl = TestGame.Idol(NewTraits.Thespian), stamina = stamina };
-            int state = 0;
-
-            Business_Popup_Set.Prefix(ref proposal, ref state);
+            Business_Popup_Set.Prefix(proposal, out int? state);
             Assert.Equal(shown, proposal.stamina);
 
-            Business_Popup_Set.Finalizer(ref proposal, ref state);
+            Business_Popup_Set.Finalizer(proposal, state);
             Assert.Equal(stamina, proposal.stamina);
         }
 
@@ -96,13 +94,11 @@ namespace TraitsExpansionTests
         public void Popup_OtherJobsAndTraits_Unchanged(NewTraits trait, business._type type)
         {
             business._proposal proposal = new() { type = type, girl = TestGame.Idol(trait), stamina = 20 };
-            int state = 0;
-
-            Business_Popup_Set.Prefix(ref proposal, ref state);
+            Business_Popup_Set.Prefix(proposal, out int? state);
             Assert.Equal(20, proposal.stamina);
-            Assert.Equal(0, state);
+            Assert.Null(state);
 
-            Business_Popup_Set.Finalizer(ref proposal, ref state);
+            Business_Popup_Set.Finalizer(proposal, state);
             Assert.Equal(20, proposal.stamina);
         }
 
@@ -110,16 +106,15 @@ namespace TraitsExpansionTests
         public void Popup_NoProposalOrGirl_DoesNothing()
         {
             business._proposal proposal = null;
-            int state = 0;
-            Business_Popup_Set.Prefix(ref proposal, ref state);
-            Business_Popup_Set.Finalizer(ref proposal, ref state);
-            Assert.Equal(0, state);
+            Business_Popup_Set.Prefix(proposal, out int? state);
+            Business_Popup_Set.Finalizer(proposal, state);
+            Assert.Null(state);
 
             proposal = new() { type = tv_drama, girl = null, stamina = 20 };
-            Business_Popup_Set.Prefix(ref proposal, ref state);
+            Business_Popup_Set.Prefix(proposal, out state);
             Assert.Equal(20, proposal.stamina);
-            Assert.Equal(0, state);
-            Business_Popup_Set.Finalizer(ref proposal, ref state);
+            Assert.Null(state);
+            Business_Popup_Set.Finalizer(proposal, state);
             Assert.Equal(20, proposal.stamina);
         }
 
@@ -135,11 +130,11 @@ namespace TraitsExpansionTests
         {
             business biz = TestGame.Component<business>();
             biz.ActiveProposal = null;
-            business_Accept.Prefix(ref biz);
+            business_Accept.Prefix(biz);
             Assert.Null(biz.ActiveProposal);
 
             biz.ActiveProposal = new business._proposal { type = tv_drama, girl = null, stamina = 20 };
-            business_Accept.Prefix(ref biz);
+            business_Accept.Prefix(biz);
             Assert.Equal(20, biz.ActiveProposal.stamina);
         }
 
@@ -151,7 +146,7 @@ namespace TraitsExpansionTests
             business biz = TestGame.Component<business>();
             biz.ActiveProposal = new business._proposal { type = tv_drama, girl = TestGame.Idol(NewTraits.Thespian), stamina = stamina };
 
-            business_Accept.Prefix(ref biz);
+            business_Accept.Prefix(biz);
             Assert.Equal(expected, biz.ActiveProposal.stamina);
         }
 
@@ -163,7 +158,7 @@ namespace TraitsExpansionTests
             business biz = TestGame.Component<business>();
             biz.ActiveProposal = new business._proposal { type = type, girl = TestGame.Idol(trait), stamina = 20 };
 
-            business_Accept.Prefix(ref biz);
+            business_Accept.Prefix(biz);
             Assert.Equal(20, biz.ActiveProposal.stamina);
         }
     }

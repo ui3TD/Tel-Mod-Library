@@ -1,6 +1,6 @@
 [
 	{
 		id: "IDOL__STAGEFRIGHT",
-		text: "@ lost 10 mental stamina due to stage fright."
+		text: "@1 lost @2 mental stamina due to stage fright."
 	}
 ]

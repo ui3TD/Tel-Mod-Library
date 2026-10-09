@@ -5,7 +5,7 @@
 		<HarmonyID>com.tel.traitsexpansion</HarmonyID>
 		<ModDescription>A bunch of new traits that expand upon the existing set of traits. They affect stats, appeal, businesses, special events and more.</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.1.1</Version>
+		<Version>1.1.2</Version>
 		<WorkshopID>2985475895</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 

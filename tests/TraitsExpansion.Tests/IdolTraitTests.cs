@@ -308,7 +308,7 @@ namespace TraitsExpansionTests
             Seams.Range = (_, _) => roll;
             data_girls.girls girl = TestGame.Idol(NewTraits.Job_Hopper);
 
-            data_girls_girls_Graduation_Set_Default_Date.Postfix(ref girl);
+            data_girls_girls_Graduation_Set_Default_Date.Postfix(girl);
 
             Assert.Equal(new[] { (100, 365) }, Seams.RangesRolled);
             Assert.Equal(TestGame.Today.AddDays(roll), girl.Graduation_Date);
@@ -321,7 +321,7 @@ namespace TraitsExpansionTests
             DateTime vanilla = TestGame.Today.AddYears(5);
             girl.Graduation_Date = vanilla;
 
-            data_girls_girls_Graduation_Set_Default_Date.Postfix(ref girl);
+            data_girls_girls_Graduation_Set_Default_Date.Postfix(girl);
 
             Assert.Equal(vanilla, girl.Graduation_Date);
             Assert.Empty(Seams.RangesRolled);

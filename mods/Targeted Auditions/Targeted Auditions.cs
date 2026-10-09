@@ -315,19 +315,11 @@ namespace CustomAuditions
 
         public const string AUD_SCROLLRECT_NAME = "ScrollContainer";
 
-        public const string VARID_AGELIMIT_POPUP_TOGGLE = "AuditionAgeLimit_TogglePopup";
-        public const string DEF_AGELIMIT_POPUP_TOGGLE = "0";
-
-        public static int defaultMinAge = 12;
-        public static int defaultMaxAge = 23;
-        public static int minAge = defaultMinAge;
-        public static int maxAge = defaultMaxAge;
+        public static int minAge = 12;
+        public static int maxAge = 23;
 
         public static int chanceLesbian = 7;
         public static int chanceBi = 14;
-
-        public static bool agePopup = false;
-        public static bool inputValid = false;
 
         /// <summary>
         /// Reads a Mod Menu setting as a number. A missing or unreadable value (e.g. a hand-edited save,
@@ -351,62 +343,6 @@ namespace CustomAuditions
         public static int ReadInt(string varID, string def)
         {
             return (int)Math.Round(ReadFloat(varID, def));
-        }
-
-        /// <summary>
-        /// Parses the age range string and sets the minAge and maxAge values.
-        /// </summary>
-        /// <param name="ageRange">The age range string to parse.</param>
-        public static void ParseAgeRange(string ageRange)
-        {
-            if (IsInputValid(ageRange))
-            {
-                string[] ageLimits = ageRange.Split('-');
-                minAge = int.Parse(ageLimits[0].Trim());
-                maxAge = int.Parse(ageLimits[1].Trim());
-            }
-            else
-            {
-                minAge = defaultMinAge;
-                maxAge = defaultMaxAge;
-            }
-        }
-
-        /// <summary>
-        /// Validates the input age range string.
-        /// </summary>
-        /// <param name="ageRange">The age range string to validate.</param>
-        /// <returns>True if the input is valid, false otherwise.</returns>
-        public static bool IsInputValid(string ageRange)
-        {
-
-            string[] ageLimits = ageRange.Split('-');
-
-            if (ageLimits == null || ageLimits.Length != 2)
-            {
-                return false;
-            }
-
-            if (!int.TryParse(ageLimits[0].Trim(), out int min))
-            {
-                return false;
-            }
-            if (!int.TryParse(ageLimits[1].Trim(), out int max))
-            {
-                return false;
-            }
-
-            if (max < 1 || min < 1)
-            {
-                return false;
-            }
-
-            if (max < min)
-            {
-                return false;
-            }
-
-            return true;
         }
 
 
@@ -489,9 +425,6 @@ namespace CustomAuditions
 
         public static void LoadConfiguredAgeRange()
         {
-            // The former per-audition age popup is retired. Always use the Mod Menu range.
-            variables.Set(VARID_AGELIMIT_POPUP_TOGGLE, DEF_AGELIMIT_POPUP_TOGGLE);
-
             minAge = ReadInt(VARID_MINAGE, DEF_MINAGE_STR);
             maxAge = ReadInt(VARID_MAXAGE, DEF_MAXAGE_STR);
             if (maxAge < minAge)
@@ -500,8 +433,6 @@ namespace CustomAuditions
                 minAge = maxAge;
                 maxAge = originalMinAge;
 
-                defaultMaxAge = maxAge;
-                defaultMinAge = minAge;
                 variables.Set(VARID_MAXAGE, maxAge.ToString());
                 variables.Set(VARID_MINAGE, minAge.ToString());
             }

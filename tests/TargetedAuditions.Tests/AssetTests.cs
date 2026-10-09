@@ -77,15 +77,14 @@ namespace TargetedAuditions.Tests
         }
 
         /// <summary>
-        /// The per-audition age popup's toggle stays hidden, and defaults to off in code.
+        /// The retired per-audition age popup leaves no menu entries or text behind.
         /// </summary>
         [Fact]
-        public void AgePopupToggle_IsHiddenAndOffByDefault()
+        public void AgePopup_IsGone()
         {
-            List<SimpleJSON.JSONNode> toggles = Items(ModMenu()).Where(i => i["varID"].Value == VARID_AGELIMIT_POPUP_TOGGLE).ToList();
-            Assert.NotEmpty(toggles);
-            Assert.All(toggles, t => Assert.Equal("true", t["ignore"].Value));
-            Assert.Equal("0", DEF_AGELIMIT_POPUP_TOGGLE);
+            Assert.DoesNotContain(Items(ModMenu()), i => i["varID"].Value == "AuditionAgeLimit_TogglePopup");
+            Assert.DoesNotContain(TextIDs(), id => id.StartsWith("AGELIMIT__") || id == "AUDITIONAGELIMIT__MODMENU__TOGGLE");
+            Assert.False(File.Exists(Path.Combine(Seams.RepoRoot(), "mods", "Targeted Auditions", "Popup UI.cs")));
         }
 
         [Fact]
@@ -94,17 +93,6 @@ namespace TargetedAuditions.Tests
             HashSet<string> ids = TextIDs();
             foreach (SimpleJSON.JSONNode item in Items(ModMenu()))
                 Assert.Contains(item["labelID"].Value, ids);
-        }
-
-        [Fact]
-        public void PopupText_Exists()
-        {
-            HashSet<string> ids = TextIDs();
-            string popupSource = File.ReadAllText(Path.Combine(Seams.RepoRoot(), "mods", "Targeted Auditions", "Popup UI.cs"));
-            List<string> used = Regex.Matches(popupSource, @"""(AGELIMIT__\w+)""").Cast<Match>().Select(m => m.Groups[1].Value).Distinct().ToList();
-
-            Assert.NotEmpty(used);
-            Assert.All(used, id => Assert.Contains(id, ids));
         }
     }
 }

@@ -49,7 +49,7 @@ Check out [IM-FastForward](https://github.com/ui3TD/IM-FastForward) for a tutori
 
 ## Publishing to Steam Workshop
 
-`tools/publish_workshop.py` builds a mod and updates its Workshop item in one step: content, title, full description (`assets/steam description.txt`) and change note (the changelog line for the csproj `<Version>`). The item is the csproj's `<WorkshopID>`.
+`tools/publish_workshop.py` builds a mod and updates its Workshop item in one step: content, title, full description (`assets/steam description.txt`) and change note (the changelog line for the csproj `<Version>`). The item is the csproj's `<WorkshopID>`. It uploads a fresh Release build from a clean staging folder, not the game's Mods folder, and refuses to publish until the mod's changes are committed and pushed.
 
 1. One-time: install [SteamCMD](https://developer.valvesoftware.com/wiki/SteamCMD) to `C:\steamcmd` (or set `STEAMCMD`) and run `steamcmd +login <user> +quit` to approve Steam Guard.
 2. Bump `<Version>` and add a `- <version>: ...` line under `[h3]Changelog[/h3]` in the steam description.

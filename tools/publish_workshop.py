@@ -6,8 +6,12 @@ SteamCMD, so nothing is copy-pasted and the game does not need to be open:
     title       <ModName> from the mod's csproj
     description assets/steam description.txt (BBCode, as shown on Steam)
     change note the "- <Version>: ..." line under [h3]Changelog[/h3] in that file
-    content     the deployed mod folder (LocalLow/Glitch Pitch/Idol Manager/Mods/<ModName>)
+    content     a Release build in a clean staging folder (%TEMP%/Tel-Mod-Library-workshop/<ModName>),
+                never the game's Mods folder, which may hold a Debug build or stale assets
     preview     thumb.png in that folder
+
+Publishing is refused unless the mod's files (and the shared build files) are
+committed and HEAD is pushed, so the Workshop always matches GitHub.
 
 The Workshop item is the csproj's <WorkshopID>. Tags and visibility are left as
 they are on Steam. After uploading, the item is read back from the public Steam
@@ -19,7 +23,7 @@ Steam Guard approval. Without --user or STEAM_USER, the one account SteamCMD
 has cached is used.
 
 Usage:
-    python tools/publish_workshop.py "<Mod Name>" [--user USER] [--dry-run] [--no-build]
+    python tools/publish_workshop.py "<Mod Name>" [--user USER] [--dry-run]
 """
 
 import argparse
@@ -27,6 +31,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -37,7 +42,9 @@ import urllib.request
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODS = os.path.join(REPO, "mods")
 APP_ID = "821880"
-DEPLOY_DIR = os.path.join(os.environ.get("APPDATA", ""), "..", "LocalLow", "Glitch Pitch", "Idol Manager", "Mods")
+STAGING = os.path.join(tempfile.gettempdir(), "Tel-Mod-Library-workshop")
+# Files outside the mod's folder that go into its build.
+SHARED_PATHS = ["shared", "Directory.Build.props", "NuGet.Config"]
 DEFAULT_STEAMCMD = os.environ.get("STEAMCMD", r"C:\steamcmd\steamcmd.exe")
 DETAILS_API = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
 
@@ -97,20 +104,53 @@ def write_vdf(fields):
 
 
 def build(csproj):
+    # Start clean so files removed from the mod's assets don't linger.
+    if os.path.exists(STAGING):
+        shutil.rmtree(STAGING)
+    os.makedirs(STAGING)
+    # ModOutputDir is a global property here, so it overrides Directory.Build.props
+    # and the build deploys to the staging folder instead of the game.
     subprocess.run(["dotnet", "build", csproj, "-c", "Release", "-nologo",
-                    "-p:SolutionDir=" + REPO + os.sep], check=True)
+                    "-p:SolutionDir=" + REPO + os.sep,
+                    "-p:ModOutputDir=" + STAGING], check=True)
 
 
-def check_deployed(content_dir, version):
-    info_path = os.path.join(content_dir, "info.json")
+def check_staged(mod_dir, props):
+    staged = os.path.join(STAGING, props["ModName"])
+    info_path = os.path.join(staged, "info.json")
     if not os.path.isfile(info_path):
-        sys.exit("Mod not deployed: " + info_path)
+        sys.exit("Build did not produce " + info_path)
     with open(info_path, encoding="utf-8-sig") as f:
-        deployed = json.load(f).get("Version")
-    if deployed != version:
-        sys.exit("Deployed info.json is version {}, csproj is {}; rebuild.".format(deployed, version))
-    if not os.path.isfile(os.path.join(content_dir, "thumb.png")):
-        sys.exit("No thumb.png in " + content_dir)
+        info = json.load(f)
+    if info.get("Version") != props["Version"]:
+        sys.exit("Built info.json is version {}, csproj is {}.".format(info.get("Version"), props["Version"]))
+    if not os.path.isfile(os.path.join(staged, info["HarmonyID"] + ".dll")):
+        sys.exit("No {}.dll in {}".format(info["HarmonyID"], staged))
+    if not os.path.isfile(os.path.join(staged, "thumb.png")):
+        sys.exit("No thumb.png in " + staged)
+    # Everything in assets/ must have been copied.
+    assets = os.path.join(mod_dir, "assets")
+    for root, _, files in os.walk(assets):
+        for name in files:
+            rel = os.path.relpath(os.path.join(root, name), assets)
+            if not os.path.isfile(os.path.join(staged, rel)):
+                sys.exit("Asset {} missing from the build".format(rel))
+    return staged
+
+
+def git(*args):
+    return subprocess.run(["git", "-C", REPO] + list(args), check=True,
+                          capture_output=True, text=True).stdout.strip()
+
+
+def check_pushed(mod_dir):
+    """Exits unless the mod's sources are committed and HEAD is on origin."""
+    paths = [os.path.relpath(mod_dir, REPO)] + SHARED_PATHS
+    if git("status", "--porcelain", "--", *paths):
+        sys.exit("Uncommitted changes in {}; commit and push them before publishing.".format(", ".join(paths)))
+    git("fetch", "--quiet", "origin")
+    if not git("branch", "-r", "--contains", "HEAD"):
+        sys.exit("HEAD is not pushed to origin; push it before publishing.")
 
 
 def cached_user(steamcmd):
@@ -173,7 +213,6 @@ def main():
     parser.add_argument("--user", default=os.environ.get("STEAM_USER"), help="Steam login (default: STEAM_USER)")
     parser.add_argument("--steamcmd", default=DEFAULT_STEAMCMD)
     parser.add_argument("--dry-run", action="store_true", help="print the upload instead of running it")
-    parser.add_argument("--no-build", action="store_true", help="publish the already deployed build")
     args = parser.parse_args()
 
     mod_dir = os.path.join(MODS, args.mod)
@@ -187,10 +226,15 @@ def main():
     if len(description) > MAX_DESCRIPTION:
         sys.exit("Description is {} characters; Steam allows {}.".format(len(description), MAX_DESCRIPTION))
 
-    if not args.no_build:
-        build(csproj)
-    content_dir = os.path.normpath(os.path.join(DEPLOY_DIR, props["ModName"]))
-    check_deployed(content_dir, props["Version"])
+    # Check before building so a build isn't wasted; a dry run only warns.
+    try:
+        check_pushed(mod_dir)
+    except SystemExit as e:
+        if not args.dry_run:
+            raise
+        print("WARNING: " + str(e))
+    build(csproj)
+    content_dir = check_staged(mod_dir, props)
 
     # Forward slashes keep paths free of VDF escapes; Windows accepts them.
     vdf_path, vdf_text = write_vdf({

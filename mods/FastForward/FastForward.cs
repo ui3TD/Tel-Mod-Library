@@ -10,28 +10,22 @@ namespace FastForward
     public class FastForward
     {
         public const string VARID = "FastForward_Multiplier";
-        public const string DEFAULT_VAR = "5";
+        // The speed with no setting or an unreadable one; the same as the Mod Menu slider's default
+        public const double DEFAULT_MULTIPLIER = 5d;
         public const double BASE_FAST_SPEED = 200d;
-        // Each time tick adds speed/4 minutes; above 28.8x a tick spans over a day and skips onNewDay/onNewWeek.
+        // A safety limit, not a menu option: the Mod Menu slider stops at 20x, and this caps any value the
+        // menu didn't produce (a hand-edited save, an old setting). Each time tick adds speed/4 minutes;
+        // above 28.8x a tick spans over a day and skips onNewDay/onNewWeek.
         public const double MAX_MULTIPLIER = 28d;
         public const double EPSILON = 0.001d;
 
         internal static double GetConfiguredMultiplier()
         {
-            string raw = variables.Get(VARID);
-            if (string.IsNullOrWhiteSpace(raw))
+            // Missing (no ModMenus), unreadable or not a number: the default
+            if (!double.TryParse(variables.Get(VARID), NumberStyles.Float, CultureInfo.InvariantCulture, out double multiplier)
+                || double.IsNaN(multiplier) || double.IsInfinity(multiplier))
             {
-                raw = DEFAULT_VAR;
-            }
-
-            if (!double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out double multiplier))
-            {
-                multiplier = 5d;
-            }
-
-            if (double.IsNaN(multiplier) || double.IsInfinity(multiplier))
-            {
-                multiplier = 5d;
+                multiplier = DEFAULT_MULTIPLIER;
             }
 
             if (multiplier < 1d)

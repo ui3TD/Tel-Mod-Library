@@ -385,5 +385,37 @@ namespace StaleTheaterShows.Tests
             Assert.Contains(patched, i => i.Branches(out Label? branch) && branch == target);
             Assert.Equal(OpCodes.Stloc_0, patched[index + 1].opcode);
         }
+
+        /// <summary>
+        /// If a game update changes the visitor formula, the game's code is left as it is and the mod says
+        /// why its attendance multipliers stopped applying, instead of failing to load.
+        /// </summary>
+        [Fact]
+        public void Transpiler_GameCodeChanged_LeavesItAndLogs()
+        {
+            UnityEngine.ILogHandler gameLog = UnityEngine.Debug.unityLogger.logHandler;
+            LogRecorder log = new();
+            UnityEngine.Debug.unityLogger.logHandler = log;
+            try
+            {
+                List<CodeInstruction> instructions = PatchProcessor.GetOriginalInstructions(AccessTools.Method(typeof(Theaters._theater), nameof(Theaters._theater.GetTicketSales)));
+
+                List<CodeInstruction> patched = Theaters__theater_GetNumberOfVisitors.Transpiler(instructions).ToList();
+
+                Assert.Equal(instructions.Select(i => i.ToString()), patched.Select(i => i.ToString()));
+                Assert.Contains(log.Messages, m => m.StartsWith("[Stale Theater Shows] Couldn't find"));
+            }
+            finally
+            {
+                UnityEngine.Debug.unityLogger.logHandler = gameLog;
+            }
+        }
+
+        private class LogRecorder : UnityEngine.ILogHandler
+        {
+            public readonly List<string> Messages = new();
+            public void LogFormat(UnityEngine.LogType logType, UnityEngine.Object context, string format, params object[] args) => Messages.Add(string.Format(format, args));
+            public void LogException(Exception exception, UnityEngine.Object context) => Messages.Add(exception.ToString());
+        }
     }
 }

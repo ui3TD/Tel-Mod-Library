@@ -5,7 +5,7 @@
 		<HarmonyID>com.tel.staletheater</HarmonyID>
 		<ModDescription>Rebalances the theater. Theater shows go stale over time. Release a single every month to keep the theater shows fresh.</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.1.0</Version>
+		<Version>1.1.1</Version>
 		<WorkshopID>2977861222</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 

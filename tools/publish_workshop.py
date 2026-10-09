@@ -27,47 +27,31 @@ Usage:
 """
 
 import argparse
-import glob
-import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
 import time
-import urllib.parse
-import urllib.request
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODS = os.path.join(REPO, "mods")
+from _common import MODS, REPO, build, check_built, check_pushed, clean_dir, fetch_details, read_csproj
+
 APP_ID = "821880"
 STAGING = os.path.join(tempfile.gettempdir(), "Tel-Mod-Library-workshop")
 # Files outside the mod's folder that go into its build.
-SHARED_PATHS = ["shared", "Directory.Build.props", "NuGet.Config"]
+SHARED_PATHS = ["shared", "Directory.Build.props", "Mod.BeforeSdk.targets", "NuGet.Config"]
 DEFAULT_STEAMCMD = os.environ.get("STEAMCMD", r"C:\steamcmd\steamcmd.exe")
-DETAILS_API = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
 
 # Steam Workshop limits.
 MAX_TITLE = 128
 MAX_DESCRIPTION = 8000
 
 
-def read_csproj(mod_dir):
-    projects = glob.glob(os.path.join(mod_dir, "*.csproj"))
-    if len(projects) != 1:
-        sys.exit("Expected one .csproj in " + mod_dir)
-    with open(projects[0], encoding="utf-8-sig") as f:
-        text = f.read()
-    props = {}
-    for name in ("ModName", "Version", "WorkshopID"):
-        match = re.search(r"<{0}>([^<]+)</{0}>".format(name), text)
-        props[name] = match.group(1).strip() if match else None
-    if not props["ModName"] or not props["Version"]:
-        sys.exit("No <ModName> or <Version> in " + projects[0])
+def read_props(mod_dir):
+    csproj, props = read_csproj(mod_dir, optional=("WorkshopID",))
     if not props["WorkshopID"]:
-        sys.exit("No <WorkshopID> in {}; add the item's id from its Workshop URL.".format(projects[0]))
-    return projects[0], props
+        sys.exit("No <WorkshopID> in {}; add the item's id from its Workshop URL.".format(csproj))
+    return csproj, props
 
 
 def read_description(mod_dir):
@@ -103,54 +87,11 @@ def write_vdf(fields):
     return path, "\n".join(lines)
 
 
-def build(csproj):
-    # Start clean so files removed from the mod's assets don't linger.
-    if os.path.exists(STAGING):
-        shutil.rmtree(STAGING)
-    os.makedirs(STAGING)
-    # ModOutputDir is a global property here, so it overrides Directory.Build.props
-    # and the build deploys to the staging folder instead of the game.
-    subprocess.run(["dotnet", "build", csproj, "-c", "Release", "-nologo",
-                    "-p:SolutionDir=" + REPO + os.sep,
-                    "-p:ModOutputDir=" + STAGING], check=True)
-
-
 def check_staged(mod_dir, props):
-    staged = os.path.join(STAGING, props["ModName"])
-    info_path = os.path.join(staged, "info.json")
-    if not os.path.isfile(info_path):
-        sys.exit("Build did not produce " + info_path)
-    with open(info_path, encoding="utf-8-sig") as f:
-        info = json.load(f)
-    if info.get("Version") != props["Version"]:
-        sys.exit("Built info.json is version {}, csproj is {}.".format(info.get("Version"), props["Version"]))
-    if not os.path.isfile(os.path.join(staged, info["HarmonyID"] + ".dll")):
-        sys.exit("No {}.dll in {}".format(info["HarmonyID"], staged))
+    staged = check_built(mod_dir, props, STAGING)
     if not os.path.isfile(os.path.join(staged, "thumb.png")):
         sys.exit("No thumb.png in " + staged)
-    # Everything in assets/ must have been copied.
-    assets = os.path.join(mod_dir, "assets")
-    for root, _, files in os.walk(assets):
-        for name in files:
-            rel = os.path.relpath(os.path.join(root, name), assets)
-            if not os.path.isfile(os.path.join(staged, rel)):
-                sys.exit("Asset {} missing from the build".format(rel))
     return staged
-
-
-def git(*args):
-    return subprocess.run(["git", "-C", REPO] + list(args), check=True,
-                          capture_output=True, text=True).stdout.strip()
-
-
-def check_pushed(mod_dir):
-    """Exits unless the mod's sources are committed and HEAD is on origin."""
-    paths = [os.path.relpath(mod_dir, REPO)] + SHARED_PATHS
-    if git("status", "--porcelain", "--", *paths):
-        sys.exit("Uncommitted changes in {}; commit and push them before publishing.".format(", ".join(paths)))
-    git("fetch", "--quiet", "origin")
-    if not git("branch", "-r", "--contains", "HEAD"):
-        sys.exit("HEAD is not pushed to origin; push it before publishing.")
 
 
 def cached_user(steamcmd):
@@ -180,12 +121,6 @@ def upload(steamcmd, user, vdf_path):
     text = "".join(output)
     if "ERROR" in text or "Success." not in text:
         sys.exit("SteamCMD did not report success; the Workshop item may not have been updated.")
-
-
-def fetch_details(workshop_id):
-    data = urllib.parse.urlencode({"itemcount": 1, "publishedfileids[0]": workshop_id}).encode()
-    with urllib.request.urlopen(DETAILS_API, data, timeout=30) as response:
-        return json.load(response)["response"]["publishedfiledetails"][0]
 
 
 def verify(workshop_id, title, description):
@@ -218,7 +153,7 @@ def main():
     mod_dir = os.path.join(MODS, args.mod)
     if not os.path.isdir(mod_dir):
         sys.exit("No mod folder " + mod_dir)
-    csproj, props = read_csproj(mod_dir)
+    csproj, props = read_props(mod_dir)
     description = read_description(mod_dir)
     note = change_note(description, props["Version"])
     if len(props["ModName"]) > MAX_TITLE:
@@ -228,12 +163,14 @@ def main():
 
     # Check before building so a build isn't wasted; a dry run only warns.
     try:
-        check_pushed(mod_dir)
+        check_pushed([os.path.relpath(mod_dir, REPO)] + SHARED_PATHS)
     except SystemExit as e:
         if not args.dry_run:
             raise
         print("WARNING: " + str(e))
-    build(csproj)
+    # Start clean so files removed from the mod's assets don't linger.
+    clean_dir(STAGING)
+    build(csproj, STAGING)
     content_dir = check_staged(mod_dir, props)
 
     # Forward slashes keep paths free of VDF escapes; Windows accepts them.

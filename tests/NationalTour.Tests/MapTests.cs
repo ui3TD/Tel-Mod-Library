@@ -27,7 +27,7 @@ namespace NationalTour.Tests
         public void NewTour_ShowsTheMapOfJapan()
         {
             Scene scene = new();
-            Seams.NewTourReset(ref scene.NewTour);
+            Seams.NewTourReset(scene.NewTour);
             Assert.Same(TOUR_map_2, scene.NewTourMap.sprite);
         }
 
@@ -36,7 +36,7 @@ namespace NationalTour.Tests
         public void NewTour_PinsEachCountryOnItsPrefecture(Country country)
         {
             Scene scene = new();
-            Seams.NewTourReset(ref scene.NewTour);
+            Seams.NewTourReset(scene.NewTour);
             Assert.Equal(locationDict[tourLocations[country]], scene.PositionOf(country));
         }
 
@@ -44,8 +44,8 @@ namespace NationalTour.Tests
         public void NewTour_OpenedAgain_KeepsThePins()
         {
             Scene scene = new();
-            Seams.NewTourReset(ref scene.NewTour);
-            Seams.NewTourReset(ref scene.NewTour);
+            Seams.NewTourReset(scene.NewTour);
+            Seams.NewTourReset(scene.NewTour);
             Assert.Equal(locationDict[Prefectures.hokkaido], scene.PositionOf(Country.canada));
         }
 

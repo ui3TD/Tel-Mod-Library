@@ -12,6 +12,9 @@ namespace NationalTour
     {
         public static void Prefix()
         {
+            if (World_tour_def == null)
+                return;
+
             if (tourPopupBGImage == null)
             {
                 GameObject popupObj = Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>().GetByType(PopupManager._type.special_events).obj;
@@ -29,7 +32,7 @@ namespace NationalTour
     {
         public static void Postfix(SpecialEvents_Manager __instance)
         {
-            if (__instance.OpenTab != SpecialEvents_Manager._type.WorldTour)
+            if (__instance.OpenTab != SpecialEvents_Manager._type.WorldTour || World_tour_def == null)
                 return;
 
             if (tourPopupBGImage == null)

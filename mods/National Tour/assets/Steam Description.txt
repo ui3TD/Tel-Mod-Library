@@ -21,3 +21,4 @@ Regions:
 
 [h3]Changelog[/h3]
 - 2.1.0: Regions list includes Tokai; Aya no longer mentions jet lag after a national tour.
+- 2.1.1: Finds its pictures next to its own files and loads them once per session.

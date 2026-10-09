@@ -28,15 +28,87 @@ namespace NationalTour.Tests
             Assert.Equal(new[]
             {
                 (nameof(IMG2Sprite.LoadNewSprite), Picture("World_tour_def.jpg"), 100f),
-                (nameof(IMG2Sprite.LoadTexture), Picture("World_tour_def.jpg"), 0f),
                 (nameof(IMG2Sprite.LoadNewSprite), Picture("World_tour_def_BG.jpg"), 100f),
                 (nameof(IMG2Sprite.LoadNewSprite), Picture("TOUR_map_2.jpg"), 100f),
             }, Seams.Loads.Select(l => (l.Method, l.Path, l.PixelsPerUnit)));
 
             Assert.Same(Seams.Loads[0].Result, World_tour_def);
-            Assert.Same(Seams.Loads[1].Result, World_tour_def_tex);
-            Assert.Same(Seams.Loads[2].Result, World_tour_def_BG);
-            Assert.Same(Seams.Loads[3].Result, TOUR_map_2);
+            // The results background is the same picture: the sprite's texture, not a second copy
+            Assert.Same(Seams.SpriteTextures[World_tour_def], World_tour_def_tex);
+            Assert.Same(Seams.Loads[1].Result, World_tour_def_BG);
+            Assert.Same(Seams.Loads[2].Result, TOUR_map_2);
+        }
+
+        /// <summary>
+        /// The pictures stay loaded from one save to the next, so loading another save doesn't read them again.
+        /// </summary>
+        [Fact]
+        public void SecondGameStart_KeepsThePictures()
+        {
+            new Scene();
+            TestGame.AddThisMod();
+            Seams.GameStart();
+            Sprite map = TOUR_map_2;
+            Seams.Loads.Clear();
+
+            Seams.GameStart();
+
+            Assert.Empty(Seams.Loads);
+            Assert.Same(map, TOUR_map_2);
+        }
+
+        /// <summary>
+        /// The mod's folder is the one its DLL was loaded from; another installed copy with the same
+        /// title isn't used then.
+        /// </summary>
+        [Fact]
+        public void ModFolder_IsTheDllsFolder_WhenItHasThePictures()
+        {
+            string dllFolder = Path.Combine(Path.GetTempPath(), "NationalTour.Tests.Dll");
+            Directory.CreateDirectory(Path.Combine(dllFolder, "Textures", "Patch"));
+            TestGame.AddThisMod();
+
+            Assert.Equal(dllFolder, GetModDirectory(dllFolder));
+        }
+
+        /// <summary>
+        /// Without pictures next to the DLL (the unit tests' case), the mod list's copy is used, by title.
+        /// </summary>
+        [Fact]
+        public void ModFolder_FallsBackToTheModList()
+        {
+            Mods._mod mod = TestGame.AddThisMod();
+
+            Assert.Equal(mod.GetPath(), GetModDirectory(Path.GetTempPath()));
+        }
+
+        /// <summary>
+        /// With no folder to read pictures from, the game keeps its own (nothing is loaded, nothing throws).
+        /// </summary>
+        [Fact]
+        public void NoPictures_LoadsNothing()
+        {
+            new Scene();
+            TestGame.AddMod("Some Other Mod", Path.Combine(Path.GetTempPath(), "Other"));
+            UnityEngine.ILogHandler gameLog = Debug.unityLogger.logHandler;
+            Debug.unityLogger.logHandler = new Silent();
+            try
+            {
+                Seams.GameStart();
+            }
+            finally
+            {
+                Debug.unityLogger.logHandler = gameLog;
+            }
+
+            Assert.Empty(Seams.Loads);
+            Assert.True(TOUR_map_2 is null);
+        }
+
+        private sealed class Silent : UnityEngine.ILogHandler
+        {
+            public void LogFormat(LogType logType, Object context, string format, params object[] args) { }
+            public void LogException(System.Exception exception, Object context) { }
         }
 
         [Fact]

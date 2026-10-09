@@ -12,3 +12,4 @@ Warning: this can make elections go on for a long time.
 [h3]Changelog[/h3]
 - 1.3.0: Ranks 11+ now use each election's own broadcast tier.
 - 1.3.1: An unreadable rank limit falls back to 64 instead of breaking elections.
+- 1.3.2: Logs a clear error if another mod already changed the election's 10-rank limit.

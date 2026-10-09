@@ -14,6 +14,8 @@ namespace ExtendedSSK
     {
         public const string varID = "ExtendedSSK_Limit";
         public const int defaultRankings = 64;
+        // The lowest place an idol wishes for in an election; a lower wish is raised to it.
+        public const int MAX_WISH_RANK = 16;
 
         /// <summary>
         /// The configured number of ranks. A missing or unreadable value (e.g. a hand-edited save) gives the default,
@@ -39,24 +41,24 @@ namespace ExtendedSSK
         /// <returns>Modified IL instructions with extended idol limit.</returns>
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            List<CodeInstruction> instructionList = new(instructions);
+            MethodInfo infix = AccessTools.Method(typeof(SSK_GenerateResultsPatch), nameof(Infix));
 
-            int index = -1;
-            for (int i = 0; i < instructionList.Count - 1; i++)
+            // The game's 10-rank limit: i < 10, then the loop's branch. Infix replaces the 10 with the setting.
+            CodeMatcher matcher = new CodeMatcher(instructions).MatchStartForward(
+                new CodeMatch(ci => ci.LoadsConstant(10)),
+                new CodeMatch(ci => ci.opcode == OpCodes.Blt || ci.opcode == OpCodes.Blt_S || ci.Calls(infix)));
+            if (matcher.IsInvalid)
             {
-                if (instructionList[i].opcode == OpCodes.Ldc_I4_S && (sbyte)instructionList[i].operand == 10 && instructionList[i + 1].opcode == OpCodes.Blt)
-                {
-                    index = i;
-                    break;
-                }
+                Debug.LogError("[Extended SSK] Couldn't find the game's 10-rank limit in GenerateResults; elections keep 10 ranks");
+                return instructions;
+            }
+            if (matcher.InstructionAt(1).Calls(infix))
+            {
+                // Already replaced: this patch ran twice
+                return matcher.InstructionEnumeration();
             }
 
-            if (index != -1)
-            {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Call, typeof(SSK_GenerateResultsPatch).GetMethod(nameof(Infix))));
-            }
-
-            return instructionList.AsEnumerable();
+            return matcher.Advance(1).Insert(new CodeInstruction(OpCodes.Call, infix)).InstructionEnumeration();
         }
 
 
@@ -79,13 +81,15 @@ namespace ExtendedSSK
     [HarmonyPatch("RecalcFameBonus")]
     public static class SSK_RecalcFameBonusPatch
     {
-        static readonly MethodInfo GetFameBaseValInfo = AccessTools.Method(typeof(SEvent_SSK._SSK), "GetFameBaseVal");
+        // The game's private GetFameBaseVal (fame for 1st place, by broadcast tier), as a typed delegate
+        static readonly Func<SEvent_SSK._SSK, int> GetFameBaseVal =
+            AccessTools.MethodDelegate<Func<SEvent_SSK._SSK, int>>(AccessTools.Method(typeof(SEvent_SSK._SSK), "GetFameBaseVal"));
 
         /// <summary>
         /// Postfix method to recalculate fame bonuses after the original method execution.
         /// </summary>
         /// <param name="__instance">The instance of SEvent_SSK._SSK being patched.</param>
-        public static void Postfix(ref SEvent_SSK._SSK __instance)
+        public static void Postfix(SEvent_SSK._SSK __instance)
         {
             int girlCount = 0;
             foreach (data_girls.girls girls2 in data_girls.girl)
@@ -100,7 +104,7 @@ namespace ExtendedSSK
                 int limit = GetLimit();
                 List<int> list = __instance.FameBonus;
 
-                int fameBaseVal = (int)GetFameBaseValInfo.Invoke(__instance, null);
+                int fameBaseVal = GetFameBaseVal(__instance);
                 int num = Mathf.RoundToInt(fameBaseVal * 0.056f);
                 for (int i = 10; i < Math.Min(girlCount, limit); i++)
                 {
@@ -123,9 +127,9 @@ namespace ExtendedSSK
                 return;
 
             int ranking = int.TryParse(Girl.Wish_Formula, out int r) ? r : 10;
-            if(ranking > 16)
+            if (ranking > MAX_WISH_RANK)
             {
-                Girl.Wish_Formula = "16";
+                Girl.Wish_Formula = MAX_WISH_RANK.ToString(CultureInfo.InvariantCulture);
             }
         }
     }

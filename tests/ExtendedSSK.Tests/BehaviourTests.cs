@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using UnityEngine;
 using Xunit;
 using static ExtendedSSK.ExtendedSSK;
@@ -48,7 +49,7 @@ namespace ExtendedSSK.Tests
         {
             SEvent_SSK._SSK ssk = new() { Broadcast = broadcast };
             ssk.RecalcFameBonus();
-            SSK_RecalcFameBonusPatch.Postfix(ref ssk);
+            SSK_RecalcFameBonusPatch.Postfix(ssk);
             return ssk.FameBonus;
         }
 
@@ -173,6 +174,53 @@ namespace ExtendedSSK.Tests
                 .ToList();
 
             Assert.Single(patched, c => c.Calls(infix));
+        }
+
+        /// <summary>
+        /// Applied a second time, the limit is already replaced: nothing changes and nothing is logged.
+        /// </summary>
+        [Fact]
+        public void Transpiler_AppliedTwice_ChangesNothingMore()
+        {
+            MethodInfo original = AccessTools.Method(typeof(SEvent_SSK._SSK), "GenerateResults");
+            using LogRecorder log = new();
+
+            List<CodeInstruction> once = SSK_GenerateResultsPatch.Transpiler(PatchProcessor.GetOriginalInstructions(original)).ToList();
+            List<string> afterOnce = once.Select(c => c.ToString()).ToList();
+            List<CodeInstruction> twice = SSK_GenerateResultsPatch.Transpiler(once).ToList();
+
+            Assert.Equal(afterOnce, twice.Select(c => c.ToString()));
+            Assert.Empty(log.Messages);
+        }
+
+        /// <summary>
+        /// If another mod already changed the limit, the code is left as it is and the mod says why
+        /// elections keep 10 ranks.
+        /// </summary>
+        [Fact]
+        public void Transpiler_LimitNotFound_LeavesTheCodeAndLogs()
+        {
+            using LogRecorder log = new();
+            List<CodeInstruction> il = new()
+            {
+                new CodeInstruction(OpCodes.Ldc_I4_S, (sbyte)20),
+                new CodeInstruction(OpCodes.Ret),
+            };
+
+            List<CodeInstruction> patched = SSK_GenerateResultsPatch.Transpiler(il).ToList();
+
+            Assert.Equal(il.Select(c => c.ToString()), patched.Select(c => c.ToString()));
+            Assert.Contains(log.Messages, m => m.StartsWith("[Extended SSK] Couldn't find"));
+        }
+
+        private sealed class LogRecorder : UnityEngine.ILogHandler, IDisposable
+        {
+            private readonly UnityEngine.ILogHandler gameLog = UnityEngine.Debug.unityLogger.logHandler;
+            public readonly List<string> Messages = new();
+            public LogRecorder() => UnityEngine.Debug.unityLogger.logHandler = this;
+            public void Dispose() => UnityEngine.Debug.unityLogger.logHandler = gameLog;
+            public void LogFormat(UnityEngine.LogType logType, UnityEngine.Object context, string format, params object[] args) => Messages.Add(string.Format(format, args));
+            public void LogException(Exception exception, UnityEngine.Object context) => Messages.Add(exception.ToString());
         }
     }
 

@@ -11,7 +11,7 @@ Output: releases/Tel.Mod.Library.<yyyy.mm.dd>.zip (releases/ is git-ignored).
 
 With --upload, also creates the GitHub release "<yyyy.mm.dd> Release" (tag
 library-<yyyy.mm.dd> on HEAD) with the zip attached, using the gh CLI. HEAD must
-already be pushed and mods/ must have no uncommitted changes, so the release
+already be pushed and the repo must have no uncommitted changes, so the release
 matches the code on GitHub.
 
 Usage:
@@ -20,8 +20,6 @@ Usage:
 
 import argparse
 import datetime
-import glob
-import json
 import os
 import re
 import shutil
@@ -30,8 +28,8 @@ import sys
 import tempfile
 import zipfile
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODS = os.path.join(REPO, "mods")
+from _common import MODS, REPO, build, check_built, check_pushed, clean_dir, read_csproj
+
 OUT_DIR = os.path.join(REPO, "releases")
 # Outside the repo: OneDrive holds synced folders open, so they can't be deleted between runs.
 STAGING = os.path.join(tempfile.gettempdir(), "Tel-Mod-Library-release")
@@ -39,49 +37,12 @@ EXCLUDED = {"Going Viral"}
 GH_FALLBACK = r"C:\Program Files\GitHub CLI\gh.exe"
 
 
-def read_csproj(mod_dir):
-    projects = glob.glob(os.path.join(mod_dir, "*.csproj"))
-    if len(projects) != 1:
-        sys.exit("Expected one .csproj in " + mod_dir)
-    with open(projects[0], encoding="utf-8-sig") as f:
-        text = f.read()
-    props = {}
-    for name in ("ModName", "Version"):
-        match = re.search(r"<{0}>([^<]+)</{0}>".format(name), text)
-        if not match:
-            sys.exit("No <{}> in {}".format(name, projects[0]))
-        props[name] = match.group(1).strip()
-    return projects[0], props
-
-
-def build(csproj):
-    # ModOutputDir is a global property here, so it overrides Directory.Build.props
-    # and the build deploys to the staging folder instead of the game.
-    subprocess.run(["dotnet", "build", csproj, "-c", "Release", "-nologo", "-v:q",
-                    "-p:SolutionDir=" + REPO + os.sep,
-                    "-p:ModOutputDir=" + STAGING], check=True)
-
-
-def check_staged(mod_dir, props):
-    staged = os.path.join(STAGING, props["ModName"])
-    info_path = os.path.join(staged, "info.json")
-    if not os.path.isfile(info_path):
-        sys.exit("Build did not produce " + info_path)
-    with open(info_path, encoding="utf-8-sig") as f:
-        info = json.load(f)
-    if info.get("Version") != props["Version"]:
-        sys.exit("{} info.json is version {}, csproj is {}.".format(
-            props["ModName"], info.get("Version"), props["Version"]))
-    dll = os.path.join(staged, info["HarmonyID"] + ".dll")
-    if not os.path.isfile(dll):
-        sys.exit("No DLL at " + dll)
-    # Everything in assets/ must have been copied.
-    assets = os.path.join(mod_dir, "assets")
-    for root, _, files in os.walk(assets):
-        for name in files:
-            rel = os.path.relpath(os.path.join(root, name), assets)
-            if not os.path.isfile(os.path.join(staged, rel)):
-                sys.exit("{}: asset {} missing from the build".format(props["ModName"], rel))
+def zip_entry(name, is_dir):
+    # A fixed date, so the same build gives a byte-identical zip.
+    info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.external_attr = ((0o40755 << 16) | 0x10) if is_dir else (0o100644 << 16)
+    return info
 
 
 def write_zip(zip_path, names):
@@ -91,14 +52,10 @@ def write_zip(zip_path, names):
             for root, dirs, files in os.walk(top):
                 dirs.sort()
                 rel_root = os.path.relpath(root, STAGING).replace(os.sep, "/")
-                z.write(root, rel_root + "/")
+                z.writestr(zip_entry(rel_root + "/", True), b"")
                 for f in sorted(files):
-                    z.write(os.path.join(root, f), rel_root + "/" + f)
-
-
-def git(*args):
-    return subprocess.run(["git", "-C", REPO] + list(args), check=True,
-                          capture_output=True, text=True).stdout.strip()
+                    with open(os.path.join(root, f), "rb") as data:
+                        z.writestr(zip_entry(rel_root + "/" + f, False), data.read())
 
 
 def find_gh():
@@ -106,15 +63,6 @@ def find_gh():
     if not gh:
         sys.exit("gh CLI not found; install it or put it on PATH.")
     return gh
-
-
-def check_pushed():
-    if git("status", "--porcelain", "--", "mods"):
-        sys.exit("mods/ has uncommitted changes; commit and push them before uploading.")
-    git("fetch", "--quiet", "origin")
-    if not git("branch", "-r", "--contains", "HEAD"):
-        sys.exit("HEAD is not pushed to origin; push it before uploading.")
-    return git("rev-parse", "HEAD")
 
 
 def release_notes(mods):
@@ -159,14 +107,12 @@ def main():
 
     if not args.no_build:
         # Start clean so files removed from a mod's assets don't linger.
-        if os.path.exists(STAGING):
-            shutil.rmtree(STAGING)
-        os.makedirs(STAGING)
+        clean_dir(STAGING)
         for i, (_, csproj, props) in enumerate(mods, 1):
             print("[{}/{}] Building {} {}".format(i, len(mods), props["ModName"], props["Version"]), flush=True)
-            build(csproj)
+            build(csproj, STAGING, quiet=True)
     for mod_dir, _, props in mods:
-        check_staged(mod_dir, props)
+        check_built(mod_dir, props, STAGING)
 
     names = [props["ModName"] for _, _, props in mods]
     unexpected = set(os.listdir(STAGING)) - set(names)

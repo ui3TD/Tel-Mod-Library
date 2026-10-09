@@ -47,7 +47,8 @@ yourself before running.
 
 Mods that aren't installed or enabled are listed in a note and skipped. The rest of tier 0 runs in the
 runner's own smoke suite: `EveryPatchMethodIsApplied`, `EveryTranspilerChangesIL` and
-`EveryModTextIsLoaded`.
+`EveryModTextIsLoaded`. `run.py` passes `scope.txt` with `--scope-file`, which limits those checks to
+the Tel mods (`^com\.tel\.`). Other installed mods stay loaded and are listed in a note instead of checked.
 
 `LoadedBuildsMatchCheckout` can't see edits made since a mod's last build. File times don't work for
 that: git rewrites files whose content hasn't changed, and a rebuild after a line-ending change isn't

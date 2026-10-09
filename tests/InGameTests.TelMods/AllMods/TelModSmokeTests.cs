@@ -10,7 +10,7 @@ namespace InGameTests.TelMods
     /// <summary>
     /// Tier 0: the loaded Tel mods are this checkout's builds, checked with the smoke suite right
     /// after the save loads. The runner's own smoke checks cover the rest of tier 0 for every
-    /// Harmony mod: patches applied, transpilers changing IL, texts loaded.
+    /// Harmony mod: patches applied and transpilers changing IL.
     /// Mods that aren't installed or enabled are noted and skipped.
     /// </summary>
     internal static class TelModSmokeTests

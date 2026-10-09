@@ -1,7 +1,6 @@
 """Update Harmony Checker to ask for a new IM-HarmonyIntegration release.
 
-Run after each IM-HI release (IM-HarmonyIntegration's package_release.py --upload
-runs it for you). Steps:
+Run after each IM-HI release. Steps:
 
   1. Set IMHIUpdate.MIN_VERSION to the IM-HI version.
   2. Bump the mod's minor version and add a changelog line. If the current version

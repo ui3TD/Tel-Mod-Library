@@ -118,11 +118,7 @@ namespace FanAttrition
             {
                 if (girl == null) continue;
 
-                if (girl.FanAppeal.Count == 0)
-                {
-                    girl.RecalcFanAppeal();
-                }
-                appeal += girl.GetFanAppeal(FanType).ratio;
+                appeal += GetAppealRatio(girl, FanType);
                 num++;
             }
 
@@ -170,6 +166,32 @@ namespace FanAttrition
             string ofTotal = Language.Data[TOOLTIP_OFTOTAL_LABEL];
             string appealLabel = Language.Data["TIP__APPEAL"];
             return fanLabel + ": " + ratioStr + " " + ofTotal + " (" + appealStr + " " + appealLabel + ")";
+        }
+
+        /// <summary>
+        /// Gets an idol's appeal to a fan type without changing any game state.
+        /// </summary>
+        /// <remarks>
+        /// A loaded idol has no stored appeal until the game recalculates it. In that case the appeal is
+        /// worked out from her stats the way data_girls.girls.RecalcFanAppeal() does. Calling that method
+        /// here would also overwrite the saved appeal of each of her fans.
+        /// </remarks>
+        /// <param name="girl">The idol.</param>
+        /// <param name="FanType">The type of fan.</param>
+        /// <returns>The idol's appeal to the fan type.</returns>
+        static float GetAppealRatio(data_girls.girls girl, resources.fanType FanType)
+        {
+            if (girl.FanAppeal.Count > 0)
+            {
+                return girl.GetFanAppeal(FanType).ratio;
+            }
+
+            float ratio = 0f;
+            foreach (data_girls.girls.param param in girl.parameters)
+            {
+                ratio += girl.GetAppealOfStat(param.type, FanType);
+            }
+            return ratio;
         }
 
         /// <summary>

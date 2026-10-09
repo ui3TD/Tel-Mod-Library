@@ -48,6 +48,23 @@ namespace ModMenus.Tests
             }, menu.RowNames);
         }
 
+        /// <summary>
+        /// Fixed in 1.3.0: a file that couldn't be read stopped the whole menu from opening, for every mod.
+        /// Now that mod's settings are left out with a warning, and the other mods' settings still show.
+        /// </summary>
+        [Theory]
+        [InlineData("""[ { "type": "text", "labelID": """)]
+        [InlineData("""{ "type": "text", "labelID": "TEST__INTRO" }""")]
+        [InlineData("")]
+        public void BrokenFileIsLeftOutWithAWarning(string brokenJson)
+        {
+            TestGame.AddMod("Mod A", brokenJson);
+            TestGame.AddMod("Mod B", """[ { "type": "checkbox", "varID": "B_Loud", "labelID": "TEST__LOUD" } ]""");
+
+            Assert.Equal(new[] { "ModMenuText_Mod B", "ModMenuCheckbox_B_Loud" }, TestGame.BuildMenu().RowNames);
+            Assert.Contains(Log.Messages, m => m.StartsWith("[ModMenus] Mod A's modmenu.json"));
+        }
+
         [Fact]
         public void ModsAreListedInLoadOrder()
         {
@@ -167,6 +184,18 @@ namespace ModMenus.Tests
             Settings_Slider slider = menu.SliderSettings("A_Volume");
             Assert.Equal((0f, 100f), (slider.Min_Value, slider.Max_Value));
             Assert.Equal(50f, menu.Item("A_Volume").defValue);
+        }
+
+        /// <summary>
+        /// A slider whose default is outside its range is left out, and the log says which and why.
+        /// </summary>
+        [Fact]
+        public void SliderWithDefaultOutsideItsRangeIsLeftOutWithAWarning()
+        {
+            Menu menu = Build("""[ { "type": "slider", "varID": "A_Volume", "labelID": "TEST__VOLUME", "minValue": 1, "maxValue": 20, "defaultValue": 30 } ]""");
+
+            Assert.Equal(new[] { "ModMenuText_Mod A" }, menu.RowNames);
+            Assert.Contains("[ModMenus] The slider A_Volume is left out: its range is 1 to 20 and its default is 30.", Log.Messages);
         }
 
         [Fact]

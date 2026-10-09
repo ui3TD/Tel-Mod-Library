@@ -10,6 +10,33 @@ namespace ModMenus.Tests
     // Installing the Mod Settings button and building the popup's frame (GenerateMenuPopup) only move
     // Unity UI objects around, so they aren't tested. MenuBuildTests and ApplyCancelTests cover the
     // menu's rows, Apply and Cancel, through copies that run on a fake scene (see TestGame.cs).
+    /// <summary>
+    /// Settings are saved as plain digits, so mods reading them with int.Parse or float.Parse get the value.
+    /// </summary>
+    public class SettingFormatTests
+    {
+        [Theory]
+        [InlineData(7f, "7")]
+        [InlineData(0f, "0")]
+        [InlineData(-2f, "-2")]
+        [InlineData(10000000f, "10000000")]
+        [InlineData(1.5f, "1.5")]
+        public void SavedAsPlainDigits(float value, string expected)
+        {
+            Assert.Equal(expected, ModMenusUtils.FormatSetting(value));
+        }
+
+        [Theory]
+        [InlineData("7", 7f)]
+        [InlineData("1.5", 1.5f)]
+        [InlineData("1E+07", 10000000f)]
+        public void ReadsWhatOlderVersionsSaved(string text, float expected)
+        {
+            Assert.True(ModMenusUtils.TryParseSetting(text, out float value));
+            Assert.Equal(expected, value);
+        }
+    }
+
     public class SliderRangeTests
     {
         private static (float min, float max, float def) Read(string json)

@@ -112,6 +112,56 @@ namespace InGameTests.TelMods
             Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
         }
 
+        /// <summary>
+        /// Loading a save that has no value for a setting (one made before the mod was installed, say) gives
+        /// it its default, through the game's real load. Every other setting the menus show has a value too.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator LoadingGivesMissingSettingsTheirDefaults(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+
+            MethodInfo tryGetDefault = AccessTools.Method(mod.GetType("ModMenus.ModMenusUtils", true), "TryGetDefault");
+            var defaults = new Dictionary<string, string>();
+            foreach (Mods._mod installed in Mods._Mods.Where(m => m != null && m.IsEnabled()))
+            {
+                string file = Path.Combine(installed.Path, MenuFile);
+                if (!File.Exists(file))
+                    continue;
+                JSONArray items = JSON.Parse(File.ReadAllText(file)).AsArray;
+                for (int i = 0; i < items.Count; i++)
+                {
+                    object[] args = { items[i], null, null };
+                    if ((bool)tryGetDefault.Invoke(null, args))
+                        defaults[(string)args[1]] = (string)args[2];
+                }
+            }
+            ctx.Record("settings", defaults.Count);
+            if (defaults.Count == 0)
+            {
+                ctx.Note("No enabled mod has a setting; nothing to check");
+                yield break;
+            }
+
+            foreach (string varID in defaults.Keys)
+                ctx.Assert(variables.Get(varID) != null, varID + " has no value after the game loaded");
+
+            string removed = defaults.Keys.First();
+            string before = variables.Get(removed);
+            ctx.Record("removedSetting", removed);
+            using (TestTools.Restore(() => variables.Set(removed, before)))
+            {
+                variables.Delete(removed);
+                yield return Game.Quicksave(ctx);
+                yield return Game.Quickload(ctx);
+                ctx.Assert(variables.Get(removed) == defaults[removed],
+                    "After loading a save without " + removed + " it is " + (variables.Get(removed) ?? "missing") + ", expected its default " + defaults[removed]);
+            }
+            if (before != null)
+                yield return Game.Quicksave(ctx);
+        }
+
         private static void AssertOneButtonAfterSettings(TestContext ctx, Transform settingsTab, string when)
         {
             List<Transform> buttons = Find(settingsTab, "ModMenuButton").ToList();

@@ -261,46 +261,23 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
-        /// A dropdown opens downwards, so the lowest dropdown in the menu gets blank rows under it
-        /// until there are two rows for its list to open over.
-        /// </summary>
-        [Theory]
-        [InlineData(0, 2)]
-        [InlineData(1, 1)]
-        [InlineData(2, 0)]
-        [InlineData(3, 0)]
-        public void LowDropdownsGetBlankRowsBelow(int rowsBelow, int blankRows)
-        {
-            List<string> items = new() { """{ "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST"] }""" };
-            items.AddRange(Enumerable.Range(0, rowsBelow).Select(i => $$"""{ "type": "checkbox", "varID": "A_Loud{{i}}", "labelID": "TEST__LOUD" }"""));
-
-            Menu menu = Build("[" + string.Join(",", items) + "]");
-
-            List<string> rows = menu.RowNames;
-            Assert.Equal(new[] { "ModMenuText_Mod A", "ModMenuDropdown_A_Pick" }, rows.Take(2));
-            Assert.Equal(rowsBelow, rows.Count(r => r.StartsWith(MENU_CHECKBOX_OBJ_NAME)));
-            Assert.Equal(Enumerable.Repeat(MENU_TEXT_OBJ_NAME + "_", blankRows), rows.Skip(2 + rowsBelow));
-            Assert.All(menu.Rows.Skip(2 + rowsBelow), row => Assert.Equal("", TextOf(row).text));
-        }
-
-        /// <summary>
-        /// Only the lowest dropdown in the whole menu decides the padding, which goes at the bottom of the menu.
+        /// An open dropdown's list moves to the layer above every row, so it is never covered by the rows
+        /// below or cut off at the bottom of the menu, and needs no blank rows under it.
         /// </summary>
         [Fact]
-        public void PaddingGoesUnderTheLastModsDropdown()
+        public void DropdownsOpenAboveEveryRow()
         {
             TestGame.AddMod("Mod A", """[ { "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST"] } ]""");
             TestGame.AddMod("Mod B", """[ { "type": "dropdown", "varID": "B_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST"] } ]""");
 
-            Assert.Equal(new[]
+            Menu menu = TestGame.BuildMenu();
+
+            Assert.Equal(new[] { "ModMenuText_Mod A", "ModMenuDropdown_A_Pick", "ModMenuText_Mod B", "ModMenuDropdown_B_Pick" }, menu.RowNames);
+            foreach (string varID in new[] { "A_Pick", "B_Pick" })
             {
-                "ModMenuText_Mod A",
-                "ModMenuDropdown_A_Pick",
-                "ModMenuText_Mod B",
-                "ModMenuDropdown_B_Pick",
-                "ModMenuText_",
-                "ModMenuText_",
-            }, TestGame.BuildMenu().RowNames);
+                Assert.True(menu.Dropdown(varID).isListItem);
+                Assert.Same(Seams.TransformOf(menu.DropdownLayer), menu.Dropdown(varID).listParent);
+            }
         }
 
         public static IEnumerable<object[]> ShippedMods() =>

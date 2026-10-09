@@ -114,9 +114,10 @@ namespace ModMenus.Tests
             Seams.Add<ScrollRect>(scroll);
             GameObject viewport = Seams.NewObject(VIEWPORT_OBJ_NAME, scroll);
             GameObject content = Seams.NewObject(MENUCONTENT_OBJ_NAME, viewport);
+            GameObject dropdownLayer = Seams.NewObject(DROPDOWN_LAYER_OBJ_NAME, panel);
 
-            Seams.AddMenuItems(Seams.TransformOf(content));
-            return new Menu(panel, content);
+            Seams.AddMenuItems(Seams.TransformOf(content), Seams.TransformOf(dropdownLayer));
+            return new Menu(panel, content, dropdownLayer);
         }
 
         public static string Saved(string varID) => variables.Get(varID);
@@ -221,21 +222,22 @@ namespace ModMenus.Tests
     {
         public readonly GameObject Panel;
         public readonly GameObject Content;
+        public readonly GameObject DropdownLayer;
         private bool awake;
 
-        public Menu(GameObject panel, GameObject content)
+        public Menu(GameObject panel, GameObject content, GameObject dropdownLayer)
         {
             Panel = panel;
             Content = content;
+            DropdownLayer = dropdownLayer;
         }
 
         public ModMenuManager Manager => Seams.GetComponent<ModMenuManager>(Panel);
 
         /// <summary>
-        /// The rows from the top of the menu down. The grid starts in its lower-left corner, so the
-        /// first child is the bottom row.
+        /// The rows from the top of the menu down.
         /// </summary>
-        public List<GameObject> Rows => Seams.ChildrenOf(Content).AsEnumerable().Reverse().ToList();
+        public List<GameObject> Rows => Seams.ChildrenOf(Content).ToList();
 
         public List<string> RowNames => Rows.Select(Seams.NameOf).ToList();
 
@@ -388,9 +390,11 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuSlider))] = Stub(nameof(AddMenuSlider)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuCheckbox))] = Stub(nameof(AddMenuCheckbox)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuDropdown))] = Stub(nameof(AddMenuDropdown)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.PlaceDropdownInRow))] = Stub(nameof(PlaceDropdownInRow)),
             [AccessTools.FirstMethod(AccessTools.Inner(typeof(ModMenusUtils), "<>c"), m => m.Name.Contains(nameof(ModMenusUtils.AddMenuDropdown)))] = Stub(nameof(IsScreenTab)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.Awake))] = Stub(nameof(ItemAwake)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.OnEnable))] = Stub(nameof(ItemOnEnable)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.CloseList))] = Stub(nameof(ItemCloseList)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderSlider))] = Stub(nameof(ItemRenderSlider)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderCheckbox))] = Stub(nameof(ItemRenderCheckbox)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderDropdown))] = Stub(nameof(ItemRenderDropdown)),
@@ -471,7 +475,7 @@ namespace ModMenus.Tests
         });
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void AddMenuItems(Transform parentTransform) => throw NotInstalled();
+        public static void AddMenuItems(Transform parentTransform, Transform dropdownLayer) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static GameObject AddMenuText(string textID, Transform parentTransform, float fontSize, Color col, TextAlignmentOptions alignment) => throw NotInstalled();
@@ -483,7 +487,8 @@ namespace ModMenus.Tests
         public static GameObject AddMenuCheckbox(string varID, string labelID, bool def, Transform parentTransform) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static GameObject AddMenuDropdown(string varID, string labelID, string[] itemLabelIDs, int def, Transform parentTransform) => throw NotInstalled();
+        public static GameObject AddMenuDropdown(string varID, string labelID, string[] itemLabelIDs, int def, Transform parentTransform, Transform dropdownLayer) => throw NotInstalled();
+        public static void PlaceDropdownInRow(RectTransform dropdown) => throw NotInstalled();
 
         /// <summary>
         /// AddMenuDropdown's lambda that finds the settings popup's Screen tab by name.
@@ -496,6 +501,7 @@ namespace ModMenus.Tests
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ItemOnEnable(ModMenuItem instance) => throw NotInstalled();
+        public static void ItemCloseList(ModMenuItem instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ItemRenderSlider(ModMenuItem instance) => throw NotInstalled();

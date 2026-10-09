@@ -47,6 +47,7 @@ yourself before running.
 |---|---|---|---|
 | 0 | `smoke` | The loaded Tel mods are this checkout's builds, right after the save loads | about 1 s |
 | 1, 2 | `mods` | Per-mod checks of values and UI on the fixture save | about 2 s |
+| 3 | `auditions`, `elections`, `clock` | High-effort scenarios, run when a mod they test changes (`run.py --scope "<Mod>"`) | 5 to 20 s each |
 
 ### Tier 0: the loaded builds (`AllMods/TelModSmokeTests.cs`)
 
@@ -94,6 +95,28 @@ Two helpers do most of the work:
 - `TestTools.Spy`, from the runner, patches a method ahead of every other patch, so it sees the caller's
   arguments or the game's own result.
 - `Training.TickAddParams`, in `Shared/`, records the stamina charges of one real training tick.
+
+### Tier 3: scenarios (`auditions`, `elections`, `clock` suites)
+
+Each runs a whole game scenario: an audition, an election's results, or four weeks of the clock. The
+same rule applies as for tiers 1 and 2, and each asserts only what the unit tests can't. `run.py --scope
+"<Mod>"` runs them along with the mod's other checks; `--suite <name>` runs one scenario for every mod in
+scope.
+
+| File | Suite | Fails when |
+|---|---|---|
+| `TargetedAuditionsTests` | `auditions` | A 16-candidate nationwide audition doesn't give 16 cards that are all revealed and clickable, inside exactly one scroll area. A body repeats before the pool of bodies the game can pick from runs out, or a unique idol's body appears twice. With vocal prioritised, vocal isn't the best rolled skill of at least 10 of 16 candidates, read as the stat roll leaves them (so Unofficial Patch's reroll in the same method is included). |
+| `UnofficialPatchTests` | `auditions` | With every portrait job started 3 s late, no card unlocks showing the placeholder; a late portrait doesn't reach the opened card and the stats panel; or closing the audition while portraits are still to come logs an error or leaves the queue or a render running. |
+| `ExtendedSskTests` | `elections` | A new election, started as the concert's end starts it, doesn't rank every idol who can take part up to 64 (15 on the fixture, past vanilla's 10), or its results popup doesn't award each place's fame once and finish. |
+| `FastForwardTests` | `clock` | Two clicks on the real fast button don't give 28x (5600 minutes a second) with a gold label, or four weeks at that speed miss or repeat a day's or a Monday's event. |
+
+Left to the unit tests: Targeted Auditions' settings, body pool rules, ages, orientation and priority
+maths alone; Unofficial Patch's unlock timing, which jobs a close drops, the late-render cap and the 60 s
+stop; Extended SSK's fame values per rank and broadcast, its limit parsing and the wish cap; FastForward's
+clamping, parsing, third click and hotkey.
+
+These suites leave the game changed for the rest of the boot (an election can't be undone), so each test
+starts by closing every popup and doesn't rely on what ran before it.
 
 ## Writing checks
 

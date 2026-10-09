@@ -296,7 +296,7 @@ namespace HarmonyChecker.Tests
 
         public static void MarkInstalled(MainMenu_Buttons_Controller controller) => throw NotInstalled();
 
-        public static void StartPostfix(ref MainMenu_Buttons_Controller __instance) => throw NotInstalled();
+        public static void StartPostfix(MainMenu_Buttons_Controller __instance) => throw NotInstalled();
 
         public static void StopSpinnerPostfix() => throw NotInstalled();
 

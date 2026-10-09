@@ -225,7 +225,7 @@ namespace HarmonyChecker
     [HarmonyPatch(typeof(MainMenu_Buttons_Controller), "Start")]
     public class MainMenu_Buttons_Controller_Start
     {
-        public static void Postfix(ref MainMenu_Buttons_Controller __instance)
+        public static void Postfix(MainMenu_Buttons_Controller __instance)
         {
             HarmonyCheckerStatus.MarkInstalled(__instance);
         }

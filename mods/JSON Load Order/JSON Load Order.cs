@@ -23,22 +23,29 @@ namespace JSONLoadOrder
 
             foreach (Mods._mod mod in Mods._Mods)
             {
-                string modDir = mod.Path;
-
-                string modInfoFile = Path.Combine(modDir.TrimEnd(new char[] { Path.DirectorySeparatorChar }), "info.json");
-                JSONNode modInfo = mainScript.ProcessInboundData(File.ReadAllText(modInfoFile));
-                string orderStr = modInfo[LOADORDER_JSON_FIELD];
-
-                modOrders[mod.ModName] = 0;
-
-                if (orderStr != null && int.TryParse(orderStr, out int order))
-                {
-                    modOrders[mod.ModName] = order;
-                }
+                modOrders[mod.ModName] = ReadOrder(mod);
             }
 
             List<Mods._mod> sortedMods = Mods._Mods.OrderBy(mod => modOrders[mod.ModName]).ToList();
             Mods._Mods = sortedMods;
+        }
+
+        // A mod's JSONLoadOrder, or 0. A mod whose info.json can't be read gets 0 with a warning, so it can't
+        // stop the other mods being sorted or the game's text loading.
+        private static int ReadOrder(Mods._mod mod)
+        {
+            try
+            {
+                string modInfoFile = Path.Combine(mod.Path.TrimEnd(new char[] { Path.DirectorySeparatorChar }), "info.json");
+                JSONNode modInfo = mainScript.ProcessInboundData(File.ReadAllText(modInfoFile));
+                string orderStr = modInfo?[LOADORDER_JSON_FIELD];
+                return orderStr != null && int.TryParse(orderStr, out int order) ? order : 0;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("[JSON Load Order] Couldn't read " + mod.ModName + "'s info.json, so it loads at 0: " + e.Message);
+                return 0;
+            }
         }
     }
 
@@ -53,7 +60,8 @@ namespace JSONLoadOrder
             if (original != null)
                 return;
 
-            // A failure here would stop the mod being applied at all; the constants load sorts again anyway
+            // A failure here would stop the mod being applied at all; the constants load sorts again anyway.
+            // SortMods already skips unreadable info.json files, so this only catches the unexpected.
             try
             {
                 SortMods();
@@ -64,9 +72,17 @@ namespace JSONLoadOrder
             }
         }
 
+        // The game's text and constants load right after this, so a failure must not reach Language._Load
         public static void Prefix()
         {
-            SortMods();
+            try
+            {
+                SortMods();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[JSON Load Order] Couldn't sort the mods: " + e);
+            }
         }
     }
 

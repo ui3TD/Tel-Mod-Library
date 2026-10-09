@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using UnityEngine;
 using Xunit;
 
 namespace JSONLoadOrder.Tests
@@ -264,6 +265,87 @@ namespace JSONLoadOrder.Tests
             TestGame.LoadLanguage();
 
             Assert.Equal(new[] { "A" }, ConstantsFiles());
+        }
+    }
+
+    /// <summary>
+    /// One mod with a broken info.json can't stop the game's text loading or the other mods being sorted:
+    /// it loads at 0 and the mod says why.
+    /// </summary>
+    public class UnreadableInfoTests : IDisposable
+    {
+        private readonly ILogHandler gameLog = UnityEngine.Debug.unityLogger.logHandler;
+        private readonly LogRecorder log = new();
+
+        public UnreadableInfoTests()
+        {
+            TestGame.Reset();
+            UnityEngine.Debug.unityLogger.logHandler = log;
+        }
+
+        public void Dispose() => UnityEngine.Debug.unityLogger.logHandler = gameLog;
+
+        public static TheoryData<string> BrokenInfo => new()
+        {
+            "{ \"Title\": \"Broken\", \"JSONLoadOrder\": ",
+            "not json at all",
+            "",
+        };
+
+        [Fact]
+        public void MissingInfoJson_LoadsAtZero_OthersStillSorted()
+        {
+            TestGame.Mod("Late", "100");
+            Mods._mod broken = TestGame.Mod("Broken", "500");
+            TestGame.Mod("Early", "-10");
+            File.Delete(Path.Combine(broken.Path, "info.json"));
+
+            TestGame.LoadLanguage();
+
+            Assert.Equal(new[] { "Early", "Broken", "Late" }, TestGame.LoadedNames());
+            Assert.Contains(log.Messages, m => m.StartsWith("[JSON Load Order] Couldn't read Broken's info.json"));
+        }
+
+        [Theory]
+        [MemberData(nameof(BrokenInfo))]
+        public void MalformedInfoJson_LoadsAtZero_OthersStillSorted(string infoJson)
+        {
+            TestGame.Mod("Late", "100");
+            TestGame.ModWithInfo("Broken", infoJson);
+            TestGame.Mod("Early", "-10");
+
+            Exception error = Record.Exception(TestGame.LoadLanguage);
+
+            Assert.Null(error);
+            Assert.Equal(new[] { "Early", "Broken", "Late" }, TestGame.LoadedNames());
+            Assert.Equal(0, ModLoadOrder.modOrders["Broken"]);
+        }
+
+        /// <summary>
+        /// Even an error the mod doesn't expect (here, a mod with no name) is logged, not passed on to the
+        /// game's text loading, and the list is left as the game had it.
+        /// </summary>
+        [Fact]
+        public void UnexpectedError_IsLogged_NotPassedToTheGame()
+        {
+            TestGame.Mod("Late", "100");
+            TestGame.Mod("Nameless").ModName = null;
+
+            Exception error = Record.Exception(TestGame.LoadLanguage);
+
+            Assert.Null(error);
+            Assert.Equal(new[] { "Late", null }, TestGame.LoadedNames());
+            Assert.Contains(log.Messages, m => m.StartsWith("[JSON Load Order] Couldn't sort the mods"));
+        }
+
+        private class LogRecorder : ILogHandler
+        {
+            public readonly List<string> Messages = new();
+
+            public void LogFormat(LogType logType, UnityEngine.Object context, string format, params object[] args) =>
+                Messages.Add(string.Format(format, args));
+
+            public void LogException(Exception exception, UnityEngine.Object context) => Messages.Add(exception.ToString());
         }
     }
 

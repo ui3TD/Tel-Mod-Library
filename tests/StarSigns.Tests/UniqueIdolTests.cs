@@ -29,24 +29,49 @@ namespace StarSigns.Tests
         {
             Load("{ \"starsign\": \"Capricorn\" }");
 
-            ZodiacTextureData data = Assert.Single(ZodiacTextureReferenceList);
-            Assert.Equal("Idol Mod", data.ModName);
-            Assert.Equal(7, data.body_id);
-            Assert.Equal(Zodiac.Capricorn, data.zodiac);
+            KeyValuePair<string, Zodiac> data = Assert.Single(UniqueIdolSigns);
+            Assert.Equal(UniqueIdolKey("Idol Mod", 7), data.Key);
+            Assert.Equal(Zodiac.Capricorn, data.Value);
+        }
+
+        /// <summary>
+        /// Reading the same idol's params.json again (the game reloads mods' portraits) keeps one entry,
+        /// with the sign it says now.
+        /// </summary>
+        [Fact]
+        public void ReadAgain_KeepsOneEntryWithTheLatestSign()
+        {
+            Load("{ \"starsign\": \"Capricorn\" }");
+            Load("{ \"starsign\": \"Leo\" }");
+
+            Assert.Equal(Zodiac.Leo, Assert.Single(UniqueIdolSigns).Value);
+        }
+
+        /// <summary>
+        /// The same body number in two mods is two different idols.
+        /// </summary>
+        [Fact]
+        public void SameBodyInTwoMods_RecordedApart()
+        {
+            Load("{ \"starsign\": \"Capricorn\" }", modName: "Mod A");
+            Load("{ \"starsign\": \"Leo\" }", modName: "Mod B");
+
+            Assert.Equal(Zodiac.Capricorn, UniqueIdolSigns[UniqueIdolKey("Mod A", 7)]);
+            Assert.Equal(Zodiac.Leo, UniqueIdolSigns[UniqueIdolKey("Mod B", 7)]);
         }
 
         [Fact]
         public void Starsign_IgnoresCase()
         {
             Load("{ \"starsign\": \"sagittarius\" }");
-            Assert.Equal(Zodiac.Sagittarius, Assert.Single(ZodiacTextureReferenceList).zodiac);
+            Assert.Equal(Zodiac.Sagittarius, Assert.Single(UniqueIdolSigns).Value);
         }
 
         [Fact]
         public void NoStarsign_RecordsNothing()
         {
             Load("{ \"left\": 10, \"top\": 20 }");
-            Assert.Empty(ZodiacTextureReferenceList);
+            Assert.Empty(UniqueIdolSigns);
         }
 
         /// <summary>
@@ -79,6 +104,22 @@ namespace StarSigns.Tests
             LocalVariableInfo asset = Assert.IsAssignableFrom<LocalVariableInfo>(patched[call - 1].operand);
             Assert.Equal(typeof(data_girls_textures._textureAsset), asset.LocalType);
         }
+
+        /// <summary>
+        /// If a game update changes how params.json is read, the game's code is left as it is and the mod
+        /// says why "starsign" stopped working, instead of failing to load.
+        /// </summary>
+        [Fact]
+        public void Transpiler_GameCodeChanged_LeavesItAndLogs()
+        {
+            MethodInfo other = AccessTools.Method(typeof(data_girls_textures), "LoadDefaultAssets");
+            List<CodeInstruction> instructions = PatchProcessor.GetOriginalInstructions(other);
+
+            List<CodeInstruction> patched = data_girls_textures_LoadAssetsData.Transpiler(instructions).ToList();
+
+            Assert.Equal(instructions.Select(i => i.ToString()), patched.Select(i => i.ToString()));
+            Assert.Contains(Log.Messages, m => m.StartsWith("[Star Signs] Couldn't find"));
+        }
     }
 
     /// <summary>
@@ -93,7 +134,7 @@ namespace StarSigns.Tests
         private const int BodyId = 7;
 
         private static void Record(Zodiac sign, string modName = ModName, int bodyId = BodyId) =>
-            ZodiacTextureReferenceList.Add(new ZodiacTextureData { ModName = modName, body_id = bodyId, zodiac = sign });
+            UniqueIdolSigns[UniqueIdolKey(modName, bodyId)] = sign;
 
         /// <summary>
         /// A girl as GenerateGirl returns her, with this body and birthday.
@@ -151,7 +192,7 @@ namespace StarSigns.Tests
                 staticVars.dateTime = today;
                 foreach (Zodiac sign in TestGame.Signs)
                 {
-                    ZodiacTextureReferenceList.Clear();
+                    UniqueIdolSigns.Clear();
                     Record(sign);
                     Seams.Seeded(today.DayOfYear);
 
@@ -194,7 +235,7 @@ namespace StarSigns.Tests
                 new data_girls_textures._textureAsset { ModName = ModName, body_id = BodyId });
             DateTime birthday = TestGame.Birthday(Zodiac.Leo);
 
-            Assert.Empty(ZodiacTextureReferenceList);
+            Assert.Empty(UniqueIdolSigns);
             Assert.Contains("Star sign not found: " + starsign, Log.Messages);
             Assert.Equal(birthday, Generate(Generated(birthday)).birthday);
         }

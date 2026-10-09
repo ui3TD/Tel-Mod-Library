@@ -150,15 +150,18 @@ namespace StarSigns
     }
 
     // patch leader selection
-    [HarmonyPatch(typeof(Relationships._clique), "UpdateLeader")]
+    [HarmonyPatch(typeof(Relationships._clique), nameof(Relationships._clique.UpdateLeader))]
     public class Relationships__clique_UpdateLeader
     {
+        [HarmonyPriority(Priority.First)]
         public static void Prefix()
         {
             patchGetVal = true;
         }
 
-        public static void Postfix()
+        // A finalizer, not a postfix: it runs even if UpdateLeader throws
+        [HarmonyPriority(Priority.VeryLow)]
+        public static void Finalizer()
         {
             patchGetVal = false;
         }
@@ -202,12 +205,15 @@ namespace StarSigns
     [HarmonyPatch(typeof(Pushes), "OnNewDay")]
     public class Pushes_OnNewDay
     {
+        [HarmonyPriority(Priority.First)]
         public static void Prefix()
         {
             patchAddRelationship = true;
         }
 
-        public static void Postfix()
+        // A finalizer, not a postfix: it runs even if OnNewDay throws
+        [HarmonyPriority(Priority.VeryLow)]
+        public static void Finalizer()
         {
             patchAddRelationship = false;
         }
@@ -236,35 +242,34 @@ namespace StarSigns
     [HarmonyPatch(typeof(data_girls_textures), "LoadAssetsData", new[] { typeof(string) })]
     public class data_girls_textures_LoadAssetsData
     {
+        // After the game parses a body folder's params.json into a local, call Infix with it and that folder's body asset
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            object textureAssetOperand = null;
-            object jsonNodeOperand = null;
-            for (int i = 0; i < instructionList.Count; i++)
+            CodeMatcher matcher = new CodeMatcher(instructionList).MatchEndForward(
+                new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(data_girls_textures), "ProcessInboundData"))),
+                new CodeMatch(ci => ci.IsStloc()));
+            if (matcher.IsInvalid)
             {
-                if (instructionList[i].opcode == OpCodes.Stloc_S && instructionList[i].operand is LocalVariableInfo localVariable && localVariable.LocalIndex == 8)
-                {
-                    textureAssetOperand = instructionList[i].operand;
-                }
-                if (instructionList[i].opcode == OpCodes.Stloc_S && instructionList[i].operand is LocalVariableInfo localVariable2 && localVariable2.LocalIndex == 13)
-                {
-                    index = i;
-                    jsonNodeOperand = instructionList[i].operand;
-                    break;
-                }
+                Debug.LogError("[Star Signs] Couldn't find where the game reads params.json; \"starsign\" is ignored");
+                return instructionList;
+            }
+            object jsonNode = matcher.Operand;
+
+            // The body asset is the last one stored before params.json is read
+            object textureAsset = instructionList.Take(matcher.Pos).LastOrDefault(ci => ci.IsStloc() && ci.operand is LocalVariableInfo local
+                && local.LocalType == typeof(data_girls_textures._textureAsset))?.operand;
+            if (textureAsset == null)
+            {
+                Debug.LogError("[Star Signs] Couldn't find the body asset that params.json is read into; \"starsign\" is ignored");
+                return instructionList;
             }
 
-            if (index != -1)
-            {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldloc_S, jsonNodeOperand));
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Ldloc_S, textureAssetOperand));
-                instructionList.Insert(index + 3, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), "Infix")));
-            }
-
-            return instructionList.AsEnumerable();
+            return matcher.Advance(1).Insert(
+                new CodeInstruction(OpCodes.Ldloc_S, jsonNode),
+                new CodeInstruction(OpCodes.Ldloc_S, textureAsset),
+                new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(data_girls_textures_LoadAssetsData), nameof(Infix))))
+                .InstructionEnumeration();
         }
 
         public static void Infix(JSONNode jsonnode, data_girls_textures._textureAsset textureAsset)
@@ -278,14 +283,7 @@ namespace StarSigns
                 Debug.LogWarning("Star sign not found: " + zodiacStr);
                 return;
             }
-            ZodiacTextureData zodiacTextureData = new()
-            {
-                ModName = textureAsset.ModName,
-                body_id = textureAsset.body_id,
-                zodiac = tryZodiac
-            };
-
-            ZodiacTextureReferenceList.Add(zodiacTextureData);
+            UniqueIdolSigns[UniqueIdolKey(textureAsset.ModName, textureAsset.body_id)] = tryZodiac;
         }
     }
 
@@ -298,37 +296,32 @@ namespace StarSigns
             if (!genTextures)
                 return;
 
-            foreach (ZodiacTextureData data in ZodiacTextureReferenceList)
+            if (__result.textureAssets == null || __result.textureAssets.Count == 0)
+                return;
+
+            data_girls_textures._textureAsset asset = __result.textureAssets[0].asset;
+            if (asset == null || !UniqueIdolSigns.TryGetValue(UniqueIdolKey(asset.ModName, asset.body_id), out Zodiac zodiac))
+                return;
+
+            int[] months = GetZodiacMonthRange(zodiac);
+            int currentMonth = staticVars.dateTime.Month;
+
+            int targetAge = __result.GetAge();
+            if (asset.Age > 0)
             {
-                if (__result.textureAssets == null || __result.textureAssets.Count == 0)
-                    continue;
+                targetAge = asset.Age;
+            }
 
-                data_girls_textures._textureAsset asset = __result.textureAssets[0].asset;
+            // Going back 11 months and up to 29 days can cross February into the year before
+            while (DateToZodiac(__result.birthday) != zodiac || __result.GetAge() != targetAge)
+            {
+                int targetMonth = months[UnityEngine.Random.Range(0, 3)];
+                int monthsToSubtract = (currentMonth - targetMonth + 12) % 12;
 
-                if (asset != null && asset.ModName == data.ModName && asset.body_id == data.body_id)
-                {
-                    int[] months = GetZodiacMonthRange(data.zodiac);
-                    int currentMonth = staticVars.dateTime.Month;
-
-                    int targetAge = __result.GetAge();
-                    if (asset.Age > 0)
-                    {
-                        targetAge = asset.Age;
-                    }
-
-                    // Going back 11 months and up to 29 days can cross February into the year before
-                    while (DateToZodiac(__result.birthday) != data.zodiac || __result.GetAge() != targetAge)
-                    {
-                        int targetMonth = months[UnityEngine.Random.Range(0, 3)];
-                        int monthsToSubtract = (currentMonth - targetMonth + 12) % 12;
-
-                        __result.birthday = staticVars.dateTime
-                            .AddYears(-targetAge)
-                            .AddMonths(-monthsToSubtract)
-                            .AddDays(-UnityEngine.Random.Range(0, 30));
-                    }
-                    break;
-                }
+                __result.birthday = staticVars.dateTime
+                    .AddYears(-targetAge)
+                    .AddMonths(-monthsToSubtract)
+                    .AddDays(-UnityEngine.Random.Range(0, 30));
             }
         }
 
@@ -375,15 +368,10 @@ namespace StarSigns
         public static bool patchGetVal = false;
         public static bool patchAddRelationship = false;
 
-        public static List<ZodiacTextureData> ZodiacTextureReferenceList = new();
+        // Signs set in unique idols' params.json, by UniqueIdolKey. Reading the files again overwrites, never duplicates.
+        public static Dictionary<string, Zodiac> UniqueIdolSigns = new();
 
-        public class ZodiacTextureData
-        {
-            public string ModName;
-            public int body_id;
-            public int Age;
-            public Zodiac zodiac;
-        }
+        public static string UniqueIdolKey(string modName, int bodyId) => modName + "/" + bodyId;
 
         public static Zodiac GetGirlZodiac(data_girls.girls girls)
         {
@@ -391,36 +379,24 @@ namespace StarSigns
             return DateToZodiac(bday);
         }
 
+        // By month, January first: the last day of the sign the month starts in, that sign, and the sign after it
+        private static readonly int[] LastDayOfFirstSign = { 19, 18, 20, 19, 20, 21, 22, 22, 22, 23, 21, 21 };
+        private static readonly Zodiac[] FirstSign =
+        {
+            Zodiac.Capricorn, Zodiac.Aquarius, Zodiac.Pisces, Zodiac.Aries, Zodiac.Taurus, Zodiac.Gemini,
+            Zodiac.Cancer, Zodiac.Leo, Zodiac.Virgo, Zodiac.Libra, Zodiac.Scorpio, Zodiac.Sagittarius
+        };
+        private static readonly Zodiac[] SecondSign =
+        {
+            Zodiac.Aquarius, Zodiac.Pisces, Zodiac.Aries, Zodiac.Taurus, Zodiac.Gemini, Zodiac.Cancer,
+            Zodiac.Leo, Zodiac.Virgo, Zodiac.Libra, Zodiac.Scorpio, Zodiac.Sagittarius, Zodiac.Capricorn
+        };
+
+        // Called for every relationship pair every day, so it allocates nothing
         public static Zodiac DateToZodiac(DateTime date)
         {
-            int month = date.Month;
-            int day = date.Day;
-
-            var zodiacDates = new[]
-            {
-                new { Month = 12, Day = 21, Sign = Zodiac.Sagittarius },
-                new { Month = 1, Day = 19, Sign = Zodiac.Capricorn },
-                new { Month = 2, Day = 18, Sign = Zodiac.Aquarius },
-                new { Month = 3, Day = 20, Sign = Zodiac.Pisces },
-                new { Month = 4, Day = 19, Sign = Zodiac.Aries },
-                new { Month = 5, Day = 20, Sign = Zodiac.Taurus },
-                new { Month = 6, Day = 21, Sign = Zodiac.Gemini },
-                new { Month = 7, Day = 22, Sign = Zodiac.Cancer },
-                new { Month = 8, Day = 22, Sign = Zodiac.Leo },
-                new { Month = 9, Day = 22, Sign = Zodiac.Virgo },
-                new { Month = 10, Day = 23, Sign = Zodiac.Libra },
-                new { Month = 11, Day = 21, Sign = Zodiac.Scorpio },
-                new { Month = 12, Day = 21, Sign = Zodiac.Sagittarius },
-                new { Month = 1, Day = 19, Sign = Zodiac.Capricorn }
-            };
-
-            if ((month == zodiacDates[month].Month && day <= zodiacDates[month].Day) ||
-                (month == zodiacDates[month - 1].Month && day > zodiacDates[month - 1].Day))
-            {
-                return zodiacDates[month].Sign;
-            }
-
-            return zodiacDates[month + 1].Sign;
+            int month = date.Month - 1;
+            return date.Day <= LastDayOfFirstSign[month] ? FirstSign[month] : SecondSign[month];
         }
 
         public enum Zodiac

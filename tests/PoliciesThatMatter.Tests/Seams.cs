@@ -51,6 +51,7 @@ namespace PoliciesThatMatter.Tests
             AccessTools.Method(typeof(data_girls_PoliciesResources), "AddBonusNotification"),
             AccessTools.Method(typeof(traits_GetRandomTraitType), nameof(traits_GetRandomTraitType.Postfix)),
             AccessTools.Method(typeof(agency__room_DoGirlTraining), nameof(agency__room_DoGirlTraining.Infix)),
+            AccessTools.Method(typeof(data_girls_PoliciesStamina), nameof(data_girls_PoliciesStamina.RollLoss)),
         };
 
         private static readonly Lazy<bool> Installed = new(() =>

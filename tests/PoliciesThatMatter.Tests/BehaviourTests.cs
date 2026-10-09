@@ -156,20 +156,35 @@ namespace PoliciesThatMatter.Tests
         }
 
         /// <summary>
-        /// Extensive always rerolls among positive traits, skipping Moonlighter and Spoiled like vanilla.
+        /// Extensive always rolls among positive traits, leaving out Moonlighter and Spoiled like vanilla.
         /// </summary>
         [Fact]
         public void Extensive_AlwaysGivesAPositiveTrait()
         {
             TestPolicies.Use(background_check_extensive);
-            Queue<int> rolls = new(new[] { 0, 1, 2 });
-            Seams.Range = (_, _) => rolls.Dequeue();
 
             traits._trait._type result = traits._trait._type.Clumsy;
             traits_GetRandomTraitType.Postfix(ref result);
 
             Assert.Equal(traits._trait._type.Prodigy, result);
-            Assert.All(Seams.RangesRolled, r => Assert.Equal((0, 3), r));
+            Assert.Equal((0, 1), Assert.Single(Seams.RangesRolled));
+        }
+
+        /// <summary>
+        /// Fixed in 1.2.0: with only Moonlighter and Spoiled among the positive traits, the roll repeated forever.
+        /// Now the game's own roll is kept.
+        /// </summary>
+        [Fact]
+        public void Extensive_NoAllowedPositiveTrait_KeepsTheGamesRoll()
+        {
+            TestPolicies.Use(background_check_extensive);
+            traits.Traits.RemoveAll(t => t.Type == traits._trait._type.Prodigy);
+
+            traits._trait._type result = traits._trait._type.Clumsy;
+            traits_GetRandomTraitType.Postfix(ref result);
+
+            Assert.Equal(traits._trait._type.Clumsy, result);
+            Assert.Empty(Seams.RangesRolled);
         }
 
         [Theory]
@@ -267,8 +282,8 @@ namespace PoliciesThatMatter.Tests
         }
 
         /// <summary>
-        /// Each loss is 1 to (2 x the tooltip's "about" figure - 2) points, so it averages
-        /// half a point below the tooltip (e.g. "about 20" is 1-38, averaging 19.5).
+        /// Each loss is 1 to (2 x the tooltip's "about" figure - 1) points, so it averages the tooltip's
+        /// figure (e.g. "about 20" is 1-39). Fixed in 1.2.0: it was 1-38, averaging 19.5.
         /// </summary>
         [Theory]
         [InlineData(social_media_no_restrictions, 20)]
@@ -286,8 +301,8 @@ namespace PoliciesThatMatter.Tests
 
             Assert.False(data_girls_PoliciesStamina.Prefix());
 
-            Assert.Equal((1, 2 * tooltip - 1), Assert.Single(Seams.RangesRolled));
-            Assert.Equal((girl, data_girls._paramType.mentalStamina, (float)-(2 * tooltip - 2)), Assert.Single(Seams.ParamsAdded));
+            Assert.Equal((1, 2 * tooltip), Assert.Single(Seams.RangesRolled));
+            Assert.Equal((girl, data_girls._paramType.mentalStamina, (float)-(2 * tooltip - 1)), Assert.Single(Seams.ParamsAdded));
             Assert.Single(Seams.Notifications);
         }
 
@@ -319,7 +334,7 @@ namespace PoliciesThatMatter.Tests
 
             data_girls_PoliciesStamina.Prefix();
 
-            Assert.Equal((girl, data_girls._paramType.mentalStamina, (float)-(38 + 18 + 18)), Assert.Single(Seams.ParamsAdded));
+            Assert.Equal((girl, data_girls._paramType.mentalStamina, (float)-(39 + 19 + 19)), Assert.Single(Seams.ParamsAdded));
             Assert.Equal(3, Seams.Notifications.Count);
         }
 
@@ -388,14 +403,15 @@ namespace PoliciesThatMatter.Tests
         }
 
         /// <summary>
-        /// No Restrictions streaming pays like vanilla Controlled streaming, ±20%.
+        /// No Restrictions streaming pays like vanilla Controlled streaming, ±20%. Fixed in 1.2.0: the
+        /// top roll was 119%.
         /// </summary>
         [Theory]
         [InlineData(0, 100, 5000)]
         [InlineData(3, 100, 33500)]
         [InlineData(10, 100, 100000)]
         [InlineData(10, 80, 80000)]
-        [InlineData(10, 119, 119000)]
+        [InlineData(10, 120, 120000)]
         public void NoRestrictionsStreaming_PaysByFame(int fame, int roll, int expected)
         {
             Use(streaming_no_restrictions);
@@ -405,7 +421,7 @@ namespace PoliciesThatMatter.Tests
 
             data_girls_PoliciesResources.Prefix();
 
-            Assert.Equal((80, 120), Assert.Single(Seams.RangesRolled));
+            Assert.Equal((80, 121), Assert.Single(Seams.RangesRolled));
             Assert.Equal((resources.type.money, (long)expected), Assert.Single(Seams.ResourcesAdded));
             Assert.Single(Seams.Notifications);
         }
@@ -441,17 +457,17 @@ namespace PoliciesThatMatter.Tests
 
         /// <summary>
         /// Tooltips: Controlled gains "2 to 22 fans", No Restrictions "10 to 110", depending on fame.
-        /// Those are the middle roll; each gain varies from half to 1.5x.
+        /// Those are the middle roll; each gain varies from half to 1.5x. Fixed in 1.2.0: the top roll was 1.49x.
         /// </summary>
         [Theory]
         [InlineData(social_media_premoderated, 0, 100, 2)]
         [InlineData(social_media_premoderated, 10, 100, 22)]
         [InlineData(social_media_premoderated, 0, 50, 1)]
-        [InlineData(social_media_premoderated, 10, 149, 33)]
+        [InlineData(social_media_premoderated, 10, 150, 33)]
         [InlineData(social_media_no_restrictions, 0, 100, 10)]
         [InlineData(social_media_no_restrictions, 10, 100, 110)]
         [InlineData(social_media_no_restrictions, 10, 50, 55)]
-        [InlineData(social_media_no_restrictions, 10, 149, 164)]
+        [InlineData(social_media_no_restrictions, 10, 150, 165)]
         public void SocialMedia_GainsFansByFame(policies._value policy, int fame, int roll, int expected)
         {
             Use(policy);
@@ -461,7 +477,7 @@ namespace PoliciesThatMatter.Tests
 
             data_girls_PoliciesResources.Prefix();
 
-            Assert.Equal((50, 150), Assert.Single(Seams.RangesRolled));
+            Assert.Equal((50, 151), Assert.Single(Seams.RangesRolled));
             Assert.Equal((girl, (long)expected), Assert.Single(Seams.FansAdded));
             Assert.Contains(expected + "PT", Assert.Single(Seams.Notifications));
         }
@@ -536,42 +552,98 @@ namespace PoliciesThatMatter.Tests
         {
             type = singles._param._type.marketing,
             id = id,
-            appeal = new List<singles._param._appeal> { new() { type = resources.fanType.hardcore } }
+            appeal = new List<singles._param._appeal> { new() { type = resources.fanType.hardcore, val = new List<float> { 10f } } }
         };
 
+        private static readonly MethodInfo GetAppealVal = AccessTools.Method(typeof(singles._param), nameof(singles._param.GetAppealVal));
+
+        private static readonly Lazy<bool> Patched = new(() =>
+        {
+            // Not "tests.PoliciesThatMatter": PatchTargetTests unpatches everything under that ID
+            new Harmony("tests.PoliciesThatMatter.Handshakes").CreateClassProcessor(typeof(singles__param_GetAppealVal)).Patch();
+            return true;
+        });
+
+        private static float Appeal(int id, resources.fanType fanType = resources.fanType.hardcore)
+        {
+            _ = Patched.Value;
+            return Marketing(id).GetAppealVal(fanType, 1);
+        }
+
         /// <summary>
-        /// Vanilla doubles (Relaxed) or halves (Restrictive) handshake appeal; the mod makes it 1.5x and 0.8x.
+        /// Vanilla doubles (Relaxed) or halves (Restrictive) handshake appeal; with the mod it's 1.5x and 0.8x.
+        /// The game's own method runs, with the mod's change to it.
         /// </summary>
         [Theory]
-        [InlineData(1, security_relaxed, 20f, 15f)]
-        [InlineData(2, security_relaxed, 20f, 15f)]
-        [InlineData(1, security_restrictive, 5f, 8f)]
-        [InlineData(2, security_restrictive, 5f, 8f)]
-        [InlineData(1, security_normal, 10f, 10f)]
-        public void Handshakes_UseTheModsMultipliers(int id, policies._value policy, float vanilla, float expected)
+        [InlineData(1, security_relaxed, 15f)]
+        [InlineData(2, security_relaxed, 15f)]
+        [InlineData(1, security_restrictive, 8f)]
+        [InlineData(2, security_restrictive, 8f)]
+        [InlineData(1, security_normal, 10f)]
+        public void Handshakes_UseTheModsMultipliers(int id, policies._value policy, float expected)
         {
             TestPolicies.Use(policy);
-            float appeal = vanilla;
-            singles__param_GetAppealVal.Postfix(ref appeal, resources.fanType.hardcore, Marketing(id));
-            Assert.Equal(expected, appeal, 5);
+            Assert.Equal(expected, Appeal(id), 5);
         }
 
         [Fact]
         public void OtherMarketing_KeepsItsAppeal()
         {
             TestPolicies.Use(security_relaxed);
-            float appeal = 10f;
-            singles__param_GetAppealVal.Postfix(ref appeal, resources.fanType.hardcore, Marketing(3));
-            Assert.Equal(10f, appeal);
+            Assert.Equal(10f, Appeal(3));
         }
 
         [Fact]
         public void FansTheHandshakeDoesntAppealTo_AreUntouched()
         {
             TestPolicies.Use(security_relaxed);
-            float appeal = 0f;
-            singles__param_GetAppealVal.Postfix(ref appeal, resources.fanType.casual, Marketing(1));
-            Assert.Equal(0f, appeal);
+            Assert.Equal(0f, Appeal(1, resources.fanType.casual));
         }
+
+        /// <summary>
+        /// Only the game's two handshake multipliers change: 2 becomes 1.5 and 0.5 becomes 0.8.
+        /// </summary>
+        [Fact]
+        public void Transpiler_ReplacesOnlyTheTwoMultipliers()
+        {
+            List<CodeInstruction> game = PatchProcessor.GetOriginalInstructions(GetAppealVal);
+            List<CodeInstruction> mod = singles__param_GetAppealVal.Transpiler(game).ToList();
+
+            Assert.Equal(game.Count, mod.Count);
+            List<int> changed = Enumerable.Range(0, game.Count).Where(i => !Equals(game[i].operand, mod[i].operand) || game[i].opcode != mod[i].opcode).ToList();
+            Assert.Equal(2, changed.Count);
+            Assert.Equal((2f, 1.5f), ((float)game[changed[0]].operand, (float)mod[changed[0]].operand));
+            Assert.Equal((0.5f, 0.8f), ((float)game[changed[1]].operand, (float)mod[changed[1]].operand));
+        }
+
+        /// <summary>
+        /// On code that doesn't match, as after a game update, the code is left as it was and the log says so.
+        /// </summary>
+        [Fact]
+        public void Transpilers_NotFound_LeaveTheCodeAndLog()
+        {
+            UnityEngine.Debug.unityLogger.logHandler = new Log();
+            Log.Messages.Clear();
+            List<CodeInstruction> other = PatchProcessor.GetOriginalInstructions(AccessTools.Method(typeof(policies), nameof(policies.GetSelectedPolicyValue)));
+
+            Assert.Same(other, singles__param_GetAppealVal.Transpiler(other));
+            Assert.Same(other, agency__room_DoGirlTraining.Transpiler(other));
+            Assert.Equal(2, Log.Messages.Count);
+            Assert.All(Log.Messages, m => Assert.StartsWith("[Policies That Matter] Couldn't find", m));
+        }
+    }
+
+    /// <summary>
+    /// Unity's logger writes through native code; the transpilers log when they can't find their place.
+    /// </summary>
+    public class Log : UnityEngine.ILogHandler
+    {
+        public static readonly List<string> Messages = new();
+
+        public void LogFormat(UnityEngine.LogType logType, UnityEngine.Object context, string format, params object[] args) =>
+            Messages.Add(string.Format(format, args));
+
+        public void LogException(Exception exception, UnityEngine.Object context) =>
+            Messages.Add(exception.ToString());
     }
 }

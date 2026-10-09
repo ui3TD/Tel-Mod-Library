@@ -43,6 +43,14 @@ namespace PoliciesThatMatter
         public const int datingAge = 16;
 
         public const string DATING_NOTIF_LABEL = "POLICYMOD__IDOL__DATING";
+
+        /// <summary>
+        /// Logs that a transpiler couldn't find the code it changes, which leaves that change out.
+        /// </summary>
+        public static void LogPatchNotFound(string what)
+        {
+            Debug.LogError("[Policies That Matter] Couldn't find " + what + " in the game's code, so that change is off. The game may have been updated.");
+        }
     }
 
 
@@ -99,30 +107,25 @@ namespace PoliciesThatMatter
     [HarmonyPatch(typeof(agency._room), "DoGirlTraining")]
     public class agency__room_DoGirlTraining
     {
+        /// <summary>
+        /// Calls Infix where the game checks the Performance policy while working out the training cost.
+        /// </summary>
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            List<CodeInstruction> instructionList = new(instructions);
-
-            int index = -1;
-            for (int i = 0; i < instructionList.Count; i++)
+            CodeMatcher matcher = new CodeMatcher(instructions).MatchStartForward(
+                new CodeMatch(ci => ci.LoadsConstant((long)policies._type.performances)),
+                new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(policies), nameof(policies.GetSelectedPolicyValue)))));
+            if (matcher.IsInvalid)
             {
-                if (instructionList[i].opcode == OpCodes.Stloc_S)
-                {
-                    index = i;
-                }
-                if (instructionList[i].opcode == OpCodes.Call && (MethodInfo)instructionList[i].operand == AccessTools.Method(typeof(policies), "GetSelectedPolicyValue"))
-                {
-                    break;
-                }
+                LogPatchNotFound("the Performance policy check in training");
+                return instructions;
             }
 
-            if (index != -1)
-            {
-                instructionList.Insert(index + 1, new CodeInstruction(OpCodes.Ldarg_0));
-                instructionList.Insert(index + 2, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(agency__room_DoGirlTraining), "Infix")));
-            }
-
-            return instructionList.AsEnumerable();
+            // A jump to the policy check must reach the drain too
+            CodeInstruction loadRoom = new(OpCodes.Ldarg_0);
+            matcher.Instruction.MoveLabelsTo(loadRoom);
+            matcher.Insert(loadRoom, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(agency__room_DoGirlTraining), nameof(Infix))));
+            return matcher.InstructionEnumeration();
         }
 
         public static void Infix(agency._room __this)
@@ -166,12 +169,13 @@ namespace PoliciesThatMatter
             if (policies.GetSelectedPolicyValue(policies._type.background_check).Value != policies._value.background_check_extensive)
                 return;
 
-            List<traits._trait> list = traits.GetPositiveTraits();
+            // Moonlighter and Spoiled are left out, as the game leaves them out of random traits
+            List<traits._trait> list = traits.GetPositiveTraits()
+                .Where(t => t.Type != traits._trait._type.Moonlighter && t.Type != traits._trait._type.Spoiled)
+                .ToList();
+            if (list.Count == 0)
+                return;
             __result = list[UnityEngine.Random.Range(0, list.Count)].Type;
-            while (__result == traits._trait._type.Moonlighter || __result == traits._trait._type.Spoiled)
-            {
-                __result = list[UnityEngine.Random.Range(0, list.Count)].Type;
-            }
         }
     }
 
@@ -246,6 +250,15 @@ namespace PoliciesThatMatter
             );
         }
 
+        /// <summary>
+        /// A loss of 1 to max - 1 points, averaging half the max: the figure the policy's tooltip and the
+        /// Steam description give.
+        /// </summary>
+        public static int RollLoss(int max)
+        {
+            return UnityEngine.Random.Range(1, max);
+        }
+
         public static bool Prefix()
         {
             policies._value SNS = policies.GetSelectedPolicyValue(policies._type.social_media).Value;
@@ -261,12 +274,12 @@ namespace PoliciesThatMatter
                 {
                     if (SNS == policies._value.social_media_no_restrictions)
                     {
-                        incrementChange = UnityEngine.Random.Range(1, SNS_MENTAL_PENALTYCRIT - 1) * -1;
+                        incrementChange = RollLoss(SNS_MENTAL_PENALTYCRIT) * -1;
                         AddStaminaNotification(girls, incrementChange, Language.Data["IDOL__POLICY_SNS"]);
                     }
                     else if (SNS == policies._value.social_media_premoderated)
                     {
-                        incrementChange = UnityEngine.Random.Range(1, SNS_MENTAL_PENALTY - 1) * -1;
+                        incrementChange = RollLoss(SNS_MENTAL_PENALTY) * -1;
                         AddStaminaNotification(girls, incrementChange, Language.Data["IDOL__POLICY_SNS"]);
                     }
                     cumulativeChange += incrementChange;
@@ -277,12 +290,12 @@ namespace PoliciesThatMatter
                 {
                     if (streaming == policies._value.streaming_no_restrictions)
                     {
-                        incrementChange = UnityEngine.Random.Range(1, STREAMING_MENTAL_PENALTYCRIT - 1) * -1;
+                        incrementChange = RollLoss(STREAMING_MENTAL_PENALTYCRIT) * -1;
                         AddStaminaNotification(girls, incrementChange, Language.Data["IDOL__POLICY_STREAMING"]);
                     }
                     else if (streaming == policies._value.streaming_controlled)
                     {
-                        incrementChange = UnityEngine.Random.Range(1, STREAMING_MENTAL_PENALTY - 1) * -1;
+                        incrementChange = RollLoss(STREAMING_MENTAL_PENALTY) * -1;
                         AddStaminaNotification(girls, incrementChange, Language.Data["IDOL__POLICY_STREAMING"]);
                     }
                     cumulativeChange += incrementChange;
@@ -293,12 +306,12 @@ namespace PoliciesThatMatter
                 {
                     if (dating == policies._value.dating_forbidden)
                     {
-                        incrementChange = UnityEngine.Random.Range(1, DATING_MENTAL_PENALTYCRIT - 1) * -1;
+                        incrementChange = RollLoss(DATING_MENTAL_PENALTYCRIT) * -1;
                         AddStaminaNotification(girls, incrementChange, Language.Data[DATING_NOTIF_LABEL]);
                     }
                     else if (dating == policies._value.dating_ambiguous)
                     {
-                        incrementChange = UnityEngine.Random.Range(1, DATING_MENTAL_PENALTY - 1) * -1;
+                        incrementChange = RollLoss(DATING_MENTAL_PENALTY) * -1;
                         AddStaminaNotification(girls, incrementChange, Language.Data[DATING_NOTIF_LABEL]);
                     }
                     cumulativeChange += incrementChange;
@@ -345,21 +358,23 @@ namespace PoliciesThatMatter
             {
                 if (streaming == policies._value.streaming_no_restrictions && mainScript.chance(STREAMING_MONEY_CHANCE))
                 {
-                    moneyRandom = UnityEngine.Random.Range(80, 120) / 100f * STREAMING_MONEY_MAX;
+                    // 80% to 120% of the full amount, averaging the full amount
+                    moneyRandom = UnityEngine.Random.Range(80, 121) / 100f * STREAMING_MONEY_MAX;
                     moneySum += Mathf.RoundToInt((9.5f * girls.GetFameLevel() + 5f) / 100 * moneyRandom);
                 }
 
+                // Half to 1.5 times the figure the tooltip gives, averaging that figure
                 int incrementFans = 0;
                 if(mainScript.chance(SNS_FAN_CHANCE))
                 {
                     if (SNS == policies._value.social_media_no_restrictions)
                     {
-                        incrementFans = Mathf.RoundToInt(UnityEngine.Random.Range(50, 150) / 100f * SNS_FAN_MAX_HIGH / 10 * (1 + girls.GetFameLevel()));
+                        incrementFans = Mathf.RoundToInt(UnityEngine.Random.Range(50, 151) / 100f * SNS_FAN_MAX_HIGH / 10 * (1 + girls.GetFameLevel()));
                         AddBonusNotification(girls, incrementFans, Language.Data["IDOL__POLICY_SNS"]);
                     }
                     else if (SNS == policies._value.social_media_premoderated)
                     {
-                        incrementFans = Mathf.RoundToInt(UnityEngine.Random.Range(50, 150) / 100f * SNS_FAN_MAX_LOW / 10 * (1 + girls.GetFameLevel()));
+                        incrementFans = Mathf.RoundToInt(UnityEngine.Random.Range(50, 151) / 100f * SNS_FAN_MAX_LOW / 10 * (1 + girls.GetFameLevel()));
                         AddBonusNotification(girls, incrementFans, Language.Data["IDOL__POLICY_SNS"]);
                     }
                 }
@@ -465,25 +480,31 @@ namespace PoliciesThatMatter
 
     // Security: Relaxed: 1.5x appeal to handshakes
     // Security: Restrictive: 0.8x appeal to handshakes
-    [HarmonyPatch(typeof(singles._param), "GetAppealVal")]
+    [HarmonyPatch(typeof(singles._param), nameof(singles._param.GetAppealVal))]
     public class singles__param_GetAppealVal
     {
-        public static void Postfix(ref float __result, resources.fanType fanType, singles._param __instance)
+        /// <summary>
+        /// The game multiplies a handshake's appeal by 2 under Relaxed security and by 0.5 under Restrictive;
+        /// those two numbers are replaced with the mod's.
+        /// </summary>
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            if (__instance.GetAppealParam(fanType) == null || !__instance.IsHandshake())
-                return;
-
-            policies._value security = policies.GetSelectedPolicyValue(policies._type.security).Value;
-            if (security == policies._value.security_relaxed)
+            CodeMatcher matcher = new CodeMatcher(instructions)
+                .MatchEndForward(new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(singles._param), nameof(singles._param.IsHandshake)))))
+                .MatchEndForward(new CodeMatch(ci => ci.opcode == OpCodes.Ldc_R4 && (float)ci.operand == 2f));
+            if (matcher.IsInvalid)
             {
-                __result /= 2f;
-                __result *= SECURITY_RELAX_HS;
+                LogPatchNotFound("the Relaxed security handshake multiplier");
+                return instructions;
             }
-            else if (security == policies._value.security_restrictive)
+            matcher.SetOperandAndAdvance(SECURITY_RELAX_HS)
+                .MatchEndForward(new CodeMatch(ci => ci.opcode == OpCodes.Ldc_R4 && (float)ci.operand == 0.5f));
+            if (matcher.IsInvalid)
             {
-                __result /= 0.5f;
-                __result *= SECURITY_RESTRICT_HS;
+                LogPatchNotFound("the Restrictive security handshake multiplier");
+                return instructions;
             }
+            return matcher.SetOperandAndAdvance(SECURITY_RESTRICT_HS).InstructionEnumeration();
         }
     }
 }

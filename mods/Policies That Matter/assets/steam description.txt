@@ -48,3 +48,4 @@ Security:
 
 [h3]Changelog[/h3]
 - 1.1.0: Policy options no longer appear twice when another policy file overlaps this mod's.
+- 1.2.0: Random mental, money and fan amounts now average exactly what the policies say.

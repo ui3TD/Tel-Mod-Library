@@ -13,3 +13,4 @@ Example info.json and more details: [url=https://github.com/ui3TD/Tel-Mod-Librar
 
 [h3]Changelog[/h3]
 - 1.1.0: Mods are sorted as soon as the game loads them, so all JSON files follow the order.
+- 1.2.0: A mod with a broken info.json loads at 0 instead of stopping the game's text from loading.

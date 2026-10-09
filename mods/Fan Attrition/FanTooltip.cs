@@ -25,6 +25,7 @@ namespace FanAttrition
                 return true;
 
             resources.RecalcFans();
+            UpdateFanCount();
             Text[] textLines = __instance.gameObject.GetComponentsInChildren<Text>();
             textLines[0].text = GetLineText(resources.fanType.hardcore);
             textLines[1].text = GetLineText(resources.fanType.casual);
@@ -45,7 +46,7 @@ namespace FanAttrition
 
             textLines[14].text = GetLineText(lineType.churn);
 
-            RenderFanChangeDelegate();
+            RenderFanChangeDelegate(__instance);
             LayoutRebuilder.ForceRebuildLayoutImmediate(__instance.gameObject.GetComponent<RectTransform>());
             return false;
         }
@@ -77,10 +78,10 @@ namespace FanAttrition
         static string GetChurnLine()
         {
             string label = Language.Data[CHURNRATE_LABEL];
-            long value = Math.Min(resources.FansChange * 7, 0);
+            long value = -GetDailyChurn() * 7;
             string valueText = ExtensionMethods.formatNumber(value) + " " + Language.Data["PER_WEEK"];
 
-            if (resources.FansChange < 0)
+            if (value < 0)
             {
                 valueText = ExtensionMethods.color(valueText, mainScript.red);
             }
@@ -288,8 +289,9 @@ namespace FanAttrition
         /// <returns>Whether to execute the original method.</returns>
         public static void Prefix(tooltip_fans __instance)
         {
-            MethodInfo RenderFanChange = AccessTools.Method(__instance.GetType(), "RenderFanChange");
-            RenderFanChangeDelegate = AccessTools.MethodDelegate<Action>(RenderFanChange, __instance);
+            // An open delegate: Render passes the tooltip, so it never calls into an older, destroyed one
+            MethodInfo RenderFanChange = AccessTools.Method(typeof(tooltip_fans), "RenderFanChange", Type.EmptyTypes);
+            RenderFanChangeDelegate = AccessTools.MethodDelegate<Action<tooltip_fans>>(RenderFanChange);
 
             for (int i = 0; i < 15; i++)
             {
@@ -324,7 +326,9 @@ namespace FanAttrition
         /// <param name="__instance">The tooltip_fans instance.</param>
         public static void Postfix(tooltip_fans __instance)
         {
-            long baseChange = resources.FansChange * 7;
+            // Counted here, not once a day, so the total is right straight after loading a save
+            UpdateFanCount();
+            long baseChange = -GetDailyChurn() * 7;
             long totalChange = adFans + dramaFans + netFans + tvFans + radioFans + cafeFans + baseChange;
 
             string changeStr = ExtensionMethods.formatNumber(totalChange, false, false) + " " + Language.Data["PER_WEEK"];

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Xunit;
@@ -18,6 +19,23 @@ namespace FanAttrition.Tests
         private static string Green(string text) => ExtensionMethods.color(text, mainScript.green);
         private static string Red(string text) => ExtensionMethods.color(text, mainScript.red);
 
+        private static void Contract(business._type type, int fansPerWeek) =>
+            TestGame.Business.ActiveProposals.Add(new business.active_proposal { Type = type, Fans_per_week = fansPerWeek });
+
+        private static void Show(Shows._param._media_type medium, int newFans)
+        {
+            Shows._show show = new() { medium = new Shows._param { media_type = medium }, status = Shows._show._status.released };
+            show.fans.Add(newFans);
+            Shows.shows.Add(show);
+        }
+
+        private static void Cafe(int newFans)
+        {
+            Cafes._cafe cafe = new();
+            cafe.Stats.Add(new Cafes._cafe._stat { New_Fans = newFans });
+            Cafes.Cafes_.Add(cafe);
+        }
+
         private static tooltip_fans Tooltip()
         {
             tooltip_fans tooltip = TestGame.Component<tooltip_fans>();
@@ -33,7 +51,7 @@ namespace FanAttrition.Tests
         {
             tooltip_fans tooltip = Tooltip();
             Seams.StartPrefix(tooltip);
-            Utility.RenderFanChangeDelegate = () => { };
+            Utility.RenderFanChangeDelegate = _ => { };
             Assert.False(Seams.RenderPrefix(tooltip));
             return Seams.LineTexts(Seams.GameObjectOf(tooltip)).Select(Seams.TextOf).ToArray();
         }
@@ -62,7 +80,8 @@ namespace FanAttrition.Tests
         }
 
         /// <summary>
-        /// Render calls the tooltip's own RenderFanChange() to show the total.
+        /// Render calls the tooltip's own RenderFanChange() to show the total. The delegate takes the tooltip
+        /// rather than holding the one that was started, which may since have been destroyed.
         /// </summary>
         [Fact]
         public void Start_HooksUpTheTotal()
@@ -71,7 +90,7 @@ namespace FanAttrition.Tests
 
             Seams.StartPrefix(tooltip);
 
-            Assert.Same(tooltip, Utility.RenderFanChangeDelegate.Target);
+            Assert.Null(Utility.RenderFanChangeDelegate.Target);
             Assert.Equal("RenderFanChange", Utility.RenderFanChangeDelegate.Method.Name);
             Assert.Empty(Utility.RenderFanChangeDelegate.Method.GetParameters());
         }
@@ -90,12 +109,12 @@ namespace FanAttrition.Tests
         {
             tooltip_fans tooltip = Tooltip();
             Seams.StartPrefix(tooltip);
-            int totals = 0;
-            Utility.RenderFanChangeDelegate = () => totals++;
+            List<tooltip_fans> totals = new();
+            Utility.RenderFanChangeDelegate = totals.Add;
 
             Assert.False(Seams.RenderPrefix(tooltip));
 
-            Assert.Equal(1, totals);
+            Assert.Same(tooltip, Assert.Single(totals));
             Assert.Same(Seams.ComponentOf<RectTransform>(Seams.GameObjectOf(tooltip)), Assert.Single(Seams.LayoutsRebuilt));
         }
 
@@ -208,12 +227,12 @@ namespace FanAttrition.Tests
         [Fact]
         public void SourceLines()
         {
-            Utility.adFans = 1500;
-            Utility.dramaFans = 600;
-            Utility.netFans = 70;
-            Utility.tvFans = 2000;
-            Utility.radioFans = 300;
-            Utility.cafeFans = 40;
+            Contract(business._type.ad, 1500);
+            Contract(business._type.tv_drama, 600);
+            Show(Shows._param._media_type.internet, 70);
+            Show(Shows._param._media_type.tv, 2000);
+            Show(Shows._param._media_type.radio, 300);
+            Cafe(40);
 
             string[] lines = Render();
 
@@ -242,10 +261,36 @@ namespace FanAttrition.Tests
             }, Render().Skip(8).Take(6));
         }
 
+        /// <summary>
+        /// Fixed in 1.4.0: the fans from each source were counted once a day, so straight after loading
+        /// another save the tooltip showed that save's numbers.
+        /// </summary>
+        [Fact]
+        public void SourceLines_AreCountedWhenShown()
+        {
+            Utility.adFans = 1500;
+            Utility.tvFans = 2000;
+
+            Assert.Equal(new[] { "Ad Contracts: 0 /w", "Drama Contracts: 0 /w", "Internet Shows: 0 /w", "TV Shows: 0 /w" },
+                Render().Skip(8).Take(4));
+        }
+
         [Fact]
         public void ChurnLine_ShowsAWeek()
         {
-            resources.FansChange = -68;
+            TestGame.FanBase(100000);
+
+            Assert.Equal("Churn Rate: " + Red("-476 /w"), Render()[14]);
+        }
+
+        /// <summary>
+        /// Fixed in 1.4.0: the line showed the game's FansChange, which can hold another save's churn after a load.
+        /// </summary>
+        [Fact]
+        public void ChurnLine_IgnoresFansChange()
+        {
+            TestGame.FanBase(100000);
+            resources.FansChange = -5000;
 
             Assert.Equal("Churn Rate: " + Red("-476 /w"), Render()[14]);
         }
@@ -262,13 +307,13 @@ namespace FanAttrition.Tests
         [Fact]
         public void Total_AddsEverySourceAndTheChurn()
         {
-            Utility.adFans = 1000;
-            Utility.dramaFans = 500;
-            Utility.netFans = 200;
-            Utility.tvFans = 300;
-            Utility.radioFans = 100;
-            Utility.cafeFans = 50;
-            resources.FansChange = -68;
+            Contract(business._type.ad, 1000);
+            Contract(business._type.tv_drama, 500);
+            Show(Shows._param._media_type.internet, 200);
+            Show(Shows._param._media_type.tv, 300);
+            Show(Shows._param._media_type.radio, 100);
+            Cafe(50);
+            TestGame.FanBase(100000);
 
             Assert.Equal("Total: " + Green("+1,674 /w"), Total());
         }
@@ -279,7 +324,7 @@ namespace FanAttrition.Tests
         [Fact]
         public void Total_IncludesCafes()
         {
-            Utility.cafeFans = 50;
+            Cafe(50);
 
             Assert.Equal("Total: " + Green("+50 /w"), Total());
         }
@@ -287,10 +332,22 @@ namespace FanAttrition.Tests
         [Fact]
         public void Total_Losing()
         {
-            Utility.adFans = 100;
-            resources.FansChange = -68;
+            Contract(business._type.ad, 100);
+            TestGame.FanBase(100000);
 
             Assert.Equal("Total: " + Red("-376 /w"), Total());
+        }
+
+        /// <summary>
+        /// Fixed in 1.4.0: the total used the counts from the last new day, which can be another save's.
+        /// </summary>
+        [Fact]
+        public void Total_IsCountedWhenShown()
+        {
+            Utility.tvFans = 5000;
+            resources.FansChange = -68;
+
+            Assert.Equal("Total: 0 /w", Total());
         }
 
         [Fact]

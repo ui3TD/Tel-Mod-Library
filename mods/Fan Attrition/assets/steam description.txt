@@ -18,7 +18,7 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 - Single PVs have success chances increased by 33% so that they are more reliable in mid to late game but the crit success bonus has decreased to balance it.
 
 [h3]Businesses are a viable strat for end game[/h3]
-- Drama business proposals get over 3x the fans so they are more competitive with other methods of gaining fans.
+- Drama business proposals give 3x the fans (2.5x at the top levels), so they can compete with other ways to gain fans.
 - Drama and Ad business proposals have their max base stamina reduced to 20 at high levels so it's easier to micromanage stamina.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
@@ -28,3 +28,4 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 - 1.2.0: Fatigue no longer cuts the audience of internet shows, as described.
 - 1.2.1: Airing shows with no episodes no longer stop the daily fan count.
 - 1.3.0: Loading a save no longer changes the idols' fan appeal.
+- 1.4.0: Loading another save no longer carries its fan churn over, and the fan tooltip is up to date.

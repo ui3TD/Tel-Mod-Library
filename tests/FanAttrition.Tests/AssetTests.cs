@@ -119,12 +119,13 @@ namespace FanAttrition.Tests
         }
 
         /// <summary>
-        /// The Steam description says "over 3x the fans". That holds for levels 1-7; levels 8-10 give
-        /// 2.9x, 2.5x and 2.5x.
+        /// "3x the fans (2.5x at the top levels)": levels 1-7 give at least 3x the game's new fans, and
+        /// levels 8-10 give 2.9x, 2.5x and 2.5x.
         /// </summary>
         [Fact]
         public void Business_DramasGiveMoreFans()
         {
+            Assert.Contains("Drama business proposals give 3x the fans (2.5x at the top levels)", SteamDescription());
             int[] newFans = Ints(Business("tv_drama")["newFans"]);
 
             Assert.Equal(GameDramaNewFans.Length, newFans.Length);
@@ -145,8 +146,7 @@ namespace FanAttrition.Tests
 
             TestGame.SetDifficulty(difficulty);
             TestGame.FanBase(100000);
-            // The first day works out the churn, and each of the next 30 takes it
-            for (int day = 0; day <= 30; day++)
+            for (int day = 1; day <= 30; day++)
                 Utility.DailyFanChurn();
 
             Assert.Equal(percentPerMonth, (int)Math.Round((100000 - resources.GetFansTotal()) / 1000.0));
@@ -168,7 +168,7 @@ namespace FanAttrition.Tests
                 Shows._show show = new() { medium = new Shows._param { media_type = medium }, episodeCount = 1 };
                 show.fatigue.Add(100f);
 
-                Assert.Equal(audience, Shows__show_SetSales_Fatigue.Infix(show, 1f), 3);
+                Assert.Equal(audience, Shows__show_SetSales_Fatigue.Infix(1f, show), 3);
             }
         }
 
@@ -188,7 +188,7 @@ namespace FanAttrition.Tests
             Shows._show show = new() { medium = new Shows._param { media_type = Shows._param._media_type.internet }, episodeCount = 1 };
             show.fatigue.Add(100f);
 
-            Assert.Equal(1f, Shows__show_SetSales_Fatigue.Infix(show, 1f));
+            Assert.Equal(1f, Shows__show_SetSales_Fatigue.Infix(1f, show));
         }
 
         /// <summary>

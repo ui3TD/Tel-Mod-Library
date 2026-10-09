@@ -66,11 +66,17 @@ namespace EffortlessTraining.Tests
         }
 
         /// <summary>
-        /// If a game update moves the cost, the mod leaves the method as it is rather than breaking it.
+        /// If the cost isn't there (another mod changed it), the mod leaves the method as it is rather than
+        /// breaking it, and logs why training costs aren't reduced.
         /// </summary>
         [Fact]
-        public void NoDailyCost_LeavesMethodUnchanged()
+        public void NoDailyCost_LeavesMethodUnchanged_AndLogs()
         {
+            UnityEngine.ILogHandler gameLog = UnityEngine.Debug.unityLogger.logHandler;
+            LogRecorder log = new();
+            UnityEngine.Debug.unityLogger.logHandler = log;
+            try
+            {
             List<CodeInstruction> il = new()
             {
                 new CodeInstruction(OpCodes.Ldc_R4, 3f),
@@ -82,6 +88,63 @@ namespace EffortlessTraining.Tests
             List<CodeInstruction> patched = agency__room_DoGirlTraining.Transpiler(il).ToList();
 
             Assert.Equal(new object[] { 3f, 60f, 1440f, null }, patched.Select(i => i.operand));
+            Assert.Contains(log.Messages, m => m.StartsWith("[Effortless Training] Couldn't find"));
+            }
+            finally
+            {
+                UnityEngine.Debug.unityLogger.logHandler = gameLog;
+            }
+        }
+
+        /// <summary>
+        /// The game's own method has the cost, so applying the mod logs nothing.
+        /// </summary>
+        [Fact]
+        public void GameMethod_PatchesWithoutLogging()
+        {
+            UnityEngine.ILogHandler gameLog = UnityEngine.Debug.unityLogger.logHandler;
+            LogRecorder log = new();
+            UnityEngine.Debug.unityLogger.logHandler = log;
+            try
+            {
+                PatchedIL();
+                Assert.Empty(log.Messages);
+            }
+            finally
+            {
+                UnityEngine.Debug.unityLogger.logHandler = gameLog;
+            }
+        }
+
+        /// <summary>
+        /// Applied a second time, the cost is already 1 per day: nothing changes and nothing is logged.
+        /// </summary>
+        [Fact]
+        public void AppliedTwice_ChangesNothingMore_AndLogsNothing()
+        {
+            UnityEngine.ILogHandler gameLog = UnityEngine.Debug.unityLogger.logHandler;
+            LogRecorder log = new();
+            UnityEngine.Debug.unityLogger.logHandler = log;
+            try
+            {
+                List<CodeInstruction> once = PatchedIL();
+                List<string> afterOnce = once.Select(i => i.ToString()).ToList();
+                List<CodeInstruction> twice = agency__room_DoGirlTraining.Transpiler(once).ToList();
+
+                Assert.Equal(afterOnce, twice.Select(i => i.ToString()));
+                Assert.Empty(log.Messages);
+            }
+            finally
+            {
+                UnityEngine.Debug.unityLogger.logHandler = gameLog;
+            }
+        }
+
+        private class LogRecorder : UnityEngine.ILogHandler
+        {
+            public readonly List<string> Messages = new();
+            public void LogFormat(UnityEngine.LogType logType, UnityEngine.Object context, string format, params object[] args) => Messages.Add(string.Format(format, args));
+            public void LogException(System.Exception exception, UnityEngine.Object context) => Messages.Add(exception.ToString());
         }
     }
 }

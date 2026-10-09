@@ -28,13 +28,24 @@ namespace EffortlessTraining
 
             for (int i = 0; i < instructionList.Count - 1; i++)
             {
-                if (instructionList[i].opcode == OpCodes.Ldc_R4 && (float)instructionList[i].operand == 3f && instructionList[i + 1].opcode == OpCodes.Ldc_R4 && (float)instructionList[i+1].operand == 1440f)
+                if (instructionList[i].opcode == OpCodes.Ldc_R4 && instructionList[i + 1].opcode == OpCodes.Ldc_R4 && (float)instructionList[i + 1].operand == 1440f)
                 {
-                    instructionList[i].operand = DAILY_TRAINING_COST;
-                    break;
+                    float dailyCost = (float)instructionList[i].operand;
+                    if (dailyCost == 3f)
+                    {
+                        instructionList[i].operand = DAILY_TRAINING_COST;
+                        return instructionList.AsEnumerable();
+                    }
+                    if (dailyCost == DAILY_TRAINING_COST)
+                    {
+                        // Already 1 per day: this patch ran twice
+                        return instructionList.AsEnumerable();
+                    }
                 }
             }
 
+            // Another mod changed the cost: leave it, and say why training costs aren't reduced
+            Debug.LogError("[Effortless Training] Couldn't find the game's 3 stamina per day training cost in DoGirlTraining; training costs are left as they are");
             return instructionList.AsEnumerable();
         }
     }

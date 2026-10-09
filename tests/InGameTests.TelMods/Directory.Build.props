@@ -1,0 +1,6 @@
+<Project>
+	<!--
+	Stops tests\Directory.Build.props (xunit, net472, game DLLs from IM-Modding\dll) from applying.
+	This project is not a unit-test project: it runs inside the game, loaded by the IM-InGameTests runner.
+	-->
+</Project>

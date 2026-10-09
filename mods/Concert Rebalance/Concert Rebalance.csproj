@@ -5,7 +5,7 @@
 		<HarmonyID>com.tel.concertrebalance</HarmonyID>
 		<ModDescription>Rebalances concerts to make things more challenging.</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.1.0</Version>
+		<Version>1.1.1</Version>
 		<WorkshopID>2977860534</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 

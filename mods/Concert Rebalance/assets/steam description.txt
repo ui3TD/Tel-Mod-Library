@@ -13,3 +13,4 @@ Rebalances concerts to make things more challenging.
 
 [h3]Changelog[/h3]
 - 1.1.0: Club concert estimates now match the reduced hype payout.
+- 1.1.1: Club payouts and venue unlocks go through the game's own code, so they work with other mods.

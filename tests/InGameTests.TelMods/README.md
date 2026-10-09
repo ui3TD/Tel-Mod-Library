@@ -10,7 +10,7 @@ assembly. The runner loads `InGameTests.*.dll` from its plugins folder in test m
 
 Only checks that need to know which mods are Tel's, or where this checkout is, belong here. Checks and
 helpers that work for any mod go in the runner: its smoke suite already checks every enabled Harmony
-mod's patches, transpilers and texts, and its `Game` and `TestTools` classes hold the game helpers these
+mod's patches and transpilers, and its `Game` and `TestTools` classes hold the game helpers these
 checks use.
 
 ## Running
@@ -46,8 +46,7 @@ yourself before running.
 | `LoadedBuildsMatchCheckout` | A loaded mod's version differs from its csproj, its DLL isn't byte-identical to a build in this checkout's `bin`, or a deployed asset is missing or different. The other results would then be about other code. |
 
 Mods that aren't installed or enabled are listed in a note and skipped. The rest of tier 0 runs in the
-runner's own smoke suite: `EveryPatchMethodIsApplied`, `EveryTranspilerChangesIL` and
-`EveryModTextIsLoaded`. `run.py` passes `scope.txt` with `--scope-file`, which limits those checks to
+runner's own smoke suite: `EveryPatchMethodIsApplied` and `EveryTranspilerChangesIL`. `run.py` passes `scope.txt` with `--scope-file`, which limits those checks to
 the Tel mods (`^com\.tel\.`). Other installed mods stay loaded and are listed in a note instead of checked.
 
 `LoadedBuildsMatchCheckout` can't see edits made since a mod's last build. File times don't work for

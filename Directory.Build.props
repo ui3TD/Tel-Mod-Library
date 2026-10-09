@@ -1,10 +1,11 @@
 <Project>
 	<PropertyGroup>
+		<!--Where builds deploy the mod. Override with -p:ModOutputDir=...; -p:DeployToGame=false builds without deploying.-->
 		<ModOutputDirRelease>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDirRelease>
 		<ModOutputDirDebug>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDirDebug>
-		<!--<ModOutputDirDebug>$(SolutionDir)\..\Mods</ModOutputDirDebug>-->
-		<dllDir Condition="'$(SolutionDir)' != ''">$(SolutionDir)\..\dll</dllDir>
-		<dllDir Condition="'$(SolutionDir)' == ''">$(MSBuildThisFileDirectory)..\dll</dllDir>
+		<DeployToGame Condition="'$(DeployToGame)' == ''">true</DeployToGame>
+		<dllDir>$(MSBuildThisFileDirectory)..\dll</dllDir>
+		<BeforeMicrosoftNETSdkTargets>$(BeforeMicrosoftNETSdkTargets);$(MSBuildThisFileDirectory)Mod.BeforeSdk.targets</BeforeMicrosoftNETSdkTargets>
 
 		<!--Other assembly info-->
 		<Description>Idol Manager Mod</Description>
@@ -13,6 +14,15 @@
 		<LangVersion>latest</LangVersion>
 		<TargetFramework>net46</TargetFramework>
 	</PropertyGroup>
+
+	<!--Every mod compiles against these. AssemblyName (= HarmonyID) is set in Mod.BeforeSdk.targets, after the csproj defines HarmonyID.-->
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net46" Version="1.0.3">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="UnityEngine.Modules" Version="2019.4.23" IncludeAssets="compile" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<Reference Include="Assembly-CSharp" private="false">
@@ -36,26 +46,33 @@
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-		<ModOutputDir>$(ModOutputDirDebug)</ModOutputDir>
+		<ModOutputDir Condition="'$(ModOutputDir)' == ''">$(ModOutputDirDebug)</ModOutputDir>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
-		<ModOutputDir>$(ModOutputDirRelease)</ModOutputDir>
+		<ModOutputDir Condition="'$(ModOutputDir)' == ''">$(ModOutputDirRelease)</ModOutputDir>
+		<!--Release builds are what gets published: no warnings allowed-->
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 	</PropertyGroup>
 
-	<Target Name="CleanModOutputDir" BeforeTargets="Clean">
-		<RemoveDir Directories="$(ModOutputDir)/$(ModName)" Condition="Exists('$(ModOutputDir)/$(ModName)')" />
-	</Target>
-	
-
-	<Target Name="PostBuild" AfterTargets="Build">
-		<MakeDir Directories="$(ModOutputDir)\$(ModName)" Condition="!Exists('$(ModOutputDir)\$(ModName)')" />
-		<Exec Command='copy /Y "$(TargetDir)$(AssemblyName).dll" "$(ModOutputDir)\$(ModName)\$(AssemblyName).dll"' />
-		<Exec Command='xcopy /Y /E /I "assets" "$(ModOutputDir)\$(ModName)"' />
+	<Target Name="CleanModOutputDir" BeforeTargets="Clean" Condition="'$(DeployToGame)' == 'true'">
+		<RemoveDir Directories="$(ModOutputDir)\$(ModName)" Condition="Exists('$(ModOutputDir)\$(ModName)')" />
 	</Target>
 
-	<!--Create the mod's info.json file by calling the -->
-	<Target Name="CreateInfoFile" AfterTargets="Build">
+	<!--Copy the DLL and assets/ (keeping subfolders) into the mod's folder. Copy creates the folder, retries
+	while the game holds a file open, and skips files that haven't changed.-->
+	<Target Name="DeployMod" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true'">
+		<ItemGroup>
+			<ModAsset Include="$(MSBuildProjectDirectory)\assets\**\*" />
+		</ItemGroup>
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModOutputDir)\$(ModName)"
+			SkipUnchangedFiles="true" Retries="10" RetryDelayMilliseconds="500" />
+		<Copy SourceFiles="@(ModAsset)" DestinationFiles="@(ModAsset->'$(ModOutputDir)\$(ModName)\%(RecursiveDir)%(Filename)%(Extension)')"
+			SkipUnchangedFiles="true" Retries="10" RetryDelayMilliseconds="500" />
+	</Target>
+
+	<!--Create the mod's info.json file with the CreateInfoJSON task below-->
+	<Target Name="CreateInfoFile" AfterTargets="DeployMod" Condition="'$(DeployToGame)' == 'true'">
 		<CreateInfoJSON
 			OutputFilePath="$(ModOutputDir)\$(ModName)\info.json"
 			ModName="$(ModName)"

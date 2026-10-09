@@ -86,7 +86,7 @@ namespace UnofficialPatch.Tests
             popup.Tour = new SEvent_Tour.tour { ExpectedRevenue = expectedRevenue, ProductionCost = productionCost, Saving = saving };
             popup.ExpectedRevenue = TestGame.Component<GameObject>();
 
-            Tour_New_Popup_Render.Postfix(ref popup);
+            Tour_New_Popup_Render.Postfix(popup);
 
             Assert.Single(Seams.ColorsSet);
             Assert.Same(popup.ExpectedRevenue, Seams.ColorsSet[0].obj);

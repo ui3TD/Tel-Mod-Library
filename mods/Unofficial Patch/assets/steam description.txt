@@ -35,3 +35,4 @@ Also recommended mods by magier:
 - 1.4.0: Fixes senbatsu stats, breakups, event checks, concert estimates, fan opinion, failed loads.
 - 1.5.0: Fixes a freeze when the game generates some platinum or gold idols.
 - 1.6.0: Auditions no longer stall waiting for portraits; slow portraits appear when ready.
+- 1.6.1: Smaller fixes that change only the faulty game code; exact theater revenue averages.

@@ -132,7 +132,7 @@ namespace UnofficialPatch.Tests
         public void Display_IsCappedAt200()
         {
             float val = 2.5f;
-            Assert.True(SEvent_Concerts__concert__projectedValues_GetString.Prefix(ref val));
+            SEvent_Concerts__concert__projectedValues_GetString.Prefix(ref val);
             Assert.Equal(2f, val);
         }
     }

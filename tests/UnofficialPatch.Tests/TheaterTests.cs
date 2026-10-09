@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using HarmonyLib;
 using System.Linq;
+using System.Reflection;
 using Xunit;
 using _type = Theaters._theater._schedule._type;
 
@@ -211,6 +213,24 @@ namespace UnofficialPatch.Tests
                 staticVars.PlayerData.Difficulty = staticVars._playerData._difficulty.hard;
             Assert.Equal(expected, Theaters.GetStaminaCost(show));
         }
+
+        /// <summary>
+        /// The mod changes one instruction: the final "return 0f" returns the cost instead. Transpiling
+        /// again (or a game that already returns the cost) changes nothing.
+        /// </summary>
+        [Fact]
+        public void Transpiler_ChangesOnlyTheReturn_AndOnlyOnce()
+        {
+            MethodInfo method = AccessTools.Method(typeof(Theaters), nameof(Theaters.GetStaminaCost));
+            List<CodeInstruction> original = PatchProcessor.GetOriginalInstructions(method);
+            List<CodeInstruction> once = Theaters_GetStaminaCost.Transpiler(PatchProcessor.GetOriginalInstructions(method)).ToList();
+            List<CodeInstruction> twice = Theaters_GetStaminaCost.Transpiler(once).ToList();
+
+            Assert.Equal(original.Count, once.Count);
+            Assert.Equal(1, Enumerable.Range(0, original.Count).Count(i => original[i].ToString() != once[i].ToString()));
+            Assert.Equal(once.Select(ci => ci.ToString()), twice.Select(ci => ci.ToString()));
+            Assert.Empty(Log.Messages);
+        }
     }
 
     /// <summary>
@@ -265,6 +285,27 @@ namespace UnofficialPatch.Tests
 
             Assert.Equal(0, theater.GetAvgRevenue());
             Assert.Equal(0, theater.GetAvgAttendance());
+        }
+
+        /// <summary>
+        /// Revenue is summed exactly. In a float, 7 days of 20,000,001 yen averaged to 20,000,000.
+        /// </summary>
+        [Fact]
+        public void RevenueAverage_KeepsEveryYen()
+        {
+            Theaters._theater theater = WithStats(Enumerable.Repeat((_type.performance, 20_000_001L, 100), 7).ToArray());
+
+            Assert.Equal(20_000_001, theater.GetAvgRevenue());
+        }
+
+        /// <summary>
+        /// Halves round to even, as the game's Mathf.RoundToInt does.
+        /// </summary>
+        [Fact]
+        public void Averages_RoundHalvesToEven()
+        {
+            Assert.Equal(2, WithStats((_type.performance, 2, 2), (_type.performance, 3, 3)).GetAvgRevenue());
+            Assert.Equal(4, WithStats((_type.performance, 4, 4), (_type.performance, 3, 3)).GetAvgAttendance());
         }
 
         [Fact]

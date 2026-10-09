@@ -3,13 +3,19 @@ using System.Reflection;
 namespace InGameTests.TelMods
 {
     /// <summary>
-    /// What the per-mod checks in Mods/ share: the suite name and whether a Tel mod is live. Game
+    /// What the per-mod checks in Mods/ share: the suite names and whether a Tel mod is live. Game
     /// helpers come from the runner (Game, TestTools); mod types are reached by reflection, since
     /// this project doesn't reference the mods and runs with any of them off.
     /// </summary>
     internal static class ModTest
     {
+        /// <summary>Cheap checks of values and UI on the fixture save, run routinely.</summary>
         public const string Suite = "mods";
+
+        /// <summary>High-effort scenario suites, run when a mod they test changes (run.py --scope).</summary>
+        public const string AuditionsSuite = "auditions";
+        public const string ElectionsSuite = "elections";
+        public const string ClockSuite = "clock";
 
         /// <summary>
         /// The mod's loaded assembly when its patches are live; otherwise notes the skip and

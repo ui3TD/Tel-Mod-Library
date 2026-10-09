@@ -8,6 +8,7 @@ namespace InGameTests.TelMods
     /// Effortless Training's transpiler on DoGirlTraining, on the fixture's real trainee, with
     /// whatever else patches that method in this session (Policies That Matter's transpiler).
     /// </summary>
+    [ModUnderTest(HarmonyId)]
     internal static class EffortlessTrainingTests
     {
         private const string HarmonyId = "com.tel.effortlesstraining";

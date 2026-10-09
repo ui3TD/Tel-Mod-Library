@@ -16,6 +16,7 @@ namespace InGameTests.TelMods
     /// the unit tests can only fake. Here they are the real prefabs, and the rows come from every
     /// installed mod's modmenu.json.
     /// </summary>
+    [ModUnderTest(HarmonyId)]
     internal static class ModMenusTests
     {
         private const string HarmonyId = "com.tel.modmenus";

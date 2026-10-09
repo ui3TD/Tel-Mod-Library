@@ -6,6 +6,7 @@ namespace InGameTests.TelMods
     /// Worker Rights' starting salary on the game's real GenerateGirl, after every other mod's
     /// patches on it. The unit test calls the postfix on a hand-made idol.
     /// </summary>
+    [ModUnderTest(HarmonyId)]
     internal static class WorkerRightsTests
     {
         private const string HarmonyId = "com.tel.workerrights";

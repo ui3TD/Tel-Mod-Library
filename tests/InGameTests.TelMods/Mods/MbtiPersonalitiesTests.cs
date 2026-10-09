@@ -13,6 +13,7 @@ namespace InGameTests.TelMods
     /// idol, with every other mod's patches on the same code. The unit tests don't cover the
     /// profile text or the real GenerateGirl.
     /// </summary>
+    [ModUnderTest(HarmonyId)]
     internal static class MbtiPersonalitiesTests
     {
         private const string HarmonyId = "com.tel.mbtipersonalities";

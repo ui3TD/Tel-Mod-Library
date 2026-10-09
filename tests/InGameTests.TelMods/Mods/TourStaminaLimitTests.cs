@@ -10,6 +10,7 @@ namespace InGameTests.TelMods
     /// Tour Stamina Limit's fan multiplier with Traits Expansion's Polyglot bonus on the same
     /// method. No unit test loads the two together.
     /// </summary>
+    [ModUnderTest(HarmonyId)]
     internal static class TourStaminaLimitTests
     {
         private const string HarmonyId = "com.tel.tourstamina";

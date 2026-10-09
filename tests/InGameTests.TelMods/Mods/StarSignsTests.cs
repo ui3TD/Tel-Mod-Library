@@ -11,6 +11,7 @@ namespace InGameTests.TelMods
     /// Star Signs on the real profile popup, where other mods (MBTI Personalities) append to the
     /// same text. The unit tests use a fake popup with Star Signs alone.
     /// </summary>
+    [ModUnderTest(HarmonyId)]
     internal static class StarSignsTests
     {
         private const string HarmonyId = "com.tel.starsigns";

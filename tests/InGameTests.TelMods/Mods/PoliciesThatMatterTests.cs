@@ -9,6 +9,7 @@ namespace InGameTests.TelMods
     /// Policies That Matter on the real policy list (every enabled mod's policies.json loaded)
     /// and on the fixture's real trainee, alongside the other mods that patch training.
     /// </summary>
+    [ModUnderTest(HarmonyId)]
     internal static class PoliciesThatMatterTests
     {
         private const string HarmonyId = "com.tel.policiesthatmatter";

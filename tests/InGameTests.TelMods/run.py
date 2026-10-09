@@ -4,12 +4,15 @@ Builds the checks, which deploys them next to the runner plugin in the game, the
 IM-InGameTests' run_ingame_tests.py. Every argument except --build-mods is passed to the runner.
 
     python tests/InGameTests.TelMods/run.py              # smoke suite, with the Tel mod checks
-    python tests/InGameTests.TelMods/run.py --weeks 12 -v
-    python tests/InGameTests.TelMods/run.py --only "Fan Attrition"
+    python tests/InGameTests.TelMods/run.py --suite mods # the cheap per-mod checks
+    python tests/InGameTests.TelMods/run.py --scope "Targeted Auditions"   # after changing a mod:
+                                                         # every suite's tests for it, one boot
+    python tests/InGameTests.TelMods/run.py --load "Fan Attrition"         # load only this mod
     python tests/InGameTests.TelMods/run.py --build-mods   # build and deploy the installed Tel mods first
 
-The runner's per-mod checks are limited to the Tel mods with --scope-file scope.txt; other
-installed mods stay loaded and are noted, not checked.
+Without --scope or --scope-list, the scope is the Tel mods (scope.txt) and the suite defaults to
+smoke; other installed mods stay loaded and are noted, not checked. With either, the runner tests
+only the mods named and the suite defaults to affected.
 
 Without --build-mods the mods are not built: build a changed mod in Release first, which deploys
 it. The LoadedBuildsMatchCheckout check fails when a loaded mod isn't this checkout's last build,
@@ -63,6 +66,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(add_help=False)
     ap.add_argument("--build-mods", action="store_true")
     ap.add_argument("--game-dir", type=Path)
+    ap.add_argument("--suite")
+    ap.add_argument("--scope", action="append", default=[])
+    ap.add_argument("--scope-list", action="append", default=[])
     ap.add_argument("-h", "--help", action="store_true")
     args, _ = ap.parse_known_args()
     runner_args = [a for a in sys.argv[1:] if a != "--build-mods"]
@@ -84,7 +90,10 @@ def main() -> int:
         if not build(project, f"-p:GameDir={game_dir}"):
             return 2
 
-    return subprocess.call([sys.executable, str(RUNNER), "--scope-file", str(HERE / "scope.txt"), *runner_args])
+    if not args.scope and not args.scope_list:
+        # The Tel mods by default; a scope on the command line replaces it, as in the runner.
+        runner_args = ["--scope-list", str(HERE / "scope.txt"), *([] if args.suite else ["--suite", "smoke"]), *runner_args]
+    return subprocess.call([sys.executable, str(RUNNER), *runner_args])
 
 
 if __name__ == "__main__":

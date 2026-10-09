@@ -11,6 +11,7 @@ namespace InGameTests.TelMods
     /// Fan Attrition replaces the fan tooltip's Render and fills its lines by position. The unit
     /// tests use a fake tooltip with 15 lines; here it's the game's own tooltip object.
     /// </summary>
+    [ModUnderTest(HarmonyId)]
     internal static class FanAttritionTests
     {
         private const string HarmonyId = "com.tel.fanattrition";

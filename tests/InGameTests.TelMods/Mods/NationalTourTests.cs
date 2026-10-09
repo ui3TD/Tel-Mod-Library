@@ -13,6 +13,7 @@ namespace InGameTests.TelMods
     /// National Tour swaps the world tour's pictures and moves the country markers in the game's
     /// own popups, found by object path. The unit tests stub Find and LoadTexture.
     /// </summary>
+    [ModUnderTest(HarmonyId)]
     internal static class NationalTourTests
     {
         private const string HarmonyId = "com.tel.nationaltour";

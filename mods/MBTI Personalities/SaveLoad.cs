@@ -9,6 +9,17 @@ using System.Reflection.Emit;
 
 namespace MBTIPersonalities
 {
+    // Forget the previous game's types. Reset runs on every scene start (new game or load)
+    // and inside LoadFunction; a new game restarts idol IDs at 0, so cached types would carry over.
+    [HarmonyPatch(typeof(data_girls), "Reset")]
+    public class data_girls_Reset
+    {
+        public static void Postfix()
+        {
+            ResetMBTI();
+        }
+    }
+
     // Load MBTI data
     [HarmonyPatch(typeof(data_girls), "LoadFunction")]
     public class data_girls_LoadFunction

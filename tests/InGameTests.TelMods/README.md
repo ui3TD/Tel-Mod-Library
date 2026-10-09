@@ -21,12 +21,21 @@ Steam must be running.
 ```
 python tests/InGameTests.TelMods/run.py                # smoke suite, with the Tel checks
 python tests/InGameTests.TelMods/run.py --suite mods   # per-mod checks, about 20 s
+python tests/InGameTests.TelMods/run.py --scope "<Mod>"  # after changing a mod: everything that tests it
 python tests/InGameTests.TelMods/run.py --build-mods   # build and deploy the installed Tel mods first
 python tests/InGameTests.TelMods/run.py --weeks 12 -v  # any run_ingame_tests.py option works
 ```
 
 `run.py` builds this project, which deploys the checks to `<game>\BepInEx\plugins\InGameTests\`, then
 runs `run_ingame_tests.py` with every other argument. The runner tests whatever is deployed there.
+
+**After changing a mod, run `run.py --scope "<Mod>"`.** The runner then picks every test of that
+mod from every suite (the `affected` suite), plus the checks that judge every mod, limited to that
+one, in one boot. Nothing else needs to know which suites a mod's tests are in.
+
+Without `--scope` or `--scope-list`, `run.py` passes `scope.txt` (the Tel mods, `^com\.tel\.`) and
+the suite defaults to `smoke`. The runner's README, "Choosing what runs", explains `--load`,
+`--scope` and `--suite`.
 
 The mods are only built with `--build-mods`, which builds every mod that has a local copy in the
 game's Mods folder, in Release, and so deploys it. Without it, build a changed mod in Release
@@ -44,10 +53,12 @@ yourself before running.
 | Test | Fails when |
 |---|---|
 | `LoadedBuildsMatchCheckout` | A loaded mod's version differs from its csproj, its DLL isn't byte-identical to a build in this checkout's `bin`, or a deployed asset is missing or different. The other results would then be about other code. |
+| `EveryTestClassNamesATelMod` | A class here with tests has no `[ModUnderTest]`, or names a HarmonyID no mod project in this checkout has. |
 
-Mods that aren't installed or enabled are listed in a note and skipped. The rest of tier 0 runs in the
-runner's own smoke suite: `EveryPatchMethodIsApplied` and `EveryTranspilerChangesIL`. `run.py` passes `scope.txt` with `--scope-file`, which limits those checks to
-the Tel mods (`^com\.tel\.`). Other installed mods stay loaded and are listed in a note instead of checked.
+Mods that aren't installed, enabled or in scope are listed in a note and skipped. The rest of tier 0 runs in the
+runner's own smoke suite: `EveryPatchMethodIsApplied` and `EveryTranspilerChangesIL`. All of these judge
+every mod in scope, which by default is the Tel mods. Other installed mods stay loaded and are listed in a
+note instead of checked.
 
 `LoadedBuildsMatchCheckout` can't see edits made since a mod's last build. File times don't work for
 that: git rewrites files whose content hasn't changed, and a rebuild after a line-ending change isn't
@@ -76,7 +87,7 @@ Theater's attendance or Concert Rebalance's forecast.
 | `WorkerRightsTests` | A newly generated idol's salary isn't 20,000. |
 
 Each check skips itself with a note when its mod isn't enabled. Where another mod changes the same value,
-the expected value includes that mod's factor only when it's enabled, so `--only <Mod>` runs one mod's
+the expected value includes that mod's factor only when it's enabled, so `--load <Mod>` runs one mod's
 checks on their own. Checks put back what they change, apart from using up idol IDs. The session is never saved.
 
 Two helpers do most of the work:
@@ -87,8 +98,14 @@ Two helpers do most of the work:
 ## Writing checks
 
 Tests are static coroutines marked `[InGameTest(Suite = ..., Order = ...)]`; see the runner's README.
-Checks of every Tel mod against this checkout go in `AllMods/`. Checks of one mod go in
-`Mods/<Mod>Tests.cs`, one file per mod, and skip themselves when that mod isn't enabled (`ModTest.Require`).
+Checks of every Tel mod against this checkout go in `AllMods/`, in a class marked
+`[ModUnderTest(ModUnderTestAttribute.EveryMod)]`. Checks of one mod go in `Mods/<Mod>Tests.cs`, one file
+and one class per mod, marked `[ModUnderTest(HarmonyId)]` with the same `HarmonyId` const the checks pass
+to `ModTest.Require`, which skips them when that mod isn't enabled. A check never sets or relies on
+another mod; other mods are only loaded around it.
+
+Each test picks its own suite, so one mod's file can hold a cheap `mods` check and a high-effort
+scenario. Name suites after the scenario (the constants in `ModTest.cs`), never after a mod.
 Keep mod-specific code out of `ModTest.cs` and `Shared/`, so changing or retiring a mod touches only its
 own file. Reach mod types with `Assembly.GetType` and HarmonyLib's `AccessTools` and `Traverse`.
 Game helpers that several checks share go in `Shared/` unless they pass the runner's rules for helpers

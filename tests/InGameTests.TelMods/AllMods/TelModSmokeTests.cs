@@ -8,11 +8,13 @@ using System.Reflection;
 namespace InGameTests.TelMods
 {
     /// <summary>
-    /// Tier 0: the loaded Tel mods are this checkout's builds, checked with the smoke suite right
-    /// after the save loads. The runner's own smoke checks cover the rest of tier 0 for every
-    /// Harmony mod: patches applied and transpilers changing IL.
-    /// Mods that aren't installed or enabled are noted and skipped.
+    /// Tier 0: the loaded Tel mods are this checkout's builds, and every test class here names its
+    /// mod, checked with the smoke suite right after the save loads. The runner's own smoke checks
+    /// cover the rest of tier 0 for every Harmony mod: patches applied and transpilers changing IL.
+    /// These checks judge every Tel mod in scope, so they also run in the affected suite. Mods that
+    /// aren't installed, enabled or in scope are noted and skipped.
     /// </summary>
+    [ModUnderTest(ModUnderTestAttribute.EveryMod)]
     internal static class TelModSmokeTests
     {
         /// <summary>
@@ -26,7 +28,9 @@ namespace InGameTests.TelMods
             var notInstalled = new List<string>();
             var notEnabled = new List<string>();
             int checkedMods = 0;
-            foreach (TelMod mod in TelMod.All())
+            List<TelMod> mods = TelMod.All();
+            ModScope.NoteSkipped(ctx, mods.Where(m => !ModScope.Includes(m.HarmonyId)).Select(m => m.Name));
+            foreach (TelMod mod in mods.Where(m => ModScope.Includes(m.HarmonyId)))
             {
                 if (mod.InstalledCopies().Count == 0)
                 {
@@ -77,6 +81,32 @@ namespace InGameTests.TelMods
             if (notEnabled.Count > 0)
                 ctx.Note("Not enabled, not tested: " + string.Join(", ", notEnabled.ToArray()));
             ctx.Record("modsChecked", checkedMods);
+            yield break;
+        }
+
+        /// <summary>
+        /// Every class here with tests names the one mod they exercise: "*" or a HarmonyID from a mod
+        /// project in this checkout. An untagged class would run in every scope and never in the
+        /// affected suite, and a misspelt ID would never be in scope; neither shows any other way.
+        /// </summary>
+        [InGameTest(Order = 0)]
+        private static IEnumerator EveryTestClassNamesATelMod(TestContext ctx)
+        {
+            int classes = 0;
+            foreach (Type type in typeof(TelModSmokeTests).Assembly.GetTypes())
+            {
+                bool hasTests = type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                    .Any(m => m.IsDefined(typeof(InGameTestAttribute), false));
+                if (!hasTests)
+                    continue;
+                classes++;
+                var tag = (ModUnderTestAttribute)type.GetCustomAttributes(typeof(ModUnderTestAttribute), false).FirstOrDefault();
+                if (tag == null)
+                    ctx.Fail($"{type.Name} has tests but no [ModUnderTest]");
+                else if (tag.HarmonyId != ModUnderTestAttribute.EveryMod && TelMod.ByHarmonyId(tag.HarmonyId) == null)
+                    ctx.Fail($"{type.Name}: [ModUnderTest(\"{tag.HarmonyId}\")] matches no mod project in this checkout");
+            }
+            ctx.Record("classesChecked", classes);
             yield break;
         }
 

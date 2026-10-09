@@ -12,7 +12,7 @@ namespace EffortlessTraining
     /// <summary>
     /// This class reduces the training vocal/dance stamina to 1/day.
     /// </summary>
-    [HarmonyPatch(typeof(agency._room), "DoGirlTraining")]
+    [HarmonyPatch(typeof(agency._room), nameof(agency._room.DoGirlTraining))]
     public class agency__room_DoGirlTraining
     {
         private const float DAILY_TRAINING_COST = 1f;

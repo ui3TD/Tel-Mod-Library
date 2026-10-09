@@ -5,7 +5,7 @@ using UnityEngine;
 namespace MenuHotkeys
 {
 
-    [HarmonyPatch(typeof(Controls), "Update")]
+    [HarmonyPatch(typeof(Controls), nameof(Controls.Update))]
     public class Controls_Update
     {
         public const KeyCode KEY_IDOLS = KeyCode.A;

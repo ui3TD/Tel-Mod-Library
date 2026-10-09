@@ -12,7 +12,7 @@ using SimpleJSON;
 namespace TraitsExpansion
 {
 
-    [HarmonyPatch(typeof(traits), "GetTraitType")]
+    [HarmonyPatch(typeof(traits), nameof(traits.GetTraitType))]
     public class traits_GetTraitType
     {
         public static void Postfix(string str, ref traits._trait._type __result)
@@ -28,7 +28,7 @@ namespace TraitsExpansion
     // Enum.Parse throws and it logs "Trait not found". Read the mod's traits right after the game parses
     // params.json (the game's parse, later, still wins for its own traits), and only warn about traits
     // neither knows.
-    [HarmonyPatch(typeof(data_girls_textures), "LoadAssetsData", new[] {typeof(string)})]
+    [HarmonyPatch(typeof(data_girls_textures), nameof(data_girls_textures.LoadAssetsData), new[] {typeof(string)})]
     public class data_girls_textures_LoadAssetsData
     {
         private const string TraitNotFound = "Trait not found: ";
@@ -37,7 +37,7 @@ namespace TraitsExpansion
         {
             List<CodeInstruction> instructionList = new(instructions);
             CodeMatcher matcher = new CodeMatcher(instructionList).MatchEndForward(
-                new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(data_girls_textures), "ProcessInboundData"))),
+                new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(data_girls_textures), nameof(data_girls_textures.ProcessInboundData)))),
                 new CodeMatch(ci => ci.IsStloc()));
             if (matcher.IsInvalid)
             {
@@ -92,7 +92,7 @@ namespace TraitsExpansion
     }
 
     // World tours give 1.2x more fans for each multilingual member
-    [HarmonyPatch(typeof(SEvent_Tour.tour), "GetNewFansByAttendance")]
+    [HarmonyPatch(typeof(SEvent_Tour.tour), nameof(SEvent_Tour.tour.GetNewFansByAttendance))]
     public class SEvent_Tour_tour_GetNewFansByAttendance
     {
         public static void Postfix(ref int __result)
@@ -113,7 +113,7 @@ namespace TraitsExpansion
     }
 
     // Old Money is always at 200% salary satisfaction
-    [HarmonyPatch(typeof(data_girls.girls), "GetSalarySatisfaction")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetSalarySatisfaction))]
     public class data_girls_girls_GetSalarySatisfaction
     {
         [HarmonyPriority(Priority.LowerThanNormal)]
@@ -127,7 +127,7 @@ namespace TraitsExpansion
     }
 
     // Old Money doesn't lose mental stamina on low salary
-    [HarmonyPatch(typeof(data_girls), "CheckLowSalaries")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.CheckLowSalaries))]
     public class data_girls_CheckLowSalaries
     {
         public static void Prefix()
@@ -142,7 +142,7 @@ namespace TraitsExpansion
     }
 
     // Apply Old Money effects to mental decrease
-    [HarmonyPatch(typeof(data_girls.girls), "addParam")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.addParam))]
     public class data_girls_girls_addParam
     {
         public static void Prefix(data_girls.girls __instance, data_girls._paramType type, ref float val)
@@ -158,7 +158,7 @@ namespace TraitsExpansion
     }
 
     // appeal adjustments for traits
-    [HarmonyPatch(typeof(data_girls.girls), "GetAppealOfStat")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetAppealOfStat))]
     public class Data_girls_girls_GetAppealOfStat
     {
         public static void Postfix(ref float __result, resources.fanType _FanType, data_girls.girls __instance)
@@ -182,7 +182,7 @@ namespace TraitsExpansion
     }
 
     // Sadistic bullying
-    [HarmonyPatch(typeof(Relationships), "Do_Bullying")]
+    [HarmonyPatch(typeof(Relationships), nameof(Relationships.Do_Bullying))]
     public class Relationships_Do_Bullying
     {
         public static void Postfix()
@@ -226,7 +226,7 @@ namespace TraitsExpansion
     }
 
     // Job Hopper graduation date within the next year
-    [HarmonyPatch(typeof(data_girls.girls), "Graduation_Set_Default_Date")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.Graduation_Set_Default_Date))]
     public class data_girls_girls_Graduation_Set_Default_Date
     {
         public static void Postfix(data_girls.girls __instance)
@@ -239,7 +239,7 @@ namespace TraitsExpansion
     }
 
     // Aerophobic stamina penalty
-    [HarmonyPatch(typeof(SEvent_Tour), "UseStamina")]
+    [HarmonyPatch(typeof(SEvent_Tour), nameof(SEvent_Tour.UseStamina))]
     public class SEvent_Tour_UseStamina
     {
         public static void Postfix()
@@ -255,7 +255,7 @@ namespace TraitsExpansion
     }
 
     // Stage Fright stamina penalty
-    [HarmonyPatch(typeof(SEvent_Concerts._concert), "Finish")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Finish))]
     public class SEvent_Concerts__concert_Finish
     {
         public static void Postfix(SEvent_Concerts._concert __instance)
@@ -279,7 +279,7 @@ namespace TraitsExpansion
     }
 
     // Cult Leader vote bonus
-    [HarmonyPatch(typeof(SEvent_SSK._SSK), "GenerateResults")]
+    [HarmonyPatch(typeof(SEvent_SSK._SSK), nameof(SEvent_SSK._SSK.GenerateResults))]
     public class SEvent_SSK__SSK_GenerateResults
     {
         public static void Prefix()
@@ -294,7 +294,7 @@ namespace TraitsExpansion
     }
 
     // Cult Leader vote bonus
-    [HarmonyPatch(typeof(data_girls.girls), "GetFan_Count", new Type[] {typeof(resources.fanType)})]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetFan_Count), new Type[] {typeof(resources.fanType)})]
     public class data_girls_girls_GetFan_Count
     {
         public static void Postfix(data_girls.girls __instance, ref long __result)
@@ -311,7 +311,7 @@ namespace TraitsExpansion
 
 
     // Thespian drama bonus (popup UI)
-    [HarmonyPatch(typeof(Business_Popup), "Set")]
+    [HarmonyPatch(typeof(Business_Popup), nameof(Business_Popup.Set))]
     public class Business_Popup_Set
     {
         public static void Prefix(business._proposal _proposal, out int? __state)
@@ -337,7 +337,7 @@ namespace TraitsExpansion
     }
 
     // Thespian drama bonus (popup UI)
-    [HarmonyPatch(typeof(business), "Accept")]
+    [HarmonyPatch(typeof(business), nameof(business.Accept))]
     public class business_Accept
     {
         public static void Prefix(business __instance)
@@ -353,7 +353,7 @@ namespace TraitsExpansion
 
 
     // Reckless
-    [HarmonyPatch(typeof(data_girls.girls), "Try_Injury")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.Try_Injury))]
     public class data_girls_girls_Try_Injury
     {
         public static void Postfix(data_girls.girls __instance)
@@ -387,7 +387,7 @@ namespace TraitsExpansion
     }
 
     // Apply traits to businesses
-    [HarmonyPatch(typeof(business._proposal), "GetGirlCoeff")]
+    [HarmonyPatch(typeof(business._proposal), nameof(business._proposal.GetGirlCoeff))]
     public class Business__proposal_GetGirlCoeff
     {
         [HarmonyPriority(Priority.First)]
@@ -421,7 +421,7 @@ namespace TraitsExpansion
 
 
     // Stat changes for shows
-    [HarmonyPatch(typeof(data_girls), "GetAverageParam")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.GetAverageParam))]
     public class Data_girls_GetAverageParam
     {
         [HarmonyPriority(Priority.First)]
@@ -439,7 +439,7 @@ namespace TraitsExpansion
     }
 
     // Stat changes for shows (for team chemistray calc)
-    [HarmonyPatch(typeof(Shows._show), "SenbatsuCalcParam")]
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.SenbatsuCalcParam))]
     public class Shows__show_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
@@ -457,7 +457,7 @@ namespace TraitsExpansion
     }
 
     // Stat changes for singles
-    [HarmonyPatch(typeof(singles._single), "SenbatsuCalcParam")]
+    [HarmonyPatch(typeof(singles._single), nameof(singles._single.SenbatsuCalcParam))]
     public class Singles__single_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
@@ -475,7 +475,7 @@ namespace TraitsExpansion
     }
 
     // Stat changes for concert songs
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._song), "GetSkillValue")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._song), nameof(SEvent_Concerts._concert._song.GetSkillValue))]
     public class SEvent_Concerts__concert__song_GetSkillValue
     {
         [HarmonyPriority(Priority.First)]
@@ -494,7 +494,7 @@ namespace TraitsExpansion
 
 
     // Stat changes for concert MCs
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), "GetSkillValue")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), nameof(SEvent_Concerts._concert._mc.GetSkillValue))]
     public class SEvent_Concerts__concert__mc_GetSkillValue
     {
         [HarmonyPriority(Priority.First)]
@@ -513,7 +513,7 @@ namespace TraitsExpansion
     }
 
     // Apply traits to parameters and skills
-    [HarmonyPatch(typeof(data_girls.girls.param), "GetVal")]
+    [HarmonyPatch(typeof(data_girls.girls.param), nameof(data_girls.girls.param.GetVal))]
     public class data_girls_girls_param_GetVal
     {
         public static void Postfix(ref float __result, data_girls.girls.param __instance)

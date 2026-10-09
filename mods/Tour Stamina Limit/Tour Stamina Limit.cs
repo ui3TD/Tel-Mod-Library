@@ -16,7 +16,7 @@ namespace TourStamina
     }
 
     // World tours give 3.5x more fans
-    [HarmonyPatch(typeof(SEvent_Tour.tour), "GetNewFansByAttendance")]
+    [HarmonyPatch(typeof(SEvent_Tour.tour), nameof(SEvent_Tour.tour.GetNewFansByAttendance))]
     public class SEvent_Tour_tour_GetNewFansByAttendance
     {
         public static void Postfix(ref int __result)
@@ -26,7 +26,7 @@ namespace TourStamina
     }
 
     // World tours are limited to 100 stamina
-    [HarmonyPatch(typeof(SEvent_Tour.tour), "SelectCountry")]
+    [HarmonyPatch(typeof(SEvent_Tour.tour), nameof(SEvent_Tour.tour.SelectCountry))]
     public class SEvent_Tour_tour_SelectCountry
     {
         public static bool Prefix(SEvent_Tour.country Country, SEvent_Tour.tour __instance)
@@ -73,7 +73,7 @@ namespace TourStamina
     }
 
     // Update UI on click
-    [HarmonyPatch(typeof(Tour_Country), "OnClick")]
+    [HarmonyPatch(typeof(Tour_Country), nameof(Tour_Country.OnClick))]
     public class Tour_Country_OnClick
     {
         public static void Postfix(Tour_Country __instance)

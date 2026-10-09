@@ -6,7 +6,7 @@ using static TraitFix.TraitsFix;
 
 namespace TraitFix
 {
-    [HarmonyPatch(typeof(data_girls), "AgeDeterioration")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.AgeDeterioration))]
     public class Data_girls_AgeDeterioration
     {
         // Live Fast: double random post-peak deterioration.
@@ -27,7 +27,7 @@ namespace TraitFix
     }
 
     // Live Fast birthday deterioration without a compiler-local-dependent transpiler.
-    [HarmonyPatch(typeof(Birthday_Popup), "DoParam")]
+    [HarmonyPatch(typeof(Birthday_Popup), nameof(Birthday_Popup.DoParam))]
     public class Birthday_Popup_DoParam
     {
         [HarmonyPriority(Priority.First)]
@@ -44,7 +44,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(data_girls.girls.param), "setVal")]
+    [HarmonyPatch(typeof(data_girls.girls.param), nameof(data_girls.girls.param.setVal))]
     public class data_girls_girls_param_setVal_Birthday
     {
         [HarmonyPriority(Priority.VeryLow)]
@@ -56,7 +56,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(Birthday_Stat), "Set")]
+    [HarmonyPatch(typeof(Birthday_Stat), nameof(Birthday_Stat.Set))]
     public class Birthday_Stat_Set
     {
         [HarmonyPriority(Priority.VeryLow)]
@@ -66,7 +66,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(data_girls.girls), "GetAppealOfStat")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetAppealOfStat))]
     public class Data_girls_girls_GetAppealOfStat
     {
         public static void Postfix(ref float __result, resources.fanType _FanType, data_girls.girls __instance)
@@ -89,7 +89,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(data_girls.girls), "UpdateDatingStatus")]
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.UpdateDatingStatus))]
     public class Data_girls_girls_UpdateDatingStatus
     {
         // Outside relationships get one reveal roll; idol-idol dating is handled by CheckDating below.
@@ -124,7 +124,7 @@ namespace TraitFix
 
     // The game's weekly dating check stops at the first couple that starts or ends, so a patch on each
     // couple's own check would miss the couples after it. Every couple gets its leak roll here instead.
-    [HarmonyPatch(typeof(Relationships), "CheckDating")]
+    [HarmonyPatch(typeof(Relationships), nameof(Relationships.CheckDating))]
     public class Relationships_CheckDating
     {
         public static void Postfix()
@@ -137,7 +137,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(Relationships._relationship), "Initialize")]
+    [HarmonyPatch(typeof(Relationships._relationship), nameof(Relationships._relationship.Initialize))]
     public class Relationships__relationship_Initialize
     {
         public static void Postfix(Relationships._relationship __instance)
@@ -158,7 +158,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(Relationships), "Do_Dynamic")]
+    [HarmonyPatch(typeof(Relationships), nameof(Relationships.Do_Dynamic))]
     public class Relationships_Do_Dynamic
     {
         public static void Postfix()
@@ -197,7 +197,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(Relationships._relationship), "Recalc")]
+    [HarmonyPatch(typeof(Relationships._relationship), nameof(Relationships._relationship.Recalc))]
     public class Relationships__relationship_Recalc
     {
         public static void Postfix(Relationships._relationship __instance)
@@ -211,7 +211,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(Shows._show), "AddCastParam")]
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.AddCastParam))]
     public class Shows__show_AddCastParam
     {
         public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, Shows._show __instance)
@@ -230,7 +230,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(Show_Popup), "AddCastParam")]
+    [HarmonyPatch(typeof(Show_Popup), nameof(Show_Popup.AddCastParam))]
     public class Show_Popup_AddCastParam
     {
         public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, List<data_girls.girls.param> ___girlParams, Shows._param ___medium)
@@ -250,7 +250,7 @@ namespace TraitFix
     }
 
     // Recalculate only when the medium changes, avoiding a recalculation on every SetParam.
-    [HarmonyPatch(typeof(Show_Popup), "SetParam")]
+    [HarmonyPatch(typeof(Show_Popup), nameof(Show_Popup.SetParam))]
     public class Show_Popup_SetParam
     {
         public static void Postfix(Show_Popup __instance, Show_Popup_Param_Button._type type, Shows._show._castType? ___castType)
@@ -261,7 +261,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(singles._param), "GetSuccessChance", new Type[] { typeof(Single_Marketing_Roll._result), typeof(int), typeof(singles._single) })]
+    [HarmonyPatch(typeof(singles._param), nameof(singles._param.GetSuccessChance), new Type[] { typeof(Single_Marketing_Roll._result), typeof(int), typeof(singles._single) })]
     public class Singles__param_GetSuccessChance
     {
         public static void Postfix(ref float __result, singles._param __instance, Single_Marketing_Roll._result Result, singles._single Single)
@@ -290,7 +290,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(Shows._show), "SetStamina")]
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.SetStamina))]
     public class Shows__show_SetStamina
     {
         public static void Postfix(Shows._show __instance)
@@ -319,7 +319,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(singles), "ReleaseSingle")]
+    [HarmonyPatch(typeof(singles), nameof(singles.ReleaseSingle))]
     public class Singles_ReleaseSingle
     {
         public static void Postfix(singles._single single)
@@ -340,7 +340,7 @@ namespace TraitFix
     }
 
     // FinishTour clears Tour before returning, so capture the attendance result first.
-    [HarmonyPatch(typeof(SEvent_Tour), "FinishTour")]
+    [HarmonyPatch(typeof(SEvent_Tour), nameof(SEvent_Tour.FinishTour))]
     public class SEvent_Tour_FinishTour
     {
         public static void Prefix(SEvent_Tour __instance, ref bool __state)
@@ -364,7 +364,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(SEvent_Concerts._concert), "Finish")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Finish))]
     public class SEvent_Concerts__concert_Finish
     {
         public static void Postfix(SEvent_Concerts._concert __instance)
@@ -384,7 +384,7 @@ namespace TraitFix
     }
 
     // Trait stat contexts use a stack plus Finalizers so nested calls and exceptions cannot poison later GetVal calls.
-    [HarmonyPatch(typeof(business._proposal), "GetGirlCoeff")]
+    [HarmonyPatch(typeof(business._proposal), nameof(business._proposal.GetGirlCoeff))]
     public class Business__proposal_GetGirlCoeff
     {
         [HarmonyPriority(Priority.First)]
@@ -403,7 +403,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(data_girls), "GetAverageParam")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.GetAverageParam))]
     public class Data_girls_GetAverageParam
     {
         [HarmonyPriority(Priority.First)]
@@ -416,7 +416,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(Shows._show), "SenbatsuCalcParam")]
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.SenbatsuCalcParam))]
     public class Shows__show_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
@@ -429,7 +429,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(singles._single), "SenbatsuCalcParam")]
+    [HarmonyPatch(typeof(singles._single), nameof(singles._single.SenbatsuCalcParam))]
     public class Singles__single_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
@@ -442,7 +442,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._song), "GetSkillValue")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._song), nameof(SEvent_Concerts._concert._song.GetSkillValue))]
     public class SEvent_Concerts__concert__song_GetSkillValue
     {
         [HarmonyPriority(Priority.First)]
@@ -455,7 +455,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), "GetSkillValue")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), nameof(SEvent_Concerts._concert._mc.GetSkillValue))]
     public class SEvent_Concerts__concert__mc_GetSkillValue
     {
         [HarmonyPriority(Priority.First)]
@@ -468,7 +468,7 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(data_girls.girls.param), "GetVal")]
+    [HarmonyPatch(typeof(data_girls.girls.param), nameof(data_girls.girls.param.GetVal))]
     public class data_girls_girls_param_GetVal
     {
         public static void Postfix(ref float __result, data_girls.girls.param __instance)

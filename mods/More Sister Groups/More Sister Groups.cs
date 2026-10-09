@@ -7,7 +7,7 @@ namespace SisterGroups
 {
 
     //fan gain from sister groups reduced 5x
-    [HarmonyPatch(typeof(Groups._group), "GetNewFansPerSingle")]
+    [HarmonyPatch(typeof(Groups._group), nameof(Groups._group.GetNewFansPerSingle))]
     public class Groups__group_GetNewFansPerSingle
     {
         public static void Postfix(ref int __result, Groups._group __instance)
@@ -22,7 +22,7 @@ namespace SisterGroups
 
 
     // Removed minimum member limit for sister group creation
-    [HarmonyPatch(typeof(Groups), "GetIdolsNeededForNewGroup")]
+    [HarmonyPatch(typeof(Groups), nameof(Groups.GetIdolsNeededForNewGroup))]
     public class Groups_GetIdolsNeededForNewGroup
     {
         public static void Postfix(ref int __result)
@@ -33,7 +33,7 @@ namespace SisterGroups
     }
 
     // When releasing a single, the penalty for a decrease in fame and appeal now only considers past singles of the same group
-    [HarmonyPatch(typeof(singles), "AddOpinion")]
+    [HarmonyPatch(typeof(singles), nameof(singles.AddOpinion))]
     public class singles_AddOpinion
     {
         public static void Prefix(singles._single single)
@@ -48,7 +48,7 @@ namespace SisterGroups
     }
 
     // When releasing a single, the penalty for a decrease in fame and appeal now only considers past singles of the same group
-    [HarmonyPatch(typeof(singles), "GenerateSales")]
+    [HarmonyPatch(typeof(singles), nameof(singles.GenerateSales))]
     public class singles_GenerateSales
     {
         public static void Prefix(singles._single single)
@@ -63,7 +63,7 @@ namespace SisterGroups
     }
 
     // When releasing a single, the penalty for a decrease in fame and appeal now only considers past singles of the same group
-    [HarmonyPatch(typeof(singles), "GetLatestReleasedSingles")]
+    [HarmonyPatch(typeof(singles), nameof(singles.GetLatestReleasedSingles))]
     public class singles_GetLatestReleasedSingles
     {
         public static void Postfix(int count, ref List<singles._single> __result)

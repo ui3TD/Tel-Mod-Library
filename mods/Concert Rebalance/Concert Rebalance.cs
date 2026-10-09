@@ -89,7 +89,7 @@ namespace ConcertRebalance
     /// <summary>
     /// Modifies the concert revenue formula to adjust attendance calculations based on ticket price and game difficulty.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), "GetAttendanceOfDemo")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), nameof(SEvent_Concerts._concert._projectedValues.GetAttendanceOfDemo))]
     public class SEvent_Concerts__concert__projectedValues_GetAttendanceOfDemo
     {
         /// <summary>
@@ -151,7 +151,7 @@ namespace ConcertRebalance
     /// <summary>
     /// Applies the reduced club hype multiplier to the concert's projected revenue, so the estimate matches what the club pays.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), "GetRevenue")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), nameof(SEvent_Concerts._concert._projectedValues.GetRevenue))]
     public class SEvent_Concerts__concert__projectedValues_GetRevenue
     {
         /// <summary>
@@ -176,7 +176,7 @@ namespace ConcertRebalance
     /// <summary>
     /// Modifies the venue unlocking mechanism to require selling out the previous venue with a profit.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts), "UpdateVenueUnlocked")]
+    [HarmonyPatch(typeof(SEvent_Concerts), nameof(SEvent_Concerts.UpdateVenueUnlocked))]
     public class SEvent_Concerts_UpdateVenueUnlocked
     {
         /// <summary>
@@ -194,7 +194,7 @@ namespace ConcertRebalance
     /// <summary>
     /// Implements the new venue unlocking criteria based on selling out and profitability.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts._concert), "Finish")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Finish))]
     public class SEvent_Concerts__concert_Finish
     {
         /// <summary>
@@ -215,7 +215,7 @@ namespace ConcertRebalance
     /// <summary>
     /// Increases the capacity of Coliseum-level concert venues in hard mode.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts), "GetVenueCapacity")]
+    [HarmonyPatch(typeof(SEvent_Concerts), nameof(SEvent_Concerts.GetVenueCapacity))]
     public class SEvent_Concerts_GetVenueCapacity
     {
         /// <summary>
@@ -235,7 +235,7 @@ namespace ConcertRebalance
     /// <summary>
     /// Increases the base cost of Coliseum-level concert venues in hard mode.
     /// </summary>
-    [HarmonyPatch(typeof(SEvent_Concerts), "GetVenueBaseCost")]
+    [HarmonyPatch(typeof(SEvent_Concerts), nameof(SEvent_Concerts.GetVenueBaseCost))]
     public class SEvent_Concerts_GetVenueBaseCost
     {
         /// <summary>

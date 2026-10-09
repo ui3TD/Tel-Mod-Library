@@ -91,7 +91,7 @@ namespace PoliciesThatMatter
     }
 
     // Performance: Energetic: 1.5x increase in performance profit
-    [HarmonyPatch(typeof(Activities), "GetPerformanceMoneyPerLevel")]
+    [HarmonyPatch(typeof(Activities), nameof(Activities.GetPerformanceMoneyPerLevel))]
     public class Activities_GetPerformanceMoneyPerLevel
     {
         public static void Postfix(bool forceHard, ref int __result)
@@ -104,7 +104,7 @@ namespace PoliciesThatMatter
     }
 
     // Performance: Quality: -0.5 mental stamina each week when training
-    [HarmonyPatch(typeof(agency._room), "DoGirlTraining")]
+    [HarmonyPatch(typeof(agency._room), nameof(agency._room.DoGirlTraining))]
     public class agency__room_DoGirlTraining
     {
         /// <summary>
@@ -143,7 +143,7 @@ namespace PoliciesThatMatter
 
 
     // Performance: Quality: 2x training speed
-    [HarmonyPatch(typeof(data_girls.girls.param), "GetDuration")]
+    [HarmonyPatch(typeof(data_girls.girls.param), nameof(data_girls.girls.param.GetDuration))]
     public class data_girls_girls_param_GetDuration
     {
         public static void Postfix(ref float __result, data_girls.girls.param __instance)
@@ -161,7 +161,7 @@ namespace PoliciesThatMatter
 
 
     // Background Check: Extensive: 100% for positive trait
-    [HarmonyPatch(typeof(traits), "GetRandomTraitType")]
+    [HarmonyPatch(typeof(traits), nameof(traits.GetRandomTraitType))]
     public class traits_GetRandomTraitType
     {
         public static void Postfix(ref traits._trait._type __result)
@@ -181,7 +181,7 @@ namespace PoliciesThatMatter
 
     // Image: Rebellious: -40 appeal to adult
     // Dating: Allowed: -25 appeal to hardcore
-    [HarmonyPatch(typeof(Shows), "GetBaseAppeal")]
+    [HarmonyPatch(typeof(Shows), nameof(Shows.GetBaseAppeal))]
     public class Shows_GetBaseAppeal
     {
         public static void Postfix(ref float __result, resources.fanType fanType)
@@ -206,7 +206,7 @@ namespace PoliciesThatMatter
 
     // Image: Rebellious: -40 appeal to adult
     // Dating: Allowed: 25 appeal penalty of shows/singles to hardcore
-    [HarmonyPatch(typeof(singles._single), "GetBaseAppeal")]
+    [HarmonyPatch(typeof(singles._single), nameof(singles._single.GetBaseAppeal))]
     public class singles__single_GetBaseAppeal
     {
         public static void Postfix(ref float __result, resources.fanType fanType)
@@ -235,7 +235,7 @@ namespace PoliciesThatMatter
     // Streaming: No Restrictions: 5% chance for -10 mental each week (-0.5 /wk)
     // Social Media: Controlled: 10% chance for -10 mental each week (-1 /wk)
     // Social Media: No Restrictions: 10% chance for -20 mental each week (-2 /wk)
-    [HarmonyPatch(typeof(data_girls), "PoliciesStamina")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.PoliciesStamina))]
     public class data_girls_PoliciesStamina
     {
         private static void AddStaminaNotification(data_girls.girls girl, int staminaDecrease, string policyName)
@@ -331,7 +331,7 @@ namespace PoliciesThatMatter
     // Streaming: No Restrictions: 5% chance to get money each week
     // Social Media: No Restrictions: 10% chance for 1100 fans/week/girl (max fame)
     // Social Media: Controlled: 10% chance for 220 fans/week/girl (max fame)
-    [HarmonyPatch(typeof(data_girls), "PoliciesResources")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.PoliciesResources))]
     public class data_girls_PoliciesResources
     {
         private static void AddBonusNotification(data_girls.girls girl, int valueIncrease, string policyName)
@@ -404,7 +404,7 @@ namespace PoliciesThatMatter
 
     // Security: Relaxed: 1.5x concert stamina
     // Security: Restrictive: 0.7x concert stamina
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._song), "GetStaminaCost")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._song), nameof(SEvent_Concerts._concert._song.GetStaminaCost))]
     public class SEvent_Concerts__concert__song_GetStaminaCost
     {
         public static void Postfix(ref float __result)
@@ -423,7 +423,7 @@ namespace PoliciesThatMatter
 
     // Security: Relaxed: 1.5x concert stamina
     // Security: Restrictive: 0.7x concert stamina
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), "GetStaminaCost")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), nameof(SEvent_Concerts._concert._mc.GetStaminaCost))]
     public class SEvent_Concerts__concert__mc_GetStaminaCost
     {
         public static void Postfix(ref float __result)
@@ -442,7 +442,7 @@ namespace PoliciesThatMatter
 
     // Security: Relaxed: 1.25x concert hype
     // Security: Restrictive: 0.75x concert hype
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._song), "GetHype")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._song), nameof(SEvent_Concerts._concert._song.GetHype))]
     public class SEvent_Concerts__concert__song_GetHype
     {
         public static void Postfix(ref float __result)
@@ -461,7 +461,7 @@ namespace PoliciesThatMatter
 
     // Security: Relaxed: 1.25x concert hype
     // Security: Restrictive: 0.75x concert hype
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), "GetHype")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), nameof(SEvent_Concerts._concert._mc.GetHype))]
     public class SEvent_Concerts__concert__mc_GetHype
     {
         public static void Postfix(ref float __result)

@@ -270,7 +270,7 @@ namespace UnofficialPatch
     }
 
     // Fixes fan pie rendering so the adult slice accounts for YA/Teen stacking.
-    [HarmonyPatch(typeof(Profile_Fans_Pies), "Render_Pies")]
+    [HarmonyPatch(typeof(Profile_Fans_Pies), nameof(Profile_Fans_Pies.Render_Pies))]
     public class Profile_Fans_Pies_Render_Pies
     {
         // No-fan sentinel for early exit.
@@ -316,7 +316,7 @@ namespace UnofficialPatch
     }
 
     // Keeps tour expected revenue text color aligned with profitability.
-    [HarmonyPatch(typeof(Tour_New_Popup), "Render")]
+    [HarmonyPatch(typeof(Tour_New_Popup), nameof(Tour_New_Popup.Render))]
     public class Tour_New_Popup_Render
     {
         // Keeps the expected revenue color consistent by always evaluating profitability after savings.
@@ -369,7 +369,7 @@ namespace UnofficialPatch
     }
 
     // Aligns theater revenue timing and payout distribution with the schedule.
-    [HarmonyPatch(typeof(Theaters), "CompleteDay")]
+    [HarmonyPatch(typeof(Theaters), nameof(Theaters.CompleteDay))]
     public class Theaters_CompleteDay
     {
         // Day-of-month used by the base game for subscription revenue.
@@ -506,7 +506,7 @@ namespace UnofficialPatch
     }
 
 	// Fixed Theater so that average stats ignore days off
-    [HarmonyPatch(typeof(Theaters._theater), "GetAvgAttendance")]
+    [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetAvgAttendance))]
     public class Theaters__theater_GetAvgAttendance
     {
         public static void Postfix(ref int __result, Theaters._theater __instance)
@@ -518,7 +518,7 @@ namespace UnofficialPatch
     }
 
 	// Fixed Theater so that average stats ignore days off
-    [HarmonyPatch(typeof(Theaters._theater), "GetAvgRevenue")]
+    [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetAvgRevenue))]
     public class Theaters__theater_GetAvgRevenue
     {
         public static void Postfix(ref int __result, Theaters._theater __instance)
@@ -531,7 +531,7 @@ namespace UnofficialPatch
 
 
 	// Fixed Theater so that money tooltip includes 7 days instead of 6, and include sub revenue
-    [HarmonyPatch(typeof(Theaters), "GetLastWeekEarning")]
+    [HarmonyPatch(typeof(Theaters), nameof(Theaters.GetLastWeekEarning))]
     public class Theaters_GetLastWeekEarning
     {
         // Tooltip is intended to show a full week.
@@ -565,7 +565,7 @@ namespace UnofficialPatch
     }
 
 	// Fixed Cafe so that money tooltip includes 7 days instead of 6
-    [HarmonyPatch(typeof(Cafes), "GetLastWeekEarning")]
+    [HarmonyPatch(typeof(Cafes), nameof(Cafes.GetLastWeekEarning))]
     public class Cafes_GetLastWeekEarning
     {
         // Tooltip is intended to show a full week.
@@ -590,7 +590,7 @@ namespace UnofficialPatch
 
 
 	// Fixed so that when girls dating within the group break up, their relationship status is no longer known
-    [HarmonyPatch(typeof(Relationships._relationship), "BreakUp")]
+    [HarmonyPatch(typeof(Relationships._relationship), nameof(Relationships._relationship.BreakUp))]
     public class Relationships__relationship_BreakUp
     {
         // Indices for the two relationship participants.
@@ -622,7 +622,7 @@ namespace UnofficialPatch
     }
 
         // Fixed Concert revenue formula so that it shows accurate estimated values
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), "GetRevenue")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), nameof(SEvent_Concerts._concert._projectedValues.GetRevenue))]
     public class SEvent_Concerts__concert__projectedValues_GetRevenue
     {
         // Hype curve configuration used by the adjusted revenue formula.
@@ -639,7 +639,7 @@ namespace UnofficialPatch
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             // Locate the original GetHype call and our replacement method.
-            MethodInfo getHype = AccessTools.Method(typeof(SEvent_Concerts._concert._projectedValues), "GetHype");
+            MethodInfo getHype = AccessTools.Method(typeof(SEvent_Concerts._concert._projectedValues), nameof(SEvent_Concerts._concert._projectedValues.GetHype));
             MethodInfo infix   = AccessTools.Method(typeof(SEvent_Concerts__concert__projectedValues_GetRevenue), nameof(Infix));
 
             // Abort if Harmony lookup fails so we don't corrupt IL.
@@ -698,7 +698,7 @@ namespace UnofficialPatch
 
 
 	// Fixed Concert revenue formula so that it shows accurate estimated values
-    [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), "GetString")]
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), nameof(SEvent_Concerts._concert._projectedValues.GetString))]
     public class SEvent_Concerts__concert__projectedValues_GetString
     {
         // Hype is capped at 200% (2.0) by the base game.
@@ -721,7 +721,7 @@ namespace UnofficialPatch
     }
 
 	// Fixed senbatsu stats calculation so it doesn't punish you if you don't have enough idols to fill all rows
-    [HarmonyPatch(typeof(singles._single), "SenbatsuCalcParam")]
+    [HarmonyPatch(typeof(singles._single), nameof(singles._single.SenbatsuCalcParam))]
     public class singles__single_SenbatsuCalcParam
     {
         // Percent scaling constant used by the base formula.
@@ -831,7 +831,7 @@ namespace UnofficialPatch
     {
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            MethodInfo calcParam = AccessTools.Method(typeof(singles._single), "SenbatsuCalcParam",
+            MethodInfo calcParam = AccessTools.Method(typeof(singles._single), nameof(singles._single.SenbatsuCalcParam),
                 new Type[] { typeof(List<data_girls.girls>), typeof(data_girls._paramType), typeof(Groups._group) });
             if (calcParam == null)
             {
@@ -861,7 +861,7 @@ namespace UnofficialPatch
     // The stat roll reserves up to 3 stats, then spends the rest of the points on the other stats, up to 99 each.
     // When the points can't fit (about 1 in 12 platinum rolls), the spending loop never ends.
     // The roll that can't fit is thrown away and the game rolls again, so every idol is one the game could make.
-    [HarmonyPatch(typeof(data_girls), "GenerateParams")]
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.GenerateParams))]
     public class data_girls_GenerateParams
     {
         // Highest value a stat can hold.
@@ -1024,7 +1024,7 @@ namespace UnofficialPatch
 
 
     // Fixed fan opinion to be impacted by concerts, SSK/show cancellation and random events
-    [HarmonyPatch(typeof(resources._fanOpinion), "Add")]
+    [HarmonyPatch(typeof(resources._fanOpinion), nameof(resources._fanOpinion.Add))]
     public class resources__fanOpinion_Add
     {
         // The game counts val down to its fraction as it records whole points, so keep the full change.
@@ -1050,7 +1050,7 @@ namespace UnofficialPatch
 
 
     // Fixed gossip so girl doesn't gossip about herself
-    [HarmonyPatch(typeof(Date_Gossip), "GetAvailableGossips")]
+    [HarmonyPatch(typeof(Date_Gossip), nameof(Date_Gossip.GetAvailableGossips))]
     public class Date_Gossip_GetAvailableGossips
     {
         public static void Postfix(ref List<Date_Gossip._gossip> __result, data_girls.girls Snitch)
@@ -1074,7 +1074,7 @@ namespace UnofficialPatch
 
 
     // Fixed event and dialogue checks for Influence to check for Influence instead of Friendship
-    [HarmonyPatch(typeof(vn_requirements), "CheckGirl", new Type[] { typeof(data_girls.girls), typeof(string), typeof(string) })]
+    [HarmonyPatch(typeof(vn_requirements), nameof(vn_requirements.CheckGirl), new Type[] { typeof(data_girls.girls), typeof(string), typeof(string) })]
     public class vn_requirements_CheckGirl
     {
         // Requirement key used by the game for influence checks.
@@ -1154,7 +1154,7 @@ namespace UnofficialPatch
 
     // Fix "variable" requirements to respect leading negation. The game sees the "!", then throws away
     // formula.Substring(1), so "!met_fan" checks a variable named "!met_fan". Store it back into formula.
-    [HarmonyPatch(typeof(vn_requirements), "CheckGirl", new Type[] { typeof(data_girls.girls), typeof(string), typeof(string) })]
+    [HarmonyPatch(typeof(vn_requirements), nameof(vn_requirements.CheckGirl), new Type[] { typeof(data_girls.girls), typeof(string), typeof(string) })]
     public class vn_requirements_CheckGirl_Variable
     {
         // CheckGirl(girl, parameter, formula) is static, so formula is argument 2.
@@ -1186,7 +1186,7 @@ namespace UnofficialPatch
 
 
     // Fix stamina cost of performance thumbnail if Energetic policy
-    [HarmonyPatch(typeof(Activities._activity), "GetDescription")]
+    [HarmonyPatch(typeof(Activities._activity), nameof(Activities._activity.GetDescription))]
     public class Activities__activity_GetDescription
     {
         // The Energetic policy's stamina cost, as Activities.GetStaminaCost charges it (-4f). The unit tests
@@ -1217,7 +1217,7 @@ namespace UnofficialPatch
 
 
     // Fix custom event check for "hired a staffer of type"
-    [HarmonyPatch(typeof(vn_requirements), "CheckMeta")]
+    [HarmonyPatch(typeof(vn_requirements), nameof(vn_requirements.CheckMeta))]
     public class vn_requirements_CheckMeta
     {
         // Metadata parameter and formula keys.
@@ -1321,7 +1321,7 @@ namespace UnofficialPatch
         }
     }
 
-    [HarmonyPatch(typeof(SaveManager), "LoadData", new Type[] { typeof(bool) })]
+    [HarmonyPatch(typeof(SaveManager), nameof(SaveManager.LoadData), new Type[] { typeof(bool) })]
     public class SaveManager_LoadData_Bool_NullGuard
     {
         private const string WarningMessage =
@@ -1339,7 +1339,7 @@ namespace UnofficialPatch
     }
 
     // Same null-guard for the string-path overload used by some load flows and mods.
-    [HarmonyPatch(typeof(SaveManager), "LoadData", new Type[] { typeof(string) })]
+    [HarmonyPatch(typeof(SaveManager), nameof(SaveManager.LoadData), new Type[] { typeof(string) })]
     public class SaveManager_LoadData_Path_NullGuard
     {
         private const string WarningMessage =
@@ -1358,7 +1358,7 @@ namespace UnofficialPatch
 
     // Marks loads the main menu makes into the game scene it has just opened. Starting another game
     // from the main menu also ends an earlier scene's autosave block.
-    [HarmonyPatch(typeof(MainMenu_LoadGameManager), "LoadAsync")]
+    [HarmonyPatch(typeof(MainMenu_LoadGameManager), nameof(MainMenu_LoadGameManager.LoadAsync))]
     public class MainMenu_LoadGameManager_LoadAsync
     {
         public static void Prefix(bool loadSave)
@@ -1369,7 +1369,7 @@ namespace UnofficialPatch
     }
 
     // Skips autosaves in a game scene whose save failed to load from the main menu.
-    [HarmonyPatch(typeof(SaveManager), "SaveData", new Type[] { typeof(bool), typeof(bool) })]
+    [HarmonyPatch(typeof(SaveManager), nameof(SaveManager.SaveData), new Type[] { typeof(bool), typeof(bool) })]
     public class SaveManager_SaveData
     {
         public static bool Prefix(SaveManager __instance, bool autoSave)
@@ -1402,10 +1402,10 @@ namespace UnofficialPatch
         // Seconds such a render can keep running before it's stopped.
         internal const float LateRenderSeconds = 60f;
 
-        private static readonly FieldInfo TexturesInstance = AccessTools.Field(typeof(data_girls_textures), "_this");
-        private static readonly FieldInfo QueueField = AccessTools.Field(typeof(data_girls_textures), "Queue");
-        private static readonly FieldInfo QueueGirl = AccessTools.Field(AccessTools.Inner(typeof(data_girls_textures), "_queue"), "Girl");
-        private static readonly FieldInfo GoldenCardPortrait = AccessTools.Field(typeof(Audition_Golden_Card), "Portrait_");
+        private static readonly FieldInfo TexturesInstance = AccessTools.Field(typeof(data_girls_textures), nameof(data_girls_textures._this));
+        private static readonly FieldInfo QueueField = AccessTools.Field(typeof(data_girls_textures), nameof(data_girls_textures.Queue));
+        private static readonly FieldInfo QueueGirl = AccessTools.Field(AccessTools.Inner(typeof(data_girls_textures), nameof(data_girls_textures._queue)), nameof(data_girls_textures._queue.Girl));
+        private static readonly FieldInfo GoldenCardPortrait = AccessTools.Field(typeof(Audition_Golden_Card), nameof(Audition_Golden_Card.Portrait_));
 
         // The clear sprite on cards whose portrait hasn't loaded. Made the first time it's needed.
         internal static Sprite placeholder;
@@ -1591,7 +1591,7 @@ namespace UnofficialPatch
     }
 
     // Starts the 2 s wait for the audition's portraits.
-    [HarmonyPatch(typeof(Popup_Audition), "LoadCards")]
+    [HarmonyPatch(typeof(Popup_Audition), nameof(Popup_Audition.LoadCards))]
     public class Popup_Audition_LoadCards
     {
         public static void Prefix()
@@ -1602,7 +1602,7 @@ namespace UnofficialPatch
 
     // After 2 s the audition's cards unlock; those still without a portrait get the clear placeholder.
     // Each card's loader keeps running and sets her portrait when it arrives.
-    [HarmonyPatch(typeof(Popup_Audition), "PortraitsLoaded")]
+    [HarmonyPatch(typeof(Popup_Audition), nameof(Popup_Audition.PortraitsLoaded))]
     public class Popup_Audition_PortraitsLoaded
     {
         public static void Postfix(Popup_Audition __instance, ref bool __result)
@@ -1659,7 +1659,7 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Popup_Audition), nameof(Popup_Audition.Close))]
     public class Popup_Audition_Close
     {
-        private static readonly FieldInfo DataField = AccessTools.Field(typeof(Popup_Audition), "Data");
+        private static readonly FieldInfo DataField = AccessTools.Field(typeof(Popup_Audition), nameof(Popup_Audition.Data));
 
         public static void Prefix(Popup_Audition __instance)
         {
@@ -1698,7 +1698,7 @@ namespace UnofficialPatch
 
     // Skips setting a portrait on a destroyed object. The queue's job that retries a failed portrait load sets
     // it before starting the next job, so the error stopped every later portrait for the rest of the session.
-    [HarmonyPatch(typeof(data_girls_textures), "SetSprite")]
+    [HarmonyPatch(typeof(data_girls_textures), nameof(data_girls_textures.SetSprite))]
     public class data_girls_textures_SetSprite
     {
         public static bool Prefix(GameObject obj)
@@ -1710,7 +1710,7 @@ namespace UnofficialPatch
     // A portrait render that takes over 2 s lets the queue move on, and finishes in the background.
     // Each renderer has its own camera and render texture and is placed apart from the others, so renders
     // can run side by side.
-    [HarmonyPatch(typeof(data_girls_textures), "NEW_Cache_Portrait", MethodType.Enumerator)]
+    [HarmonyPatch(typeof(data_girls_textures), nameof(data_girls_textures.NEW_Cache_Portrait), MethodType.Enumerator)]
     public class data_girls_textures_NEW_Cache_Portrait
     {
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)

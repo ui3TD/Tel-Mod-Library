@@ -32,7 +32,7 @@ namespace StaleTheater
     }
 
     // Theater show sales and subscriptions start to decay after 30 days, levelling off at 10%
-    [HarmonyPatch(typeof(Theaters._theater), "GetPriceCoeff")]
+    [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetPriceCoeff))]
     public class Theaters__theater_GetPriceCoeff
     {
         public static void Postfix(int Price, Theaters._theater __instance, ref float __result)
@@ -81,7 +81,7 @@ namespace StaleTheater
 
     // Theater subscription revenue decreased by 90% / 70%
     // Kept as long via double: revenue can pass int's ~2.1 billion limit
-    [HarmonyPatch(typeof(Theaters._theater), "GetSubRevenue")]
+    [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetSubRevenue))]
     public class Theaters__theater_GetSubRevenue
     {
         public static void Postfix(ref long __result)
@@ -98,14 +98,14 @@ namespace StaleTheater
     }
 
     // Theater attendance increased for 'everyone', 'casual' and age groups
-    [HarmonyPatch(typeof(Theaters._theater), "GetNumberOfVisitors")]
+    [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetNumberOfVisitors))]
     public class Theaters__theater_GetNumberOfVisitors
     {
         // Before num *= GetPriceCoeff(Ticket_Price), replace the game's fan-type multiplier: num = Infix(this).
         // That statement is where the ticket-price check (over 40000 sells nothing) jumps to.
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            MethodInfo getPriceCoeff = AccessTools.Method(typeof(Theaters._theater), "GetPriceCoeff");
+            MethodInfo getPriceCoeff = AccessTools.Method(typeof(Theaters._theater), nameof(Theaters._theater.GetPriceCoeff));
             FieldInfo ticketPrice = AccessTools.Field(typeof(Theaters._theater), nameof(Theaters._theater.Ticket_Price));
 
             CodeMatcher matcher = new CodeMatcher(instructions).MatchStartForward(

@@ -82,7 +82,7 @@ namespace FastForward
     /// <summary>
     /// Patch class for the TimeControlButton's OnClick method to implement faster time acceleration.
     /// </summary>
-    [HarmonyPatch(typeof(TimeControlButton), "OnClick")]
+    [HarmonyPatch(typeof(TimeControlButton), nameof(TimeControlButton.OnClick))]
     public class TimeControlButton_OnClick
     {
         /// <summary>
@@ -105,7 +105,7 @@ namespace FastForward
     /// <summary>
     /// Patch class for the Controls' Update method to implement hotkey-based time acceleration.
     /// </summary>
-    [HarmonyPatch(typeof(Controls), "Update")]
+    [HarmonyPatch(typeof(Controls), nameof(Controls.Update))]
     public class Controls_Update
     {
         /// <summary>

@@ -222,7 +222,7 @@ namespace HarmonyChecker
     }
 
     // Keep the original early path for cases where Harmony mods load before this Start.
-    [HarmonyPatch(typeof(MainMenu_Buttons_Controller), "Start")]
+    [HarmonyPatch(typeof(MainMenu_Buttons_Controller), nameof(MainMenu_Buttons_Controller.Start))]
     public class MainMenu_Buttons_Controller_Start
     {
         public static void Postfix(MainMenu_Buttons_Controller __instance)
@@ -234,7 +234,7 @@ namespace HarmonyChecker
     // On Steam, Mods.LoadMods() can finish after MainMenu_Buttons_Controller.Start().
     // IM-HI patches Harmony Checker during Mods.LoadMods(); StopSpinner is called later
     // by the same loading coroutine, making this a reliable post-load refresh point.
-    [HarmonyPatch(typeof(Mods), "StopSpinner")]
+    [HarmonyPatch(typeof(Mods), nameof(Mods.StopSpinner))]
     public class Mods_StopSpinner
     {
         public static void Postfix()

@@ -10,7 +10,7 @@ namespace NationalTour
 {
 
     // Set locations
-    [HarmonyPatch(typeof(Tour_New_Popup), "Reset")]
+    [HarmonyPatch(typeof(Tour_New_Popup), nameof(Tour_New_Popup.Reset))]
     public class Tour_New_Popup_Reset
     {
         public static void Postfix(Tour_New_Popup __instance)
@@ -34,7 +34,7 @@ namespace NationalTour
 
 
     // Set tour finish images
-    [HarmonyPatch(typeof(Tour_Popup), "Reset")]
+    [HarmonyPatch(typeof(Tour_Popup), nameof(Tour_Popup.Reset))]
     public class Tour_Popup_Reset
     {
         public static void Postfix()
@@ -62,7 +62,7 @@ namespace NationalTour
 
 
     // Load assets. Once is enough: the pictures stay loaded from one save to the next.
-    [HarmonyPatch(typeof(mainScript), "Start")]
+    [HarmonyPatch(typeof(mainScript), nameof(mainScript.Start))]
     public class mainScript_Start
     {
         public static void Postfix()

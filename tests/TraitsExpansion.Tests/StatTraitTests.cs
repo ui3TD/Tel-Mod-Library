@@ -123,7 +123,6 @@ namespace TraitsExpansionTests
             List<data_girls.girls> girls = new() { TestGame.Idol(NewTraits.Perfect_Pitch), TestGame.Idol() };
             Assert.Equal(65f, data_girls.GetAverageParam(vocal, girls));
             Assert.False(patchGetVal);
-            Assert.Null(girlList);
             Assert.Equal(40f, TestGame.Stat(girls[0], vocal));
         }
 
@@ -139,7 +138,6 @@ namespace TraitsExpansionTests
 
             Assert.Equal(expected, result._val, 3);
             Assert.False(patchGetVal);
-            Assert.Null(girlList);
         }
 
         /// <summary>
@@ -227,7 +225,6 @@ namespace TraitsExpansionTests
 
             Assert.Throws<NullReferenceException>(() => data_girls.GetAverageParam(vocal, null));
             Assert.False(patchGetVal);
-            Assert.Null(girlList);
 
             data_girls.girls girl = TestGame.Idol(NewTraits.Perfect_Pitch);
             Assert.Equal(40f, TestGame.Stat(girl, vocal));
@@ -238,19 +235,15 @@ namespace TraitsExpansionTests
         {
             List<data_girls.girls> girls = new() { TestGame.Idol() };
 
-            Data_girls_GetAverageParam.Prefix(girls);
+            Data_girls_GetAverageParam.Prefix();
             Assert.True(patchGetVal);
-            Assert.Same(girls, girlList);
             Data_girls_GetAverageParam.Finalizer(null);
             Assert.False(patchGetVal);
-            Assert.Null(girlList);
 
-            Shows__show_SenbatsuCalcParam.Prefix(girls);
+            Shows__show_SenbatsuCalcParam.Prefix();
             Assert.True(patchGetVal);
-            Assert.Same(girls, girlList);
             Shows__show_SenbatsuCalcParam.Finalizer(null);
             Assert.False(patchGetVal);
-            Assert.Null(girlList);
 
             Action[] prefixes =
             {

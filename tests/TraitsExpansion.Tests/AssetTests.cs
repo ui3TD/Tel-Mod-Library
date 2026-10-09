@@ -112,12 +112,19 @@ namespace TraitsExpansionTests
             }
         }
 
+        /// <summary>
+        /// The notification takes the idol's name and the penalty from the code, so the number has one source.
+        /// </summary>
         [Fact]
-        public void StageFrightNotification_MatchesPenalty()
+        public void StageFrightNotification_TakesThePenaltyFromTheCode()
         {
             JSONNode constants = TestGame.LoadJson("JSON/Constants/constants.json");
             JSONNode entry = Enumerable.Range(0, constants.Count).Select(i => constants[i]).Single(c => (string)c["id"] == "IDOL__STAGEFRIGHT");
-            Assert.Equal($"@ lost {STAGEFRIGHT_PENALTY} mental stamina due to stage fright.", (string)entry["text"]);
+            Assert.Equal("@1 lost @2 mental stamina due to stage fright.", (string)entry["text"]);
+
+            Language.Data["IDOL__STAGEFRIGHT"] = entry["text"];
+            Assert.Equal("Aya lost 10 mental stamina due to stage fright.",
+                Language.Insert("IDOL__STAGEFRIGHT", "Aya", STAGEFRIGHT_PENALTY.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         }
 
         /// <summary>

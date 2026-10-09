@@ -63,7 +63,6 @@ namespace TraitsExpansionTests
             };
 
             patchGetVal = false;
-            girlList = null;
             patchAddParam = false;
             patchGetFan_Count = false;
         }
@@ -199,7 +198,10 @@ namespace TraitsExpansionTests
 
             Language.Data["IDOL__BULLIED_UNKNOWN"] = "An idol lost @ mental stamina to bullying.";
             Language.Data["REL__BULLYING_LOST"] = " lost @ mental stamina to bullying.";
-            Language.Data["IDOL__STAGEFRIGHT"] = "@ lost 10 mental stamina due to stage fright.";
+            // The mod's own text, so the notification test checks what players read
+            SimpleJSON.JSONNode constants = TestGame.LoadJson("JSON/Constants/constants.json");
+            for (int i = 0; i < constants.Count; i++)
+                Language.Data[constants[i]["id"]] = constants[i]["text"];
         }
 
         private static IEnumerable<CodeInstruction> Redirect(IEnumerable<CodeInstruction> instructions)

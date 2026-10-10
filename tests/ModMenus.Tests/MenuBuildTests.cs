@@ -182,7 +182,7 @@ namespace ModMenus.Tests
             Assert.Equal("Mod A", title.text);
             Assert.Equal(TITLE_SIZE, title.fontSize);
             Assert.Equal((Color)mainScript.black32, title.color);
-            Assert.Equal(TextAlignmentOptions.Center, Seams.Alignments[title]);
+            Assert.Equal(TextAlignmentOptions.Bottom, Seams.Alignments[title]);
         }
 
         [Fact]

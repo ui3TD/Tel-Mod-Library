@@ -544,6 +544,7 @@ namespace InGameTests.TelMods
                 yield return new WaitForSecondsRealtime(0.5f);
                 Canvas.ForceUpdateCanvases();
                 float unit = popup.GetComponentInParent<Canvas>().rootCanvas.scaleFactor;
+                float halfGap = Find(popup.transform, "MenuContainer").First().GetComponent<VerticalLayoutGroup>().spacing / 2;
 
                 // The same margin on every side of the panel
                 Rect panel = ScreenRect((RectTransform)popup.transform.Find("Panel"));
@@ -570,7 +571,7 @@ namespace InGameTests.TelMods
                         Color background = shot.GetPixel((int)((view.xMax + scrollbar.xMin) / 2), (int)rect.center.y);
                         // Half the gap above and below the row, where a row that draws outside itself would show, as
                         // far as the menu shows: past its edge the panel is drawn, and the rows are cut off
-                        Rect area = Rect.MinMaxRect(rect.xMin, Mathf.Max(rect.yMin - 10 * unit, view.yMin), rect.xMax, Mathf.Min(rect.yMax + 10 * unit, view.yMax));
+                        Rect area = Rect.MinMaxRect(rect.xMin, Mathf.Max(rect.yMin - halfGap * unit, view.yMin), rect.xMax, Mathf.Min(rect.yMax + halfGap * unit, view.yMax));
                         bool found = FindDrawnBand(shot, area, background, out float drawnBottom, out float drawnTop);
 
                         if (row.name == "ModMenuText_")
@@ -585,8 +586,10 @@ namespace InGameTests.TelMods
                         float below = (drawnBottom - rect.yMin) / unit;
                         ctx.Record(row.name.Length > 40 ? row.name.Substring(0, 40) : row.name, "empty above " + above.ToString("0.0") + ", below " + below.ToString("0.0") + " (row " + (rect.height / unit).ToString("0") + ")");
                         ctx.Assert(above >= -1 && below >= -1, row.name + " draws outside itself: " + (-above).ToString("0.0") + " above, " + (-below).ToString("0.0") + " below");
-                        // A title keeps room around it
-                        if (row.name != "ModMenuText_" + TestModTitle)
+                        // A title sits close to its own settings, set apart from the mod above
+                        if (row.name == "ModMenuText_" + TestModTitle)
+                            ctx.Assert(below <= 6 && (row.GetSiblingIndex() == 0 || above >= below + 20), "The title isn't closer to its settings than to the mod above: " + above.ToString("0.0") + " empty above, " + below.ToString("0.0") + " below");
+                        else
                             ctx.Assert(above <= 6 && below <= 6, row.name + " doesn't fill its row: " + above.ToString("0.0") + " empty above, " + below.ToString("0.0") + " below");
                     }
                     finally

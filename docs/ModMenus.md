@@ -21,7 +21,7 @@ The file is an array of UI elements, shown in order:
 ]
 ```
 
-Supported element types are text, sliders, checkboxes and dropdowns. Each one's `labelID` is the ID of a text entry defined in `JSON/Constants/constants.json`.
+Supported element types are text, sliders, checkboxes, dropdowns and text fields. Each one's `labelID` is the ID of a text entry defined in `JSON/Constants/constants.json`.
 
 ## type: text
 
@@ -90,12 +90,32 @@ Dropdown elements output an index (0, 1, 2, etc.) as a string to an in-game vari
 - **itemIDList**: Required array of strings. Each string is the ID for text defined in `JSON/Constants/constants.json`
 - **defaultValue**: Optional integer. Default: 0
 
+## type: input
+
+```json
+{
+	"type": "input",
+	"varID": "MyMod_AgencyMotto",
+	"labelID": "MYMOD__MODMENU__MOTTO",
+	"defaultValue": "Shine bright",
+	"maxLength": 30
+}
+```
+
+Text field elements let the player type free text, and output it to an in-game variable exactly as typed. It can be empty.
+
+- **varID**: ID for the in-game variable storing the value
+- **labelID**: ID for text defined in `JSON/Constants/constants.json`
+- **defaultValue**: Optional string. Default: empty
+- **maxLength**: Optional integer, the most characters the player can type. Default: no limit
+
 ## How settings are stored
 
 - Settings are saved in the player's save file, so each save has its own. A new game starts with none saved.
 - When a game starts or a save loads, ModMenus saves the default of every setting that has no saved value yet (the `defaultValue`, or the default described above for each type). Saved values are never changed. So with ModMenus installed, `variables.Get(varID)` returns your setting from the start.
 - Without ModMenus, `variables.Get(varID)` returns null. If your mod works without ModMenus, give it a default in code that matches the `defaultValue` in your modmenu.json.
-- Values are saved as plain digits whatever the player's language (`"7"`, `"-2"`), so `int.Parse` and `float.Parse` with `CultureInfo.InvariantCulture` read them.
+- Values are saved as plain digits whatever the player's language (`"7"`, `"-2"`), so `int.Parse` and `float.Parse` with `CultureInfo.InvariantCulture` read them. A text field's value is the text itself.
+- The game's `variables.Set` turns the exact values `male_name` and `female_name` into a random name, so a text field whose text is exactly one of those saves a random name instead.
 - The menu is registered as popup type 999 (`(PopupManager._type)999`). If your mod adds its own popup, use a different number.
 
 ## Mistakes in modmenu.json

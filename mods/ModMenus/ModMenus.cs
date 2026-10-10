@@ -80,9 +80,13 @@ namespace ModMenus
         public const string CANCEL_LABEL = "CANCEL";
 
         // Each row is as tall as what it draws, so the gaps between rows are all MENUITEM_SPACING.
-        // A mod's title and a blank text row are MENUITEM_HEIGHT; a text row is as tall as its lines.
+        // A blank text row is MENUITEM_HEIGHT; a text row is as tall as its lines.
         public const int MENUITEM_HEIGHT = 40;
-        public const int MENUITEM_SPACING = 20;
+        public const int MENUITEM_SPACING = 10;
+        // A mod's title sits at the bottom of its row, close to its own settings and set apart from the
+        // mod above by TITLE_GAP. The first title has no gap: the panel's margin is above it.
+        public const float TITLE_HEIGHT = 26;
+        public const float TITLE_GAP = 26;
         public const float LABEL_HEIGHT = 20;
         public const float CHECKBOX_HEIGHT = 22;
         public const float SLIDER_HEIGHT = 32;
@@ -575,6 +579,7 @@ namespace ModMenus
             string filepath;
 
             // Rows are added top to bottom, in load order and file order
+            bool firstTitle = true;
             foreach (Mods._mod mod in Mods._Mods)
             {
                 if (!mod.IsEnabled())
@@ -588,7 +593,9 @@ namespace ModMenus
                 if (jsonArray == null)
                     continue;
 
-                AddMenuText(mod.Title, parentTransform, TITLE_SIZE, mainScript.black32, TextAlignmentOptions.Center);
+                GameObject titleRow = AddMenuText(mod.Title, parentTransform, TITLE_SIZE, mainScript.black32, TextAlignmentOptions.Bottom);
+                ((RectTransform)titleRow.transform).sizeDelta = new Vector2(200, TITLE_HEIGHT + (firstTitle ? 0 : TITLE_GAP));
+                firstTitle = false;
 
                 for (int i = 0; i < jsonArray.Count; i++)
                 {

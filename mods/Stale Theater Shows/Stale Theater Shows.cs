@@ -15,7 +15,7 @@ namespace StaleTheater
         public const float STALE_MIN = 0.1f;
         public const float DECAYTIME_HARD = 183f;
         public const float DECAYTIME_NORMAL = 366f;
-        public const double STREAM_PENALTY_HARD = 0.9;
+        public const double STREAM_PENALTY_HARD = 0.95;
         public const double STREAM_PENALTY_NORMAL = 0.7;
 
         public const float THEATER_EVERYONE = 0.3f;
@@ -28,7 +28,7 @@ namespace StaleTheater
 
         public const float MANZAI_EVERYONE = 0.2f;
         public const float MANZAI_NONHC_COEFF = 0.75f;
-        public const float MANZAI_STAM_COEFF = 0.5f;
+        public const float MANZAI_STAM_COEFF = 0.3f;
     }
 
     // Theater show sales and subscriptions start to decay after 30 days, levelling off at 10%
@@ -79,7 +79,7 @@ namespace StaleTheater
         }
     }
 
-    // Theater subscription revenue decreased by 90% / 70%
+    // Theater subscription revenue decreased by 95% / 70%
     // Kept as long via double: revenue can pass int's ~2.1 billion limit
     [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetSubRevenue))]
     public class Theaters__theater_GetSubRevenue

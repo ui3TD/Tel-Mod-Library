@@ -5,8 +5,8 @@ Rebalances the theater. Theater shows go stale over time. Release a single every
 
 [h3]Details[/h3]
 - Theater show sales and subscriptions start to decay after 30 days since the last single due to staleness, levelling off at 10% of normal. It's not so severe in easy/normal mode, but more severe in Unfair.
-- Theater subscription revenue decreased by 70% in Normal mode and 90% in Unfair mode. Most of the revenue goes to the streaming service provider.
-- Theater attendance for Manzais halved to scale with stamina cost compared to performances.
+- Theater subscription revenue decreased by 70% in Normal mode and 95% in Unfair mode. Most of the revenue goes to the streaming service provider.
+- Theater attendance for Manzais cut to 30% of a performance's, so they earn about the same per stamina.
 - Theater attendance increased when the show targets 'everyone', 'casual' or specific age groups to be balanced.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
@@ -14,3 +14,4 @@ Rebalances the theater. Theater shows go stale over time. Release a single every
 [h3]Changelog[/h3]
 - 1.1.0: Attendance changes now apply; staleness levels off at 10%; fixed negative subscription income at very high revenue.
 - 1.1.1: Theater attendance changes are applied in a way that works alongside other mods.
+- 1.2.0: Unfair streaming revenue cut by 95% (was 90%); manzai attendance cut to 30% (was 50%).

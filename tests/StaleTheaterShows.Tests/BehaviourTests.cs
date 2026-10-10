@@ -253,10 +253,10 @@ namespace StaleTheaterShows.Tests
         }
 
         /// <summary>
-        /// Unfair keeps 10% of subscription revenue, Normal 30%, Easy all of it.
+        /// Unfair keeps 5% of subscription revenue, Normal 30%, Easy all of it.
         /// </summary>
         [Theory]
-        [InlineData(hard, 2000000L, 200000L)]
+        [InlineData(hard, 2000000L, 100000L)]
         [InlineData(normal, 2000000L, 600000L)]
         [InlineData(easy, 2000000L, 2000000L)]
         [InlineData(normal, 2001L, 600L)]
@@ -273,7 +273,7 @@ namespace StaleTheaterShows.Tests
         /// </summary>
         [Theory]
         [InlineData(normal, 10000000000L, 3000000000L)]
-        [InlineData(hard, 30000000000L, 3000000000L)]
+        [InlineData(hard, 60000000000L, 3000000000L)]
         [InlineData(normal, 7158278830L, 2147483649L)]
         [InlineData(normal, 1000000000000000L, 300000000000000L)]
         public void LargeRevenue_DoesNotOverflow(staticVars._playerData._difficulty difficulty, long vanilla, long expected)
@@ -326,18 +326,18 @@ namespace StaleTheaterShows.Tests
         }
 
         /// <summary>
-        /// Manzai halves the performance multiplier, and non-hardcore audiences take another
-        /// ×0.75. Everyone is 0.2 halved.
+        /// Manzai takes 30% of the performance multiplier, and non-hardcore audiences take another
+        /// ×0.75. Everyone is 0.2 × 0.3.
         /// </summary>
         [Theory]
-        [InlineData(null, 10)]
-        [InlineData(hardcore, 50)]
-        [InlineData(casual, 24)]
-        [InlineData(teen, 34)]
-        [InlineData(adult, 36)]
-        [InlineData(youngAdult, 36)]
-        [InlineData(male, 28)]
-        [InlineData(female, 28)]
+        [InlineData(null, 6)]
+        [InlineData(hardcore, 30)]
+        [InlineData(casual, 15)]
+        [InlineData(teen, 20)]
+        [InlineData(adult, 21)]
+        [InlineData(youngAdult, 21)]
+        [InlineData(male, 17)]
+        [InlineData(female, 17)]
         public void Manzai_UsesModMultipliers(resources.fanType? target, int expected)
         {
             Assert.Equal(expected, Visitors(_type.manzai, target));

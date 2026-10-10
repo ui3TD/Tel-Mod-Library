@@ -505,6 +505,151 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
+        /// One of each row: a short and a long text, a blank spacer, and each control.
+        /// </summary>
+        private const string LayoutMenu = @"[
+            { ""type"": ""text"", ""labelID"": ""Short text."" },
+            { ""type"": ""text"", ""labelID"": ""A long text that wraps over several lines, to check that its row grows with it and doesn't run into the next row. It goes on for a while longer so that it takes four lines in the menu."" },
+            { ""type"": ""text"" },
+            { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider1"", ""labelID"": ""Slider"", ""minValue"": 1, ""maxValue"": 20, ""defaultValue"": 1 },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check1"", ""labelID"": ""Checkbox"" },
+            { ""type"": ""dropdown"", ""varID"": ""ModMenusTest_Top"", ""labelID"": ""Dropdown"", ""itemIDList"": [""One"", ""Two""] },
+            { ""type"": ""input"", ""varID"": ""ModMenusTest_Name"", ""labelID"": ""Text field"", ""defaultValue"": ""Typed text"" },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check2"", ""labelID"": ""Checkbox 2"" },
+            { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider2"", ""labelID"": ""Slider at the end"", ""minValue"": 1, ""maxValue"": 20, ""defaultValue"": 20 }
+        ]";
+
+        /// <summary>
+        /// Rows are spaced evenly: each draws only inside itself and fills it, top to bottom, so the gaps between
+        /// what's drawn are the same between any two rows (a title keeps room around it, and a blank text row
+        /// draws nothing). A slider's track starts at the left edge, like the labels and boxes. The menu keeps the
+        /// same margin on every side of the panel.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator RowsAreEvenlySpacedAndAligned(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out _))
+                yield break;
+
+            using (AddTestMod(LayoutMenu))
+            {
+                var opened = new List<GameObject>();
+                yield return OpenModSettings(ctx, opened);
+                if (opened.Count == 0)
+                {
+                    Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                    yield break;
+                }
+                GameObject popup = opened[0];
+                yield return new WaitForSecondsRealtime(0.5f);
+                Canvas.ForceUpdateCanvases();
+                float unit = popup.GetComponentInParent<Canvas>().rootCanvas.scaleFactor;
+
+                // The same margin on every side of the panel
+                Rect panel = ScreenRect((RectTransform)popup.transform.Find("Panel"));
+                ScrollRect scroll = popup.GetComponentInChildren<ScrollRect>(true);
+                Rect view = ScreenRect(scroll.viewport);
+                Rect scrollbar = ScreenRect((RectTransform)scroll.verticalScrollbar.transform);
+                float[] margins = { view.xMin - panel.xMin, panel.xMax - scrollbar.xMax, panel.yMax - view.yMax, view.yMin - panel.yMin };
+                ctx.Record("margins", string.Join(", ", margins.Select(m => m.ToString("0.0"))));
+                ctx.Assert(margins.Max() - margins.Min() <= 1f, "The menu's margins inside the panel differ: left, right, top, bottom = " + string.Join(", ", margins.Select(m => m.ToString("0.0"))));
+                ctx.Assert(scrollbar.xMin >= view.xMax, "The scroll bar overlaps the rows");
+
+                Transform menu = Find(popup.transform, "MenuContainer").First();
+                List<RectTransform> rows = menu.Cast<Transform>().Cast<RectTransform>()
+                    .SkipWhile(r => r.name != "ModMenuText_" + TestModTitle).ToList();
+                foreach (RectTransform row in rows)
+                {
+                    ScrollToMiddle(row);
+                    yield return new WaitForEndOfFrame();
+                    Texture2D shot = ReadScreen();
+                    try
+                    {
+                        Rect rect = ScreenRect(row);
+                        // The panel's colour beside this row, in the gap before the scroll bar
+                        Color background = shot.GetPixel((int)((view.xMax + scrollbar.xMin) / 2), (int)rect.center.y);
+                        // Half the gap above and below the row, where a row that draws outside itself would show, as
+                        // far as the menu shows: past its edge the panel is drawn, and the rows are cut off
+                        Rect area = Rect.MinMaxRect(rect.xMin, Mathf.Max(rect.yMin - 10 * unit, view.yMin), rect.xMax, Mathf.Min(rect.yMax + 10 * unit, view.yMax));
+                        bool found = FindDrawnBand(shot, area, background, out float drawnBottom, out float drawnTop);
+
+                        if (row.name == "ModMenuText_")
+                        {
+                            ctx.Assert(!found, "The blank text row draws something");
+                            continue;
+                        }
+                        ctx.Assert(found, row.name + " draws nothing");
+                        if (!found)
+                            continue;
+                        float above = (rect.yMax - drawnTop) / unit;
+                        float below = (drawnBottom - rect.yMin) / unit;
+                        ctx.Record(row.name.Length > 40 ? row.name.Substring(0, 40) : row.name, "empty above " + above.ToString("0.0") + ", below " + below.ToString("0.0") + " (row " + (rect.height / unit).ToString("0") + ")");
+                        ctx.Assert(above >= -1 && below >= -1, row.name + " draws outside itself: " + (-above).ToString("0.0") + " above, " + (-below).ToString("0.0") + " below");
+                        // A title keeps room around it
+                        if (row.name != "ModMenuText_" + TestModTitle)
+                            ctx.Assert(above <= 6 && below <= 6, row.name + " doesn't fill its row: " + above.ToString("0.0") + " empty above, " + below.ToString("0.0") + " below");
+                    }
+                    finally
+                    {
+                        UnityEngine.Object.Destroy(shot);
+                    }
+                }
+
+                // A slider's track starts at the left edge, like the labels and boxes
+                foreach (RectTransform row in rows.Where(r => r.name.StartsWith("ModMenuSlider_", StringComparison.Ordinal)))
+                {
+                    var corners = new Vector3[4];
+                    ((RectTransform)row.Find("Slider/Background")).GetWorldCorners(corners);
+                    Canvas canvas = row.GetComponentInParent<Canvas>().rootCanvas;
+                    Camera camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+                    float trackLeft = corners.Min(c => RectTransformUtility.WorldToScreenPoint(camera, c).x);
+                    ctx.Assert(Mathf.Abs(trackLeft - ScreenRect(row).xMin) <= unit, row.name + "'s track starts " + ((trackLeft - ScreenRect(row).xMin) / unit).ToString("0.0") + " right of the row's left edge");
+                }
+                yield return Screenshot(Path.Combine(Path.Combine(Path.GetTempPath(), "ModMenusInputScreens"), "3-layout.png"));
+
+                yield return Game.CloseAllPopups(ctx);
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+            }
+        }
+
+        /// <summary>
+        /// What's on screen this frame. Call it at the end of a frame (after WaitForEndOfFrame).
+        /// </summary>
+        private static Texture2D ReadScreen()
+        {
+            var shot = new Texture2D(Screen.width, Screen.height, TextureFormat.RGB24, false);
+            shot.ReadPixels(new Rect(0, 0, Screen.width, Screen.height), 0, 0);
+            shot.Apply();
+            return shot;
+        }
+
+        /// <summary>
+        /// The lowest and highest screen rows in the area where anything but the background is drawn.
+        /// </summary>
+        private static bool FindDrawnBand(Texture2D shot, Rect area, Color background, out float bottom, out float top)
+        {
+            bottom = top = 0;
+            bool found = false;
+            int xMin = Mathf.Max(0, (int)area.xMin), xMax = Mathf.Min(shot.width, (int)area.xMax);
+            for (int y = Mathf.Max(0, (int)area.yMin); y < Mathf.Min(shot.height, (int)area.yMax); y++)
+            {
+                for (int x = xMin; x < xMax; x++)
+                {
+                    Color c = shot.GetPixel(x, y);
+                    if (Mathf.Abs(c.r - background.r) + Mathf.Abs(c.g - background.g) + Mathf.Abs(c.b - background.b) > 0.3f)
+                    {
+                        if (!found)
+                            bottom = y;
+                        found = true;
+                        top = y + 1;
+                        break;
+                    }
+                }
+            }
+            return found;
+        }
+
+        /// <summary>
         /// A text field row draws inside its row, and its field is big enough to click and is what a click on it hits.
         /// </summary>
         private static void AssertFieldFitsAndTakesClicks(TestContext ctx, RectTransform row)
@@ -612,6 +757,28 @@ namespace InGameTests.TelMods
                 Canvas.ForceUpdateCanvases();
             }
             ctx.Assert(Inside(ScreenRect(row), ScreenRect(scroll.viewport)), row.name + " can't be scrolled into view");
+        }
+
+        /// <summary>
+        /// Scrolls the menu so the row is as near its middle as the menu scrolls.
+        /// </summary>
+        private static void ScrollToMiddle(RectTransform row)
+        {
+            ScrollRect scroll = row.GetComponentInParent<ScrollRect>();
+            float best = 1f, bestDistance = float.MaxValue;
+            for (int step = 200; step >= 0; step--)
+            {
+                scroll.verticalNormalizedPosition = step / 200f;
+                Canvas.ForceUpdateCanvases();
+                float distance = Mathf.Abs(ScreenRect(row).center.y - ScreenRect(scroll.viewport).center.y);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = step / 200f;
+                }
+            }
+            scroll.verticalNormalizedPosition = best;
+            Canvas.ForceUpdateCanvases();
         }
 
         private static Rect ScreenRect(RectTransform rect)

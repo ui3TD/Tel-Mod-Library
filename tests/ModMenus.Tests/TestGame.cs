@@ -486,6 +486,8 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenusUtils), "SetRectTransform", new[] { typeof(RectTransform), typeof(Vector2), typeof(Vector2), typeof(Vector2), typeof(Vector2) })] = Stub(nameof(StubSetRect)),
             [AccessTools.Method(typeof(ModMenusUtils), "SetRectTransform", new[] { typeof(RectTransform), typeof(Vector2), typeof(Vector2), typeof(Vector2), typeof(Vector2), typeof(Vector2) })] = Stub(nameof(StubSetRectPivot)),
             [AccessTools.PropertySetter(typeof(RectTransform), nameof(RectTransform.sizeDelta))] = Stub(nameof(StubSetSize)),
+            [AccessTools.PropertySetter(typeof(RectTransform), nameof(RectTransform.anchoredPosition))] = Stub(nameof(StubSetSize)),
+            [AccessTools.PropertySetter(typeof(ContentSizeFitter), nameof(ContentSizeFitter.verticalFit))] = Stub(nameof(StubSetVerticalFit)),
             [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.text))] = Stub(nameof(StubSetText)),
             [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.fontSize))] = Stub(nameof(StubSetFontSize)),
             [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.alignment))] = Stub(nameof(StubSetAlignment)),
@@ -867,6 +869,7 @@ namespace ModMenus.Tests
         private static void StubSetRect(RectTransform rt, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax) { }
         private static void StubSetRectPivot(RectTransform rt, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax, Vector2 pivot) { }
         private static void StubSetSize(RectTransform rt, Vector2 size) { }
+        private static void StubSetVerticalFit(ContentSizeFitter fitter, ContentSizeFitter.FitMode value) => AccessTools.FieldRefAccess<ContentSizeFitter, ContentSizeFitter.FitMode>("m_VerticalFit")(fitter) = value;
 
         // Text and image setters store their value in the field the getter reads, so tests can read it back
         private static void StubSetText(TMP_Text text, string value) => AccessTools.FieldRefAccess<TMP_Text, string>("m_text")(text) = value;

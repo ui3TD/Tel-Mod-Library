@@ -308,11 +308,11 @@ namespace StaleTheaterShows.Tests
         }
 
         /// <summary>
-        /// Performances: everyone 0.5, casual and hardcore 1, male/female 1.05, adult 1.1, teen and young adult 1.3
+        /// Performances: everyone 0.6, casual and hardcore 1, male/female 1.05, adult 1.1, teen and young adult 1.3
         /// (vanilla 0.2, 0.3 casual, 1 hardcore, 0.75 gender, 0.75 adult and young adult, 0.5 teen).
         /// </summary>
         [Theory]
-        [InlineData(null, 50)]
+        [InlineData(null, 60)]
         [InlineData(casual, 100)]
         [InlineData(teen, 130)]
         [InlineData(adult, 110)]
@@ -329,7 +329,7 @@ namespace StaleTheaterShows.Tests
         /// Manzai takes 30% of the performance multiplier, for every audience.
         /// </summary>
         [Theory]
-        [InlineData(null, 15)]
+        [InlineData(null, 18)]
         [InlineData(hardcore, 30)]
         [InlineData(casual, 30)]
         [InlineData(teen, 39)]
@@ -348,7 +348,7 @@ namespace StaleTheaterShows.Tests
             TestGame.Reset(hard, patched: true);
             TestGame.ReleaseSingle(90);
             TestGame.SetFans(hardcore, 20000);
-            Assert.Equal(37, TestGame.Theater(_type.performance, null).GetNumberOfVisitors());
+            Assert.Equal(44, TestGame.Theater(_type.performance, null).GetNumberOfVisitors());
         }
 
         [Fact]

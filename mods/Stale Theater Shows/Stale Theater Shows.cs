@@ -22,8 +22,9 @@ namespace StaleTheater
         // hardcore share it can reach with optimal play (~92%) / the target's (casual ~90%, a gender ~85-88%, adult ~85%,
         // teen ~70%), so every fully built audience pays about the same. Young adults (~40-45%: nothing targets them)
         // get teen's value; full compensation would make an unbuilt young adult target the best pick.
-        // Everyone counts all fans, so it pays like an unbuilt even fanbase.
-        public const float THEATER_EVERYONE = 0.5f;
+        // Everyone is for not steering the fanbase: a little more than the best target of untargeted play
+        // (~42% hardcore, so casual at 0.58 of all fans), and well under any built audience.
+        public const float THEATER_EVERYONE = 0.6f;
         public const float THEATER_CASUAL = 1f;
         public const float THEATER_HC = 1f;
         public const float THEATER_GENDER = 1.05f;

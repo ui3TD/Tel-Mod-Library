@@ -95,10 +95,12 @@ namespace ModMenus
         public const string JSON_FIELD_MAX = "maxValue";
         public const string JSON_FIELD_IGNORE = "ignore";
         public const string JSON_FIELD_LIST = "itemIDList";
+        public const string JSON_FIELD_MAXLEN = "maxLength";
         public const string JSON_TYPE_TEXT = "text";
         public const string JSON_TYPE_DROPDOWN = "dropdown";
         public const string JSON_TYPE_SLIDER = "slider";
         public const string JSON_TYPE_CHECKBOX = "checkbox";
+        public const string JSON_TYPE_INPUT = "input";
 
 
         public const string BUTTON_OBJ_NAME = "ModMenuButton";
@@ -110,6 +112,7 @@ namespace ModMenus
         public const string MENU_SLIDER_OBJ_NAME = "ModMenuSlider";
         public const string MENU_CHECKBOX_OBJ_NAME = "ModMenuCheckbox";
         public const string MENU_DROPDOWN_OBJ_NAME = "ModMenuDropdown";
+        public const string MENU_INPUT_OBJ_NAME = "ModMenuInput";
         public const string MENUCONTENT_OBJ_NAME = "MenuContainer";
         public const string SCROLLHANDLE_OBJ_NAME = "VerticalHandle";
         public const string SCROLLBAR_OBJ_NAME = "VerticalScrollBar";
@@ -544,6 +547,14 @@ namespace ModMenus
         }
 
         /// <summary>
+        /// Reads a text field's default from its JSON item: defaultValue as written, or empty if it isn't set.
+        /// </summary>
+        public static string GetInputDefault(JSONNode item)
+        {
+            return string.IsNullOrEmpty(item[JSON_FIELD_DEF]) ? "" : (string)item[JSON_FIELD_DEF];
+        }
+
+        /// <summary>
         /// Adds menu items to the mod menu based on JSON configuration files.
         /// </summary>
         /// <param name="parentTransform">The parent transform to add menu items to.</param>
@@ -631,6 +642,14 @@ namespace ModMenus
 
                             AddMenuDropdown(id, label, itemList, defaultSelect, parentTransform, dropdownLayer);
                             break;
+
+                        case JSON_TYPE_INPUT:
+                            if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
+                                continue;
+
+                            id = item[JSON_FIELD_VARID];
+                            AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, parentTransform);
+                            break;
                     }
                 }
             }
@@ -713,6 +732,10 @@ namespace ModMenus
                         return false;
                     int choice = hasDefault ? item[JSON_FIELD_DEF].AsInt : 0;
                     value = FormatSetting(Mathf.Clamp(choice, 0, items.Count - 1));
+                    return true;
+
+                case JSON_TYPE_INPUT:
+                    value = GetInputDefault(item);
                     return true;
 
                 default:
@@ -964,6 +987,84 @@ namespace ModMenus
         }
 
         /// <summary>
+        /// The game's own text field to copy: the one story mode names the rival with. It uses the same
+        /// TextMeshPro text as the rest of the menu, unlike most of the game's text fields; the new game
+        /// popup's name fields look the same but aren't in the game scene.
+        /// </summary>
+        public static GameObject VanillaTextField()
+        {
+            GameObject vnPopups = Camera.main.GetComponent<mainScript>().Data.GetComponent<ActiveDialogueController>().VN_Popups;
+            return vnPopups.GetComponent<vn_popups>().Popup_RivalName.GetComponent<RivalName_Popup>().FirstName;
+        }
+
+        /// <summary>
+        /// Adds a text field element to the mod menu.
+        /// </summary>
+        /// <param name="varID">The variable ID associated with the text field.</param>
+        /// <param name="labelID">The label ID for the text field.</param>
+        /// <param name="def">The default text.</param>
+        /// <param name="maxLength">The most characters the player can type, or 0 for no limit.</param>
+        /// <param name="parentTransform">The parent transform to add the text field to.</param>
+        /// <returns>The GameObject representing the text field element.</returns>
+        public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, Transform parentTransform)
+        {
+            string labelText = Language.Data.TryGetValue(labelID, out string tx) ? tx : labelID;
+
+            // Define default value
+            string savedValue = variables.Get(varID) ?? def;
+
+            // Set up the row, which holds the label and, under it, the field's box, taller than a dropdown's
+            const float labelHeight = 20f;
+            const float boxHeight = 28f;
+            GameObject modInput = new(MENU_INPUT_OBJ_NAME + "_" + varID, typeof(RectTransform));
+            modInput.transform.SetParent(parentTransform, false);
+            RectTransform modInputRect = modInput.GetComponent<RectTransform>();
+            SetRectTransform(modInputRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            modInputRect.sizeDelta = new Vector2(400f, labelHeight + boxHeight);
+
+            GameObject modField = UnityEngine.Object.Instantiate(VanillaTextField(), modInput.transform);
+            modField.name = "Field";
+
+            // Tab would jump to the rival's last name field
+            UnityEngine.Object.DestroyImmediate(modField.GetComponent<InputField_Tab>());
+
+            // The field's label moves out of the field to the top of the row, so only the field takes clicks
+            Transform title = modField.transform.Find("Title");
+            title.SetParent(modInput.transform, false);
+            SetRectTransform((RectTransform)title, Vector2.up, Vector2.one, new Vector2(0, -labelHeight), Vector2.zero);
+            title.GetComponent<Lang_Button>().Constant = labelID;
+            title.GetComponent<TextMeshProUGUI>().text = labelText;
+
+            // The field is a white box under the label, the width of a dropdown's box, with the blue underline
+            // along its bottom. What's typed is dark, so it doesn't read as another label.
+            SetRectTransform((RectTransform)modField.transform, Vector2.up, Vector2.up, new Vector2(0, -labelHeight - boxHeight), new Vector2(300f, -labelHeight), Vector2.up);
+            modField.GetComponent<Image>().color = Color.white;
+            Transform textArea = modField.transform.Find("Container");
+            SetRectTransform((RectTransform)textArea, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            Transform text = textArea.Find("Text");
+            SetRectTransform((RectTransform)text, Vector2.zero, Vector2.one, new Vector2(8, 2), new Vector2(-8, 0));
+            TextMeshProUGUI textTMP = text.GetComponent<TextMeshProUGUI>();
+            textTMP.fontSize = TEXT_SIZE;
+            textTMP.color = mainScript.black32;
+            textTMP.alignment = TextAlignmentOptions.Left;
+            SetRectTransform((RectTransform)textArea.Find("Image"), Vector2.zero, Vector2.right, Vector2.zero, new Vector2(0, 2));
+
+            // Configure ModMenuItem
+            ModMenuItem modInputMenuItem = modInput.AddComponent<ModMenuItem>();
+            modInputMenuItem.varID = varID;
+            modInputMenuItem.defText = def;
+            modInputMenuItem.tempText = savedValue;
+
+            // Configure field events; vanilla's would rename the rival
+            TMP_InputField modInputField = modField.GetComponent<TMP_InputField>();
+            modInputField.characterLimit = maxLength;
+            modInputField.onValueChanged = new TMP_InputField.OnChangeEvent();
+            modInputField.onValueChanged.AddListener(modInputMenuItem.onUpdateInput);
+
+            return modInput;
+        }
+
+        /// <summary>
         /// Generates a scrollable area for the mod menu.
         /// </summary>
         /// <param name="parentTransform">The parent transform to add the scroll area to.</param>
@@ -1189,7 +1290,8 @@ namespace ModMenus
             {
                 foreach(ModMenuItem item in GetComponentsInChildren<ModMenuItem>())
                 {
-                    variables.Set(item.varID, FormatSetting(item.tempValue));
+                    // Only text fields have text; the other items save their number
+                    variables.Set(item.varID, item.tempText ?? FormatSetting(item.tempValue));
                 }
                 PopupManager.Close_();
             }
@@ -1214,6 +1316,7 @@ namespace ModMenus
                 }
                 checkboxText = GetComponent<Checkbox_Text>();
                 customDropdown = GetComponentInChildren<CustomDropdown>();
+                inputField = GetComponentInChildren<TMP_InputField>();
             }
 
             /// <summary>
@@ -1236,6 +1339,10 @@ namespace ModMenus
                     // after the menu reopens scrolled to the top
                     CloseList();
                     RenderDropdown();
+                }
+                if (inputField != null)
+                {
+                    RenderInput();
                 }
             }
 
@@ -1293,6 +1400,15 @@ namespace ModMenus
             }
 
             /// <summary>
+            /// Renders the current state of a text field item.
+            /// </summary>
+            public void RenderInput()
+            {
+                tempText = variables.Get(varID) ?? defText;
+                inputField.SetTextWithoutNotify(tempText);
+            }
+
+            /// <summary>
             /// Handles the click event for a checkbox item.
             /// </summary>
             public void onClickCheck()
@@ -1330,6 +1446,15 @@ namespace ModMenus
             }
 
             /// <summary>
+            /// Handles typing in a text field item.
+            /// </summary>
+            /// <param name="val">The field's text.</param>
+            public void onUpdateInput(string val)
+            {
+                tempText = val;
+            }
+
+            /// <summary>
             /// Retrieves the saved float value for the item.
             /// </summary>
             /// <returns>The saved float value or the default value if not found.</returns>
@@ -1350,11 +1475,18 @@ namespace ModMenus
             public float tempValue;
             public float defValue;
 
+            /// <summary>
+            /// A text field's text, which Apply saves, and its default. Null for every other item.
+            /// </summary>
+            public string tempText;
+            public string defText;
+
             private Settings_Slider settingsSlider;
             private Slider slider;
             private TextMeshProUGUI sliderText;
             private Checkbox_Text checkboxText;
             private CustomDropdown customDropdown;
+            private TMP_InputField inputField;
         }
     }
 }

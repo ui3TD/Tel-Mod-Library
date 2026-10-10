@@ -857,6 +857,65 @@ namespace UnofficialPatch
         }
     }
 
+    // Edgy and Artsy PVs now change sales and new fans. The game checks the wrong fan field for them
+    // (gender == teen, hardcoreness == female, ...), which is never true, so they did nothing on success or
+    // failure. Compare the field each fan type belongs to, the targets the marketing spinner shows.
+    [HarmonyPatch(typeof(singles), nameof(singles.ValueAfterMarketing))]
+    public class singles_ValueAfterMarketing
+    {
+        // Edgy and Artsy each check 2 fields on success and 2 on failure.
+        public const int ExpectedFixes = 8;
+
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            FieldInfo gender = AccessTools.Field(typeof(resources._fan), nameof(resources._fan.gender));
+            FieldInfo hardcoreness = AccessTools.Field(typeof(resources._fan), nameof(resources._fan.hardcoreness));
+            FieldInfo age = AccessTools.Field(typeof(resources._fan), nameof(resources._fan.age));
+
+            List<CodeInstruction> codes = instructions.ToList();
+            List<int> fixes = new List<int>();
+            for (int i = 0; i < codes.Count - 1; i++)
+            {
+                if (codes[i].opcode != OpCodes.Ldfld || !(codes[i].operand is FieldInfo field) || (field != gender && field != hardcoreness))
+                    continue;
+
+                FieldInfo owner = OwnerOfComparedType(codes[i + 1], gender, hardcoreness, age);
+                if (owner != null && owner != field)
+                    fixes.Add(i);
+            }
+
+            if (fixes.Count == 0)
+            {
+                // Already compares the right fields: patched twice, or the game fixed it.
+                return codes;
+            }
+            if (fixes.Count != ExpectedFixes)
+            {
+                PatchLog.WarnOncePerPatch<singles_ValueAfterMarketing>("found " + fixes.Count + " wrong fan fields, expected " + ExpectedFixes + "; left unchanged.");
+                return codes;
+            }
+
+            foreach (int i in fixes)
+                codes[i].operand = OwnerOfComparedType(codes[i + 1], gender, hardcoreness, age);
+            return codes;
+        }
+
+        // The fan field holding the fan type an instruction compares against: ldc.i4 <type>, or brtrue/brfalse
+        // for male (0). Null if it doesn't compare against a fan type.
+        private static FieldInfo OwnerOfComparedType(CodeInstruction compare, FieldInfo gender, FieldInfo hardcoreness, FieldInfo age)
+        {
+            if (IlHelpers.IsBranchTrue(compare) || compare.opcode == OpCodes.Brfalse || compare.opcode == OpCodes.Brfalse_S)
+                return gender;
+            if (IlHelpers.IsLdcI4(compare, (int)resources.fanType.male) || IlHelpers.IsLdcI4(compare, (int)resources.fanType.female))
+                return gender;
+            if (IlHelpers.IsLdcI4(compare, (int)resources.fanType.casual) || IlHelpers.IsLdcI4(compare, (int)resources.fanType.hardcore))
+                return hardcoreness;
+            if (IlHelpers.IsLdcI4(compare, (int)resources.fanType.teen) || IlHelpers.IsLdcI4(compare, (int)resources.fanType.youngAdult) || IlHelpers.IsLdcI4(compare, (int)resources.fanType.adult))
+                return age;
+            return null;
+        }
+    }
+
     // Fixed a freeze when generating some platinum and gold idols (auditions, Aya, hiring a rival).
     // The stat roll reserves up to 3 stats, then spends the rest of the points on the other stats, up to 99 each.
     // When the points can't fit (about 1 in 12 platinum rolls), the spending loop never ends.

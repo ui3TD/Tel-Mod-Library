@@ -7,7 +7,7 @@ Rebalances the theater. Theater shows go stale over time. Release a single every
 - Theater show sales and subscriptions start to decay after 30 days since the last single due to staleness, levelling off at 10% of normal. It's not so severe in easy/normal mode, but more severe in Unfair.
 - Theater subscription revenue decreased by 70% in Normal mode and 95% in Unfair mode. Most of the revenue goes to the streaming service provider.
 - Theater attendance for Manzais is 30% of a performance's for every audience, so they earn about the same per stamina.
-- Every theater target pays once you build that audience. Attendance per targeted fan depends on how hard the audience is to build: casual 0.88, hardcore 1, a gender 1.07, an age group 1.25. 'Everyone' draws 0.5 per fan, like an unbuilt fanbase.
+- Every theater target pays once you build that audience. Attendance per targeted fan depends on how hard singles and shows make that audience to build: hardcore and casual 1, a gender 1.05, adult 1.1, teen and young adult 1.3. 'Everyone' draws 0.5 per fan, like an unbuilt fanbase.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 

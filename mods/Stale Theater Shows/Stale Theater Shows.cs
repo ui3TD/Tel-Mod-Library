@@ -18,14 +18,18 @@ namespace StaleTheater
         public const double STREAM_PENALTY_HARD = 0.95;
         public const double STREAM_PENALTY_NORMAL = 0.7;
 
-        // Attendance per targeted fan: 0.75 / the share of fans that audience can reach with optimal play
-        // (casual 85%, hardcore 75%, one gender 70%, one age group 60%), so every fully built audience pays the same.
+        // Attendance per targeted fan scales with how hard single and show appeal make that audience to build: the
+        // hardcore share it can reach with optimal play (~92%) / the target's (casual ~90%, a gender ~85-88%, adult ~85%,
+        // teen ~70%), so every fully built audience pays about the same. Young adults (~40-45%: nothing targets them)
+        // get teen's value; full compensation would make an unbuilt young adult target the best pick.
         // Everyone counts all fans, so it pays like an unbuilt even fanbase.
         public const float THEATER_EVERYONE = 0.5f;
-        public const float THEATER_CASUAL = 0.88f;
+        public const float THEATER_CASUAL = 1f;
         public const float THEATER_HC = 1f;
-        public const float THEATER_GENDER = 1.07f;
-        public const float THEATER_AGE = 1.25f;
+        public const float THEATER_GENDER = 1.05f;
+        public const float THEATER_ADULT = 1.1f;
+        public const float THEATER_TEEN = 1.3f;
+        public const float THEATER_YA = 1.3f;
 
         public const float MANZAI_STAM_COEFF = 0.3f;
     }
@@ -147,7 +151,9 @@ namespace StaleTheater
                 {
                     resources.fanType.casual => THEATER_CASUAL,
                     resources.fanType.hardcore => THEATER_HC,
-                    resources.fanType.adult or resources.fanType.youngAdult or resources.fanType.teen => THEATER_AGE,
+                    resources.fanType.adult => THEATER_ADULT,
+                    resources.fanType.youngAdult => THEATER_YA,
+                    resources.fanType.teen => THEATER_TEEN,
                     _ => THEATER_GENDER
                 };
             }

@@ -308,17 +308,17 @@ namespace StaleTheaterShows.Tests
         }
 
         /// <summary>
-        /// Performances: everyone 0.5, casual 0.88, hardcore 1, male/female 1.07, any age group 1.25
-        /// (vanilla 0.2, 0.3, 1, 0.75, and 0.5 teen / 0.75 adult and young adult).
+        /// Performances: everyone 0.5, casual and hardcore 1, male/female 1.05, adult 1.1, teen and young adult 1.3
+        /// (vanilla 0.2, 0.3 casual, 1 hardcore, 0.75 gender, 0.75 adult and young adult, 0.5 teen).
         /// </summary>
         [Theory]
         [InlineData(null, 50)]
-        [InlineData(casual, 88)]
-        [InlineData(teen, 125)]
-        [InlineData(adult, 125)]
-        [InlineData(youngAdult, 125)]
-        [InlineData(male, 107)]
-        [InlineData(female, 107)]
+        [InlineData(casual, 100)]
+        [InlineData(teen, 130)]
+        [InlineData(adult, 110)]
+        [InlineData(youngAdult, 130)]
+        [InlineData(male, 105)]
+        [InlineData(female, 105)]
         [InlineData(hardcore, 100)]
         public void Performance_UsesModMultipliers(resources.fanType? target, int expected)
         {
@@ -331,10 +331,10 @@ namespace StaleTheaterShows.Tests
         [Theory]
         [InlineData(null, 15)]
         [InlineData(hardcore, 30)]
-        [InlineData(casual, 26)]
-        [InlineData(teen, 38)]
-        [InlineData(adult, 38)]
-        [InlineData(youngAdult, 38)]
+        [InlineData(casual, 30)]
+        [InlineData(teen, 39)]
+        [InlineData(adult, 33)]
+        [InlineData(youngAdult, 39)]
         [InlineData(male, 32)]
         [InlineData(female, 32)]
         public void Manzai_UsesModMultipliers(resources.fanType? target, int expected)

@@ -326,17 +326,17 @@ namespace StaleTheaterShows.Tests
         }
 
         /// <summary>
-        /// Manzai takes 30% of the performance multiplier, for every audience.
+        /// Manzai takes 18% of the performance multiplier, for every audience.
         /// </summary>
         [Theory]
-        [InlineData(null, 18)]
-        [InlineData(hardcore, 30)]
-        [InlineData(casual, 30)]
-        [InlineData(teen, 39)]
-        [InlineData(adult, 33)]
-        [InlineData(youngAdult, 39)]
-        [InlineData(male, 32)]
-        [InlineData(female, 32)]
+        [InlineData(null, 11)]
+        [InlineData(hardcore, 18)]
+        [InlineData(casual, 18)]
+        [InlineData(teen, 23)]
+        [InlineData(adult, 20)]
+        [InlineData(youngAdult, 23)]
+        [InlineData(male, 19)]
+        [InlineData(female, 19)]
         public void Manzai_UsesModMultipliers(resources.fanType? target, int expected)
         {
             Assert.Equal(expected, Visitors(_type.manzai, target));

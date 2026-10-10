@@ -32,7 +32,9 @@ namespace StaleTheater
         public const float THEATER_TEEN = 1.3f;
         public const float THEATER_YA = 1.3f;
 
-        public const float MANZAI_STAM_COEFF = 0.3f;
+        // Manzai is for saving stamina and training funny/smart: just below parity with performances late, where
+        // full houses favour the cheaper show (parity ~0.19 for a built audience), and about half of them early.
+        public const float MANZAI_STAM_COEFF = 0.18f;
     }
 
     // Theater show sales and subscriptions start to decay after 30 days, levelling off at 10%

@@ -313,11 +313,19 @@ namespace FanAttrition
             bool equally = fame < 1f;
 
             ExtensionMethods.Shuffle(idols);
+            if (idols.Count == 0)
+                return;
+
+            // The most famous idol goes last and takes what rounding left over, so the whole loss is taken
+            // where an extra fan or two is the smallest share of her fans
+            data_girls.girls mostFamous = idols.OrderByDescending(girl => girl.GetFamePoints()).First();
+            idols.Remove(mostFamous);
+            idols.Add(mostFamous);
+
             long taken = 0;
             for (int i = 0; i < idols.Count && taken < loss; i++)
             {
                 float weight = equally ? 1f / idols.Count : idols[i].GetFamePoints() / fame;
-                // The last idol takes what rounding left over, so the whole loss is taken
                 long share = i == idols.Count - 1 ? loss - taken : Math.Min((long)Mathf.Round(loss * weight), loss - taken);
                 idols[i].AddFans(-share);
                 taken += share;

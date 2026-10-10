@@ -474,8 +474,7 @@ namespace FanAttrition.Tests
         }
 
         /// <summary>
-        /// The idols are taken in the game's shuffled order; the split by fame is the same in any order,
-        /// apart from which idol takes the rounding remainder.
+        /// The idols are taken in the game's shuffled order; the split is the same in any order.
         /// </summary>
         [Fact]
         public void Churn_IsSplitByFame_InAnyOrder()
@@ -483,11 +482,28 @@ namespace FanAttrition.Tests
             data_girls.girls small = IdolWithFans(100f, 100000);
             data_girls.girls mid = IdolWithFans(200f, 100000);
             data_girls.girls star = IdolWithFans(700f, 100000);
-            Seams.Range = (_, max) => max - 1; // reverses the order: star, mid, small
+            Seams.Range = (_, max) => max - 1; // shuffles the star to the front
 
             Utility.DailyFanChurn();
 
             Assert.Equal(new long[] { 100000 - 15, 100000 - 31, 100000 - 108 }, new[] { Fans(small), Fans(mid), Fans(star) });
+        }
+
+        /// <summary>
+        /// The most famous idol takes the rounding remainder, where it's the smallest share of her fans, wherever
+        /// the shuffle puts her. 154 churn at fame 200 / 100 / 100: the two smaller idols' 38.5 rounds to 38 each
+        /// (Unity rounds halves to even), so the star takes 78, not her own 77.
+        /// </summary>
+        [Fact]
+        public void Churn_RoundingRemainder_GoesToTheMostFamous()
+        {
+            data_girls.girls star = IdolWithFans(200f, 100000);
+            data_girls.girls first = IdolWithFans(100f, 100000);
+            data_girls.girls second = IdolWithFans(100f, 100000);
+
+            Utility.DailyFanChurn();
+
+            Assert.Equal(new long[] { 100000 - 78, 100000 - 38, 100000 - 38 }, new[] { Fans(star), Fans(first), Fans(second) });
         }
 
         /// <summary>

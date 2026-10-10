@@ -7,26 +7,37 @@ namespace ConcertRebalance.Tests
     {
         private const float Vanilla = 0.123f;
 
+        // The game's straight line, which it uses for prices from 3,000 up to where it leaves it
+        private static float GameLine(int priceFactor) => (-0.0007142857f * priceFactor + 12.142858f) / 100f;
+
         [Theory]
         [InlineData(1000, false)]
         [InlineData(3000, false)]
-        [InlineData(10000, false)]
+        [InlineData(9000, false)]
         [InlineData(1000, true)]
-        [InlineData(2000, true)]   // ×3 = 6000, at the hard threshold
-        public void AtOrBelowThreshold_KeepsVanilla(int price, bool hard)
+        [InlineData(2000, true)]   // ×3 = 6000, where the game leaves its straight line on Unfair
+        public void WhereTheGameIsOnItsLine_KeepsVanilla(int price, bool hard)
         {
             Assert.Equal(Vanilla, AdjustAttendance(Vanilla, price, hard));
         }
 
         [Theory]
-        // Vanilla at the threshold is (-0.0007142857 * t + 12.142858) / 100:
-        // 0.0500 at 10000 (normal), 0.0786 at 6000 (hard, price ×3).
-        [InlineData(10001, false, 0.0500f)]
-        [InlineData(2001, true, 0.0786f)]
-        public void JustAboveThreshold_ContinuesFromVanilla(int price, bool hard, float vanillaAtThreshold)
+        [InlineData(2100)]
+        [InlineData(2500)]
+        [InlineData(3000)]         // ×3 = 9000, the threshold
+        public void OnUnfair_ContinuesTheGamesLineUpToTheThreshold(int price)
+        {
+            Assert.Equal(GameLine(price * 3), AdjustAttendance(Vanilla, price, true), 5);
+        }
+
+        [Theory]
+        [InlineData(9001, false)]
+        [InlineData(3001, true)]   // ×3 = 9003
+        public void JustAboveThreshold_StepsDownTo543Percent(int price, bool hard)
         {
             float adjusted = AdjustAttendance(Vanilla, price, hard);
-            Assert.InRange(adjusted, vanillaAtThreshold - 0.001f, vanillaAtThreshold + 0.001f);
+            Assert.InRange(adjusted, 0.0541f, 0.0543f);
+            Assert.True(adjusted < GameLine(PRICE_THRESHOLD), "a higher price must never sell more tickets");
         }
 
         [Theory]
@@ -35,7 +46,7 @@ namespace ConcertRebalance.Tests
         public void AboveThreshold_FallsAsPriceRises(bool hard)
         {
             float previous = float.MaxValue;
-            for (int price = 11000; price <= 50000; price += 1000)
+            for (int price = 9100; price <= 100000; price += 900)
             {
                 float current = AdjustAttendance(Vanilla, price, hard);
                 Assert.True(current < previous, $"price {price}: {current} >= {previous}");
@@ -45,54 +56,21 @@ namespace ConcertRebalance.Tests
         }
 
         [Fact]
-        public void AboveThreshold_HalvesRoughlyEvery7000Yen()
+        public void AboveThreshold_HalvesRoughlyEvery8700Yen()
         {
-            // 1.0001^-6931 ≈ 0.5
-            float at = AdjustAttendance(Vanilla, 10000 + 1, false);
-            float later = AdjustAttendance(Vanilla, 10000 + 1 + 6931, false);
+            // 1.00008^-8665 ≈ 0.5
+            float at = AdjustAttendance(Vanilla, PRICE_THRESHOLD + 1, false);
+            float later = AdjustAttendance(Vanilla, PRICE_THRESHOLD + 1 + 8665, false);
             Assert.InRange(later / at, 0.49f, 0.51f);
         }
-    }
-
-    public class ClubHypeTests
-    {
-        [Theory]
-        [InlineData(100f, 1f)]
-        [InlineData(150f, 1.1875f)]
-        [InlineData(200f, 1.25f)]
-        public void Multiplier_KnownPoints(float hype, float expected)
-        {
-            Assert.Equal(expected, HypeMultiplierAbove100(hype), 4);
-        }
 
         [Fact]
-        public void Multiplier_RisesUpToTheGameCapOf200()
+        public void AtTheHighestPrice_AlmostNobodyBuys()
         {
-            float previous = HypeMultiplierAbove100(100f);
-            for (float hype = 105f; hype <= 200f; hype += 5f)
-            {
-                float current = HypeMultiplierAbove100(hype);
-                Assert.True(current > previous, $"hype {hype}: {current} <= {previous}");
-                previous = current;
-            }
-        }
-
-        [Fact]
-        public void Multiplier_IsBelowVanillaClubLinearHype()
-        {
-            // Vanilla pays clubs Hype / 100; the mod's whole point is to pay less above 100.
-            for (float hype = 105f; hype <= 200f; hype += 5f)
-                Assert.True(HypeMultiplierAbove100(hype) < hype / 100f);
-        }
-
-        [Theory]
-        [InlineData(500L, 5000, 200f, false, 3125000L)]
-        [InlineData(500L, 5000, 200f, true, 3281250L)]
-        [InlineData(500L, 5000, 150f, false, 2968750L)]
-        [InlineData(0L, 5000, 200f, false, 0L)]
-        public void Revenue_KnownValues(long audience, int price, float hype, bool fuji, long expected)
-        {
-            Assert.Equal(expected, ClubRevenue(audience, price, hype, fuji));
+            // The game's own high-price curve never falls below 0.86%, which made ¥100,000 tickets the best price;
+            // the mod's ends below a tenth of that
+            Assert.True(AdjustAttendance(Vanilla, 100000, true) < 0.00086f);
+            Assert.True(AdjustAttendance(Vanilla, 100000, false) < 0.00086f);
         }
     }
 

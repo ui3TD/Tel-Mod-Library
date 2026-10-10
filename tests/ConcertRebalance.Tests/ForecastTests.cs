@@ -6,7 +6,7 @@ using _venue = SEvent_Concerts._venue;
 namespace ConcertRebalance.Tests
 {
     /// <summary>
-    /// Concert Rebalance changes what clubs pay above 100% hype, so it must change the estimate the same way.
+    /// Clubs keep the game's own hype payout (linear, ×2.0 at 200%), which the game's estimate already matches.
     /// </summary>
     public class ClubForecastTests
     {
@@ -16,20 +16,38 @@ namespace ConcertRebalance.Tests
         [InlineData(120f, false)]
         [InlineData(150f, false)]
         [InlineData(200f, false)]
-        [InlineData(150f, true)]
-        [InlineData(200f, true)]
         public void ClubForecast_MatchesPayout(float hype, bool fuji)
         {
+            // Without the FUJI ticket deal: the game's estimate leaves out its +5% at every venue, which Unofficial
+            // Patch fixes (WithUnofficialPatchTests)
             ConcertGame.Reset(fuji);
             ConcertGame.AssertForecastMatchesPayout(ConcertGame.Concert(_venue.club, hype));
         }
 
         [Fact]
-        public void ClubForecast_UsesTheReducedMultiplier()
+        public void ClubForecast_HasTheFullHypeBonus()
         {
-            // 500 tickets × ¥5,000 at 200% hype: ×1.25 (¥3,125,000), not the game's linear ×2.0 (¥5,000,000)
+            // 500 tickets × ¥5,000 at 200% hype: the game's linear ×2.0
             ConcertGame.Reset(false);
-            Assert.Equal(3_125_000L, ConcertGame.Concert(_venue.club, 200f).ProjectedValues.GetRevenue());
+            Assert.Equal(5_000_000L, ConcertGame.Concert(_venue.club, 200f).ProjectedValues.GetRevenue());
+        }
+
+        [Fact]
+        public void ClubPayout_HasTheFullHypeBonus()
+        {
+            ConcertGame.Reset(false);
+            Assert.Equal(5_000_000L, ConcertGame.Concert(_venue.club, 200f).ProjectedValues.Actual_Revenue);
+        }
+
+        [Theory]
+        [InlineData(_venue.concertHall)]
+        [InlineData(_venue.tokyoColiseum)]
+        public void OtherVenuesPayout_KeepsTheGamesCurve(_venue venue)
+        {
+            // The game's curve at 200% hype: ×1.25
+            ConcertGame.Reset(false);
+            SEvent_Concerts._concert concert = ConcertGame.Concert(venue, 200f);
+            Assert.Equal((long)UnityEngine.Mathf.Round(concert.ProjectedValues.Actual_Audience * 5000f * 1.25f), concert.ProjectedValues.Actual_Revenue);
         }
 
         [Theory]

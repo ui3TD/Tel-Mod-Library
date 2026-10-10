@@ -7,7 +7,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace InGameTests.TelMods
@@ -184,15 +187,15 @@ namespace InGameTests.TelMods
         private const string TestVarPrefix = "ModMenusTest_";
 
         /// <summary>
-        /// Installs a temporary mod with <see cref="TestMenu"/> and makes the next click on Mod Settings build
-        /// the menu afresh. Disposing removes the mod, its settings, and the menu built with it.
+        /// Installs a temporary mod with this menu (<see cref="TestMenu"/> if none) and makes the next click on Mod
+        /// Settings build the menu afresh. Disposing removes the mod, its settings, and the menu built with it.
         /// </summary>
-        private static IDisposable AddTestMod()
+        private static IDisposable AddTestMod(string menuJson = TestMenu)
         {
             string dir = Path.Combine(Path.GetTempPath(), "ModMenusInGameTest");
             string menuDir = Path.Combine(Path.Combine(dir, "JSON"), "Mod Menu");
             Directory.CreateDirectory(menuDir);
-            File.WriteAllText(Path.Combine(menuDir, "modmenu.json"), TestMenu);
+            File.WriteAllText(Path.Combine(menuDir, "modmenu.json"), menuJson);
             var mod = new Mods._mod { ModName = "com.test.modmenustestmenu", Title = TestModTitle, Path = dir };
             ForgetMenuPopup();
             Mods._Mods.Add(mod);
@@ -366,6 +369,181 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
+        /// A menu with text fields: one with a default, one limited to 5 characters, and a checkbox under them.
+        /// </summary>
+        private const string InputMenu = @"[
+            { ""type"": ""text"", ""labelID"": ""Text fields"" },
+            { ""type"": ""input"", ""varID"": ""ModMenusTest_Name"", ""labelID"": ""Agency motto"", ""defaultValue"": ""Hello"" },
+            { ""type"": ""input"", ""varID"": ""ModMenusTest_Short"", ""labelID"": ""Five characters at most"", ""maxLength"": 5 },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check1"", ""labelID"": ""Checkbox"" }
+        ]";
+
+        /// <summary>
+        /// A text field is a copy of the game's rival name field, cut loose from the rival popup: typing in it
+        /// changes only the setting, Tab doesn't jump to the rival's fields, and the game's hotkeys are off
+        /// while the menu is open. It shows its default, takes typing (Japanese too) up to its limit, is what a
+        /// click on it hits, and fits its row. Apply saves the text as typed; Cancel throws it away.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator TextFieldsTakeTypingAndSave(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out _))
+                yield break;
+
+            using (AddTestMod(InputMenu))
+            {
+                var opened = new List<GameObject>();
+                yield return OpenModSettings(ctx, opened);
+                if (opened.Count == 0)
+                {
+                    Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                    yield break;
+                }
+                GameObject popup = opened[0];
+                yield return new WaitForSecondsRealtime(0.5f);
+                Canvas.ForceUpdateCanvases();
+
+                Transform menu = Find(popup.transform, "MenuContainer").First();
+                RectTransform nameRow = (RectTransform)menu.Find("ModMenuInput_ModMenusTest_Name");
+                RectTransform shortRow = (RectTransform)menu.Find("ModMenuInput_ModMenusTest_Short");
+                if (nameRow == null || shortRow == null)
+                {
+                    ctx.Fail("The text field rows weren't built: " + string.Join(", ", menu.Cast<Transform>().Select(t => t.name)));
+                    yield return Game.CloseAllPopups(ctx);
+                    Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                    yield break;
+                }
+                TMP_InputField name = nameRow.GetComponentInChildren<TMP_InputField>(true);
+                TMP_InputField limited = shortRow.GetComponentInChildren<TMP_InputField>(true);
+
+                // Cut loose from the rival popup
+                GameObject rivalPopup = Game.Main.Data.GetComponent<ActiveDialogueController>().VN_Popups.GetComponent<vn_popups>().Popup_RivalName;
+                foreach (TMP_InputField field in new[] { name, limited })
+                {
+                    ctx.Assert(field.GetComponent<InputField_Tab>() == null, field.transform.parent.name + " still jumps to the rival's fields on Tab");
+                    var events = new UnityEventBase[] { field.onValueChanged, field.onEndEdit, field.onSubmit, field.onSelect, field.onDeselect };
+                    foreach (UnityEventBase unityEvent in events)
+                    {
+                        for (int i = 0; i < unityEvent.GetPersistentEventCount(); i++)
+                            ctx.Fail(field.transform.parent.name + " still calls " + unityEvent.GetPersistentTarget(i) + "." + unityEvent.GetPersistentMethodName(i));
+                    }
+                }
+                ctx.Assert(!rivalPopup.activeSelf, "Building the menu opened the rival name popup");
+
+                // The label, the default and the limit
+                Transform label = nameRow.Find("Title");
+                ctx.Assert(label != null && label.GetComponent<TextMeshProUGUI>().text == "Agency motto", "The text field's label isn't its labelID");
+                ctx.Assert(name.text == "Hello", "The text field shows '" + name.text + "', expected its default 'Hello'");
+                ctx.Assert(limited.text == "" && limited.characterLimit == 5, "The limited field shows '" + limited.text + "' with limit " + limited.characterLimit + ", expected '' and 5");
+
+                // What's typed doesn't look like a label: it's another colour, in an opaque box
+                if (label != null)
+                {
+                    Color labelColour = label.GetComponent<TextMeshProUGUI>().color;
+                    ctx.Assert(name.textComponent.color != labelColour, "The typed text is the label's colour " + labelColour);
+                }
+                ctx.Assert(name.GetComponent<Image>().color.a > 0.99f, "The text field has no box behind it: " + name.GetComponent<Image>().color);
+
+                // Each field is inside its row, as drawn, and is what a click on it hits
+                ScrollIntoView(ctx, shortRow);
+                yield return null;
+                foreach (RectTransform row in new[] { nameRow, shortRow })
+                    AssertFieldFitsAndTakesClicks(ctx, row);
+                var corners = new Vector3[4];
+                float previousBottom = float.MaxValue;
+                foreach (RectTransform row in menu.Cast<Transform>().Cast<RectTransform>())
+                {
+                    row.GetWorldCorners(corners);
+                    ctx.Assert(corners[1].y <= previousBottom + 0.01f, row.name + " overlaps the row above it");
+                    previousBottom = corners[0].y;
+                }
+
+                string shots = Path.Combine(Path.GetTempPath(), "ModMenusInputScreens");
+                if (Directory.Exists(shots))
+                    Directory.Delete(shots, true);
+                Directory.CreateDirectory(shots);
+                ctx.Record("screenshots", shots);
+                yield return Screenshot(Path.Combine(shots, "1-defaults.png"));
+
+                // Type as a player does: click the field, then each key reaches it as a keyboard event
+                yield return TypeInto(name, null, " スター☆");
+                ctx.Assert(name.isFocused, "Clicking the text field didn't give it the keyboard");
+                ctx.Assert(mainScript.IsBlockingHotkeys(), "The game's hotkeys are on while typing in the mod menu");
+                yield return TypeInto(limited, null, "abcdefg");
+                ctx.Assert(name.text == "Hello スター☆", "After typing, the field shows '" + name.text + "'");
+                ctx.Assert(limited.text == "abcde", "Typing 7 characters into the 5 character field gave '" + limited.text + "'");
+                Component nameItem = nameRow.GetComponent(AccessTools.TypeByName("ModMenus.ModMenusUtils+ModMenuItem"));
+                ctx.Assert(Traverse.Create(nameItem).Field("tempText").GetValue<string>() == "Hello スター☆", "Typing didn't reach the setting");
+                ctx.Assert(variables.Get("ModMenusTest_Name") != name.text, "Typing saved the setting before Apply");
+                yield return new WaitForSecondsRealtime(0.3f);
+                Canvas.ForceUpdateCanvases();
+                AssertFieldFitsAndTakesClicks(ctx, nameRow);
+                yield return Screenshot(Path.Combine(shots, "2-typed.png"));
+
+                // Cancel throws the typing away
+                yield return Game.CloseAllPopups(ctx);
+                var reopened = new List<GameObject>();
+                yield return OpenModSettings(ctx, reopened);
+                yield return new WaitForSecondsRealtime(0.5f);
+                ctx.Assert(name.text == "Hello" && limited.text == "", "After Cancel the fields show '" + name.text + "' and '" + limited.text + "'");
+
+                // Apply saves the text as typed, and the menu reopens showing it
+                yield return TypeInto(name, "Bye", "!");
+                Type managerType = AccessTools.TypeByName("ModMenus.ModMenusUtils+ModMenuManager");
+                AccessTools.Method(managerType, "OnApply").Invoke(popup.GetComponentInChildren(managerType, true), null);
+                ctx.Assert(variables.Get("ModMenusTest_Name") == "Bye!", "Apply saved '" + variables.Get("ModMenusTest_Name") + "', expected 'Bye!'");
+                ctx.Assert(variables.Get("ModMenusTest_Short") == "", "Apply saved the empty field as '" + (variables.Get("ModMenusTest_Short") ?? "nothing") + "'");
+                yield return Game.CloseAllPopups(ctx);
+                reopened.Clear();
+                yield return OpenModSettings(ctx, reopened);
+                yield return new WaitForSecondsRealtime(0.5f);
+                ctx.Assert(name.text == "Bye!", "After Apply the menu reopened showing '" + name.text + "'");
+
+                yield return Game.CloseAllPopups(ctx);
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+            }
+        }
+
+        /// <summary>
+        /// A text field row draws inside its row, and its field is big enough to click and is what a click on it hits.
+        /// </summary>
+        private static void AssertFieldFitsAndTakesClicks(TestContext ctx, RectTransform row)
+        {
+            RectTransform field = (RectTransform)row.Find("Field");
+            ctx.Record(row.name + "Drawn", DrawnRect(row) + " row " + ScreenRect(row) + " field " + ScreenRect(field));
+            ctx.Assert(Inside(DrawnRect(row), ScreenRect(row)), row.name + " draws outside its row: " + DrawnRect(row) + ", the row is " + ScreenRect(row));
+            ctx.Assert(ScreenRect(field).height >= 15 && ScreenRect(field).width >= 100, row.name + "'s field is too small to click: " + ScreenRect(field));
+            GameObject hit = TopHit(ScreenRect(field).center);
+            ctx.Assert(hit != null && hit.transform.IsChildOf(field), row.name + ": a click on the field would hit " + (hit != null ? hit.name : "nothing"));
+        }
+
+        /// <summary>
+        /// Clicks a text field, replaces its text if asked, then types each character as a key press at the end.
+        /// </summary>
+        private static IEnumerator TypeInto(TMP_InputField field, string replaceWith, string typed)
+        {
+            Click(field.gameObject);
+            yield return null;
+            yield return null;
+            if (replaceWith != null)
+                field.text = replaceWith;
+            field.MoveTextEnd(false);
+            foreach (char c in typed)
+                field.ProcessEvent(new Event { type = EventType.KeyDown, character = c });
+            field.ForceLabelUpdate();
+            yield return null;
+        }
+
+        private static void Click(GameObject target)
+        {
+            EventSystem system = EventSystem.current;
+            var data = new PointerEventData(system) { button = PointerEventData.InputButton.Left, position = ScreenRect((RectTransform)target.transform).center };
+            ExecuteEvents.Execute(target, data, ExecuteEvents.pointerDownHandler);
+            ExecuteEvents.Execute(target, data, ExecuteEvents.pointerUpHandler);
+            ExecuteEvents.Execute(target, data, ExecuteEvents.pointerClickHandler);
+        }
+
+        /// <summary>
         /// Opens a dropdown as a click on it does, checks that it moved to the top layer and that each of its
         /// visible items is on screen and is the first thing a click there hits, takes a screenshot, then picks
         /// an item as clicking it does and checks the dropdown closed back into its row showing that item.
@@ -379,14 +557,7 @@ namespace InGameTests.TelMods
                 ctx.Fail("No dropdown " + varID);
                 yield break;
             }
-            // A player scrolls a row into view before clicking it
-            ScrollRect scroll = row.GetComponentInParent<ScrollRect>();
-            for (float position = 1f; position >= 0f && !Inside(ScreenRect((RectTransform)row), ScreenRect(scroll.viewport)); position -= 0.01f)
-            {
-                scroll.verticalNormalizedPosition = position;
-                Canvas.ForceUpdateCanvases();
-            }
-            ctx.Assert(Inside(ScreenRect((RectTransform)row), ScreenRect(scroll.viewport)), varID + " can't be scrolled into view");
+            ScrollIntoView(ctx, (RectTransform)row);
             yield return null;
 
             int index = dropdown.transform.GetSiblingIndex();
@@ -427,6 +598,20 @@ namespace InGameTests.TelMods
             Component item2 = row.GetComponent(AccessTools.TypeByName("ModMenus.ModMenusUtils+ModMenuItem"));
             float value = Traverse.Create(item2).Field("tempValue").GetValue<float>();
             ctx.Assert(value == pick, varID + " would save " + value + ", expected " + pick);
+        }
+
+        /// <summary>
+        /// Scrolls the menu down from the top until the row is in view, as a player does before clicking it.
+        /// </summary>
+        private static void ScrollIntoView(TestContext ctx, RectTransform row)
+        {
+            ScrollRect scroll = row.GetComponentInParent<ScrollRect>();
+            for (float position = 1f; position >= 0f && !Inside(ScreenRect(row), ScreenRect(scroll.viewport)); position -= 0.01f)
+            {
+                scroll.verticalNormalizedPosition = position;
+                Canvas.ForceUpdateCanvases();
+            }
+            ctx.Assert(Inside(ScreenRect(row), ScreenRect(scroll.viewport)), row.name + " can't be scrolled into view");
         }
 
         private static Rect ScreenRect(RectTransform rect)
@@ -518,6 +703,7 @@ namespace InGameTests.TelMods
                         "slider" => "ModMenuSlider_",
                         "checkbox" => "ModMenuCheckbox_",
                         "dropdown" => "ModMenuDropdown_",
+                        "input" => "ModMenuInput_",
                         _ => null,
                     };
                     if (prefix != null)

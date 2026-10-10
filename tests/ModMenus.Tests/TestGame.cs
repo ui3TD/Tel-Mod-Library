@@ -24,8 +24,9 @@ using Object = UnityEngine.Object;
 namespace ModMenus.Tests
 {
     /// <summary>
-    /// The game state ModMenus reads: the installed mods, the saved settings, the language table, and the
-    /// vanilla settings popup whose slider, checkbox and dropdown it copies.
+    /// The game state ModMenus reads: the installed mods, the saved settings, the language table, the
+    /// vanilla settings popup whose slider, checkbox and dropdown it copies, and the rival name field it copies
+    /// for text fields.
     /// </summary>
     internal static class TestGame
     {
@@ -38,6 +39,7 @@ namespace ModMenus.Tests
             ["TEST__FIRST"] = "First",
             ["TEST__SECOND"] = "Second",
             ["TEST__THIRD"] = "Third",
+            ["TEST__MOTTO"] = "Agency motto",
         };
 
         /// <summary>
@@ -62,6 +64,7 @@ namespace ModMenus.Tests
             Checked = Seams.Fake<Sprite>();
             Empty = Seams.Fake<Sprite>();
             Seams.SettingsPopup = VanillaSettings();
+            Seams.TextField = Seams.Prefab(RivalFirstNameField);
         }
 
         /// <summary>
@@ -213,6 +216,32 @@ namespace ModMenus.Tests
             dropdown.dropdownEvent.AddListener(_ => throw new InvalidOperationException("Vanilla's quality listener ran"));
             return root;
         }
+
+        /// <summary>
+        /// The rival name popup's first name field, which the mod copies for text fields: its label, and its
+        /// text and underline in a masked container. Tab moves to the last name field, and typing renames the rival.
+        /// </summary>
+        private static GameObject RivalFirstNameField()
+        {
+            GameObject root = Seams.NewObject("Rival First Name");
+            Seams.Add<Image>(root);
+            Seams.Add<ButtonDefault>(root);
+            Seams.Add<InputField_Tab>(root);
+            GameObject title = Seams.NewObject("Title", root);
+            Seams.Add<Lang_Button>(title).Constant = "STORY__RIVAL_FIRST_NAME";
+            Seams.Add<TextMeshProUGUI>(title);
+            GameObject container = Seams.NewObject("Container", root);
+            Seams.Add<RectMask2D>(container);
+            Seams.Add<TextMeshProUGUI>(Seams.NewObject("Text", container));
+            Seams.Add<Image>(Seams.NewObject("Image", container));
+
+            TMP_InputField field = Seams.Add<TMP_InputField>(root);
+            Seams.SetInputText(field, "");
+            AccessTools.FieldRefAccess<TMP_InputField, int>("m_CharacterLimit")(field) = 10;
+            field.onValueChanged = new TMP_InputField.OnChangeEvent();
+            field.onValueChanged.AddListener(_ => throw new InvalidOperationException("Vanilla's rival name listener ran"));
+            return root;
+        }
     }
 
     /// <summary>
@@ -305,6 +334,23 @@ namespace ModMenus.Tests
         }
 
         public int Selected(string varID) => Dropdown(varID).selectedItemIndex;
+
+        public TMP_InputField Field(string varID) => Seams.GetComponentInChildren<TMP_InputField>(Row(varID));
+
+        /// <summary>
+        /// The text a text field shows.
+        /// </summary>
+        public string FieldText(string varID) => Field(varID).text;
+
+        /// <summary>
+        /// Types into a text field: its text changes and, as each key press does, it tells its listeners.
+        /// </summary>
+        public void Type(string varID, string text)
+        {
+            TMP_InputField field = Field(varID);
+            Seams.SetInputText(field, text);
+            Seams.Fire(field.onValueChanged, text);
+        }
     }
 
     /// <summary>
@@ -362,6 +408,11 @@ namespace ModMenus.Tests
         /// </summary>
         public static GameObject SettingsPopup;
 
+        /// <summary>
+        /// What ModMenusUtils.VanillaTextField returns: the rival name popup's first name field.
+        /// </summary>
+        public static GameObject TextField;
+
         public static int PopupsClosed;
 
         /// <summary>
@@ -391,6 +442,7 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuCheckbox))] = Stub(nameof(AddMenuCheckbox)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuDropdown))] = Stub(nameof(AddMenuDropdown)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.PlaceDropdownInRow))] = Stub(nameof(PlaceDropdownInRow)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuInput))] = Stub(nameof(AddMenuInput)),
             [AccessTools.FirstMethod(AccessTools.Inner(typeof(ModMenusUtils), "<>c"), m => m.Name.Contains(nameof(ModMenusUtils.AddMenuDropdown)))] = Stub(nameof(IsScreenTab)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.Awake))] = Stub(nameof(ItemAwake)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.OnEnable))] = Stub(nameof(ItemOnEnable)),
@@ -398,6 +450,7 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderSlider))] = Stub(nameof(ItemRenderSlider)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderCheckbox))] = Stub(nameof(ItemRenderCheckbox)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderDropdown))] = Stub(nameof(ItemRenderDropdown)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderInput))] = Stub(nameof(ItemRenderInput)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onClickCheck))] = Stub(nameof(ItemOnClickCheck)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onUpdateSlider))] = Stub(nameof(ItemOnUpdateSlider)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onUpdateDropdown))] = Stub(nameof(ItemOnUpdateDropdown)),
@@ -427,6 +480,7 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(Transform), nameof(Transform.SetParent), new[] { typeof(Transform), typeof(bool) })] = Stub(nameof(StubSetParent)),
             [AccessTools.Method(typeof(Transform), nameof(Transform.GetSiblingIndex))] = Stub(nameof(StubGetSiblingIndex)),
             [AccessTools.Method(typeof(Transform), nameof(Transform.SetAsFirstSibling))] = Stub(nameof(StubSetAsFirstSibling)),
+            [AccessTools.Method(typeof(Object), nameof(Object.DestroyImmediate), new[] { typeof(Object) })] = Stub(nameof(StubDestroyImmediate)),
 
             // Layout and looks
             [AccessTools.Method(typeof(ModMenusUtils), "SetRectTransform", new[] { typeof(RectTransform), typeof(Vector2), typeof(Vector2), typeof(Vector2), typeof(Vector2) })] = Stub(nameof(StubSetRect)),
@@ -445,7 +499,10 @@ namespace ModMenus.Tests
             [AccessTools.PropertySetter(typeof(ScrollRect), nameof(ScrollRect.verticalNormalizedPosition))] = Stub(nameof(StubSetScroll)),
             [AccessTools.Method(typeof(CustomDropdown), nameof(CustomDropdown.SetupDropdown))] = Stub(nameof(StubSetupDropdown)),
             [AccessTools.Method(typeof(CustomDropdown), nameof(CustomDropdown.ChangeDropdownInfo))] = Stub(nameof(ChangeDropdownInfo)),
+            [AccessTools.PropertySetter(typeof(TMP_InputField), nameof(TMP_InputField.characterLimit))] = Stub(nameof(StubSetCharacterLimit)),
+            [AccessTools.Method(typeof(TMP_InputField), nameof(TMP_InputField.SetTextWithoutNotify))] = Stub(nameof(SetInputText)),
             [AccessTools.Method(typeof(PopupManager), nameof(PopupManager.GetObject))] = Stub(nameof(StubGetPopup)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.VanillaTextField))] = Stub(nameof(StubTextField)),
             [AccessTools.Method(typeof(PopupManager), nameof(PopupManager.Close_))] = Stub(nameof(StubClosePopup)),
         };
 
@@ -490,6 +547,9 @@ namespace ModMenus.Tests
         public static GameObject AddMenuDropdown(string varID, string labelID, string[] itemLabelIDs, int def, Transform parentTransform, Transform dropdownLayer) => throw NotInstalled();
         public static void PlaceDropdownInRow(RectTransform dropdown) => throw NotInstalled();
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, Transform parentTransform) => throw NotInstalled();
+
         /// <summary>
         /// AddMenuDropdown's lambda that finds the settings popup's Screen tab by name.
         /// </summary>
@@ -511,6 +571,9 @@ namespace ModMenus.Tests
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ItemRenderDropdown(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemRenderInput(ModMenuItem instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ItemOnClickCheck(ModMenuItem instance) => throw NotInstalled();
@@ -545,6 +608,7 @@ namespace ModMenus.Tests
         {
             _ = Installed.Value;
             SettingsPopup = null;
+            TextField = null;
             PopupsClosed = 0;
             DropdownSetups.Clear();
             ScrollPositions.Clear();
@@ -568,12 +632,22 @@ namespace ModMenus.Tests
         /// Adds an object built by this function under the parent. Instantiating it builds a fresh one, the
         /// way Unity copies the object with its own components and children.
         /// </summary>
-        public static void AddPrefab(GameObject parent, Func<GameObject> build)
+        public static void AddPrefab(GameObject parent, Func<GameObject> build) => SetParent(NodeOf(Prefab(build)), NodeOf(parent));
+
+        /// <summary>
+        /// An object built by this function, which instantiating copies (see <see cref="AddPrefab"/>).
+        /// </summary>
+        public static GameObject Prefab(Func<GameObject> build)
         {
             GameObject prefab = build();
             Prefabs[prefab] = build;
-            SetParent(NodeOf(prefab), NodeOf(parent));
+            return prefab;
         }
+
+        /// <summary>
+        /// Sets the text a text field holds, without telling its listeners, as SetTextWithoutNotify does.
+        /// </summary>
+        public static void SetInputText(TMP_InputField field, string text) => AccessTools.FieldRefAccess<TMP_InputField, string>("m_Text")(field) = text;
 
         public static Transform TransformOf(object owner) => NodeOf(owner).Transform;
 
@@ -752,6 +826,16 @@ namespace ModMenus.Tests
             node.Parent.Children.Insert(0, node);
         }
 
+        /// <summary>
+        /// Destroying a component removes it from its object.
+        /// </summary>
+        private static void StubDestroyImmediate(Object obj)
+        {
+            Assert.True(obj is Component, "Destroyed something that isn't a component");
+            NodeOf(obj).Components.Remove((Component)obj);
+            Nodes.Remove(obj);
+        }
+
         private static T[] StubGetComponentsInChildren<T>(object owner) =>
             NodeOf(owner).SelfAndDescendants().SelectMany(n => n.Components).OfType<T>().ToArray();
 
@@ -811,5 +895,9 @@ namespace ModMenus.Tests
         }
 
         private static void StubClosePopup(Action onComplete) => PopupsClosed++;
+
+        private static GameObject StubTextField() => TextField;
+
+        private static void StubSetCharacterLimit(TMP_InputField field, int value) => AccessTools.FieldRefAccess<TMP_InputField, int>("m_CharacterLimit")(field) = value;
     }
 }

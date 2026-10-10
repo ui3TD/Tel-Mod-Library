@@ -33,6 +33,7 @@ namespace ModMenus.Tests
                     { "type": "slider", "varID": "A_Volume", "labelID": "TEST__VOLUME" },
                     { "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST"] },
                     { "type": "checkbox", "varID": "A_Loud", "labelID": "TEST__LOUD" },
+                    { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO" },
                     { "type": "text", "labelID": "TEST__OUTRO" }
                 ]
                 """);
@@ -44,6 +45,7 @@ namespace ModMenus.Tests
                 "ModMenuSlider_A_Volume",
                 "ModMenuDropdown_A_Pick",
                 "ModMenuCheckbox_A_Loud",
+                "ModMenuInput_A_Motto",
                 "ModMenuText_TEST__OUTRO",
             }, menu.RowNames);
         }
@@ -112,6 +114,8 @@ namespace ModMenus.Tests
         [InlineData("""{ "type": "dropdown", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST"] }""")]
         [InlineData("""{ "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK" }""")]
         [InlineData("""{ "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": "TEST__FIRST" }""")]
+        [InlineData("""{ "type": "input", "labelID": "TEST__MOTTO" }""")]
+        [InlineData("""{ "type": "input", "varID": "A_Motto" }""")]
         [InlineData("""{ "type": "slider", "varID": "A_Volume", "labelID": "TEST__VOLUME", "minValue": 1, "maxValue": 20, "defaultValue": 30 }""")]
         [InlineData("""{ "type": "slider", "varID": "A_Volume", "labelID": "TEST__VOLUME", "minValue": 20, "maxValue": 1, "defaultValue": 5 }""")]
         public void IncompleteItemsAreLeftOut(string item)
@@ -247,17 +251,104 @@ namespace ModMenus.Tests
             TestGame.Save("A_Loud", "1");
             TestGame.Save("A_Quiet", "0");
             TestGame.Save("A_Pick", "1");
+            TestGame.Save("A_Motto", "Saved motto");
             Menu menu = Build("""
                 [
                     { "type": "slider", "varID": "A_Volume", "labelID": "TEST__VOLUME", "minValue": 1, "maxValue": 20, "defaultValue": 5 },
                     { "type": "checkbox", "varID": "A_Loud", "labelID": "TEST__LOUD", "defaultValue": false },
                     { "type": "checkbox", "varID": "A_Quiet", "labelID": "TEST__LOUD", "defaultValue": true },
-                    { "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND"] }
+                    { "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND"] },
+                    { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO", "defaultValue": "Default motto" }
                 ]
                 """);
 
-            Assert.Equal(new[] { 12f, 1f, 0f, 1f }, menu.Items.Select(i => i.defValue));
-            Assert.Equal(new[] { 12f, 1f, 0f, 1f }, menu.Items.Select(i => i.tempValue));
+            Assert.Equal(new[] { 12f, 1f, 0f, 1f }, menu.Items.Take(4).Select(i => i.defValue));
+            Assert.Equal(new[] { 12f, 1f, 0f, 1f }, menu.Items.Take(4).Select(i => i.tempValue));
+            Assert.Equal(("Default motto", "Saved motto"), (menu.Item("A_Motto").defText, menu.Item("A_Motto").tempText));
+        }
+
+        [Fact]
+        public void TextFieldShowsItsLabelAboveTheField()
+        {
+            Menu menu = Build("""[ { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO" }, { "type": "input", "varID": "A_Raw", "labelID": "Not a constant" } ]""");
+
+            GameObject title = Assert.Single(Seams.ChildrenOf(menu.Row("A_Motto")), c => Seams.NameOf(c) == "Title");
+            Assert.Equal("TEST__MOTTO", Seams.GetComponent<Lang_Button>(title).Constant);
+            Assert.Equal("Agency motto", Seams.GetComponent<TextMeshProUGUI>(title).text);
+            Assert.Null(Seams.GetComponentInChildren<Lang_Button>(Seams.OwnerOf(menu.Field("A_Motto"))));
+
+            GameObject rawTitle = Assert.Single(Seams.ChildrenOf(menu.Row("A_Raw")), c => Seams.NameOf(c) == "Title");
+            Assert.Equal("Not a constant", Seams.GetComponent<TextMeshProUGUI>(rawTitle).text);
+        }
+
+        /// <summary>
+        /// What's typed is dark in a white box, so it doesn't read as a second blue label.
+        /// </summary>
+        [Fact]
+        public void TextFieldIsADarkTextInAWhiteBox()
+        {
+            Menu menu = Build("""[ { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO" } ]""");
+
+            TMP_InputField field = menu.Field("A_Motto");
+            Assert.Equal(Color.white, Seams.GetComponent<UnityEngine.UI.Image>(Seams.OwnerOf(field)).color);
+            TextMeshProUGUI typed = Seams.GetComponent<TextMeshProUGUI>(Seams.ChildrenOf(Seams.ChildrenOf(Seams.OwnerOf(field)).Single(c => Seams.NameOf(c) == "Container")).Single(c => Seams.NameOf(c) == "Text"));
+            Assert.Equal((Color)mainScript.black32, typed.color);
+        }
+
+        [Theory]
+        [InlineData("", "")]
+        [InlineData(""", "defaultValue": "Hello world" """, "Hello world")]
+        [InlineData(""", "defaultValue": "スター☆" """, "スター☆")]
+        [InlineData(""", "defaultValue": 42 """, "42")]
+        public void TextFieldTakesItsDefaultOrIsEmpty(string defaultField, string expected)
+        {
+            Menu menu = Build($$"""[ { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO"{{defaultField}} } ]""");
+
+            Assert.Equal((expected, expected), (menu.Item("A_Motto").defText, menu.Item("A_Motto").tempText));
+        }
+
+        /// <summary>
+        /// The field is a copy of the rival name field, so its ties to the rival popup are cut: Tab would move to the
+        /// rival's last name and typing would rename the rival. Typing changes only the setting.
+        /// </summary>
+        [Fact]
+        public void TextFieldIsCutLooseFromTheRivalPopup()
+        {
+            Menu menu = Build("""[ { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO" } ]""");
+
+            TMP_InputField field = menu.Field("A_Motto");
+            Assert.Null(Seams.GetComponent<InputField_Tab>(Seams.OwnerOf(field)));
+            Assert.Single(Seams.Listeners(field.onValueChanged));
+            menu.Type("A_Motto", "Typed");
+            Assert.Equal("Typed", menu.Item("A_Motto").tempText);
+        }
+
+        [Theory]
+        [InlineData("", 0)]
+        [InlineData(""", "maxLength": 12""", 12)]
+        public void TextFieldTakesItsMaxLengthOrHasNoLimit(string maxLengthField, int expected)
+        {
+            Menu menu = Build($$"""[ { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO"{{maxLengthField}} } ]""");
+
+            Assert.Equal(expected, menu.Field("A_Motto").characterLimit);
+        }
+
+        /// <summary>
+        /// The other items keep no text, which is how Apply tells them from text fields.
+        /// </summary>
+        [Fact]
+        public void OnlyTextFieldsHaveText()
+        {
+            Menu menu = Build("""
+                [
+                    { "type": "slider", "varID": "A_Volume", "labelID": "TEST__VOLUME" },
+                    { "type": "checkbox", "varID": "A_Loud", "labelID": "TEST__LOUD" },
+                    { "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST"] }
+                ]
+                """);
+            menu.Open();
+
+            Assert.All(menu.Items, item => Assert.Null(item.tempText));
         }
 
         /// <summary>
@@ -305,6 +396,7 @@ namespace ModMenus.Tests
                 JSON_TYPE_SLIDER => MENU_SLIDER_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
                 JSON_TYPE_CHECKBOX => MENU_CHECKBOX_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
                 JSON_TYPE_DROPDOWN => MENU_DROPDOWN_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
+                JSON_TYPE_INPUT => MENU_INPUT_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
                 string type => "unknown type " + type,
             }));
             Assert.Equal(expected, menu.RowNames.Where(r => r != MENU_TEXT_OBJ_NAME + "_"));

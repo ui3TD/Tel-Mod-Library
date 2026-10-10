@@ -23,7 +23,9 @@ namespace ModMenus.Tests
                 { "type": "checkbox", "varID": "A_Quiet", "labelID": "TEST__LOUD" },
                 { "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND", "TEST__THIRD"], "defaultValue": 1 },
                 { "type": "dropdown", "varID": "A_First", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND"] },
-                { "type": "dropdown", "varID": "A_Past", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND"], "defaultValue": 7 }
+                { "type": "dropdown", "varID": "A_Past", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND"], "defaultValue": 7 },
+                { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO", "defaultValue": "Hello world" },
+                { "type": "input", "varID": "A_Blank", "labelID": "TEST__MOTTO" }
             ]
             """;
 
@@ -46,6 +48,8 @@ namespace ModMenus.Tests
                 ["A_Pick"] = "1",
                 ["A_First"] = "0",
                 ["A_Past"] = "1",
+                ["A_Motto"] = "Hello world",
+                ["A_Blank"] = "",
             }, AllSaved());
         }
 
@@ -96,6 +100,9 @@ namespace ModMenus.Tests
                     { "type": "slider", "varID": "A_OutOfRange", "labelID": "TEST__VOLUME", "minValue": 1, "maxValue": 20, "defaultValue": 30 },
                     { "type": "dropdown", "varID": "A_NoItems", "labelID": "TEST__PICK" },
                     { "type": "text", "varID": "A_Text", "labelID": "TEST__INTRO" },
+                    { "type": "input", "labelID": "TEST__MOTTO", "defaultValue": "Hello" },
+                    { "type": "input", "varID": "A_InputNoLabel", "defaultValue": "Hello" },
+                    { "type": "input", "varID": "A_InputIgnored", "labelID": "TEST__MOTTO", "ignore": true },
                     { "type": "colour", "varID": "A_Unknown", "labelID": "TEST__INTRO" }
                 ]
                 """);

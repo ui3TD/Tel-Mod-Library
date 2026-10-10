@@ -79,8 +79,17 @@ namespace ModMenus
         public const string APPLY_LABEL = "APPLY";
         public const string CANCEL_LABEL = "CANCEL";
 
+        // Each row is as tall as what it draws, so the gaps between rows are all MENUITEM_SPACING.
+        // A mod's title and a blank text row are MENUITEM_HEIGHT; a text row is as tall as its lines.
         public const int MENUITEM_HEIGHT = 40;
         public const int MENUITEM_SPACING = 20;
+        public const float LABEL_HEIGHT = 20;
+        public const float CHECKBOX_HEIGHT = 22;
+        public const float SLIDER_HEIGHT = 32;
+        public const float SLIDER_LENGTH = 400;
+        // A dropdown's or text field's box, under its label
+        public const float BOX_WIDTH = 300;
+        public const float BOX_HEIGHT = 28;
 
         public const float TEXT_SIZE = 15;
         public const float TITLE_SIZE = 20;
@@ -595,7 +604,11 @@ namespace ModMenus
                     switch (type)
                     {
                         case JSON_TYPE_TEXT:
-                            AddMenuText(label ?? "", parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
+                            GameObject textRow = AddMenuText(label ?? "", parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
+
+                            // As tall as its lines, so long text doesn't run into the next row. A blank one keeps its height: it's a spacer.
+                            if (!string.IsNullOrEmpty(label))
+                                textRow.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
                             break;
 
                         case JSON_TYPE_SLIDER:
@@ -848,7 +861,7 @@ namespace ModMenus
             GameObject modSlider = UnityEngine.Object.Instantiate(existingSlider, parentTransform);
             RectTransform modSliderRect = modSlider.GetComponent<RectTransform>();
             SetRectTransform(modSliderRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            modSliderRect.sizeDelta = new Vector2(400f, MENUITEM_HEIGHT);
+            modSliderRect.sizeDelta = new Vector2(400f, SLIDER_HEIGHT);
             modSlider.name = MENU_SLIDER_OBJ_NAME + "_" + varID;
 
             // Configure Settings_Slider
@@ -868,10 +881,12 @@ namespace ModMenus
             modSliderSlider.onValueChanged = new Slider.SliderEvent();
             modSliderSlider.onValueChanged.AddListener(modSliderMenuItem.onUpdateSlider);
 
-            // Set slider size and pos
+            // Set slider size and pos. The game's slider is turned on its side, so its height runs across the row;
+            // it starts at the row's left edge, under the label, like the other controls.
             RectTransform SliderRect = modSlider.transform.Find("Slider").GetComponent<RectTransform>();
-            SetRectTransform(SliderRect, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), Vector2.zero, new Vector2(0, -50));
-            SliderRect.sizeDelta = new Vector2(20f, 400f);
+            SetRectTransform(SliderRect, Vector2.up, Vector2.up, Vector2.zero, Vector2.zero);
+            SliderRect.sizeDelta = new Vector2(20f, SLIDER_LENGTH);
+            SliderRect.anchoredPosition = new Vector2(SLIDER_LENGTH / 2, -25f);
 
             return modSlider;
         }
@@ -897,7 +912,7 @@ namespace ModMenus
             GameObject modCheckbox = UnityEngine.Object.Instantiate(existingCheckbox, parentTransform);
             RectTransform modCheckboxRect = modCheckbox.GetComponent<RectTransform>();
             SetRectTransform(modCheckboxRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            modCheckboxRect.sizeDelta = new Vector2(400f, MENUITEM_HEIGHT);
+            modCheckboxRect.sizeDelta = new Vector2(400f, CHECKBOX_HEIGHT);
             modCheckbox.name = MENU_CHECKBOX_OBJ_NAME + "_" + varID;
 
             // Configure Checkbox_Text
@@ -942,7 +957,7 @@ namespace ModMenus
             GameObject modDropdown = UnityEngine.Object.Instantiate(existingDropdown, parentTransform);
             RectTransform modDropdownRect = modDropdown.GetComponent<RectTransform>();
             SetRectTransform(modDropdownRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            modDropdownRect.sizeDelta = new Vector2(400f, MENUITEM_HEIGHT);
+            modDropdownRect.sizeDelta = new Vector2(400f, LABEL_HEIGHT + BOX_HEIGHT);
             modDropdown.name = MENU_DROPDOWN_OBJ_NAME + "_" + varID;
 
             // Configure label text
@@ -978,12 +993,13 @@ namespace ModMenus
         }
 
         /// <summary>
-        /// Puts a dropdown's box under its label, in the top-left of its row.
+        /// Puts a dropdown's box under its label, in the top-left of its row. The game's dropdown is drawn at
+        /// half size, so its box is BOX_WIDTH wide, like a text field's, and BOX_HEIGHT tall.
         /// </summary>
         public static void PlaceDropdownInRow(RectTransform dropdown)
         {
-            SetRectTransform(dropdown, Vector2.up, Vector2.up, Vector2.zero, new Vector2(0, -20), Vector2.up);
-            dropdown.sizeDelta = new Vector2(300f, 20f);
+            SetRectTransform(dropdown, Vector2.up, Vector2.up, Vector2.zero, new Vector2(0, -LABEL_HEIGHT), Vector2.up);
+            dropdown.sizeDelta = new Vector2(2 * BOX_WIDTH, 20f);
         }
 
         /// <summary>
@@ -1013,14 +1029,12 @@ namespace ModMenus
             // Define default value
             string savedValue = variables.Get(varID) ?? def;
 
-            // Set up the row, which holds the label and, under it, the field's box, taller than a dropdown's
-            const float labelHeight = 20f;
-            const float boxHeight = 28f;
+            // Set up the row, which holds the label and, under it, the field's box
             GameObject modInput = new(MENU_INPUT_OBJ_NAME + "_" + varID, typeof(RectTransform));
             modInput.transform.SetParent(parentTransform, false);
             RectTransform modInputRect = modInput.GetComponent<RectTransform>();
             SetRectTransform(modInputRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            modInputRect.sizeDelta = new Vector2(400f, labelHeight + boxHeight);
+            modInputRect.sizeDelta = new Vector2(400f, LABEL_HEIGHT + BOX_HEIGHT);
 
             GameObject modField = UnityEngine.Object.Instantiate(VanillaTextField(), modInput.transform);
             modField.name = "Field";
@@ -1031,13 +1045,13 @@ namespace ModMenus
             // The field's label moves out of the field to the top of the row, so only the field takes clicks
             Transform title = modField.transform.Find("Title");
             title.SetParent(modInput.transform, false);
-            SetRectTransform((RectTransform)title, Vector2.up, Vector2.one, new Vector2(0, -labelHeight), Vector2.zero);
+            SetRectTransform((RectTransform)title, Vector2.up, Vector2.one, new Vector2(0, -LABEL_HEIGHT), Vector2.zero);
             title.GetComponent<Lang_Button>().Constant = labelID;
             title.GetComponent<TextMeshProUGUI>().text = labelText;
 
             // The field is a white box under the label, the width of a dropdown's box, with the blue underline
             // along its bottom. What's typed is dark, so it doesn't read as another label.
-            SetRectTransform((RectTransform)modField.transform, Vector2.up, Vector2.up, new Vector2(0, -labelHeight - boxHeight), new Vector2(300f, -labelHeight), Vector2.up);
+            SetRectTransform((RectTransform)modField.transform, Vector2.up, Vector2.up, new Vector2(0, -LABEL_HEIGHT - BOX_HEIGHT), new Vector2(BOX_WIDTH, -LABEL_HEIGHT), Vector2.up);
             modField.GetComponent<Image>().color = Color.white;
             Transform textArea = modField.transform.Find("Container");
             SetRectTransform((RectTransform)textArea, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
@@ -1082,16 +1096,13 @@ namespace ModMenus
             ContentSizeFitter menuContentFitter = menuContentContainer.GetComponent<ContentSizeFitter>();
             menuContentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             menuContentFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-            // One column, top to bottom: each row is the full width and its own height (MENUITEM_HEIGHT)
+            // One column, top to bottom: each row is the full width and its own height
             VerticalLayoutGroup menuContentLayoutGroup = menuContentContainer.GetComponent<VerticalLayoutGroup>();
             menuContentLayoutGroup.childControlWidth = true;
             menuContentLayoutGroup.childForceExpandWidth = true;
             menuContentLayoutGroup.childControlHeight = false;
             menuContentLayoutGroup.childForceExpandHeight = false;
             menuContentLayoutGroup.spacing = MENUITEM_SPACING;
-            // A dropdown's box is drawn lower than its row's layout box, so the last row needs the same gap
-            // below it as between rows, or the bottom of the box is cut off when scrolled to the end
-            menuContentLayoutGroup.padding = new RectOffset(0, 0, 0, MENUITEM_SPACING);
 
             // Create the handle for the scrollbar
             GameObject vHandle = new(SCROLLHANDLE_OBJ_NAME, typeof(RectTransform), typeof(Image));
@@ -1100,17 +1111,22 @@ namespace ModMenus
             RectTransform handleRect = vHandle.GetComponent<RectTransform>();
             SetRectTransform(handleRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-            // Set handle color
+            // Set handle color: the menu's blue, faded
             Image handleImage = vHandle.GetComponent<Image>();
-            handleImage.color = new Color(0.5f, 0.5f, 0.5f, 0.6f);
+            Color32 blue = mainScript.blue32;
+            handleImage.color = new Color32(blue.r, blue.g, blue.b, 128);
 
             // Create the vertical scroll bar
             GameObject verticalScrollBar = new(SCROLLBAR_OBJ_NAME, typeof(RectTransform), typeof(Scrollbar));
 
+            // The menu keeps the same margin on every side of the panel, and the scroll bar sits inside the right one
+            const float margin = 14f;
+            const float scrollbarWidth = 6f;
+            const float scrollbarGap = 8f;
+
             // Align vertical scroll bar
             RectTransform vScrollbarRect = verticalScrollBar.GetComponent<RectTransform>();
-            SetRectTransform(vScrollbarRect, Vector2.right, Vector2.one, Vector2.zero, Vector2.zero);
-            vScrollbarRect.sizeDelta = new Vector2(10f, 0);
+            SetRectTransform(vScrollbarRect, Vector2.right, Vector2.one, new Vector2(-scrollbarWidth, 0), Vector2.zero);
 
             // Set the Scrollbar properties
             Scrollbar vScrollbar = verticalScrollBar.GetComponent<Scrollbar>();
@@ -1127,17 +1143,15 @@ namespace ModMenus
 
             // Set scrollRect object alignment
             RectTransform scrollRectTransform = scrollContainer.GetComponent<RectTransform>();
-            SetRectTransform(scrollRectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            scrollRectTransform.sizeDelta = new Vector2(-20, -20); // padding
-            
+            SetRectTransform(scrollRectTransform, Vector2.zero, Vector2.one, new Vector2(margin, margin), new Vector2(-margin, -margin));
+
             // Create view area and attach to scrollrect container
             GameObject viewport = new(VIEWPORT_OBJ_NAME, typeof(RectTransform), typeof(Image), typeof(Mask));
             viewport.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.01f); // Make the viewport transparent
 
             // Set view area alignment
             RectTransform viewportTransform = viewport.GetComponent<RectTransform>();
-            SetRectTransform(viewportTransform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-10, 0));
-            viewportTransform.sizeDelta = new Vector2(-10, -10); // padding
+            SetRectTransform(viewportTransform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-scrollbarWidth - scrollbarGap, 0));
 
             // Configure the ScrollRect
             ScrollRect scrollRect = scrollContainer.GetComponent<ScrollRect>();

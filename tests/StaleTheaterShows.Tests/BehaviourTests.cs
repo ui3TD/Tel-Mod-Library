@@ -308,17 +308,17 @@ namespace StaleTheaterShows.Tests
         }
 
         /// <summary>
-        /// Performances: everyone 0.3, casual 0.65, teen 0.9, adult/young adult 0.95,
-        /// male/female 0.75, hardcore 1 (vanilla 0.2, 0.3, 0.5, 0.75, 0.75, 1).
+        /// Performances: everyone 0.5, casual 0.88, hardcore 1, male/female 1.07, any age group 1.25
+        /// (vanilla 0.2, 0.3, 1, 0.75, and 0.5 teen / 0.75 adult and young adult).
         /// </summary>
         [Theory]
-        [InlineData(null, 30)]
-        [InlineData(casual, 65)]
-        [InlineData(teen, 90)]
-        [InlineData(adult, 95)]
-        [InlineData(youngAdult, 95)]
-        [InlineData(male, 75)]
-        [InlineData(female, 75)]
+        [InlineData(null, 50)]
+        [InlineData(casual, 88)]
+        [InlineData(teen, 125)]
+        [InlineData(adult, 125)]
+        [InlineData(youngAdult, 125)]
+        [InlineData(male, 107)]
+        [InlineData(female, 107)]
         [InlineData(hardcore, 100)]
         public void Performance_UsesModMultipliers(resources.fanType? target, int expected)
         {
@@ -326,18 +326,17 @@ namespace StaleTheaterShows.Tests
         }
 
         /// <summary>
-        /// Manzai takes 30% of the performance multiplier, and non-hardcore audiences take another
-        /// ×0.75. Everyone is 0.2 × 0.3.
+        /// Manzai takes 30% of the performance multiplier, for every audience.
         /// </summary>
         [Theory]
-        [InlineData(null, 6)]
+        [InlineData(null, 15)]
         [InlineData(hardcore, 30)]
-        [InlineData(casual, 15)]
-        [InlineData(teen, 20)]
-        [InlineData(adult, 21)]
-        [InlineData(youngAdult, 21)]
-        [InlineData(male, 17)]
-        [InlineData(female, 17)]
+        [InlineData(casual, 26)]
+        [InlineData(teen, 38)]
+        [InlineData(adult, 38)]
+        [InlineData(youngAdult, 38)]
+        [InlineData(male, 32)]
+        [InlineData(female, 32)]
         public void Manzai_UsesModMultipliers(resources.fanType? target, int expected)
         {
             Assert.Equal(expected, Visitors(_type.manzai, target));
@@ -349,7 +348,7 @@ namespace StaleTheaterShows.Tests
             TestGame.Reset(hard, patched: true);
             TestGame.ReleaseSingle(90);
             TestGame.SetFans(hardcore, 20000);
-            Assert.Equal(22, TestGame.Theater(_type.performance, null).GetNumberOfVisitors());
+            Assert.Equal(37, TestGame.Theater(_type.performance, null).GetNumberOfVisitors());
         }
 
         [Fact]

@@ -18,16 +18,15 @@ namespace StaleTheater
         public const double STREAM_PENALTY_HARD = 0.95;
         public const double STREAM_PENALTY_NORMAL = 0.7;
 
-        public const float THEATER_EVERYONE = 0.3f;
-        public const float THEATER_CASUAL = 0.65f;
+        // Attendance per targeted fan: 0.75 / the share of fans that audience can reach with optimal play
+        // (casual 85%, hardcore 75%, one gender 70%, one age group 60%), so every fully built audience pays the same.
+        // Everyone counts all fans, so it pays like an unbuilt even fanbase.
+        public const float THEATER_EVERYONE = 0.5f;
+        public const float THEATER_CASUAL = 0.88f;
         public const float THEATER_HC = 1f;
-        public const float THEATER_ADULT = 0.95f;
-        public const float THEATER_YA = 0.95f;
-        public const float THEATER_TEEN = 0.9f;
-        public const float THEATER_GENDER = 0.75f;
+        public const float THEATER_GENDER = 1.07f;
+        public const float THEATER_AGE = 1.25f;
 
-        public const float MANZAI_EVERYONE = 0.2f;
-        public const float MANZAI_NONHC_COEFF = 0.75f;
         public const float MANZAI_STAM_COEFF = 0.3f;
     }
 
@@ -97,7 +96,7 @@ namespace StaleTheater
         }
     }
 
-    // Theater attendance increased for 'everyone', 'casual' and age groups
+    // Theater attendance per targeted fan depends on how hard that audience is to build, so any built audience pays
     [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetNumberOfVisitors))]
     public class Theaters__theater_GetNumberOfVisitors
     {
@@ -148,24 +147,14 @@ namespace StaleTheater
                 {
                     resources.fanType.casual => THEATER_CASUAL,
                     resources.fanType.hardcore => THEATER_HC,
-                    resources.fanType.adult => THEATER_ADULT,
-                    resources.fanType.youngAdult => THEATER_YA,
-                    resources.fanType.teen => THEATER_TEEN,
+                    resources.fanType.adult or resources.fanType.youngAdult or resources.fanType.teen => THEATER_AGE,
                     _ => THEATER_GENDER
                 };
-
             }
 
+            // Manzai draws the same share of every audience
             if (__this.Doing_Now == Theaters._theater._schedule._type.manzai)
             {
-                if (schedule.FanType_Everyone)
-                {
-                    multiplier = MANZAI_EVERYONE;
-                }
-                else if (schedule.FanType != resources.fanType.hardcore)
-                {
-                    multiplier *= MANZAI_NONHC_COEFF;
-                }
                 multiplier *= MANZAI_STAM_COEFF;
             }
 

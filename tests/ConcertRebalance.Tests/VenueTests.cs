@@ -105,6 +105,14 @@ namespace ConcertRebalance.Tests
         }
 
         [Fact]
+        public void OpenAirStageBaseCost_Is20Million()
+        {
+            // The game's Unfair ¥25,000,000 made it the dearest seat in the game
+            ConcertGame.Reset(difficulty: _difficulty.hard);
+            Assert.Equal(20_000_000, SEvent_Concerts.GetVenueBaseCost(_venue.openAirStage));
+        }
+
+        [Fact]
         public void SoldOutConcert_Seats50000AndCosts200Million()
         {
             // The popup and the payout both read the larger venue: 50,000 × ¥5,000 against ¥200,000,000
@@ -134,8 +142,8 @@ namespace ConcertRebalance.Tests
         [Theory]
         [InlineData(_difficulty.hard, _venue.club, 500_000)]
         [InlineData(_difficulty.hard, _venue.concertHall, 3_000_000)]
-        [InlineData(_difficulty.hard, _venue.openAirStage, 25_000_000)]
         [InlineData(_difficulty.hard, _venue.stadium, 50_000_000)]
+        [InlineData(_difficulty.normal, _venue.openAirStage, 10_000_000)]
         [InlineData(_difficulty.normal, _venue.stadium, 25_000_000)]
         [InlineData(_difficulty.normal, _venue.tokyoColiseum, 50_000_000)]
         [InlineData(_difficulty.easy, _venue.tokyoColiseum, 50_000_000)]

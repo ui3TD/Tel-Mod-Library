@@ -29,3 +29,4 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 - 1.2.1: Airing shows with no episodes no longer stop the daily fan count.
 - 1.3.0: Loading a save no longer changes the idols' fan appeal.
 - 1.4.0: Loading another save no longer carries its fan churn over, and the fan tooltip is up to date.
+- 1.5.0: Daily fan churn is split across idols by fame instead of hitting one random idol.

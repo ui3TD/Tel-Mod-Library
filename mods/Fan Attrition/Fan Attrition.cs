@@ -292,7 +292,35 @@ namespace FanAttrition
             long churn = GetDailyChurn();
             if (churn > 0)
             {
-                resources.Add(resources.type.fans, -churn);
+                TakeFansByFame(churn);
+            }
+        }
+
+        /// <summary>
+        /// Takes fans from the idols by their share of fame, the way the game hands out fan gains.
+        /// </summary>
+        /// <remarks>
+        /// Not through resources.Add: the game's data_girls.AddFans checks for overshooting the total only the
+        /// way a gain can overshoot, so a loss lands entirely on one random idol. Each idol's own AddFans is
+        /// correct for any sign, with or without a fix to the game's method.
+        /// </remarks>
+        /// <param name="loss">The number of fans lost, above 0.</param>
+        public static void TakeFansByFame(long loss)
+        {
+            List<data_girls.girls> idols = data_girls.girl.Where(girl => girl.status != data_girls._status.graduated).ToList();
+            float fame = idols.Sum(girl => girl.GetFamePoints());
+            // Like the game: with no fame anywhere, every idol loses the same
+            bool equally = fame < 1f;
+
+            ExtensionMethods.Shuffle(idols);
+            long taken = 0;
+            for (int i = 0; i < idols.Count && taken < loss; i++)
+            {
+                float weight = equally ? 1f / idols.Count : idols[i].GetFamePoints() / fame;
+                // The last idol takes what rounding left over, so the whole loss is taken
+                long share = i == idols.Count - 1 ? loss - taken : Math.Min((long)Mathf.Round(loss * weight), loss - taken);
+                idols[i].AddFans(-share);
+                taken += share;
             }
         }
 

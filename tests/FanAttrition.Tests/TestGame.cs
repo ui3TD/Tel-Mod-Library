@@ -87,7 +87,20 @@ namespace FanAttrition.Tests
         /// An idol holding this many fans, all of one kind.
         /// </summary>
         public static data_girls.girls FanBase(long people) =>
-            Idol(0.5f, Fans(resources.fanType.male, resources.fanType.casual, resources.fanType.teen, people));
+            Famous(Idol(0.5f, Fans(resources.fanType.male, resources.fanType.casual, resources.fanType.teen, people)), 100f);
+
+        /// <summary>
+        /// Gives an idol fame points and the stats the game reads her fan appeal from (all 50), as every real
+        /// idol has; the game's AddFans works out where her fans go from them.
+        /// </summary>
+        public static data_girls.girls Famous(data_girls.girls girl, float famePoints)
+        {
+            girl.parameters.Add(new data_girls.girls.param { type = data_girls._paramType.famePoints, val = famePoints });
+            foreach (data_girls._paramType stat in new[] { data_girls._paramType.cute, data_girls._paramType.cool, data_girls._paramType.sexy,
+                data_girls._paramType.pretty, data_girls._paramType.vocal, data_girls._paramType.dance, data_girls._paramType.funny, data_girls._paramType.smart })
+                girl.parameters.Add(new data_girls.girls.param { type = stat, val = 50f });
+            return girl;
+        }
 
         /// <summary>
         /// The business component UpdateFanCount reads through Camera.main.
@@ -161,6 +174,7 @@ namespace FanAttrition.Tests
         public static readonly Dictionary<data_girls._paramType, float> SenbatsuStats = new();
 
         public static readonly List<(resources.type type, long val)> ResourcesAdded = new();
+        public static int FanDisplayUpdates;
         public static readonly List<(resources._fan fan, long fans)> FansAddedEqually = new();
         public static readonly List<(object original, GameObject copy)> Instantiated = new();
         public static readonly List<(Transform child, Transform parent, bool worldPositionStays)> Parented = new();
@@ -183,6 +197,7 @@ namespace FanAttrition.Tests
             [AccessTools.Method(typeof(resources), nameof(resources.Add), new[] { typeof(resources.type), typeof(long) })] = Stub(nameof(StubAddResource)),
             [AccessTools.Method(typeof(UnityEngine.Random), nameof(UnityEngine.Random.Range), new[] { typeof(int), typeof(int) })] = Stub(nameof(StubRange)),
             [AccessTools.Method(typeof(data_girls), nameof(data_girls.AddFans_Equally), new[] { typeof(long), typeof(resources._fan), typeof(List<data_girls.girls>) })] = Stub(nameof(StubAddFansEqually)),
+            [AccessTools.Method(typeof(resources), nameof(resources._OnFansChange))] = Stub(nameof(StubOnFansChange)),
             [AccessTools.Method(typeof(Object), "op_Equality")] = Stub(nameof(StubEquality)),
             [AccessTools.PropertyGetter(typeof(Component), nameof(Component.gameObject))] = Stub(nameof(StubGameObject)),
             [AccessTools.PropertyGetter(typeof(GameObject), nameof(GameObject.transform))] = Stub(nameof(StubTransform)),
@@ -215,6 +230,10 @@ namespace FanAttrition.Tests
                 new HarmonyMethod(typeof(Seams), nameof(StartPrefix)), redirect, ilmanipulator: null);
 
             harmony.Patch(AccessTools.Method(typeof(Utility), nameof(Utility.DailyFanChurn)), transpiler: transpiler);
+            harmony.Patch(AccessTools.Method(typeof(Utility), nameof(Utility.TakeFansByFame)), transpiler: transpiler);
+            // The game's AddFans for one idol updates the fan display through Camera.main
+            harmony.Patch(AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.AddFans), new[] { typeof(long), typeof(resources.fanType?) }),
+                transpiler: transpiler);
             harmony.Patch(AccessTools.Method(typeof(resources_OnNewDay), nameof(resources_OnNewDay.Postfix)), transpiler: transpiler);
             harmony.Patch(AccessTools.Method(typeof(tooltip_fans_RenderFanChange), nameof(tooltip_fans_RenderFanChange.Postfix)), transpiler: transpiler);
 
@@ -244,6 +263,7 @@ namespace FanAttrition.Tests
             SenbatsuStats.Clear();
             ResourcesAdded.Clear();
             FansAddedEqually.Clear();
+            FanDisplayUpdates = 0;
             Instantiated.Clear();
             Parented.Clear();
             LinesSet.Clear();
@@ -326,9 +346,11 @@ namespace FanAttrition.Tests
                         nameof(GameObject.GetComponent) when generic.GetParameters().Length == 0 => nameof(StubGetComponent),
                         nameof(GameObject.GetComponentsInChildren) when generic.GetParameters().Length == 0 => nameof(StubGetComponentsInChildren),
                         nameof(Object.Instantiate) when generic.GetParameters().Length == 1 => nameof(StubInstantiate),
+                        nameof(ExtensionMethods.Shuffle) => nameof(StubShuffle),
                         _ => null,
                     };
-                    if (stub != null && (generic.DeclaringType == typeof(GameObject) || generic.DeclaringType == typeof(Component) || generic.DeclaringType == typeof(Object)))
+                    if (stub != null && (generic.DeclaringType == typeof(GameObject) || generic.DeclaringType == typeof(Component) || generic.DeclaringType == typeof(Object)
+                        || generic.DeclaringType == typeof(ExtensionMethods)))
                     {
                         instruction.opcode = OpCodes.Call;
                         instruction.operand = AccessTools.Method(typeof(Seams), stub).MakeGenericMethod(generic.GetGenericArguments());
@@ -384,6 +406,20 @@ namespace FanAttrition.Tests
         private static void StubLineSet(tooltip_fans_line line, string txt) => LinesSet.Add((line, txt));
         private static void StubRebuild(RectTransform layoutRoot) => LayoutsRebuilt.Add(layoutRoot);
         private static T StubGetComponent<T>(object owner) => ComponentOf<T>(owner);
+
+        /// <summary>
+        /// Shuffles with the tests' Range, like the game's Shuffle does with Unity's. The default Range keeps the order.
+        /// </summary>
+        private static void StubShuffle<T>(IList<T> list)
+        {
+            for (int i = 0; i < list.Count - 1; i++)
+            {
+                int index = StubRange(i, list.Count);
+                (list[i], list[index]) = (list[index], list[i]);
+            }
+        }
+
+        private static void StubOnFansChange() => FanDisplayUpdates++;
         private static T[] StubGetComponentsInChildren<T>(GameObject owner) => LineTexts(owner).Cast<T>().ToArray();
 
         private static T StubInstantiate<T>(T original)

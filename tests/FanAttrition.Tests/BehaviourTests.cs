@@ -447,7 +447,64 @@ namespace FanAttrition.Tests
             Utility.DailyFanChurn();
 
             Assert.Equal(100000 - 68, FansTotal());
-            Assert.Equal(new[] { (resources.type.fans, -68L) }, Seams.ResourcesAdded);
+            Assert.True(Seams.FanDisplayUpdates > 0);
+        }
+
+        private static data_girls.girls IdolWithFans(float famePoints, long people) =>
+            TestGame.Famous(TestGame.Idol(0.5f, TestGame.Fans(resources.fanType.male, resources.fanType.casual, resources.fanType.teen, people)), famePoints);
+
+        private static long Fans(data_girls.girls girl) => girl.Fans.Sum(fan => fan.people);
+
+        /// <summary>
+        /// Fixed in 1.5.0: churn went through the game's data_girls.AddFans, whose overshoot check only works
+        /// for gains, so the whole day's loss came off one random idol. It's now split by fame, as gains are:
+        /// 300,000 fans churn 154 a day in Normal; fame 100 / 200 / 700 takes 15 / 31 and the rest, 108.
+        /// </summary>
+        [Fact]
+        public void Churn_IsSplitByFame()
+        {
+            data_girls.girls small = IdolWithFans(100f, 100000);
+            data_girls.girls mid = IdolWithFans(200f, 100000);
+            data_girls.girls star = IdolWithFans(700f, 100000);
+
+            Utility.DailyFanChurn();
+
+            Assert.Equal(new long[] { 100000 - 15, 100000 - 31, 100000 - 108 }, new[] { Fans(small), Fans(mid), Fans(star) });
+            Assert.Empty(Seams.ResourcesAdded);
+        }
+
+        /// <summary>
+        /// The idols are taken in the game's shuffled order; the split by fame is the same in any order,
+        /// apart from which idol takes the rounding remainder.
+        /// </summary>
+        [Fact]
+        public void Churn_IsSplitByFame_InAnyOrder()
+        {
+            data_girls.girls small = IdolWithFans(100f, 100000);
+            data_girls.girls mid = IdolWithFans(200f, 100000);
+            data_girls.girls star = IdolWithFans(700f, 100000);
+            Seams.Range = (_, max) => max - 1; // reverses the order: star, mid, small
+
+            Utility.DailyFanChurn();
+
+            Assert.Equal(new long[] { 100000 - 15, 100000 - 31, 100000 - 108 }, new[] { Fans(small), Fans(mid), Fans(star) });
+        }
+
+        /// <summary>
+        /// With no fame anywhere, like the game, every idol loses the same; graduated idols lose nothing.
+        /// 200,000 fans churn 114 a day in Normal.
+        /// </summary>
+        [Fact]
+        public void Churn_WithoutFame_IsSplitEqually()
+        {
+            data_girls.girls first = IdolWithFans(0f, 100000);
+            data_girls.girls second = IdolWithFans(0f, 100000);
+            data_girls.girls graduated = IdolWithFans(0f, 100000);
+            graduated.status = data_girls._status.graduated;
+
+            Utility.DailyFanChurn();
+
+            Assert.Equal(new long[] { 100000 - 57, 100000 - 57, 100000 }, new[] { Fans(first), Fans(second), Fans(graduated) });
         }
 
         /// <summary>

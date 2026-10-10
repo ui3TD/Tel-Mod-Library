@@ -142,6 +142,21 @@ namespace ModMenus.Tests
 
             Assert.Equal(new[] { "ModMenuText_Mod A", "ModMenuText_TEST__INTRO", "ModMenuText_", "ModMenuCheckbox_A_Loud" }, menu.RowNames);
             Assert.Equal("", TextOf(menu.Rows[2]).text);
+            Assert.Null(Seams.GetComponent<UnityEngine.UI.ContentSizeFitter>(menu.Rows[2]));
+        }
+
+        /// <summary>
+        /// A text row is as tall as its lines, so long text doesn't run into the next row. Mod titles keep their height.
+        /// </summary>
+        [Fact]
+        public void TextRowsFitTheirLines()
+        {
+            Menu menu = Build("""[ { "type": "text", "labelID": "TEST__INTRO" } ]""");
+
+            UnityEngine.UI.ContentSizeFitter fitter = Seams.GetComponent<UnityEngine.UI.ContentSizeFitter>(menu.Rows[1]);
+            Assert.NotNull(fitter);
+            Assert.Equal(UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize, fitter.verticalFit);
+            Assert.Null(Seams.GetComponent<UnityEngine.UI.ContentSizeFitter>(menu.Rows[0]));
         }
 
         [Fact]

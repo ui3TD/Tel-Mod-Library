@@ -77,7 +77,7 @@ Theater's attendance or Concert Rebalance's forecast.
 
 | File | Fails when |
 |---|---|
-| `ModMenusTests` | Opening Settings doesn't give exactly one Mod Settings button right after Settings, or a second opening adds another. Clicking it doesn't open a menu with a row for every setting in the enabled mods' `modmenu.json`. Apply doesn't save the value. |
+| `ModMenusTests` | Opening Settings doesn't give exactly one Mod Settings button right after Settings, or a second opening adds another. Clicking it doesn't open a menu with a row for every setting in the enabled mods' `modmenu.json`. Apply doesn't save the value. A text field, copied from the rival name popup, keeps a tie to that popup, isn't what a click on it hits, draws outside its row, or doesn't take typing up to its limit, save it on Apply and drop it on Cancel. |
 | `PoliciesThatMatterTests` | After every mod's policy file loads, a policy type lacks one header and one selected choice, or lists a choice twice. A real training tick under Quality doesn't cost 0.5/7 mental stamina a day. Quality doesn't halve the trainee's training time. |
 | `EffortlessTrainingTests` | A real training tick doesn't cost 1 physical stamina a day, times the game's Quality and Moonlighter factors. |
 | `FanAttritionTests` | The game's fan tooltip doesn't render exactly the 15 lines the mod fills by position, ending with the churn line. |

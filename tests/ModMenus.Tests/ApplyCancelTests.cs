@@ -316,6 +316,91 @@ namespace ModMenus.Tests
             Assert.Equal(saved, TestGame.Saved(Loud));
         }
 
+        private const string Motto = "C_Motto";
+
+        /// <summary>
+        /// Opens a mod's text field, whose default is "Hello".
+        /// </summary>
+        private static Menu OpenTextMenu()
+        {
+            TestGame.AddMod("Mod C", """[ { "type": "input", "varID": "C_Motto", "labelID": "TEST__MOTTO", "defaultValue": "Hello" } ]""");
+            Menu menu = TestGame.BuildMenu();
+            menu.Open();
+            return menu;
+        }
+
+        [Fact]
+        public void TextFieldOpensAtItsDefaultUntilSaved()
+        {
+            Menu menu = OpenTextMenu();
+
+            Assert.Equal(("Hello", "Hello"), (menu.FieldText(Motto), menu.Item(Motto).tempText));
+            Assert.Null(TestGame.Saved(Motto));
+        }
+
+        [Fact]
+        public void TextFieldOpensAtItsSavedText()
+        {
+            TestGame.Save(Motto, "Saved");
+
+            Assert.Equal("Saved", OpenTextMenu().FieldText(Motto));
+        }
+
+        /// <summary>
+        /// Whatever the player types is saved as typed, including nothing at all, and the game's number format doesn't touch it.
+        /// </summary>
+        [Theory]
+        [InlineData("Bye")]
+        [InlineData("  spaces kept  ")]
+        [InlineData("スター☆")]
+        [InlineData("1,5")]
+        [InlineData("")]
+        public void ApplySavesTheTextAsTyped(string typed)
+        {
+            Menu menu = OpenTextMenu();
+            menu.Type(Motto, typed);
+            Assert.Null(TestGame.Saved(Motto));
+
+            menu.Apply();
+
+            Assert.Equal(typed, TestGame.Saved(Motto));
+            Assert.Equal(1, Seams.PopupsClosed);
+        }
+
+        [Fact]
+        public void ApplySavesAnUnchangedTextFieldToo()
+        {
+            OpenTextMenu().Apply();
+
+            Assert.Equal("Hello", TestGame.Saved(Motto));
+        }
+
+        [Fact]
+        public void CancelThrowsTheTypingAwayAndReopensAtTheSavedText()
+        {
+            TestGame.Save(Motto, "Saved");
+            Menu menu = OpenTextMenu();
+            menu.Type(Motto, "Typed");
+
+            menu.Cancel();
+            Assert.Equal("Saved", TestGame.Saved(Motto));
+
+            menu.Open();
+            Assert.Equal(("Saved", "Saved"), (menu.FieldText(Motto), menu.Item(Motto).tempText));
+        }
+
+        [Fact]
+        public void ReopeningAfterApplyShowsTheNewText()
+        {
+            Menu menu = OpenTextMenu();
+            menu.Type(Motto, "Typed");
+            menu.Apply();
+
+            menu.Open();
+
+            Assert.Equal("Typed", menu.FieldText(Motto));
+        }
+
         [Fact]
         public void ReopeningScrollsBackToTheTop()
         {

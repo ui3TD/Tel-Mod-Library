@@ -1,5 +1,6 @@
 """Helpers shared by the tools scripts: csproj reading, Release builds, git checks, Steam lookups."""
 
+import getpass
 import glob
 import json
 import os
@@ -64,7 +65,22 @@ def check_built(mod_dir, props, out_dir):
             rel = os.path.relpath(os.path.join(root, name), assets)
             if not os.path.isfile(os.path.join(built, rel)):
                 sys.exit("{}: asset {} missing from the build".format(props["ModName"], rel))
+    check_machine_neutral(built)
     return built
+
+
+def check_machine_neutral(folder):
+    """Exits if any file under folder holds data specific to this PC."""
+    user = getpass.getuser()
+    pattern = re.compile(r"(?<![A-Za-z]){}(?![A-Za-z])".format(re.escape(user)).encode(), re.IGNORECASE)
+    wide = [s.encode("utf-16-le") for s in (user, user.lower(), user.capitalize())]
+    for root, _, files in os.walk(folder):
+        for name in files:
+            path = os.path.join(root, name)
+            with open(path, "rb") as f:
+                data = f.read()
+            if pattern.search(data) or any(w in data for w in wide):
+                sys.exit("{} holds data specific to this PC; refusing to publish it.".format(path))
 
 
 def git(*args):

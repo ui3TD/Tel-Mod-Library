@@ -13,6 +13,9 @@
 		<!--C# and .NET version-->
 		<LangVersion>latest</LangVersion>
 		<TargetFramework>net46</TargetFramework>
+
+		<!--Machine-independent paths in build output.-->
+		<PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
 	</PropertyGroup>
 
 	<!--Every mod compiles against these. AssemblyName (= HarmonyID) is set in Mod.BeforeSdk.targets, after the csproj defines HarmonyID.-->

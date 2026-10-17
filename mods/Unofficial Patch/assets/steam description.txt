@@ -83,13 +83,5 @@ These mods found these bugs first. Unofficial Patch includes these fixes, so you
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.4.0: Fixes senbatsu stats, breakups, event checks, concert estimates, fan opinion, failed loads.
-- 1.5.0: Fixes a freeze when the game generates some platinum or gold idols.
-- 1.6.0: Auditions no longer stall waiting for portraits; slow portraits appear when ready.
-- 1.6.1: Smaller fixes that change only the faulty game code; exact theater revenue averages.
-- 1.7.0: Edgy and Artsy PVs now change sales and new fans, as their tooltips say.
-- 1.8.0: Fixes cafe novelty, depressed waitstaff, tour award savings and tour fame.
-- 1.8.1: Works more safely alongside other mods that change the same game code.
-- 1.9.0: Depressed idols can work cafe shifts again and stay depressed.
 - 1.10.0: Idols already in a show or concert cast can't be picked for a second slot.
 - 1.11.0: Best Employer can be lost, salaries follow recent pay, plus 10 fixes found by other mods.

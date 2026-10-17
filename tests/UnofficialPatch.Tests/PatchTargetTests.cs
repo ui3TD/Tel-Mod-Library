@@ -17,6 +17,8 @@ namespace UnofficialPatch.Tests
         [Fact]
         public void AllPatchesApplyToGame()
         {
+            // A patch that can't be applied throws, instead of being logged and skipped as in the game
+            PatchLog.RethrowPatchFailures = true;
             PatchTargetAssert.PatchesApply(typeof(Theaters_CompleteDay).Assembly, ModNamespace);
         }
 

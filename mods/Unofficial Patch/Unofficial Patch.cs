@@ -38,6 +38,25 @@ namespace UnofficialPatch
             Debug.LogError(LogPrefix + target + ": " + message);
         }
 
+        // Set by the tests, so a patch that can't be applied fails the test instead of being logged.
+        internal static bool RethrowPatchFailures = false;
+
+        // Harmony's Cleanup for every patch class. A patch that can't be applied (e.g. another mod's transpiler
+        // changed the method first) is logged and skipped, so the mod's other fixes still apply.
+        public static Exception PatchFailed<TPatch>(Exception ex)
+        {
+            if (ex == null || RethrowPatchFailures)
+                return ex;
+            Error<TPatch>("couldn't be applied, so this fix is off: " + (ex.InnerException?.Message ?? ex.Message));
+            return null;
+        }
+
+        // Warns, once per patch, that a result another mod had already changed was left as it was.
+        public static void WarnResultChanged<TPatch>()
+        {
+            WarnOncePerPatch<TPatch>("the game's result was already changed by another mod; left unchanged.");
+        }
+
         // Logs a warning once per patch + message.
         public static void WarnOnce<TPatch>(string message)
         {
@@ -273,30 +292,36 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Profile_Fans_Pies), nameof(Profile_Fans_Pies.Render_Pies))]
     public class Profile_Fans_Pies_Render_Pies
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Profile_Fans_Pies_Render_Pies>(ex);
+
         // No-fan sentinel for early exit.
         private const long NoFans = 0L;
         // Cap for cumulative pie fills.
         private const float MaxPieFill = 1f;
 
         // Fixes age-pie rendering so the stacked slices match the teen/YA/adult ratios.
+        // Last, so the pie ends as UP draws it whatever other mods' patches drew.
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(Profile_Fans_Pies __instance, data_girls.girls ___Girl)
         {
             // Skip when there are no fans to render, avoiding divide-by-zero ratios in vanilla code.
             if (___Girl.GetFans_Total() == NoFans)
                 return;
 
-            Image teenImage = __instance.Fans_Pie_Teen.GetComponent<Image>();
-            Image yaImage = __instance.Fans_Pie_YA.GetComponent<Image>();
-            Image adultImage = __instance.Fans_Pie_Adult.GetComponent<Image>();
+            // The ratios the game draws from, not the fills it left, so the result is the same whatever
+            // drew the pie before.
+            float teenRatio = Math.Max(0f, ___Girl.GetFan_Ratio(resources.fanType.teen));
+            float yaRatio = Math.Max(0f, ___Girl.GetFan_Ratio(resources.fanType.youngAdult));
+            float adultRatio = Math.Max(0f, ___Girl.GetFan_Ratio(resources.fanType.adult));
+            SetFills(__instance, teenRatio, yaRatio, adultRatio);
+        }
 
-            float teenRatio = teenImage.fillAmount;
-            float yaRatio = yaImage.fillAmount;
-            // Base game sets Adult fill to adult + teen, so subtract teen to recover the adult slice.
-            float adultRatio = adultImage.fillAmount - teenRatio;
-            if (adultRatio < 0f)
-            {
-                adultRatio = 0f;
-            }
+        // Sets the cumulative fills for these slice ratios.
+        public static void SetFills(Profile_Fans_Pies pies, float teenRatio, float yaRatio, float adultRatio)
+        {
+            Image teenImage = pies.Fans_Pie_Teen.GetComponent<Image>();
+            Image yaImage = pies.Fans_Pie_YA.GetComponent<Image>();
+            Image adultImage = pies.Fans_Pie_Adult.GetComponent<Image>();
 
             float totalRatio = teenRatio + yaRatio + adultRatio;
             // Guard against rounding overshoot by scaling to the expected 0..1 range.
@@ -310,6 +335,7 @@ namespace UnofficialPatch
 
             // The prefab renders Teen as the base image with Adult and YA as child images on top.
             // Use cumulative fills so the visible slices match the ratios (YA, then Adult, then Teen).
+            yaImage.fillAmount = yaRatio;
             adultImage.fillAmount = adultRatio + yaRatio;
             teenImage.fillAmount = adultRatio + yaRatio + teenRatio;
         }
@@ -319,6 +345,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Tour_New_Popup), nameof(Tour_New_Popup.Render))]
     public class Tour_New_Popup_Render
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Tour_New_Popup_Render>(ex);
+
         // Keeps the expected revenue color consistent by always evaluating profitability after savings.
         public static void Postfix(Tour_New_Popup __instance)
         {
@@ -336,6 +364,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(SEvent_Tour.tour), nameof(SEvent_Tour.tour.RecalcProductionCost))]
     public class SEvent_Tour_tour_RecalcProductionCost
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SEvent_Tour_tour_RecalcProductionCost>(ex);
+
         // Last, so the share includes any other change to the production cost.
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(SEvent_Tour.tour __instance)
@@ -365,6 +395,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(SEvent_Tour), nameof(SEvent_Tour.GetFamePenalty))]
     public class SEvent_Tour_GetFamePenalty
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SEvent_Tour_GetFamePenalty>(ex);
+
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             MethodInfo get = AccessTools.Method(typeof(resources), nameof(resources.Get), new[] { typeof(resources.type), typeof(bool) });
@@ -400,6 +432,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Theaters), nameof(Theaters.GetStaminaCost))]
     public class Theaters_GetStaminaCost
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Theaters_GetStaminaCost>(ex);
+
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             var matcher = new CodeMatcher(instructions);
@@ -437,25 +471,76 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Theaters), nameof(Theaters.CompleteDay))]
     public class Theaters_CompleteDay
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Theaters_CompleteDay>(ex);
+
         // Day-of-month used by the base game for subscription revenue.
         private const int FirstDayOfMonth = 1;
 
-        // Fixed Theater so that revenue stats are not offset by one day
-        public static void Prefix()
+        // What each theater looked like before the day: its last stat row, and its idols' earnings this month.
+        public class Before
         {
+            public Theaters._theater._stat LastStat;
+            public List<KeyValuePair<data_girls.girls, long>> Earnings = new List<KeyValuePair<data_girls.girls, long>>();
+        }
+
+        // Fixed Theater so that revenue stats are not offset by one day
+        // Last, so it sees whether another mod's prefix skipped the day.
+        [HarmonyPriority(Priority.Last)]
+        public static void Prefix(bool __runOriginal, out Dictionary<Theaters._theater, Before> __state)
+        {
+            __state = null;
+            // The day was skipped: leave the theaters as they are.
+            if (!__runOriginal || Theaters.Theaters_ == null)
+                return;
+
+            __state = new Dictionary<Theaters._theater, Before>();
             foreach (Theaters._theater theater in Theaters.Theaters_)
             {
+                if (theater == null)
+                    continue;
+
+                Before before = new Before();
+                if (theater.Stats != null && theater.Stats.Count > 0)
+                    before.LastStat = theater.Stats[theater.Stats.Count - 1];
+                List<data_girls.girls> girls = theater.GetGroup()?.GetGirls(true, false, null);
+                if (girls != null)
+                {
+                    foreach (data_girls.girls girl in girls)
+                    {
+                        if (girl != null)
+                            before.Earnings.Add(new KeyValuePair<data_girls.girls, long>(girl, girl.Earnings_CurrentMonth));
+                    }
+                }
+                __state[theater] = before;
+
                 // Fix so that auto schedules contribute revenue on the day of
                 theater.Doing_Now = theater.GetSchedule().Type;
             }
         }
 
         // Fixes revenue accounting and income distribution after the base method completes.
-        public static void Postfix()
+        // Last, so it sees what other mods' patches did.
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(Dictionary<Theaters._theater, Before> __state)
         {
+            if (__state == null)
+                return;
+
+            // The game pays idols nothing here, so theaters whose idols' earnings changed during the day were
+            // already paid. Checked before paying any, in case idols share theaters.
+            HashSet<Theaters._theater> alreadyPaid = new HashSet<Theaters._theater>(__state
+                .Where(entry => entry.Value.Earnings.Any(earning => earning.Key.Earnings_CurrentMonth != earning.Value))
+                .Select(entry => entry.Key));
+
             foreach (Theaters._theater theater in Theaters.Theaters_)
             {
                 if (theater == null || theater.Stats == null || theater.Stats.Count == 0)
+                {
+                    continue;
+                }
+
+                // Only theaters whose day ran: the game adds a new stat row for each one.
+                if (!__state.TryGetValue(theater, out Before before) || ReferenceEquals(theater.Stats[theater.Stats.Count - 1], before.LastStat))
                 {
                     continue;
                 }
@@ -526,6 +611,11 @@ namespace UnofficialPatch
                     continue;
                 }
 
+                if (alreadyPaid.Contains(theater))
+                {
+                    continue;
+                }
+
                 foreach (data_girls.girls girl in girls)
                 {
                     if (girl != null)
@@ -547,7 +637,7 @@ namespace UnofficialPatch
         // without stats. Summed in double: revenue is a long, and a float drops whole yen above ~16.7 million.
         public static int? OfShowDays(Theaters._theater theater, Func<Theaters._theater._stat, double> value)
         {
-            if (theater.Stats.Count == 0)
+            if (theater == null || theater.Stats == null || theater.Stats.Count == 0)
                 return null;
 
             double total = 0;
@@ -555,6 +645,8 @@ namespace UnofficialPatch
             for (int index = theater.Stats.Count - 1; index >= Math.Max(0, theater.Stats.Count - DaysInWeek); index--)
             {
                 Theaters._theater._stat stat = theater.Stats[index];
+                if (stat == null || stat.Schedule == null)
+                    return null;
                 if (stat.Schedule.Type != Theaters._theater._schedule._type.day_off)
                 {
                     total += value(stat);
@@ -574,11 +666,29 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetAvgAttendance))]
     public class Theaters__theater_GetAvgAttendance
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Theaters__theater_GetAvgAttendance>(ex);
+
+        // Last, so it sees what other mods' patches did.
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref int __result, Theaters._theater __instance)
         {
+            // A result that isn't the game's was already changed by another mod.
+            if (__result != Vanilla(__instance))
+            {
+                PatchLog.WarnResultChanged<Theaters__theater_GetAvgAttendance>();
+                return;
+            }
+
             int? average = TheaterAverages.OfShowDays(__instance, stat => stat.Attendance);
             if (average != null)
                 __result = average.Value;
+        }
+
+        // The game's own GetAvgAttendance, without any mod's patches.
+        [HarmonyReversePatch]
+        public static int Vanilla(Theaters._theater instance)
+        {
+            throw new NotImplementedException("Replaced by a reverse patch");
         }
     }
 
@@ -586,11 +696,29 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetAvgRevenue))]
     public class Theaters__theater_GetAvgRevenue
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Theaters__theater_GetAvgRevenue>(ex);
+
+        // Last, so it sees what other mods' patches did.
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref int __result, Theaters._theater __instance)
         {
+            // A result that isn't the game's was already changed by another mod.
+            if (__result != Vanilla(__instance))
+            {
+                PatchLog.WarnResultChanged<Theaters__theater_GetAvgRevenue>();
+                return;
+            }
+
             int? average = TheaterAverages.OfShowDays(__instance, stat => stat.Revenue);
             if (average != null)
                 __result = average.Value;
+        }
+
+        // The game's own GetAvgRevenue, without any mod's patches.
+        [HarmonyReversePatch]
+        public static int Vanilla(Theaters._theater instance)
+        {
+            throw new NotImplementedException("Replaced by a reverse patch");
         }
     }
 
@@ -599,17 +727,31 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Theaters), nameof(Theaters.GetLastWeekEarning))]
     public class Theaters_GetLastWeekEarning
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Theaters_GetLastWeekEarning>(ex);
+
         // Tooltip is intended to show a full week.
         private const int DaysInWeek = 7;
         // Average weeks per month, to spread the monthly subscription revenue over a week.
         private const double SubRevenueWeeksPerMonth = 4.35;
 
+        // Last, so it sees what other mods' patches did.
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref long __result)
         {
+            // A result that isn't the game's was already changed by another mod.
+            if (__result != Vanilla())
+            {
+                PatchLog.WarnResultChanged<Theaters_GetLastWeekEarning>();
+                return;
+            }
+
             // Start with the base value from the game.
             long output = __result;
             foreach (Theaters._theater theater in Theaters.Theaters_)
             {
+                if (theater == null || theater.Stats == null)
+                    continue;
+
                 // Add the missing 7th day for each theater.
                 if (theater.Stats.Count >= DaysInWeek)
                 {
@@ -627,21 +769,42 @@ namespace UnofficialPatch
             // Return the corrected tooltip total.
             __result = output;
         }
+
+        // The game's own GetLastWeekEarning, without any mod's patches.
+        [HarmonyReversePatch]
+        public static long Vanilla()
+        {
+            throw new NotImplementedException("Replaced by a reverse patch");
+        }
     }
 
 	// Fixed Cafe so that money tooltip includes 7 days instead of 6
     [HarmonyPatch(typeof(Cafes), nameof(Cafes.GetLastWeekEarning))]
     public class Cafes_GetLastWeekEarning
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Cafes_GetLastWeekEarning>(ex);
+
         // Tooltip is intended to show a full week.
         private const int DaysInWeek = 7;
 
+        // Last, so it sees what other mods' patches did.
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref int __result)
         {
+            // A result that isn't the game's was already changed by another mod.
+            if (__result != Vanilla())
+            {
+                PatchLog.WarnResultChanged<Cafes_GetLastWeekEarning>();
+                return;
+            }
+
             // Recount the week in 64 bits: the game's int total wraps past ~2.1 billion.
             long output = 0L;
             foreach (Cafes._cafe cafe in Cafes.Cafes_)
             {
+                if (cafe == null || cafe.Stats == null)
+                    continue;
+
                 // The last 7 days of each cafe; the game counts only 6.
                 for (int i = Math.Max(cafe.Stats.Count - DaysInWeek, 0); i < cafe.Stats.Count; i++)
                 {
@@ -651,6 +814,13 @@ namespace UnofficialPatch
             // The tooltip reads an int, so cap the total instead of wrapping.
             __result = (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, output));
         }
+
+        // The game's own GetLastWeekEarning, without any mod's patches.
+        [HarmonyReversePatch]
+        public static int Vanilla()
+        {
+            throw new NotImplementedException("Replaced by a reverse patch");
+        }
     }
 
     // Fixes the novelty of an idol's new cafe dish. The game added the novelty her dishes had lost instead of
@@ -659,6 +829,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Cafes._cafe), nameof(Cafes._cafe.GetNovelty))]
     public class Cafes__cafe_GetNovelty
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Cafes__cafe_GetNovelty>(ex);
+
         // Full novelty of one dish.
         private const int FullNovelty = 100;
 
@@ -698,6 +870,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Cafes), nameof(Cafes.RenderCafe))]
     public class Cafes_RenderCafe
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Cafes_RenderCafe>(ex);
+
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             List<CodeInstruction> codes = instructions.ToList();
@@ -748,6 +922,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Relationships._relationship), nameof(Relationships._relationship.BreakUp))]
     public class Relationships__relationship_BreakUp
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Relationships__relationship_BreakUp>(ex);
+
         // Indices for the two relationship participants.
         private const int FirstPartnerIndex = 0;
         private const int SecondPartnerIndex = 1;
@@ -760,16 +936,17 @@ namespace UnofficialPatch
 
         public static void Postfix(Relationships._relationship __instance, bool __state)
         {
-            // Only clear known status when the pair was actually dating.
-            if (!__state || __instance == null || __instance.Girls == null || __instance.Girls.Count < 2)
+            // Only clear known status when the pair was dating and has now broken up (another mod may have
+            // skipped the breakup).
+            if (!__state || __instance == null || __instance.Dating || __instance.Girls == null || __instance.Girls.Count < 2)
                 return;
 
             // Hide partner status for both sides after breakup.
-            if (__instance.Girls[FirstPartnerIndex] != null)
+            if (__instance.Girls[FirstPartnerIndex]?.DatingData != null)
             {
                 __instance.Girls[FirstPartnerIndex].DatingData.Is_Partner_Status_Known = false;
             }
-            if (__instance.Girls[SecondPartnerIndex] != null)
+            if (__instance.Girls[SecondPartnerIndex]?.DatingData != null)
             {
                 __instance.Girls[SecondPartnerIndex].DatingData.Is_Partner_Status_Known = false;
             }
@@ -780,6 +957,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), nameof(SEvent_Concerts._concert._projectedValues.GetRevenue))]
     public class SEvent_Concerts__concert__projectedValues_GetRevenue
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SEvent_Concerts__concert__projectedValues_GetRevenue>(ex);
+
         // Hype curve configuration used by the adjusted revenue formula.
         private const float HypeBaseline = 1f;
         private const float LinearPointX0 = 0f;
@@ -801,6 +980,14 @@ namespace UnofficialPatch
             if (getHype == null || infix == null)
             {
                 PatchLog.WarnOncePerPatch<SEvent_Concerts__concert__projectedValues_GetRevenue>("GetHype/Infix method lookup failed.");
+                return instructions;
+            }
+
+            // Read once: another mod's transpiler may hand over a sequence that rebuilds on every read.
+            instructions = instructions.ToList();
+            if (instructions.Any(ci => IlHelpers.IsCallTo(ci, infix)))
+            {
+                // Already calls the Infix: patched twice.
                 return instructions;
             }
 
@@ -856,6 +1043,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(SEvent_Concerts._concert._projectedValues), nameof(SEvent_Concerts._concert._projectedValues.GetString))]
     public class SEvent_Concerts__concert__projectedValues_GetString
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SEvent_Concerts__concert__projectedValues_GetString>(ex);
+
         // Hype is capped at 200% (2.0) by the base game.
         private const float MaxRatio = 2f;
         private const float PercentScale = 100f;
@@ -879,6 +1068,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(singles._single), nameof(singles._single.SenbatsuCalcParam))]
     public class singles__single_SenbatsuCalcParam
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<singles__single_SenbatsuCalcParam>(ex);
+
         // Percent scaling constant used by the base formula.
         private const float PercentScale = 100f;
         // IL pattern length for the 100f / rows divisor.
@@ -901,6 +1092,14 @@ namespace UnofficialPatch
             if (infix == null || countGirls == null)
             {
                 PatchLog.WarnOncePerPatch<singles__single_SenbatsuCalcParam>("Infix or GetNumberOfNonGraduatedGirls lookup failed.");
+                return instructions;
+            }
+
+            // Read once: another mod's transpiler may hand over a sequence that rebuilds on every read.
+            instructions = instructions.ToList();
+            if (instructions.Any(ci => IlHelpers.IsCallTo(ci, infix)))
+            {
+                // Already calls the Infix: patched twice.
                 return instructions;
             }
 
@@ -984,6 +1183,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(singles._single), nameof(singles._single.GetSenbatsuParamValue))]
     public class singles__single_GetSenbatsuParamValue
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<singles__single_GetSenbatsuParamValue>(ex);
+
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             MethodInfo calcParam = AccessTools.Method(typeof(singles._single), nameof(singles._single.SenbatsuCalcParam),
@@ -1018,6 +1219,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(singles), nameof(singles.ValueAfterMarketing))]
     public class singles_ValueAfterMarketing
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<singles_ValueAfterMarketing>(ex);
+
         // Edgy and Artsy each check 2 fields on success and 2 on failure.
         public const int ExpectedFixes = 8;
 
@@ -1078,6 +1281,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(data_girls), nameof(data_girls.GenerateParams))]
     public class data_girls_GenerateParams
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<data_girls_GenerateParams>(ex);
+
         // Highest value a stat can hold.
         private const int MaxStat = 99;
         // Points the game takes off for the 8 stats starting at 1.
@@ -1098,6 +1303,14 @@ namespace UnofficialPatch
             if (getPoints == null || newList == null || shouldReroll == null || fitBudget == null)
             {
                 PatchLog.WarnOncePerPatch<data_girls_GenerateParams>("method lookup failed.");
+                return instructions;
+            }
+
+            // Read once: another mod's transpiler may hand over a sequence that rebuilds on every read.
+            instructions = instructions.ToList();
+            if (instructions.Any(ci => IlHelpers.IsCallTo(ci, shouldReroll)))
+            {
+                // Already rerolls: patched twice.
                 return instructions;
             }
 
@@ -1218,6 +1431,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetPartnerString))]
     public class data_girls_girls_GetPartnerString
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<data_girls_girls_GetPartnerString>(ex);
+
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             MethodInfo isAoc = AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.Is_AOC));
@@ -1241,23 +1456,80 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(resources._fanOpinion), nameof(resources._fanOpinion.Add))]
     public class resources__fanOpinion_Add
     {
-        // The game counts val down to its fraction as it records whole points, so keep the full change.
-        public static void Prefix(float val, out float __state)
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<resources__fanOpinion_Add>(ex);
+
+        // The change, and the opinions of the idols' fans it applies to, before anything else ran.
+        public class Before
         {
-            __state = val;
+            public float Val;
+            public List<KeyValuePair<resources._fan, Opinion>> Opinions = new List<KeyValuePair<resources._fan, Opinion>>();
         }
 
-        public static void Postfix(resources._fanOpinion __instance, float __state)
+        // A fan's opinion: what AddOpinion changes.
+        public struct Opinion
         {
+            public int[] Vals;
+            public float Temp;
+
+            public static Opinion Of(resources._fan fan)
+            {
+                return new Opinion { Vals = fan.Vals != null ? fan.Vals.ToArray() : null, Temp = fan.Temp };
+            }
+
+            public bool SameAs(resources._fan fan)
+            {
+                if (Temp != fan.Temp)
+                    return false;
+                if (Vals == null || fan.Vals == null)
+                    return Vals == null && fan.Vals == null;
+                return Vals.SequenceEqual(fan.Vals);
+            }
+        }
+
+        // First, so the opinions are read before any other mod's patch changes them.
+        // The game counts val down to its fraction as it records whole points, so keep the full change.
+        [HarmonyPriority(Priority.First)]
+        public static void Prefix(resources._fanOpinion __instance, float val, out Before __state)
+        {
+            __state = new Before { Val = val };
+            foreach (data_girls.girls girl in Eligible())
+            {
+                foreach (resources._fan fan in girl.Fans)
+                {
+                    if (fan != null && fan.IsType(__instance.type))
+                        __state.Opinions.Add(new KeyValuePair<resources._fan, Opinion>(fan, Opinion.Of(fan)));
+                }
+            }
+        }
+
+        // Last, so it sees what other mods' patches did.
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(resources._fanOpinion __instance, Before __state, bool __runOriginal)
+        {
+            // Another mod skipped the change.
+            if (!__runOriginal || __state == null)
+                return;
+            // The game doesn't touch idols' fans here, so a changed opinion means the change already reached them.
+            if (__state.Opinions.Any(entry => !entry.Value.SameAs(entry.Key)))
+                return;
+
             // Propagate global fan opinion changes to each active girl.
+            foreach (data_girls.girls girl in Eligible())
+            {
+                // Apply the appeal delta for the matching fan type.
+                girl.AddAppeal(__instance.type, __state.Val);
+            }
+        }
+
+        // Idols who gain appeal: not null, sick or graduated.
+        private static IEnumerable<data_girls.girls> Eligible()
+        {
+            if (data_girls.girl == null)
+                yield break;
             foreach (data_girls.girls girl in data_girls.girl)
             {
-                // Skip null entries, sick girls, and graduates who should not gain appeal.
-                if (girl != null && !girl.IsSick() && girl.status != data_girls._status.graduated)
-                {
-                    // Apply the appeal delta for the matching fan type.
-                    girl.AddAppeal(__instance.type, __state);
-                }
+                if (girl != null && girl.Fans != null && !girl.IsSick() && girl.status != data_girls._status.graduated)
+                    yield return girl;
             }
         }
     }
@@ -1267,10 +1539,12 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Date_Gossip), nameof(Date_Gossip.GetAvailableGossips))]
     public class Date_Gossip_GetAvailableGossips
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Date_Gossip_GetAvailableGossips>(ex);
+
         public static void Postfix(ref List<Date_Gossip._gossip> __result, data_girls.girls Snitch)
         {
             // Nothing to filter if the list is empty.
-            if (__result.Count == 0)
+            if (__result == null || __result.Count == 0)
             {
                 return;
             }
@@ -1291,6 +1565,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(vn_requirements), nameof(vn_requirements.CheckGirl), new Type[] { typeof(data_girls.girls), typeof(string), typeof(string) })]
     public class vn_requirements_CheckGirl
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<vn_requirements_CheckGirl>(ex);
+
         // Requirement key used by the game for influence checks.
         private const string InfluenceParameter = "influence";
 
@@ -1371,6 +1647,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(vn_requirements), nameof(vn_requirements.CheckGirl), new Type[] { typeof(data_girls.girls), typeof(string), typeof(string) })]
     public class vn_requirements_CheckGirl_Variable
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<vn_requirements_CheckGirl_Variable>(ex);
+
         // CheckGirl(girl, parameter, formula) is static, so formula is argument 2.
         private const int FormulaArgument = 2;
 
@@ -1403,8 +1681,10 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Activities._activity), nameof(Activities._activity.GetDescription))]
     public class Activities__activity_GetDescription
     {
-        // The Energetic policy's stamina cost, as Activities.GetStaminaCost charges it (-4f). The unit tests
-        // check the two match; that method needs the scene's Activities component, which a description can't reach.
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Activities__activity_GetDescription>(ex);
+
+        // The Energetic policy's stamina cost, as the game's Activities.GetStaminaCost charges it (-4f). Used when
+        // the scene's Activities component can't be reached; the unit tests check the two match.
         private const int EnergeticStaminaCost = 4;
         private const string PointsKey = "PT";
         private const string StaminaKey = "STAMINA";
@@ -1420,12 +1700,33 @@ namespace UnofficialPatch
                 __result = string.Concat(new object[]
                 {
                     CostPrefix,
-                    EnergeticStaminaCost,
+                    StaminaCost(),
                     Language.Data[PointsKey],
                     CostSeparator,
                     Language.Data[StaminaKey].ToLower()
                 });
             }
+        }
+
+        // The cost the game charges, including any other mod's change to it.
+        private static int StaminaCost()
+        {
+            try
+            {
+                return ChargedStaminaCost();
+            }
+            catch (Exception)
+            {
+                // No scene (main menu, unit tests): the game's own cost.
+                return EnergeticStaminaCost;
+            }
+        }
+
+        // Separate, so a failure to reach the scene is caught by the caller.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static int ChargedStaminaCost()
+        {
+            return Mathf.RoundToInt(-Camera.main.GetComponent<mainScript>().Data.GetComponent<Activities>().GetStaminaCost());
         }
     }
 
@@ -1434,6 +1735,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(vn_requirements), nameof(vn_requirements.CheckMeta))]
     public class vn_requirements_CheckMeta
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<vn_requirements_CheckMeta>(ex);
+
         // Metadata parameter and formula keys.
         private const string StaffParameter = "staff";
         private const string VocalFormula = "vocal";
@@ -1538,6 +1841,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(SaveManager), nameof(SaveManager.LoadData), new Type[] { typeof(bool) })]
     public class SaveManager_LoadData_Bool_NullGuard
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SaveManager_LoadData_Bool_NullGuard>(ex);
+
         private const string WarningMessage =
             "LoadData(bool) left SaveManager.Data null. Restored previous in-memory save data to prevent SaveEvent/autosave null crash.";
 
@@ -1556,6 +1861,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(SaveManager), nameof(SaveManager.LoadData), new Type[] { typeof(string) })]
     public class SaveManager_LoadData_Path_NullGuard
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SaveManager_LoadData_Path_NullGuard>(ex);
+
         private const string WarningMessage =
             "LoadData(string) left SaveManager.Data null. Restored previous in-memory save data to prevent SaveEvent/autosave null crash.";
 
@@ -1575,6 +1882,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(MainMenu_LoadGameManager), nameof(MainMenu_LoadGameManager.LoadAsync))]
     public class MainMenu_LoadGameManager_LoadAsync
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<MainMenu_LoadGameManager_LoadAsync>(ex);
+
         public static void Prefix(bool loadSave)
         {
             FailedLoadGuard.MenuLoadPending = loadSave;
@@ -1586,6 +1895,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(SaveManager), nameof(SaveManager.SaveData), new Type[] { typeof(bool), typeof(bool) })]
     public class SaveManager_SaveData
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SaveManager_SaveData>(ex);
+
         public static bool Prefix(SaveManager __instance, bool autoSave)
         {
             return !autoSave || !ReferenceEquals(__instance, FailedLoadGuard.BlockedSaveManager);
@@ -1808,6 +2119,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Popup_Audition), nameof(Popup_Audition.LoadCards))]
     public class Popup_Audition_LoadCards
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Popup_Audition_LoadCards>(ex);
+
         public static void Prefix()
         {
             PortraitLoading.cardsLoadedAt = PortraitLoading.Now();
@@ -1819,6 +2132,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Popup_Audition), nameof(Popup_Audition.PortraitsLoaded))]
     public class Popup_Audition_PortraitsLoaded
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Popup_Audition_PortraitsLoaded>(ex);
+
         public static void Postfix(Popup_Audition __instance, ref bool __result)
         {
             try
@@ -1846,6 +2161,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Popup_Audition), nameof(Popup_Audition.OpenCard))]
     public class Popup_Audition_OpenCard
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Popup_Audition_OpenCard>(ex);
+
         public static void Postfix(Popup_Audition __instance, Auditions.data._girl girl, Sprite portrait)
         {
             try
@@ -1873,6 +2190,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(Popup_Audition), nameof(Popup_Audition.Close))]
     public class Popup_Audition_Close
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Popup_Audition_Close>(ex);
+
         private static readonly FieldInfo DataField = AccessTools.Field(typeof(Popup_Audition), nameof(Popup_Audition.Data));
 
         public static void Prefix(Popup_Audition __instance)
@@ -1903,6 +2222,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(data_girls_textures), nameof(data_girls_textures.setPortrait))]
     public class data_girls_textures_setPortrait
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<data_girls_textures_setPortrait>(ex);
+
         public static void Postfix(List<GameObject> target, ref IEnumerator __result)
         {
             if (__result != null && target != null && target.Count > 0)
@@ -1915,6 +2236,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(data_girls_textures), nameof(data_girls_textures.SetSprite))]
     public class data_girls_textures_SetSprite
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<data_girls_textures_SetSprite>(ex);
+
         public static bool Prefix(GameObject obj)
         {
             return obj != null;
@@ -1927,6 +2250,8 @@ namespace UnofficialPatch
     [HarmonyPatch(typeof(data_girls_textures), nameof(data_girls_textures.NEW_Cache_Portrait), MethodType.Enumerator)]
     public class data_girls_textures_NEW_Cache_Portrait
     {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<data_girls_textures_NEW_Cache_Portrait>(ex);
+
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             ConstructorInfo newWait = AccessTools.Constructor(typeof(WaitUntil), new Type[] { typeof(Func<bool>) });

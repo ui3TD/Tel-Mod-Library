@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Xunit;
 
@@ -20,20 +21,28 @@ namespace UnofficialPatch.Tests
             return pies;
         }
 
-        private static data_girls.girls IdolWithFans(long people)
+        // Fans per unit of ratio, so ratios like 0.2 are exact counts.
+        private const long FansPerRatio = 1000;
+
+        /// <summary>
+        /// An idol whose teen, young adult and adult fans are in these ratios.
+        /// </summary>
+        private static data_girls.girls IdolWithAges(float teen, float youngAdult, float adult)
         {
             data_girls.girls girl = TestGame.Idol();
-            girl.Fans.Add(new resources._fan { age = resources.fanType.teen, people = people });
+            girl.Fans.Add(new resources._fan { age = resources.fanType.teen, people = (long)Math.Round(teen * FansPerRatio) });
+            girl.Fans.Add(new resources._fan { age = resources.fanType.youngAdult, people = (long)Math.Round(youngAdult * FansPerRatio) });
+            girl.Fans.Add(new resources._fan { age = resources.fanType.adult, people = (long)Math.Round(adult * FansPerRatio) });
             return girl;
         }
 
         /// <summary>
-        /// Renders the pies as the game leaves them: Teen and Young Adult at their ratios, Adult at adult + teen.
+        /// Renders the pies after the game left them: Teen and Young Adult at their ratios, Adult at adult + teen.
         /// </summary>
-        private static Profile_Fans_Pies Render(float teen, float youngAdult, float adult, long fans = 100)
+        private static Profile_Fans_Pies Render(float teen, float youngAdult, float adult)
         {
             Profile_Fans_Pies pies = Pies(teen, youngAdult, adult + teen);
-            Profile_Fans_Pies_Render_Pies.Postfix(pies, IdolWithFans(fans));
+            Profile_Fans_Pies_Render_Pies.Postfix(pies, IdolWithAges(teen, youngAdult, adult));
             return pies;
         }
 
@@ -53,12 +62,28 @@ namespace UnofficialPatch.Tests
         }
 
         [Fact]
+        public void PiesAnotherModAlreadyFixed_EndTheSame()
+        {
+            // Another mod already drew the cumulative fills: Young Adult, Young Adult + Adult, then the whole pie
+            Profile_Fans_Pies pies = Pies(1f, 0.3f, 0.8f);
+
+            Profile_Fans_Pies_Render_Pies.Postfix(pies, IdolWithAges(0.2f, 0.3f, 0.5f));
+
+            Assert.Equal(0.3f, Seams.Fill(pies.Fans_Pie_YA), 4);
+            Assert.Equal(0.8f, Seams.Fill(pies.Fans_Pie_Adult), 4);
+            Assert.Equal(1f, Seams.Fill(pies.Fans_Pie_Teen), 4);
+        }
+
+        [Fact]
         public void RoundingOvershoot_IsScaledBackToAFullCircle()
         {
-            Profile_Fans_Pies pies = Render(0.34f, 0.34f, 0.34f);
+            Profile_Fans_Pies pies = Pies(0f, 0f, 0f);
+
+            Profile_Fans_Pies_Render_Pies.SetFills(pies, 0.34f, 0.34f, 0.34f);
 
             Assert.Equal(1f, Seams.Fill(pies.Fans_Pie_Teen), 4);
             Assert.Equal(2f / 3f, Seams.Fill(pies.Fans_Pie_Adult), 4);
+            Assert.Equal(1f / 3f, Seams.Fill(pies.Fans_Pie_YA), 4);
         }
 
         [Fact]

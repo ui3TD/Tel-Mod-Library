@@ -43,3 +43,4 @@ Also recommended mods by magier:
 - 1.6.1: Smaller fixes that change only the faulty game code; exact theater revenue averages.
 - 1.7.0: Edgy and Artsy PVs now change sales and new fans, as their tooltips say.
 - 1.8.0: Fixes cafe novelty, depressed waitstaff, tour award savings and tour fame.
+- 1.8.1: Works more safely alongside other mods that change the same game code.

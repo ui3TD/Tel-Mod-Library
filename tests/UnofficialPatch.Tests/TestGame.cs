@@ -38,6 +38,9 @@ namespace UnofficialPatch.Tests
             Log.Install();
             Seams.Install();
 
+            // A patch that can't be applied throws here, instead of being logged and skipped as in the game
+            PatchLog.RethrowPatchFailures = true;
+
             // Not "tests.UnofficialPatch": PatchTargetTests unpatches everything under that ID
             Harmony harmony = new("tests.UnofficialPatch.Behaviour");
             foreach (Type patchClass in TelModTests.Common.PatchTargetAssert.PatchClasses(typeof(Theaters_CompleteDay).Assembly, "UnofficialPatch"))
@@ -276,7 +279,7 @@ namespace UnofficialPatch.Tests
             AccessTools.Method(typeof(Theaters), "CompleteDay"),
             AccessTools.Method(typeof(Theaters_CompleteDay), nameof(Theaters_CompleteDay.Postfix)),
             AccessTools.Method(typeof(Relationships._relationship), nameof(Relationships._relationship.BreakUp)),
-            AccessTools.Method(typeof(Profile_Fans_Pies_Render_Pies), nameof(Profile_Fans_Pies_Render_Pies.Postfix)),
+            AccessTools.Method(typeof(Profile_Fans_Pies_Render_Pies), nameof(Profile_Fans_Pies_Render_Pies.SetFills)),
             AccessTools.Method(typeof(Tour_New_Popup_Render), nameof(Tour_New_Popup_Render.Postfix)),
             AccessTools.Method(typeof(data_girls), "GenerateParams"),
             AccessTools.Method(typeof(data_girls), "GeneratePotential"),

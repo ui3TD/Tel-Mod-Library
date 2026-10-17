@@ -1,7 +1,7 @@
 [h1]REQUIRES: IM-HarmonyIntegration[/h1]
 Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
 
-Also recommended, for bugs this mod doesn't fix:
+Also recommended, for bugs this mod doesn't fully fix:
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3136750680]BestSingleFix[/url] by magier
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864808]Unavailable Idols Fix[/url] by Cosmo
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3646096448]Divorce Fix[/url] by Cosmo
@@ -21,7 +21,7 @@ Also recommended, for bugs this mod doesn't fix:
 [b]Cafe[/b]
 - Fixed Cafe weekly revenue so that it includes 7 days instead of 6.
 - Fixed Cafe novelty always starting a new dish at 100%, even when the idol's other dishes are stale.
-- Fixed Cafe shifts curing depressed waitstaff. Depressed idols can still work, as in the base game.
+- Fixed Cafe shifts curing depressed waitstaff.
 
 [b]Concerts, shows and world tours[/b]
 - Fixed Concert revenue formula so that it shows accurate estimated values, including the FUJI ticket bonus.

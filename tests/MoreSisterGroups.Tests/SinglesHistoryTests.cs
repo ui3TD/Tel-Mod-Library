@@ -35,10 +35,11 @@ namespace MoreSisterGroups.Tests
         /// </summary>
         private static void During(string step, singles._single single, Action action)
         {
+            Utility.ReleaseContext state = null;
             if (step == "AddOpinion")
                 singles_AddOpinion.Prefix(single);
             else
-                singles_GenerateSales.Prefix(single);
+                singles_GenerateSales.Prefix(single, out state);
             try
             {
                 action();
@@ -48,7 +49,7 @@ namespace MoreSisterGroups.Tests
                 if (step == "AddOpinion")
                     singles_AddOpinion.Finalizer();
                 else
-                    singles_GenerateSales.Finalizer();
+                    singles_GenerateSales.Finalizer(state);
             }
         }
 
@@ -141,6 +142,7 @@ namespace MoreSisterGroups.Tests
             During(step, s1, () => { });
 
             Assert.True(Utility.groupSales is null);
+            Assert.True(Utility.singleSales is null);
             SameSingles(new[] { m1, o1, s1 }, singles.GetLatestReleasedSingles(5));
         }
 
@@ -178,6 +180,7 @@ namespace MoreSisterGroups.Tests
             }
 
             Assert.True(Utility.groupSales is null);
+            Assert.True(Utility.singleSales is null);
             SameSingles(new[] { m1, o1, s1 }, singles.GetLatestReleasedSingles(5));
         }
 

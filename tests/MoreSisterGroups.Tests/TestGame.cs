@@ -43,6 +43,8 @@ namespace MoreSisterGroups.Tests
             data_girls.girl = new List<data_girls.girls>();
             singles.Singles = new List<singles._single>();
             Utility.groupSales = null;
+            Utility.singleSales = null;
+            staticVars.dateTime = new DateTime(2020, 6, 1);
             return Group();
         }
 
@@ -78,6 +80,16 @@ namespace MoreSisterGroups.Tests
             singles._single single = new() { status = status };
             singles.Singles.Add(single);
             group?.Singles.Add(single);
+            return single;
+        }
+
+        /// <summary>
+        /// Adds a single the group released this many days ago.
+        /// </summary>
+        public static singles._single Released(Groups._group group, int daysAgo)
+        {
+            singles._single single = Single(group);
+            single.ReleaseData.ReleaseDate = staticVars.dateTime.AddDays(-daysAgo);
             return single;
         }
 

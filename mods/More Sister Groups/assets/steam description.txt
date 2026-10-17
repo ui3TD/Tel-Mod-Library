@@ -6,9 +6,12 @@ Unlimited sister groups, but they are nerfed to maintain balance.
 - Sister group minimum member limit for creation removed to allow more freedom.
 - When releasing a single, the penalty for a decrease in fame and appeal now only considers past singles of the same group, so that sister groups are more independent.
 - In Unfair, sister group new fans are reduced 5x to balance out the increased number of sister groups.
-- In Unfair, sister group new fans are reduced if the group has less than 10 members. If there is 1 member, then you only get 10% new fans, if 2 members, then 20% etc. This is because having tons of groups with 1 member each becomes really overpowered.
+- In Unfair, sister group new fans are reduced if the group has less than 10 members, by the square of its size. A group of 1 member gets 1% of the new fans, 2 members get 4%, 5 members get 25%, and 10 or more members get the full amount. This is because having tons of small groups becomes really overpowered.
+- In Unfair, only the members who sing on a single count. If 5 of a group's 10 members sing, the single gets half the new fans.
+- In Unfair, each sister group has its own release cooldown. A single released less than 31 days after the same group's previous single gets fewer new fans, the same way the main group's sales drop. Other groups' singles don't count.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
 - 1.0.1: The same-group singles filter can no longer stay on after a game error.
+- 1.1.0: In Unfair, sister new fans now scale with group size squared, singers and release frequency.

@@ -241,6 +241,7 @@ namespace FanAttrition.Tests
             // random rolls and fan handouts out of Unity
             harmony.CreateClassProcessor(typeof(Shows__show_SetSales_MC)).Patch();
             harmony.CreateClassProcessor(typeof(Shows__show_SetSales_Fatigue)).Patch();
+            harmony.CreateClassProcessor(typeof(Shows__show_SetFatigue)).Patch();
             harmony.Patch(AccessTools.Method(typeof(Shows._show), "SetSales"), transpiler: transpiler);
 
             // Unofficial Patch fixes the game's GetSenbatsuParamValue, which ignores the stat asked for. The tests'

@@ -161,6 +161,93 @@ namespace FanAttrition.Tests
     }
 
     /// <summary>
+    /// The game adds base fatigue * (relaunches + 1) each episode (TV 5, radio 1, internet 0.5). From the first
+    /// relaunch on, every relaunch adds it at the first one's rate.
+    /// </summary>
+    public class ShowFatigueTests
+    {
+        public ShowFatigueTests() => TestGame.Reset();
+
+        private static Shows._show Show(Shows._param._media_type medium, float fatigue, int relaunches, int episodeCount = 5)
+        {
+            Shows._show show = new()
+            {
+                medium = new Shows._param { media_type = medium },
+                episodeCount = episodeCount,
+                NumberOfRelaunches = relaunches,
+            };
+            show.fatigue.Add(fatigue);
+            return show;
+        }
+
+        private static float NextFatigue(Shows._show show)
+        {
+            TestGame.CallPrivate(show, typeof(Shows._show), "SetFatigue");
+            return show.fatigue.Last();
+        }
+
+        [Theory]
+        [InlineData(_difficulty.normal, 0, 25f)]
+        [InlineData(_difficulty.normal, 1, 30f)]
+        [InlineData(_difficulty.normal, 2, 30f)]
+        [InlineData(_difficulty.normal, 5, 30f)]
+        [InlineData(_difficulty.hard, 0, 25f)]
+        [InlineData(_difficulty.hard, 2, 30f)]
+        [InlineData(_difficulty.easy, 0, 25f)]
+        [InlineData(_difficulty.easy, 2, 30f)]
+        public void Tv_GrowsAtTheFirstRelaunchsRate(_difficulty difficulty, int relaunches, float expected)
+        {
+            TestGame.SetDifficulty(difficulty);
+            Assert.Equal(expected, NextFatigue(Show(Shows._param._media_type.tv, 20f, relaunches)));
+        }
+
+        [Theory]
+        [InlineData(Shows._param._media_type.radio, 22f)]
+        [InlineData(Shows._param._media_type.internet, 21f)]
+        public void OtherMedia_GrowAtTheFirstRelaunchsRate(Shows._param._media_type medium, float expected)
+        {
+            Assert.Equal(expected, NextFatigue(Show(medium, 20f, 3)));
+        }
+
+        [Fact]
+        public void Relaunch_StillResetsFatigue()
+        {
+            Shows._show show = Show(Shows._param._media_type.tv, 80f, 3);
+            show.WasRelaunched = true;
+
+            Assert.Equal(0f, NextFatigue(show));
+            Assert.False(show.WasRelaunched);
+        }
+
+        [Fact]
+        public void Fatigue_StillStopsAt100()
+        {
+            Assert.Equal(100f, NextFatigue(Show(Shows._param._media_type.tv, 95f, 4)));
+        }
+
+        /// <summary>
+        /// A show's first episode has no fatigue yet.
+        /// </summary>
+        [Fact]
+        public void FirstEpisode_AddsNothing()
+        {
+            Shows._show show = Show(Shows._param._media_type.tv, 0f, 4, episodeCount: 0);
+            show.fatigue.Clear();
+
+            Assert.Equal(0f, NextFatigue(show));
+        }
+
+        [Fact]
+        public void RelaunchCount_IsLeftAlone()
+        {
+            Shows._show show = Show(Shows._param._media_type.tv, 20f, 4);
+            NextFatigue(show);
+
+            Assert.Equal(4, show.NumberOfRelaunches);
+        }
+    }
+
+    /// <summary>
     /// Single PVs succeed as often as the formation's average in their two stats, crit successes are a tenth
     /// of that, and crit success bonuses change.
     /// </summary>
@@ -645,6 +732,51 @@ namespace FanAttrition.Tests
             Assert.Empty(Log.Messages);
         }
 
+        private static List<CodeInstruction> SetFatigue() =>
+            PatchProcessor.GetOriginalInstructions(AccessTools.Method(typeof(Shows._show), "SetFatigue"));
+
+        private static bool LoadsRelaunches(CodeInstruction ci) =>
+            ci.LoadsField(AccessTools.Field(typeof(Shows._show), nameof(Shows._show.NumberOfRelaunches)));
+
+        private static bool CallsCap(CodeInstruction ci) =>
+            ci.Calls(AccessTools.Method(typeof(Shows__show_SetFatigue), nameof(Shows__show_SetFatigue.Infix)));
+
+        /// <summary>
+        /// NumberOfRelaunches becomes Infix(NumberOfRelaunches), and nothing else changes.
+        /// </summary>
+        [Fact]
+        public void Relaunches_AreCappedRightAfterTheyreRead()
+        {
+            List<CodeInstruction> mod = Shows__show_SetFatigue.Transpiler(SetFatigue()).ToList();
+            int read = mod.FindIndex(LoadsRelaunches);
+
+            Assert.Equal(SetFatigue().Count + 1, mod.Count);
+            Assert.True(CallsCap(mod[read + 1]));
+            Assert.Single(mod, CallsCap);
+            Assert.Empty(Log.Messages);
+        }
+
+        /// <summary>
+        /// If another mod's transpiler leaves the count read more than once, every read is capped.
+        /// </summary>
+        [Fact]
+        public void Relaunches_EveryReadIsCapped()
+        {
+            List<CodeInstruction> code = SetFatigue();
+            int read = code.FindIndex(LoadsRelaunches);
+            code.InsertRange(read + 1, new[]
+            {
+                new CodeInstruction(OpCodes.Pop),
+                new CodeInstruction(OpCodes.Ldarg_0),
+                new CodeInstruction(code[read].opcode, code[read].operand),
+            });
+
+            List<CodeInstruction> mod = Shows__show_SetFatigue.Transpiler(code).ToList();
+
+            Assert.Equal(2, mod.Count(CallsCap));
+            Assert.All(mod.Select((ci, i) => (ci, i)).Where(x => LoadsRelaunches(x.ci)), x => Assert.True(CallsCap(mod[x.i + 1])));
+        }
+
         /// <summary>
         /// On code that doesn't match, as after a game update, the code is left as it was and the log says so.
         /// </summary>
@@ -655,7 +787,8 @@ namespace FanAttrition.Tests
 
             Assert.Same(other, Shows__show_SetSales_MC.Transpiler(other));
             Assert.Same(other, Shows__show_SetSales_Fatigue.Transpiler(other));
-            Assert.Equal(2, Log.Messages.Count);
+            Assert.Same(other, Shows__show_SetFatigue.Transpiler(other));
+            Assert.Equal(3, Log.Messages.Count);
             Assert.All(Log.Messages, m => Assert.StartsWith("[Fan Attrition] Couldn't find", m));
         }
     }

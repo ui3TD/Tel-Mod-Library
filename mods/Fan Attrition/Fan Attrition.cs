@@ -131,6 +131,53 @@ namespace FanAttrition
     }
 
     /// <summary>
+    /// Makes every relaunch of a show add fatigue at the rate of the first.
+    /// </summary>
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.SetFatigue))]
+    public class Shows__show_SetFatigue
+    {
+        /// <summary>
+        /// Transpiler method to cap the relaunch count used for fatigue growth.
+        /// </summary>
+        /// <remarks>
+        /// The game adds GetBaseFatigue() * (NumberOfRelaunches + 1) each episode, so each relaunch wears out faster
+        /// than the last. Every read of the count is capped on the stack; the count itself is left alone for the
+        /// save and other mods.
+        /// </remarks>
+        /// <param name="instructions">The original IL instructions.</param>
+        /// <returns>Modified IL instructions.</returns>
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            FieldInfo relaunches = AccessTools.Field(typeof(Shows._show), nameof(Shows._show.NumberOfRelaunches));
+            CodeMatcher matcher = new CodeMatcher(instructions);
+            int found = 0;
+            while (matcher.MatchEndForward(new CodeMatch(ci => ci.LoadsField(relaunches))).IsValid)
+            {
+                matcher.Advance(1).Insert(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Shows__show_SetFatigue), nameof(Infix))));
+                found++;
+            }
+            if (found == 0)
+            {
+                LogPatchNotFound("the relaunch count in show fatigue");
+                return instructions;
+            }
+
+            return matcher.InstructionEnumeration();
+        }
+
+        /// <summary>
+        /// Caps the number of relaunches that fatigue growth counts.
+        /// </summary>
+        /// <param name="relaunches">The show's number of relaunches.</param>
+        /// <returns>The number of relaunches, at most FATIGUE_RELAUNCH_CAP.</returns>
+        public static int Infix(int relaunches)
+        {
+            return Math.Min(relaunches, FATIGUE_RELAUNCH_CAP);
+        }
+
+    }
+
+    /// <summary>
     /// Modifies the success chance for single PVs.
     /// </summary>
     [HarmonyPatch(typeof(singles._param), nameof(singles._param.GetSuccessChance), new Type[] { typeof(Single_Marketing_Roll._result), typeof(int), typeof(singles._single) })]
@@ -267,6 +314,7 @@ namespace FanAttrition
         public const float MC_MAX_FAME_BONUS = 5f;
         public const float SHOW_FATIGUE_COEFF_HARD = 12500f;
         public const float SHOW_FATIGUE_COEFF_NORMAL = 20000f;
+        public const int FATIGUE_RELAUNCH_CAP = 1;
         public const float MARK_SUCCESSCRIT_COEFF = 0.1f;
         public const float MARK_FAIL_CRIT_COEFF = 0.1f;
         public const float FAKESCANDAL_MOD_BASE = 100f;

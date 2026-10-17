@@ -12,6 +12,7 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 [h3]Shows are worth it![/h3]
 - Show MC fame points give a BIG boost to new fans, especially at high fame so that MCs have much more value late game.
 - Audience of TV and Radio shows decrease with fatigue so you're more motivated to update them or create new shows. New fan contribution to audience decreases proportional to fatigue squared. In Normal mode you get 50% audience at 100% fatigue, but in Unfair you get 20% audience at 100% fatigue. Internet shows aren't affected.
+- Every relaunch of a show wears out at the same rate as the first, instead of faster each time, so relaunching stays worth it.
 
 [h3]Risky marketing is more enticing[/h3]
 - Fake Scandal crit success bonus increased significantly so that it's more enticing. It is the fastest single marketing method to grow fans.
@@ -30,3 +31,4 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 - 1.3.0: Loading a save no longer changes the idols' fan appeal.
 - 1.4.0: Loading another save no longer carries its fan churn over, and the fan tooltip is up to date.
 - 1.5.0: Daily fan churn is split across idols by fame instead of hitting one random idol.
+- 1.6.0: Every show relaunch now wears out at the same rate as the first, not faster each time.

@@ -865,56 +865,58 @@ namespace UnofficialPatch
         }
     }
 
-    // Keeps depressed idols off the cafe waitstaff. The game skipped graduated, injured and hiatus idols but let
-    // depressed ones work, and the end of the shift set them back to normal, curing their depression.
+    // Cafe workers get the "practice" status when a shift starts and "normal" when it ends. A depressed idol can work
+    // (the game's rule is only that depressed idols can't practice and their stats are halved), but either change
+    // replaced her depressed status, so one shift cured her depression. Leave a depressed idol's status alone.
+    public static class CafeShiftStatus
+    {
+        private static readonly MethodInfo SetStatus = AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.SetStatus));
+        private static readonly MethodInfo SetUnlessDepressedMethod = AccessTools.Method(typeof(CafeShiftStatus), nameof(SetUnlessDepressed));
+
+        public static void SetUnlessDepressed(data_girls.girls girl, data_girls._status status)
+        {
+            if (girl.status != data_girls._status.depressed)
+                girl.SetStatus(status);
+        }
+
+        // Replaces each "girl.SetStatus(status)" with SetUnlessDepressed(girl, status), which takes the same stack.
+        public static IEnumerable<CodeInstruction> Wrap<TPatch>(IEnumerable<CodeInstruction> instructions, data_girls._status status)
+        {
+            List<CodeInstruction> codes = instructions.ToList();
+            int wrapped = 0;
+            for (int i = 1; i < codes.Count; i++)
+            {
+                if (IlHelpers.IsLdcI4(codes[i - 1], (int)status) && IlHelpers.IsCallTo(codes[i], SetStatus))
+                {
+                    codes[i] = new CodeInstruction(OpCodes.Call, SetUnlessDepressedMethod).MoveLabelsFrom(codes[i]).MoveBlocksFrom(codes[i]);
+                    wrapped++;
+                }
+            }
+            // Already wrapped: patched twice
+            if (wrapped == 0 && !codes.Any(ci => IlHelpers.IsCallTo(ci, SetUnlessDepressedMethod)))
+                PatchLog.WarnOncePerPatch<TPatch>(status + " status change not found.");
+            return codes;
+        }
+    }
+
+    // Shift start: a depressed idol keeps her status while she works.
     [HarmonyPatch(typeof(Cafes), nameof(Cafes.RenderCafe))]
     public class Cafes_RenderCafe
     {
         public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Cafes_RenderCafe>(ex);
 
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-        {
-            List<CodeInstruction> codes = instructions.ToList();
+            => CafeShiftStatus.Wrap<Cafes_RenderCafe>(instructions, data_girls._status.practice);
+    }
 
-            int hiatus = FindSkip(codes, data_girls._status.hiatus);
-            if (hiatus < 0)
-            {
-                PatchLog.WarnOncePerPatch<Cafes_RenderCafe>("hiatus check not found.");
-                return instructions;
-            }
-            if (FindSkip(codes, data_girls._status.depressed) >= 0)
-            {
-                // Already skips depressed idols: patched twice, or the game fixed it.
-                return codes;
-            }
+    // Shift end: a depressed idol isn't set back to normal.
+    [HarmonyPatch(typeof(Cafes._cafe), nameof(Cafes._cafe.StopWorking))]
+    public class Cafes__cafe_StopWorking
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Cafes__cafe_StopWorking>(ex);
 
-            // Same check as the hiatus one, jumping to the same place.
-            CodeInstruction loadGirl = codes[hiatus];
-            CodeInstruction skip = codes[hiatus + 3];
-            codes.InsertRange(hiatus + 4, new[]
-            {
-                new CodeInstruction(loadGirl.opcode, loadGirl.operand),
-                new CodeInstruction(OpCodes.Ldfld, codes[hiatus + 1].operand),
-                new CodeInstruction(OpCodes.Ldc_I4, (int)data_girls._status.depressed),
-                new CodeInstruction(skip.opcode, skip.operand),
-            });
-            return codes;
-        }
-
-        // Index of "if (girl.status == status) skip", or -1.
-        private static int FindSkip(List<CodeInstruction> codes, data_girls._status status)
-        {
-            FieldInfo statusField = AccessTools.Field(typeof(data_girls.girls), nameof(data_girls.girls.status));
-            for (int i = 0; i + 3 < codes.Count; i++)
-            {
-                if (IlHelpers.IsLdloc(codes[i])
-                    && codes[i + 1].opcode == OpCodes.Ldfld && Equals(codes[i + 1].operand, statusField)
-                    && IlHelpers.IsLdcI4(codes[i + 2], (int)status)
-                    && (codes[i + 3].opcode == OpCodes.Beq || codes[i + 3].opcode == OpCodes.Beq_S))
-                    return i;
-            }
-            return -1;
-        }
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            => CafeShiftStatus.Wrap<Cafes__cafe_StopWorking>(instructions, data_girls._status.normal);
     }
 
 

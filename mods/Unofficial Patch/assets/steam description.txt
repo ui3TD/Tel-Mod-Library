@@ -13,7 +13,7 @@ Also recommended mods by magier:
 - Fixed Theater so that revenue gets added to girls earnings.
 - Fixed Cafe weekly revenue so that it includes 7 days instead of 6.
 - Fixed Cafe novelty so that a new dish starts lower when the idol's other dishes are stale (it always started at 100%).
-- Fixed Cafe waitstaff so that depressed idols don't work shifts, which cured their depression.
+- Fixed Cafe waitstaff so that working a shift no longer cures depressed idols. They can still work, as in the base game.
 - Fixed senbatsu stats calculation so it doesn't punish you if you don't have enough idols to fill all rows, and so it uses the requested stat instead of always Cute.
 - Fixed Concert revenue formula so that it shows accurate estimated values, including the FUJI ticket bonus.
 - Fixed concert attendance and hype percentages to round down, so 99.5% attendance no longer shows as a 100% sell-out.
@@ -44,3 +44,4 @@ Also recommended mods by magier:
 - 1.7.0: Edgy and Artsy PVs now change sales and new fans, as their tooltips say.
 - 1.8.0: Fixes cafe novelty, depressed waitstaff, tour award savings and tour fame.
 - 1.8.1: Works more safely alongside other mods that change the same game code.
+- 1.9.0: Depressed idols can work cafe shifts again and stay depressed.

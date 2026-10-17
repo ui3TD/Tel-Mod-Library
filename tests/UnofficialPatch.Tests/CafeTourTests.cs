@@ -73,8 +73,8 @@ namespace UnofficialPatch.Tests
     }
 
     /// <summary>
-    /// Depressed idols don't work in the cafe. The game let them, and the end of the shift set them back to
-    /// normal, curing their depression.
+    /// Depressed idols can work in the cafe but stay depressed. The game set them to "practice" when the shift started
+    /// and to normal when it ended, curing their depression.
     /// </summary>
     public class CafeWaitstaffTests
     {
@@ -98,7 +98,7 @@ namespace UnofficialPatch.Tests
         [Theory]
         [InlineData(Cafes._cafe._cafe_prio.high)]
         [InlineData(Cafes._cafe._cafe_prio.normal)]
-        public void DepressedIdol_DoesNotWork_AndStaysDepressed(Cafes._cafe._cafe_prio priority)
+        public void DepressedIdol_Works_AndStaysDepressed(Cafes._cafe._cafe_prio priority)
         {
             Cafes._cafe cafe = new() { Cafe_Prio = priority };
             data_girls.girls normal = StaffIdol(cafe, data_girls._status.normal, 1);
@@ -107,8 +107,25 @@ namespace UnofficialPatch.Tests
             NextDay(cafe);
             NextDay(cafe);
 
-            Assert.Equal(new[] { normal }, cafe.WorkingGirls);
+            Assert.Equal(new[] { normal, depressed }.ToHashSet(), cafe.WorkingGirls.ToHashSet());
             Assert.Equal(data_girls._status.practice, normal.status);
+            Assert.Equal(data_girls._status.depressed, depressed.status);
+        }
+
+        [Fact]
+        public void ShiftEnd_LeavesDepressedIdolsDepressed()
+        {
+            Cafes._cafe cafe = new();
+            data_girls.girls working = TestGame.Idol();
+            working.status = data_girls._status.practice;
+            data_girls.girls depressed = TestGame.Idol();
+            depressed.status = data_girls._status.depressed;
+            cafe.WorkingGirls.AddRange(new[] { working, depressed });
+
+            cafe.StopWorking();
+
+            Assert.Empty(cafe.WorkingGirls);
+            Assert.Equal(data_girls._status.normal, working.status);
             Assert.Equal(data_girls._status.depressed, depressed.status);
         }
 
@@ -121,32 +138,48 @@ namespace UnofficialPatch.Tests
             NextDay(cafe);
 
             Assert.Equal(staff.ToHashSet(), cafe.WorkingGirls.ToHashSet());
+            Assert.All(staff, girl => Assert.Equal(data_girls._status.practice, girl.status));
         }
 
-        private static MethodInfo Original => AccessTools.Method(typeof(Cafes), nameof(Cafes.RenderCafe));
+        public static TheoryData<string> Patches => new() { nameof(Cafes_RenderCafe), nameof(Cafes__cafe_StopWorking) };
 
-        [Fact]
-        public void Transpiler_AddsOneCheck_AndTwiceChangesNothing()
+        private static (MethodInfo original, Func<IEnumerable<CodeInstruction>, IEnumerable<CodeInstruction>> transpiler, OpCode status) Patch(string name)
         {
-            List<CodeInstruction> original = PatchProcessor.GetOriginalInstructions(Original);
-            List<CodeInstruction> once = Cafes_RenderCafe.Transpiler(PatchProcessor.GetOriginalInstructions(Original)).ToList();
-            List<string> onceText = once.Select(ci => ci.ToString()).ToList();
-            List<CodeInstruction> twice = Cafes_RenderCafe.Transpiler(once).ToList();
+            return name == nameof(Cafes_RenderCafe)
+                ? (AccessTools.Method(typeof(Cafes), nameof(Cafes.RenderCafe)), Cafes_RenderCafe.Transpiler, OpCodes.Ldc_I4_1)
+                : (AccessTools.Method(typeof(Cafes._cafe), nameof(Cafes._cafe.StopWorking)), Cafes__cafe_StopWorking.Transpiler, OpCodes.Ldc_I4_0);
+        }
 
-            Assert.Equal(original.Count + 4, once.Count);
+        private static readonly MethodInfo SetStatus = AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.SetStatus));
+
+        [Theory]
+        [MemberData(nameof(Patches))]
+        public void Transpiler_WrapsTheStatusChange_AndTwiceChangesNothing(string name)
+        {
+            (MethodInfo original, var transpiler, _) = Patch(name);
+            List<CodeInstruction> before = PatchProcessor.GetOriginalInstructions(original);
+            List<CodeInstruction> once = transpiler(PatchProcessor.GetOriginalInstructions(original)).ToList();
+            List<string> onceText = once.Select(ci => ci.ToString()).ToList();
+            List<CodeInstruction> twice = transpiler(once).ToList();
+
+            Assert.Equal(before.Count, once.Count);
+            Assert.Equal(before.Count(ci => Equals(ci.operand, SetStatus)) - 1, once.Count(ci => Equals(ci.operand, SetStatus)));
+            Assert.Single(once, ci => ci.operand is MethodInfo m && m.Name == nameof(CafeShiftStatus.SetUnlessDepressed));
             Assert.Equal(onceText, twice.Select(ci => ci.ToString()));
             Assert.Empty(Log.Messages);
         }
 
-        [Fact]
-        public void Transpiler_NoHiatusCheck_WarnsAndLeavesItUnchanged()
+        [Theory]
+        [MemberData(nameof(Patches))]
+        public void Transpiler_NoStatusChange_WarnsAndLeavesItUnchanged(string name)
         {
-            List<CodeInstruction> codes = PatchProcessor.GetOriginalInstructions(Original);
-            CodeInstruction hiatus = codes.Single(ci => ci.opcode == OpCodes.Ldc_I4_6);
-            hiatus.opcode = OpCodes.Ldc_I4_7;
+            (MethodInfo original, var transpiler, OpCode status) = Patch(name);
+            List<CodeInstruction> codes = PatchProcessor.GetOriginalInstructions(original);
+            int call = codes.FindIndex(ci => Equals(ci.operand, SetStatus) && codes[codes.IndexOf(ci) - 1].opcode == status);
+            codes[call - 1].opcode = OpCodes.Ldc_I4_7;
             List<string> before = codes.Select(ci => ci.ToString()).ToList();
 
-            List<CodeInstruction> result = Cafes_RenderCafe.Transpiler(codes).ToList();
+            List<CodeInstruction> result = transpiler(codes).ToList();
 
             Assert.Equal(before, result.Select(ci => ci.ToString()));
             Assert.Single(Log.Of(LogType.Warning));

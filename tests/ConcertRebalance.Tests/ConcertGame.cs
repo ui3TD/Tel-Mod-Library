@@ -46,7 +46,11 @@ namespace ConcertRebalance.Tests
             // Not "tests.ConcertRebalance": PatchTargetTests unpatches everything under that ID
             Harmony harmony = new("tests.ConcertRebalance.Behaviour");
             foreach (Type patchClass in TelModTests.Common.PatchTargetAssert.PatchClasses(typeof(ConcertRebalance).Assembly, "ConcertRebalance"))
-                harmony.CreateClassProcessor(patchClass).Patch();
+            {
+                // StartConcert opens Unity popups, so it can't be compiled outside the game; the tests call its prefix directly
+                if (patchClass != typeof(SEvent_Concerts_StartConcert))
+                    harmony.CreateClassProcessor(patchClass).Patch();
+            }
             return true;
         });
 

@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using System;
+using System.Collections.Generic;
 using static ConcertRebalance.ConcertRebalance;
 
 namespace ConcertRebalance
@@ -49,6 +50,53 @@ namespace ConcertRebalance
         public static bool QualifiesForVenueUnlock(float actualAttendance, long actualProfit)
         {
             return actualAttendance >= 1f && actualProfit >= 0L;
+        }
+
+        // The concert being played and its idols' physical stamina when it started
+        private static SEvent_Concerts._concert staminaConcert;
+        private static Dictionary<data_girls.girls, float> startingStamina;
+
+        /// <summary>
+        /// Records each concert idol's physical stamina as the concert starts, replacing any earlier record.
+        /// </summary>
+        /// <param name="concert">The concert that is starting.</param>
+        public static void RecordStartingStamina(SEvent_Concerts._concert concert)
+        {
+            staminaConcert = null;
+            startingStamina = null;
+            if (concert == null)
+                return;
+
+            Dictionary<data_girls.girls, float> stamina = new Dictionary<data_girls.girls, float>();
+            foreach (data_girls.girls girl in concert.GetGirls())
+            {
+                if (girl != null)
+                    stamina[girl] = girl.getParam(data_girls._paramType.physicalStamina)._val;
+            }
+            staminaConcert = concert;
+            startingStamina = stamina;
+        }
+
+        /// <summary>
+        /// Brings any idol back down to the physical stamina she had when this concert started. MC breaks restore stamina
+        /// to every idol not in them, so a big cast could otherwise end a concert better rested than it began. Concerts the
+        /// mod didn't see start are left alone.
+        /// </summary>
+        /// <param name="concert">The concert that is finishing.</param>
+        public static void CapStaminaAtStart(SEvent_Concerts._concert concert)
+        {
+            if (startingStamina == null || concert != staminaConcert)
+                return;
+
+            Dictionary<data_girls.girls, float> stamina = startingStamina;
+            staminaConcert = null;
+            startingStamina = null;
+            foreach (KeyValuePair<data_girls.girls, float> start in stamina)
+            {
+                // setParam, not addParam: addParam scales stamina loss by trait and limits it per day
+                if (start.Key.getParam(data_girls._paramType.physicalStamina)._val > start.Value)
+                    start.Key.setParam(data_girls._paramType.physicalStamina, start.Value);
+            }
         }
     }
 
@@ -105,6 +153,40 @@ namespace ConcertRebalance
             }
 
             return;
+        }
+    }
+
+    /// <summary>
+    /// Records the concert idols' stamina when a concert starts, for the cap when it finishes.
+    /// </summary>
+    [HarmonyPatch(typeof(SEvent_Concerts), nameof(SEvent_Concerts.StartConcert))]
+    public class SEvent_Concerts_StartConcert
+    {
+        /// <summary>
+        /// Runs after other mods' prefixes, so stamina they change before the concert counts as the idol's start.
+        /// </summary>
+        /// <param name="__instance">The concert manager starting its current concert.</param>
+        [HarmonyPriority(Priority.Last)]
+        public static void Prefix(SEvent_Concerts __instance)
+        {
+            RecordStartingStamina(__instance.Concert);
+        }
+    }
+
+    /// <summary>
+    /// Stops a concert leaving idols with more stamina than they started with. MC breaks still restore stamina during it.
+    /// </summary>
+    [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Finish))]
+    public class SEvent_Concerts__concert_Finish_StaminaCap
+    {
+        /// <summary>
+        /// Runs before other mods' Finish patches, so stamina they give for finishing a concert isn't capped.
+        /// </summary>
+        /// <param name="__instance">The concert that has finished.</param>
+        [HarmonyPriority(Priority.First)]
+        public static void Prefix(SEvent_Concerts._concert __instance)
+        {
+            CapStaminaAtStart(__instance);
         }
     }
 

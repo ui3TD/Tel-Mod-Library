@@ -9,6 +9,7 @@ Rebalances concerts to make things more challenging.
 - Club concerts keep the base game's hype bonus: 200% hype pays x2.0 at a club (x1.25 at other venues).
 - In Unfair, Tokyo Coliseum is increased to 50,000 capacity, but has its base cost increased to 200,000,000 for more endgame challenge.
 - In Unfair, the Open Air Stage base cost is reduced to 20,000,000 so it pays off between the concert hall and the stadium.
+- Idols can't end a concert with more stamina than they started with. MC breaks still restore stamina during the concert.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
@@ -16,3 +17,4 @@ Rebalances concerts to make things more challenging.
 - 1.1.0: Club concert estimates now match the reduced hype payout.
 - 1.1.1: Club payouts and venue unlocks go through the game's own code, so they work with other mods.
 - 1.2.0: New ticket price curve, cheaper Unfair Open Air Stage; clubs get their full hype bonus back.
+- 1.3.0: Idols can no longer end a concert with more stamina than they started with.

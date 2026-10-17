@@ -143,27 +143,27 @@ namespace TourStaminaLimit.Tests
     }
 
     /// <summary>
-    /// "World tours give 3.5x more fans to compensate for stamina limitation", on the game's fan roll.
+    /// "World tours give 2.5x more fans to compensate for stamina limitation", on the game's fan roll.
     /// </summary>
     public class FanTests
     {
         public FanTests() => TestGame.Reset(patched: true);
 
         [Fact]
-        public void FanMultiplierIs3Point5()
+        public void FanMultiplierIs2Point5()
         {
-            Assert.Equal(3.5f, TOUR_FAN_COEFF);
+            Assert.Equal(2.5f, TOUR_FAN_COEFF);
         }
 
         /// <summary>
         /// The game gives 1-20% of each concert's attendance as new fans; the mod multiplies the result.
         /// </summary>
         [Theory]
-        [InlineData(1000, 10f, 350)]
-        [InlineData(1000, 1f, 35)]
-        [InlineData(20000, 20f, 14000)]
+        [InlineData(1000, 10f, 250)]
+        [InlineData(1000, 1f, 25)]
+        [InlineData(20000, 20f, 10000)]
         [InlineData(0, 15f, 0)]
-        public void NewFans_Are3Point5TimesTheGames(int attendance, float roll, int expected)
+        public void NewFans_Are2Point5TimesTheGames(int attendance, float roll, int expected)
         {
             Seams.Range = (min, max) => roll;
 
@@ -184,18 +184,18 @@ namespace TourStaminaLimit.Tests
             Seams.Range = (min, max) => roll;
             int gameFans = Mathf.RoundToInt(attendance * (roll / 100f));
 
-            Assert.Equal(Mathf.RoundToInt(gameFans * 3.5f), Seams.NewFansByAttendance(new SEvent_Tour.tour(), attendance));
+            Assert.Equal(Mathf.RoundToInt(gameFans * 2.5f), Seams.NewFansByAttendance(new SEvent_Tour.tour(), attendance));
         }
 
         /// <summary>
-        /// 3 game fans make 10.5, which rounds to even.
+        /// 5 game fans make 12.5, which rounds to even.
         /// </summary>
         [Fact]
         public void NewFans_HalfRoundsToEven()
         {
             Seams.Range = (min, max) => 10f;
 
-            Assert.Equal(10, Seams.NewFansByAttendance(new SEvent_Tour.tour(), 30));
+            Assert.Equal(12, Seams.NewFansByAttendance(new SEvent_Tour.tour(), 50));
         }
     }
 

@@ -22,11 +22,11 @@ namespace InGameTests.TelMods
         private static int gameResult;
 
         /// <summary>
-        /// A tour stop's new fans are the game's figure times 3.5, and times 1 + 0.2 per active
+        /// A tour stop's new fans are the game's figure times 2.5, and times 1 + 0.2 per active
         /// Polyglot idol when Traits Expansion is on, in either order of rounding.
         /// </summary>
         [InGameTest(Suite = ModTest.Suite)]
-        private static IEnumerator NewFansAreThreeAndAHalfTimesTheGames(TestContext ctx)
+        private static IEnumerator NewFansAreTwoAndAHalfTimesTheGames(TestContext ctx)
         {
             if (!ModTest.Require(ctx, HarmonyId, out _))
                 yield break;
@@ -50,12 +50,12 @@ namespace InGameTests.TelMods
                 for (int i = 0; i < 20; i++)
                 {
                     int result = tour.GetNewFansByAttendance(Attendance);
-                    int tourFirst = polyglots > 0 ? Mathf.RoundToInt(Mathf.RoundToInt(gameResult * 3.5f) * bonus) : Mathf.RoundToInt(gameResult * 3.5f);
-                    int traitsFirst = polyglots > 0 ? Mathf.RoundToInt(Mathf.RoundToInt(gameResult * bonus) * 3.5f) : tourFirst;
+                    int tourFirst = polyglots > 0 ? Mathf.RoundToInt(Mathf.RoundToInt(gameResult * 2.5f) * bonus) : Mathf.RoundToInt(gameResult * 2.5f);
+                    int traitsFirst = polyglots > 0 ? Mathf.RoundToInt(Mathf.RoundToInt(gameResult * bonus) * 2.5f) : tourFirst;
                     if (result != tourFirst && result != traitsFirst)
                     {
                         ctx.Fail("Game figure " + gameResult + " became " + result + "; expected " + tourFirst
-                                 + (traitsFirst != tourFirst ? " or " + traitsFirst : "") + " (x3.5" + (polyglots > 0 ? ", x" + bonus : "") + ")");
+                                 + (traitsFirst != tourFirst ? " or " + traitsFirst : "") + " (x2.5" + (polyglots > 0 ? ", x" + bonus : "") + ")");
                         break;
                     }
                     if (i == 0)

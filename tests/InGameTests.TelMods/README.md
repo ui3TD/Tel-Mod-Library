@@ -84,7 +84,7 @@ Theater's attendance or Concert Rebalance's forecast.
 | `MbtiPersonalitiesTests` | An idol's Extras tab doesn't name her type. An idol in the save carries two types. A newly generated idol from an idol pack with a type doesn't end up with exactly that type. |
 | `StarSignsTests` | An idol's Extras tab doesn't end with her star sign, after the other mods' lines. |
 | `NationalTourTests` | A replacement picture didn't load, or the World Tour tab, the new tour map or the tour results don't show it. A country marker isn't on its prefecture. |
-| `TourStaminaLimitTests` | A tour stop's new fans aren't the game's figure times 3.5, and times 1.2 per Polyglot idol with Traits Expansion on. |
+| `TourStaminaLimitTests` | A tour stop's new fans aren't the game's figure times 2.5, and times 1.2 per Polyglot idol with Traits Expansion on. |
 | `WorkerRightsTests` | A newly generated idol's salary isn't 20,000. |
 
 Each check skips itself with a note when its mod isn't enabled. Where another mod changes the same value,

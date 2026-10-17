@@ -9,13 +9,13 @@ namespace TourStamina
 {
     public class TourStamina
     {
-        public const float TOUR_FAN_COEFF = 3.5f;
+        public const float TOUR_FAN_COEFF = 2.5f;
         public const int TOUR_STAM_CAP = 100;
 
         public const string TOUR_STAM_TOOLTIP_ID = "TOUR__STAMINACAP";
     }
 
-    // World tours give 3.5x more fans
+    // World tours give 2.5x more fans
     [HarmonyPatch(typeof(SEvent_Tour.tour), nameof(SEvent_Tour.tour.GetNewFansByAttendance))]
     public class SEvent_Tour_tour_GetNewFansByAttendance
     {

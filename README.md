@@ -56,3 +56,5 @@ Check out [IM-FastForward](https://github.com/ui3TD/IM-FastForward) for a tutori
 1. One-time: install [SteamCMD](https://developer.valvesoftware.com/wiki/SteamCMD) to `C:\steamcmd` (or set `STEAMCMD`) and run `steamcmd +login <user> +quit` to approve Steam Guard.
 2. Bump `<Version>` and add a `- <version>: ...` line under `[h3]Changelog[/h3]` in the steam description.
 3. Run `python tools/publish_workshop.py "<Mod Name>" --user <user>` (or set `STEAM_USER`). Add `--dry-run` to preview the upload.
+
+To change only the Workshop page text, commit and push the edited `assets/steam description.txt` and run with `--description-only`: it updates the title and description without a build, a new version or a change note.

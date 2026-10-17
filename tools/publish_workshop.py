@@ -10,6 +10,10 @@ SteamCMD, so nothing is copy-pasted and the game does not need to be open:
                 never the game's Mods folder, which may hold a Debug build or stale assets
     preview     thumb.png in that folder
 
+With --description-only, only the title and description are updated: nothing is
+built, and the content, preview and change note on Steam stay as they are (the
+item's version and last-updated time don't change).
+
 Publishing is refused unless the mod's files (and the shared build files) are
 committed and HEAD is pushed, so the Workshop always matches GitHub.
 
@@ -23,7 +27,7 @@ Steam Guard approval. Without --user or STEAM_USER, the one account SteamCMD
 has cached is used.
 
 Usage:
-    python tools/publish_workshop.py "<Mod Name>" [--user USER] [--dry-run]
+    python tools/publish_workshop.py "<Mod Name>" [--user USER] [--description-only] [--dry-run]
 """
 
 import argparse
@@ -148,6 +152,8 @@ def main():
     parser.add_argument("--user", default=os.environ.get("STEAM_USER"), help="Steam login (default: STEAM_USER)")
     parser.add_argument("--steamcmd", default=DEFAULT_STEAMCMD)
     parser.add_argument("--dry-run", action="store_true", help="print the upload instead of running it")
+    parser.add_argument("--description-only", action="store_true",
+                        help="update only the title and description; no build, content, preview or change note")
     args = parser.parse_args()
 
     mod_dir = os.path.join(MODS, args.mod)
@@ -155,7 +161,7 @@ def main():
         sys.exit("No mod folder " + mod_dir)
     csproj, props = read_props(mod_dir)
     description = read_description(mod_dir)
-    note = change_note(description, props["Version"])
+    note = None if args.description_only else change_note(description, props["Version"])
     if len(props["ModName"]) > MAX_TITLE:
         sys.exit("Title is over {} characters.".format(MAX_TITLE))
     if len(description) > MAX_DESCRIPTION:
@@ -168,24 +174,27 @@ def main():
         if not args.dry_run:
             raise
         print("WARNING: " + str(e))
-    # Start clean so files removed from the mod's assets don't linger.
-    clean_dir(STAGING)
-    build(csproj, STAGING)
-    content_dir = check_staged(mod_dir, props)
-
-    # Forward slashes keep paths free of VDF escapes; Windows accepts them.
-    vdf_path, vdf_text = write_vdf({
+    fields = {
         "appid": APP_ID,
         "publishedfileid": props["WorkshopID"],
-        "contentfolder": content_dir.replace("\\", "/"),
-        "previewfile": os.path.join(content_dir, "thumb.png").replace("\\", "/"),
         "title": props["ModName"],
         "description": description,
-        "changenote": "{}: {}".format(props["Version"], note),
-    })
+    }
+    if not args.description_only:
+        # Start clean so files removed from the mod's assets don't linger.
+        clean_dir(STAGING)
+        build(csproj, STAGING)
+        content_dir = check_staged(mod_dir, props)
+        # Forward slashes keep paths free of VDF escapes; Windows accepts them.
+        fields["contentfolder"] = content_dir.replace("\\", "/")
+        fields["previewfile"] = os.path.join(content_dir, "thumb.png").replace("\\", "/")
+        fields["changenote"] = "{}: {}".format(props["Version"], note)
+
+    vdf_path, vdf_text = write_vdf(fields)
     try:
+        what = "the description of" if args.description_only else props["Version"] + " of"
         print("Publishing {} {} to https://steamcommunity.com/sharedfiles/filedetails/?id={}".format(
-            props["ModName"], props["Version"], props["WorkshopID"]))
+            what, props["ModName"], props["WorkshopID"]))
         if args.dry_run:
             print(vdf_text)
             return

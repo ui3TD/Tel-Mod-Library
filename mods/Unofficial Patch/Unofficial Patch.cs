@@ -330,6 +330,71 @@ namespace UnofficialPatch
         }
     }
 
+    // Fixes tour savings with the Most Prolific Group award or nomination, or the cheaper events choice. The game
+    // cut the production cost but took the regional saving off at full size, so extra stops in a discounted region
+    // could cost nothing or less. Cut the saving by the same share, so the discounts stack.
+    [HarmonyPatch(typeof(SEvent_Tour.tour), nameof(SEvent_Tour.tour.RecalcProductionCost))]
+    public class SEvent_Tour_tour_RecalcProductionCost
+    {
+        // Last, so the share includes any other change to the production cost.
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(SEvent_Tour.tour __instance)
+        {
+            if (__instance.Saving <= 0)
+                return;
+
+            // The production cost before any cut.
+            long fullCost = 0L;
+            foreach (SEvent_Tour.tour.selectedCountry selected in __instance.SelectedCountries)
+            {
+                fullCost += selected.Country.GetCostByLevel(selected.Level);
+            }
+            if (fullCost <= 0L || __instance.ProductionCost == fullCost)
+                return;
+
+            // A saving that isn't the full-size one was already cut by something else.
+            if (__instance.Saving != __instance.GetSaving())
+                return;
+
+            __instance.Saving = Mathf.RoundToInt((float)((double)__instance.Saving * __instance.ProductionCost / fullCost));
+        }
+    }
+
+    // Fixes the tour attendance fame penalty. The game compared the agency's fame points with twice the venue
+    // level, so the penalty never applied; compare the fame level, as the tour description says.
+    [HarmonyPatch(typeof(SEvent_Tour), nameof(SEvent_Tour.GetFamePenalty))]
+    public class SEvent_Tour_GetFamePenalty
+    {
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            MethodInfo get = AccessTools.Method(typeof(resources), nameof(resources.Get), new[] { typeof(resources.type), typeof(bool) });
+            List<CodeInstruction> codes = instructions.ToList();
+
+            List<int> reads = Enumerable.Range(0, codes.Count).Where(i => IlHelpers.IsCallTo(codes[i], get)).ToList();
+            if (reads.Count == 0)
+            {
+                // Already reads the fame level: patched twice, or the game fixed it.
+                return codes;
+            }
+            if (reads.Count > 1 || reads[0] < 2 || !IlHelpers.IsLdcI4(codes[reads[0] - 2], (int)resources.type.fame))
+            {
+                PatchLog.WarnOncePerPatch<SEvent_Tour_GetFamePenalty>("expected one read of the fame points; left unchanged.");
+                return instructions;
+            }
+
+            // Same arguments and return type, so the code around the call stays as it is.
+            codes[reads[0]].opcode = OpCodes.Call;
+            codes[reads[0]].operand = AccessTools.Method(typeof(SEvent_Tour_GetFamePenalty), nameof(FameLevel));
+            return codes;
+        }
+
+        // The fame level, in place of resources.Get(type, useTotal) for fame.
+        public static long FameLevel(resources.type type, bool useTotal)
+        {
+            return resources.FamePointsToLevel(resources.Get(type, useTotal));
+        }
+    }
+
     // Restores stamina costs for theater schedules. The game works out the cost (5 for a performance, 2 for
     // manzai, doubled on hard), then returns 0 instead of it; return the cost it worked out.
     [HarmonyPatch(typeof(Theaters), nameof(Theaters.GetStaminaCost))]
@@ -585,6 +650,96 @@ namespace UnofficialPatch
             }
             // The tooltip reads an int, so cap the total instead of wrapping.
             __result = (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, output));
+        }
+    }
+
+    // Fixes the novelty of an idol's new cafe dish. The game added the novelty her dishes had lost instead of
+    // taking it away, so every new dish started at 100%; take it away, so a new dish starts lower when her other
+    // dishes are stale.
+    [HarmonyPatch(typeof(Cafes._cafe), nameof(Cafes._cafe.GetNovelty))]
+    public class Cafes__cafe_GetNovelty
+    {
+        // Full novelty of one dish.
+        private const int FullNovelty = 100;
+
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var matcher = new CodeMatcher(instructions);
+
+            // (float)(dishes * 100) - total novelty
+            matcher.MatchStartForward(
+                new CodeMatch(ci => IlHelpers.IsLdloc(ci)),
+                new CodeMatch(ci => IlHelpers.IsLdcI4(ci, FullNovelty)),
+                new CodeMatch(OpCodes.Mul),
+                new CodeMatch(OpCodes.Conv_R4),
+                new CodeMatch(ci => IlHelpers.IsLdloc(ci)),
+                new CodeMatch(OpCodes.Sub));
+            if (matcher.IsInvalid)
+            {
+                PatchLog.WarnOncePerPatch<Cafes__cafe_GetNovelty>("lost novelty not found.");
+                return instructions;
+            }
+
+            matcher.Advance(6);
+            if (matcher.Instruction.opcode == OpCodes.Neg)
+            {
+                // Already negated: patched twice, or the game fixed it.
+                return matcher.InstructionEnumeration();
+            }
+
+            // Negate the lost novelty before the formula adds 100.
+            matcher.Insert(new CodeInstruction(OpCodes.Neg));
+            return matcher.InstructionEnumeration();
+        }
+    }
+
+    // Keeps depressed idols off the cafe waitstaff. The game skipped graduated, injured and hiatus idols but let
+    // depressed ones work, and the end of the shift set them back to normal, curing their depression.
+    [HarmonyPatch(typeof(Cafes), nameof(Cafes.RenderCafe))]
+    public class Cafes_RenderCafe
+    {
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            List<CodeInstruction> codes = instructions.ToList();
+
+            int hiatus = FindSkip(codes, data_girls._status.hiatus);
+            if (hiatus < 0)
+            {
+                PatchLog.WarnOncePerPatch<Cafes_RenderCafe>("hiatus check not found.");
+                return instructions;
+            }
+            if (FindSkip(codes, data_girls._status.depressed) >= 0)
+            {
+                // Already skips depressed idols: patched twice, or the game fixed it.
+                return codes;
+            }
+
+            // Same check as the hiatus one, jumping to the same place.
+            CodeInstruction loadGirl = codes[hiatus];
+            CodeInstruction skip = codes[hiatus + 3];
+            codes.InsertRange(hiatus + 4, new[]
+            {
+                new CodeInstruction(loadGirl.opcode, loadGirl.operand),
+                new CodeInstruction(OpCodes.Ldfld, codes[hiatus + 1].operand),
+                new CodeInstruction(OpCodes.Ldc_I4, (int)data_girls._status.depressed),
+                new CodeInstruction(skip.opcode, skip.operand),
+            });
+            return codes;
+        }
+
+        // Index of "if (girl.status == status) skip", or -1.
+        private static int FindSkip(List<CodeInstruction> codes, data_girls._status status)
+        {
+            FieldInfo statusField = AccessTools.Field(typeof(data_girls.girls), nameof(data_girls.girls.status));
+            for (int i = 0; i + 3 < codes.Count; i++)
+            {
+                if (IlHelpers.IsLdloc(codes[i])
+                    && codes[i + 1].opcode == OpCodes.Ldfld && Equals(codes[i + 1].operand, statusField)
+                    && IlHelpers.IsLdcI4(codes[i + 2], (int)status)
+                    && (codes[i + 3].opcode == OpCodes.Beq || codes[i + 3].opcode == OpCodes.Beq_S))
+                    return i;
+            }
+            return -1;
         }
     }
 

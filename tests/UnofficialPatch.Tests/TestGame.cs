@@ -76,6 +76,7 @@ namespace UnofficialPatch.Tests
             resources.resource = new List<long>(new long[32]);
             resources.Fans = new List<resources._fan>();
             Awards._Awards = new List<Awards._award>();
+            Awards._Nominations = new List<Awards._award>();
             variables.variable = new List<variables._variable>();
             SetPolicies(policies._value.performances_neutral);
         }
@@ -263,6 +264,11 @@ namespace UnofficialPatch.Tests
             (AccessTools.PropertySetter(typeof(Image), nameof(Image.sprite)), nameof(StubSetSprite)),
             (AccessTools.Method(typeof(MonoBehaviour), nameof(MonoBehaviour.StartCoroutine), new[] { typeof(IEnumerator) }), nameof(StubStartCoroutine)),
             (AccessTools.Method(typeof(Object), nameof(Object.Destroy), new[] { typeof(Object) }), nameof(StubDestroy)),
+            (AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.IsDragging)), nameof(StubIsDragging)),
+            (AccessTools.Method(typeof(Room_Cafe), nameof(Room_Cafe.LaunchFloats)), nameof(StubLaunchFloats)),
+            (AccessTools.Method(typeof(Room_Cafe), nameof(Room_Cafe.RenderGirls)), nameof(StubRenderGirls)),
+            (AccessTools.Method(typeof(Cafes._cafe), nameof(Cafes._cafe.GetFansToAdd)), nameof(StubCafeFans)),
+            (AccessTools.Method(typeof(agency._room), nameof(agency._room.CancelJob)), nameof(StubCancelJob)),
         };
 
         private static readonly MethodBase[] Patched =
@@ -280,6 +286,7 @@ namespace UnofficialPatch.Tests
             AccessTools.EnumeratorMoveNext(AccessTools.Method(typeof(PortraitLoading), "FinishLateRender")),
             AccessTools.Method(typeof(Popup_Audition_PortraitsLoaded), nameof(Popup_Audition_PortraitsLoaded.Postfix)),
             AccessTools.Method(typeof(Popup_Audition_OpenCard), nameof(Popup_Audition_OpenCard.Postfix)),
+            AccessTools.Method(typeof(Cafes), nameof(Cafes.RenderCafe)),
         };
 
         /// <summary>
@@ -443,6 +450,17 @@ namespace UnofficialPatch.Tests
         private static void StubAddParam(data_girls.girls girl, data_girls._paramType type, float val, bool ignorePotential) => ParamsAdded.Add((girl, type, val));
         private static void StubNotification(string text, Color32 color, NotificationManager._notification._type type) => Notifications.Add(text);
         private static void StubSetColor(GameObject obj, Color32 color) => ColorsSet.Add((obj, color));
+
+        // The dragged idol is read from the scene; no idol is being dragged in the tests.
+        private static bool StubIsDragging(data_girls.girls girl) => false;
+        private static void StubLaunchFloats(Room_Cafe room, Cafes._cafe._stat stat) { }
+        private static void StubRenderGirls(Room_Cafe room, List<data_girls.girls> girls) { }
+
+        // Cafe fans read the activity levels from the scene; the cafe tests don't count fans.
+        private static int StubCafeFans(Cafes._cafe cafe) => 0;
+
+        // Cancelling a job reads the scene's agency.
+        private static void StubCancelJob(agency._room room) { }
 
         /// <summary>
         /// A GameObject holding a stub Image with this fill.

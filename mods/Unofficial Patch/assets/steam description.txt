@@ -1,9 +1,13 @@
 [h1]REQUIRES: IM-HarmonyIntegration[/h1]
 Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
 
-Also recommended mods by magier:
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3136750680]BestSingleFix[/url]
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3158389459]BestEmployerFix[/url]
+Also recommended, for bugs this mod doesn't fix:
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3136750680]BestSingleFix[/url] by magier
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864808]Unavailable Idols Fix[/url] by Cosmo
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3646096448]Divorce Fix[/url] by Cosmo
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3680171587]Staff Firing Freeze Fix[/url] by Cosmo
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3783683172]Dialogue Click Race Fix[/url] by Cosmo
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750618658]Show Cast Assignment Fix[/url] by Cosmo
 
 [h3]Bug Fixes:[/h3]
 [b]Theater[/b]

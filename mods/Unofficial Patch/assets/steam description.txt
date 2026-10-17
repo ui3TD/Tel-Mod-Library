@@ -6,34 +6,51 @@ Also recommended mods by magier:
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3158389459]BestEmployerFix[/url]
 
 [h3]Bug Fixes:[/h3]
+[b]Theater[/b]
 - Fixed Theater so that it uses stamina. (major gameplay change)
 - Fixed Theater so that money tooltip includes subscription earnings, excludes days off, and includes 7 days instead of 6.
 - Fixed Theater so that revenue stats are not offset by one day.
 - Fixed Theater so that average stats ignore days off.
 - Fixed Theater so that revenue gets added to girls earnings.
+
+[b]Cafe[/b]
 - Fixed Cafe weekly revenue so that it includes 7 days instead of 6.
 - Fixed Cafe novelty so that a new dish starts lower when the idol's other dishes are stale (it always started at 100%).
 - Fixed Cafe waitstaff so that working a shift no longer cures depressed idols. They can still work, as in the base game.
-- Fixed senbatsu stats calculation so it doesn't punish you if you don't have enough idols to fill all rows, and so it uses the requested stat instead of always Cute.
+
+[b]Concerts, shows and world tours[/b]
 - Fixed Concert revenue formula so that it shows accurate estimated values, including the FUJI ticket bonus.
 - Fixed concert attendance and hype percentages to round down, so 99.5% attendance no longer shows as a 100% sell-out.
-- Fixed so that when girls dating each other break up, their relationship status is no longer known.
-- Fixed fan age pie charts to show correct proportions.
+- Fixed the show and concert editors letting you pick an idol already in the cast when you opened a slot right after opening the editor, which put her in two slots. Bug found by Cosmo's Show Cast Assignment Fix.
 - Fixed world tour revenue text color to consider savings, and to show red when the tour would lose money.
 - Fixed world tour savings so that the Most Prolific Group award and cheaper events stack with regional discounts instead of making extra stops free.
 - Fixed world tour attendance to depend on your fame level, as the tour description says. (major gameplay change: big venues need high fame)
-- Fixed dating status to show status of underage girls, so you can actually track scandals.
-- Fixed fan opinion to be impacted by concerts, SSK/show cancellation and random events
-- Fixed gossip so that idol will not gossip about themselves
-- Fixed event and dialogue checks for Influence to check for Influence instead of Friendship
-- Fixed event and dialogue checks for 'not' conditions on variables, which always passed
-- Fixed display for Stamina cost of Performances to be correct for 'Energetic' performance policy
-- Fixed event and dialogue checks for having a staffer of a specific type
-- Fixed loading a missing or corrupt save: during play, autosave keeps working; from the main menu, autosave is off for that session so the empty game can't overwrite your saves.
-- Fixed a freeze when generating some platinum and gold idols (auditions, Aya, hiring a rival): a roll whose points can't fit is rolled again instead of looping forever.
+
+[b]Singles[/b]
+- Fixed senbatsu stats calculation so it doesn't punish you if you don't have enough idols to fill all rows, and so it uses the requested stat instead of always Cute.
 - Fixed Edgy and Artsy PVs so that they change sales and new fans of the fan types their tooltips show (they did nothing on success or failure).
+
+[b]Idols[/b]
+- Fixed so that when girls dating each other break up, their relationship status is no longer known.
+- Fixed dating status to show status of underage girls, so you can actually track scandals.
+- Fixed gossip so that idol will not gossip about themselves.
+- Fixed display for Stamina cost of Performances to be correct for 'Energetic' performance policy.
+
+[b]Fans[/b]
+- Fixed fan age pie charts to show correct proportions.
+- Fixed fan opinion to be impacted by concerts, SSK/show cancellation and random events.
+
+[b]Events and dialogues[/b]
+- Fixed event and dialogue checks for Influence to check for Influence instead of Friendship.
+- Fixed event and dialogue checks for 'not' conditions on variables, which always passed.
+- Fixed event and dialogue checks for having a staffer of a specific type.
+
+[b]Auditions and new idols[/b]
+- Fixed a freeze when generating some platinum and gold idols (auditions, Aya, hiring a rival): a roll whose points can't fit is rolled again instead of looping forever.
 - Fixed auditions waiting forever when a portrait won't load: after 2 seconds the cards unlock, and any portrait still loading appears when it's ready. A slow portrait render no longer stops portraits elsewhere in the game from loading.
-- Fixed the show and concert editors letting you pick an idol already in the cast when you opened a slot right after opening the editor, which put her in two slots. Bug found by Cosmo's Show Cast Assignment Fix.
+
+[b]Saving and loading[/b]
+- Fixed loading a missing or corrupt save: during play, autosave keeps working; from the main menu, autosave is off for that session so the empty game can't overwrite your saves.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 

@@ -1,0 +1,55 @@
+[
+	{
+		"type": "text",
+		"labelID": "AIFANCHATTER__MODMENU__EXPLAIN"
+	},
+	{
+		"type": "checkbox",
+		"varID": "AIFanChatter_Enabled",
+		"labelID": "AIFANCHATTER__MODMENU__ENABLED",
+		"defaultValue": false
+	},
+	{
+		"type": "dropdown",
+		"varID": "AIFanChatter_Provider",
+		"labelID": "AIFANCHATTER__MODMENU__PROVIDER",
+		"itemIDList": ["AIFANCHATTER__MODMENU__ANTHROPIC", "AIFANCHATTER__MODMENU__OPENAI", "AIFANCHATTER__MODMENU__COMPATIBLE"],
+		"defaultValue": 0
+	},
+	{
+		"type": "input",
+		"varID": "AIFanChatter_BaseURL",
+		"labelID": "AIFANCHATTER__MODMENU__BASEURL",
+		"defaultValue": "",
+		"maxLength": 200
+	},
+	{
+		"type": "input",
+		"varID": "AIFanChatter_Model",
+		"labelID": "AIFANCHATTER__MODMENU__MODEL",
+		"defaultValue": "",
+		"maxLength": 100
+	},
+	{
+		"type": "input",
+		"varID": "AIFanChatter_APIKey",
+		"labelID": "AIFANCHATTER__MODMENU__APIKEY",
+		"defaultValue": "",
+		"maxLength": 0
+	},
+	{
+		"type": "slider",
+		"varID": "AIFanChatter_PerWeek",
+		"labelID": "AIFANCHATTER__MODMENU__PERWEEK",
+		"minValue": 0,
+		"maxValue": 7,
+		"defaultValue": 2
+	},
+	{
+		"type": "dropdown",
+		"varID": "AIFanChatter_Style",
+		"labelID": "AIFANCHATTER__MODMENU__STYLE",
+		"itemIDList": ["AIFANCHATTER__MODMENU__BALANCED", "AIFANCHATTER__MODMENU__SUPPORTIVE", "AIFANCHATTER__MODMENU__SPICY"],
+		"defaultValue": 0
+	}
+]

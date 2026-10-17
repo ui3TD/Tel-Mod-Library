@@ -1,0 +1,235 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Xunit;
+using static AIFanChatter.Tests.TestEnv;
+
+namespace AIFanChatter.Tests
+{
+    public class FeedQueueTests
+    {
+        private static readonly DateTime Now = new(2020, 6, 3, 10, 0, 0);
+
+        public FeedQueueTests() => Reset();
+
+        private static List<SNS_Manager._message> Batch(string tag) => new()
+        {
+            Post("F_HC_T", tag + " one", Post("M_C_A", tag + " reply a"), Post("F_C_YA", tag + " reply b")),
+            Post("M_C_YA", tag + " two"),
+            Post("F_C_A", tag + " three", Post("M_HC_T", tag + " reply c"))
+        };
+
+        private static List<QueuedItem> DrainUntil(DateTime end)
+        {
+            List<QueuedItem> released = new();
+            for (DateTime t = Now; t <= end; t = t.AddMinutes(10))
+            {
+                QueuedItem item;
+                while ((item = FeedQueue.TakeDue(t)) != null)
+                {
+                    released.Add(item);
+                }
+            }
+            return released;
+        }
+
+        [Fact]
+        public void FirstPost_IsDueAtOnceAndIsTheOnlyFirst()
+        {
+            FeedQueue.AddBatch(Batch("a"), Now, new Random(1));
+            QueuedItem first = FeedQueue.TakeDue(Now);
+            Assert.Equal("a one", first.Text);
+            Assert.True(first.First);
+            Assert.Single(FeedQueue.Items.Concat(new[] { first }).Where(i => i.First));
+        }
+
+        [Fact]
+        public void LaterPosts_ComeTwoToNineHoursApart()
+        {
+            for (int seed = 0; seed < 50; seed++)
+            {
+                FeedQueue.Clear();
+                FeedQueue.AddBatch(Batch("a"), Now, new Random(seed));
+                List<DateTime> posts = FeedQueue.Items.Where(i => !i.IsReply).Select(i => i.Due).ToList();
+                for (int i = 1; i < posts.Count; i++)
+                {
+                    double gap = (posts[i] - posts[i - 1]).TotalHours;
+                    Assert.InRange(gap, FeedQueue.MinGapHours, FeedQueue.MaxGapHours + 1);
+                }
+            }
+        }
+
+        [Fact]
+        public void Replies_ComeWithOrAfterTheirPostAndNameIt()
+        {
+            for (int seed = 0; seed < 50; seed++)
+            {
+                FeedQueue.Clear();
+                FeedQueue.AddBatch(Batch("a"), Now, new Random(seed));
+                List<QueuedItem> released = DrainUntil(Now.AddDays(3));
+                Assert.Equal(6, released.Count);
+                foreach (QueuedItem reply in released.Where(i => i.IsReply))
+                {
+                    int parent = released.FindIndex(i => !i.IsReply && i.Text == reply.ParentText && i.User == reply.ParentUser);
+                    Assert.True(parent >= 0 && parent < released.IndexOf(reply), "A reply came before its post");
+                }
+            }
+        }
+
+        [Fact]
+        public void AJumpInTime_ReleasesOneItemAtATime()
+        {
+            FeedQueue.AddBatch(Batch("a"), Now, new Random(1));
+            Assert.NotNull(FeedQueue.TakeDue(Now.AddDays(5)));
+            Assert.Equal(5, FeedQueue.Items.Count);
+        }
+
+        [Fact]
+        public void OnlyThreeBatches_Wait()
+        {
+            foreach (string tag in new[] { "a", "b", "c", "d" })
+            {
+                FeedQueue.AddBatch(Batch(tag), Now, new Random(1));
+            }
+            Assert.DoesNotContain(FeedQueue.Items, i => i.Text.StartsWith("a "));
+            Assert.Contains(FeedQueue.Items, i => i.Text.StartsWith("d "));
+            Assert.Equal(3, FeedQueue.Items.Select(i => i.Batch).Distinct().Count());
+        }
+
+        [Fact]
+        public void Queue_SurvivesASaveAndLoad()
+        {
+            FeedQueue.AddBatch(Batch("quote \" and \\ and 日本"), Now, new Random(3));
+            List<QueuedItem> before = FeedQueue.Items.ToList();
+            string saved = FeedQueue.Serialize();
+            FeedQueue.Load(saved);
+            Assert.Equal(before.Count, FeedQueue.Items.Count);
+            for (int i = 0; i < before.Count; i++)
+            {
+                Assert.Equal(before[i].Due, FeedQueue.Items[i].Due);
+                Assert.Equal(before[i].Text, FeedQueue.Items[i].Text);
+                Assert.Equal(before[i].User, FeedQueue.Items[i].User);
+                Assert.Equal(before[i].IsReply, FeedQueue.Items[i].IsReply);
+                Assert.Equal(before[i].ParentText, FeedQueue.Items[i].ParentText);
+                Assert.Equal(before[i].First, FeedQueue.Items[i].First);
+            }
+            // New batches after a load don't reuse a loaded batch's number
+            FeedQueue.AddBatch(Batch("new"), Now, new Random(3));
+            Assert.Equal(2, FeedQueue.Items.Select(i => i.Batch).Distinct().Count());
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("not json")]
+        [InlineData("[{\"batch\":\"x\"}]")]
+        public void BrokenSavedQueue_LoadsEmpty(string saved)
+        {
+            FeedQueue.AddBatch(Batch("a"), Now, new Random(1));
+            FeedQueue.Load(saved);
+            Assert.Empty(FeedQueue.Items);
+        }
+    }
+
+    public class FeedStoreTests
+    {
+        public FeedStoreTests() => Reset();
+
+        [Fact]
+        public void Cap_IsOneHundred()
+        {
+            Assert.Equal(100, FeedStore.CapValue());
+            List<SNS_Manager._message> feed = Feed(130);
+            FeedStore.TrimToCap(feed);
+            Assert.Equal(100, feed.Count);
+            Assert.Equal("post 30", feed[0].Message);
+        }
+
+        [Fact]
+        public void Save_KeepsTheNewestTwentyInTheGamesField()
+        {
+            List<SNS_Manager._message> feed = Feed(50);
+            List<SNS_Manager._message> kept = FeedStore.SplitForSave(feed, out List<SNS_Manager._message> older);
+            Assert.Equal(20, kept.Count);
+            Assert.Equal("post 30", kept[0].Message);
+            Assert.Equal("post 49", kept[19].Message);
+            Assert.Equal(30, older.Count);
+            Assert.Equal(50, feed.Count);
+        }
+
+        [Fact]
+        public void Save_OfTwentyOrFewer_IsNotSplit()
+        {
+            List<SNS_Manager._message> feed = Feed(20);
+            Assert.Same(feed, FeedStore.SplitForSave(feed, out List<SNS_Manager._message> older));
+            Assert.Null(older);
+        }
+
+        [Fact]
+        public void Load_PutsTheOlderPostsBackInFront()
+        {
+            List<SNS_Manager._message> loaded = Feed(20, "new");
+            Assert.Equal(30, FeedStore.MergeOnLoad(loaded, Feed(30, "old")));
+            Assert.Equal(50, loaded.Count);
+            Assert.Equal("old 0", loaded[0].Message);
+            Assert.Equal("new 19", loaded[49].Message);
+        }
+
+        [Fact]
+        public void Messages_SurviveTheirOwnJson()
+        {
+            List<SNS_Manager._message> posts = new()
+            {
+                Post("F_HC_T", "quote \" slash \\ newline \n emoji 🎤 日本語", Post("M_C_A", "reply")),
+                new SNS_Manager._message { Chara = SNS_Manager._chara.Fujimoto, Message = "story post" }
+            };
+            List<SNS_Manager._message> back = FeedStore.Deserialize(FeedStore.Serialize(posts));
+            Assert.Equal(2, back.Count);
+            Assert.Equal(posts[0].Message, back[0].Message);
+            Assert.Equal("reply", back[0].Replies.Single().Message);
+            Assert.Equal("M_C_A", back[0].Replies.Single().User);
+            Assert.Equal(SNS_Manager._chara.Fujimoto, back[1].Chara);
+            Assert.Equal("", back[1].User);
+        }
+
+        [Fact]
+        public void FindParent_MatchesFanAndTextNewestFirst()
+        {
+            List<SNS_Manager._message> feed = new() { Post("F_C_T", "same"), Post("M_C_T", "same"), Post("F_C_T", "same") };
+            Assert.Same(feed[2], FeedStore.FindParent(feed, "F_C_T", "same"));
+            Assert.Null(FeedStore.FindParent(feed, "F_HC_A", "same"));
+            Assert.Null(FeedStore.FindParent(null, "F_C_T", "same"));
+        }
+
+        [Fact]
+        public void SaveThenLoad_RestoresTheWholeFeedAndQueue()
+        {
+            List<SNS_Manager._message> feed = Feed(60);
+            FeedQueue.AddBatch(new List<SNS_Manager._message> { Post("F_C_T", "queued") }, new DateTime(2020, 1, 1), new Random(1));
+            List<variables._variable> vars = new();
+
+            List<SNS_Manager._message> saved = SNS_Manager_SaveFunction.SaveFeed(feed, vars);
+            Assert.Equal(20, saved.Count);
+            Assert.NotNull(FeedStore.GetVariable(vars, FeedStore.OlderPostsVar));
+            Assert.NotNull(FeedStore.GetVariable(vars, FeedQueue.QueueVar));
+
+            FeedQueue.Clear();
+            List<SNS_Manager._message> loaded = new(saved);
+            Assert.True(SNS_Manager_LoadFunction.LoadFeed(loaded, vars));
+            Assert.Equal(feed.Select(p => p.Message), loaded.Select(p => p.Message));
+            Assert.Equal("queued", FeedQueue.Items.Single().Text);
+        }
+
+        [Fact]
+        public void SavingASmallFeed_RemovesStaleVariables()
+        {
+            List<variables._variable> vars = new()
+            {
+                new variables._variable { name = FeedStore.OlderPostsVar, value = "[]" },
+                new variables._variable { name = FeedQueue.QueueVar, value = "[]" }
+            };
+            SNS_Manager_SaveFunction.SaveFeed(Feed(5), vars);
+            Assert.Empty(vars);
+        }
+    }
+}

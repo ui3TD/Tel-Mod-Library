@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<!--Define the mod's info.json-->
+		<ModName>AI Fan Chatter</ModName>
+		<HarmonyID>com.tel.aifanchatter</HarmonyID>
+		<ModDescription>Fans post about your idols on social media, written by an AI service of your choice (Anthropic, OpenAI or any OpenAI-compatible service).</ModDescription>
+		<Authors>Tel</Authors>
+		<Version>1.0.0</Version>
+		<WorkshopID></WorkshopID>
+		<Tags>["gameplay"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+	</PropertyGroup>
+
+</Project>

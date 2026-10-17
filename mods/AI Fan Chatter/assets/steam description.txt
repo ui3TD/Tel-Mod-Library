@@ -1,0 +1,31 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+Fans react on the Social Media tab to your singles, concerts, graduations and events. An AI service of your choice writes their posts and replies, which arrive over the following in-game days. The feed also keeps 100 posts instead of 20.
+
+[h3]Setting it up[/h3]
+You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url] and an account with an AI service. Open Settings, then Mod Settings, and set:
+[list]
+[*]AI service: Anthropic, OpenAI, or OpenAI-compatible for any other service that works like OpenAI's, such as OpenRouter, or a model on your own PC with Ollama or LM Studio.
+[*]Base URL: leave it blank for Anthropic or OpenAI. For another service, type its address, for example http://localhost:11434 for Ollama.
+[*]Model: the model's name. Left blank on Anthropic, it uses claude-haiku-4-5.
+[*]API key: your key from the service. A model on your own PC usually doesn't need one.
+[*]Requests per week: at most this many requests in an in-game week. Each request writes a few posts.
+[/list]
+Then tick Turn on AI fan posts and press Apply. A notification tells you whether the connection works.
+
+[h3]Costs and privacy[/h3]
+[list]
+[*]Requests are charged to your account with the AI service. A request is sent for a single release, a concert, a graduation (at most one a day) or an event, up to your weekly setting, and never more than 20 in an hour of real time.
+[*]Each request sends that moment's details to the service: names you gave your group and idols, and figures such as sales and fans. Nothing else from your PC is sent.
+[*]Your API key is kept in plain text in a file on this PC, in AppData\LocalLow\Glitch Pitch\Idol Manager\ModConfig\AI Fan Chatter. It is never written into your saves. To remove it, type a single - in the key field and press Apply.
+[*]For safety, use a key with a spending limit, which you can set in your AI service's account settings.
+[/list]
+
+[h3]Removing the mod[/h3]
+Your saves load normally without it. The feed then keeps its newest 20 posts.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 1.0.0: First release

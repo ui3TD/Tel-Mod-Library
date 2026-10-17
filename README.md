@@ -5,6 +5,7 @@ Library of mods for Idol Manager
 <details>
 <summary><h2 style="display: inline-block;">Mods Included (click to expand)</h2></summary>
 
+* AI Fan Chatter
 * Concert Rebalance
 * Effortless Training
 * Extended SSK

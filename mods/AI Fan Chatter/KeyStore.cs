@@ -105,20 +105,6 @@ namespace AIFanChatter
         internal static void ClearCache() => Cache.Clear();
 
         /// <summary>
-        /// What the empty key field shows about the saved key: its last four characters only.
-        /// </summary>
-        public static string Hint(Provider provider)
-        {
-            string key = Get(provider);
-            if (key == null)
-            {
-                return "No key saved";
-            }
-            string end = key.Length > 4 ? key.Substring(key.Length - 4) : "";
-            return "Key saved (..." + end + ")";
-        }
-
-        /// <summary>
         /// Text with every saved key replaced by ***, for logs and notifications. A service may echo the key
         /// back in an error message.
         /// </summary>

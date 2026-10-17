@@ -16,7 +16,7 @@ using UnityEngine.UI;
 namespace InGameTests.TelMods
 {
     /// <summary>
-    /// AI Fan Chatter in the real game: the key field in ModMenus' real menu, a request through the real
+    /// AI Fan Chatter in the real game: the key row in ModMenus' real menu, a request through the real
     /// transport and clock into the real feed, and the feed and queue across a real save and load. The
     /// unit tests cover the settings, requests, replies, limits and queue timing on stand-ins.
     /// Requests go to a server on this PC; nothing reaches an AI service, and the player's own key is
@@ -32,11 +32,12 @@ namespace InGameTests.TelMods
         private const string KeyVar = Prefix + "APIKey";
 
         /// <summary>
-        /// The key field is a password field that says whether a key is saved. A typed key goes to the key
-        /// file on Apply, the save gets "", and a later Apply with the field left blank keeps the key.
+        /// A key typed into ModMenus' real key field goes to the key file on Apply, the save gets "", the
+        /// reopened field is empty, and a later Apply with the field left blank keeps the key. ModMenus' own
+        /// test checks that password fields show asterisks.
         /// </summary>
         [InGameTest(Suite = ModTest.Suite)]
-        private static IEnumerator KeyFieldIsMaskedAndKeptOutOfTheSave(TestContext ctx)
+        private static IEnumerator KeyIsKeptOutOfTheSave(TestContext ctx)
         {
             if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
                 yield break;
@@ -62,10 +63,6 @@ namespace InGameTests.TelMods
                     yield break;
                 }
                 TMP_InputField field = row.GetComponentInChildren<TMP_InputField>(true);
-                ctx.Assert(field.contentType == TMP_InputField.ContentType.Password, "The key field isn't a password field: " + field.contentType);
-                string hint = HintText(row, field);
-                ctx.Record("hintBefore", hint);
-                ctx.Assert(hint.Contains("No key saved"), "The key field doesn't say no key is saved: " + hint);
 
                 // Typing goes through the field's own event, as a player's typing does
                 field.text = typed;
@@ -76,9 +73,6 @@ namespace InGameTests.TelMods
 
                 yield return OpenMenu(ctx, _ => { });
                 ctx.Assert(field.text == "", "The reopened field shows text: " + field.text.Length + " characters");
-                hint = HintText(row, field);
-                ctx.Record("hintAfter", hint);
-                ctx.Assert(hint.Contains("WXYZ") && !hint.Contains("ingame"), "The hint doesn't show only the key's end: " + hint);
 
                 yield return Apply(ctx, row);
                 ctx.Assert(File.Exists(file) && File.ReadAllText(file) == typed, "A blank Apply removed the key");
@@ -212,14 +206,6 @@ namespace InGameTests.TelMods
             Component manager = row.GetComponentInParent(modMenus.GetType("ModMenus.ModMenusUtils+ModMenuManager", true));
             AccessTools.Method(manager.GetType(), "OnApply").Invoke(manager, null);
             yield return TestTools.WaitFor(ctx, () => PopupManager.GetOpenPopupType() != ModMenuPopup && !row.gameObject.activeInHierarchy, 5f, "the mod menu to close");
-        }
-
-        private static string HintText(Transform row, TMP_InputField field)
-        {
-            if (field.placeholder is TMP_Text placeholder)
-                return placeholder.text ?? "";
-            TextMeshProUGUI label = row.Find("Title")?.GetComponent<TextMeshProUGUI>();
-            return label != null ? label.text : "";
         }
 
         /// <summary>

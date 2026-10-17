@@ -80,16 +80,6 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void Hint_ShowsOnlyTheLastFourCharacters()
-        {
-            KeyStore.Set(Provider.Anthropic, "sk-ant-abcdefgh-WXYZ");
-            string hint = KeyStore.Hint(Provider.Anthropic);
-            Assert.Contains("WXYZ", hint);
-            Assert.DoesNotContain("abcdefgh", hint);
-            Assert.Contains("No key saved", KeyStore.Hint(Provider.OpenAI));
-        }
-
-        [Fact]
         public void Redact_HidesEverySavedKey()
         {
             KeyStore.Set(Provider.OpenAI, "sk-proj-SECRET");

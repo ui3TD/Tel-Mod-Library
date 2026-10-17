@@ -1,7 +1,7 @@
 [
 	{
 		id: "AIFANCHATTER__MODMENU__EXPLAIN",
-		text: "Game details go to the AI service you choose, at your cost."
+		text: "Fans post about your singles, concerts, graduations and events, written by an AI service. Game details such as idol names are sent to the service you choose, and its requests cost money on your account. Your API key is kept in a file on this PC, not in your saves."
 	},
 	{
 		id: "AIFANCHATTER__MODMENU__ENABLED",

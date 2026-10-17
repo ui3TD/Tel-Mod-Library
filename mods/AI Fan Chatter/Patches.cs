@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using TMPro;
 using UnityEngine;
 
 namespace AIFanChatter
@@ -72,121 +71,6 @@ namespace AIFanChatter
             catch (Exception e)
             {
                 Log.Warn("Couldn't check the saved settings for a key: " + e.Message);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Masks the key field in ModMenus' menu and shows whether a key is saved. ModMenus is found by name,
-    /// so this mod also works without it (the patch is then skipped). Mods load in title order, so ModMenus
-    /// usually loads after this mod; the patch is then applied when the first scene starts (EnsureApplied).
-    /// </summary>
-    [HarmonyPatch]
-    public class ModMenusUtils_AddMenuInput
-    {
-        public const string HarmonyId = "com.tel.aifanchatter";
-        private static bool applied;
-
-        public static MethodBase TargetMethod()
-        {
-            Type utils = AccessTools.TypeByName("ModMenus.ModMenusUtils");
-            return utils == null ? null : AccessTools.Method(utils, "AddMenuInput");
-        }
-
-        public static bool Prepare() => TargetMethod() != null;
-
-        /// <summary>
-        /// Applies the patch if ModMenus loaded after this mod. Does nothing once it's applied, or without ModMenus.
-        /// </summary>
-        public static void EnsureApplied()
-        {
-            if (applied)
-            {
-                return;
-            }
-            try
-            {
-                MethodBase target = TargetMethod();
-                if (target == null)
-                {
-                    return;
-                }
-                MethodInfo postfix = AccessTools.Method(typeof(ModMenusUtils_AddMenuInput), nameof(Postfix));
-                Patches patches = Harmony.GetPatchInfo(target);
-                if (patches == null || !patches.Postfixes.Any(p => p.PatchMethod == postfix))
-                {
-                    new Harmony(HarmonyId).Patch(target, postfix: new HarmonyMethod(postfix));
-                }
-                applied = true;
-            }
-            catch (Exception e)
-            {
-                applied = true;
-                Log.Warn("Couldn't set up the API key field; it won't be masked: " + e.Message);
-            }
-        }
-
-        public static void Postfix(string varID, GameObject __result)
-        {
-            if (varID != Settings.ApiKeyVar || __result == null)
-            {
-                return;
-            }
-            try
-            {
-                KeyFieldStatus.Attach(__result);
-            }
-            catch (Exception e)
-            {
-                Log.Warn("Couldn't set up the API key field: " + e.Message);
-            }
-        }
-    }
-
-    /// <summary>
-    /// The key field's hint, in grey inside the empty field, refreshed each time the menu opens. The copied
-    /// field has no placeholder of its own, so one is made from a copy of its text.
-    /// </summary>
-    public class KeyFieldStatus : MonoBehaviour
-    {
-        private TMP_Text placeholder;
-
-        public static void Attach(GameObject row)
-        {
-            TMP_InputField field = row.GetComponentInChildren<TMP_InputField>(true);
-            if (field == null)
-            {
-                Log.Warn("The API key row has no text field; it can't be masked.");
-                return;
-            }
-            field.contentType = TMP_InputField.ContentType.Password;
-
-            TMP_Text placeholder = field.placeholder as TMP_Text;
-            if (placeholder == null && field.textComponent != null)
-            {
-                Transform text = field.textComponent.transform;
-                GameObject copy = Instantiate(text.gameObject, text.parent);
-                copy.name = "Placeholder";
-                copy.transform.SetSiblingIndex(text.GetSiblingIndex());
-                placeholder = copy.GetComponent<TMP_Text>();
-                placeholder.fontStyle = FontStyles.Italic;
-                placeholder.color = new Color32(140, 140, 140, 255);
-                field.placeholder = placeholder;
-            }
-            field.ForceLabelUpdate();
-
-            KeyFieldStatus status = row.AddComponent<KeyFieldStatus>();
-            status.placeholder = placeholder;
-            status.Refresh();
-        }
-
-        public void OnEnable() => Refresh();
-
-        public void Refresh()
-        {
-            if (placeholder != null)
-            {
-                placeholder.text = KeyStore.Hint(Settings.Provider);
             }
         }
     }
@@ -328,16 +212,13 @@ namespace AIFanChatter
 
     /// <summary>
     /// Releases queued posts as the game clock runs, from the same tick the game's own systems use.
-    /// staticVars.SetTime isn't patched: it's a one-line setter the runtime may inline. Also finishes
-    /// setting up the key field once every mod has loaded.
+    /// staticVars.SetTime isn't patched: it's a one-line setter the runtime may inline.
     /// </summary>
     [HarmonyPatch(typeof(mainScript), nameof(mainScript.Start))]
     public class mainScript_Start
     {
         public static void Postfix(mainScript __instance)
         {
-            // Every mod has loaded by the first scene
-            ModMenusUtils_AddMenuInput.EnsureApplied();
             try
             {
                 if (!mainScript.IsMainMenu())

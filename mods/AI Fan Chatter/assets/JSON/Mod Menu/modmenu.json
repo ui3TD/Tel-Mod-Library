@@ -35,7 +35,8 @@
 		"varID": "AIFanChatter_APIKey",
 		"labelID": "AIFANCHATTER__MODMENU__APIKEY",
 		"defaultValue": "",
-		"maxLength": 0
+		"maxLength": 0,
+		"password": true
 	},
 	{
 		"type": "slider",

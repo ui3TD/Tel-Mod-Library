@@ -9,7 +9,7 @@ You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314
 [*]AI service: Anthropic, OpenAI, or OpenAI-compatible for any other service that works like OpenAI's, such as OpenRouter, or a model on your own PC with Ollama or LM Studio.
 [*]Base URL: leave it blank for Anthropic or OpenAI. For another service, type its address, for example http://localhost:11434 for Ollama.
 [*]Model: the model's name. Left blank on Anthropic, it uses claude-haiku-4-5.
-[*]API key: your key from the service. A model on your own PC usually doesn't need one.
+[*]API key: your key from the service. A model on your own PC usually doesn't need one. With ModMenus 3.0.0 or later the key shows as asterisks while you type it.
 [*]Requests per week: at most this many requests in an in-game week. Each request writes a few posts.
 [/list]
 Then tick Turn on AI fan posts and press Apply. A notification tells you whether the connection works.

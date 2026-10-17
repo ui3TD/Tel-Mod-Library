@@ -23,16 +23,8 @@ namespace AIFanChatter.Tests
             PatchTargetAssert.PatchesApply(typeof(Settings).Assembly, ModNamespace);
         }
 
-        [Fact]
-        public void KeyFieldPatch_FindsModMenus()
-        {
-            Assert.True(ModMenusUtils_AddMenuInput.Prepare());
-            MethodBase target = ModMenusUtils_AddMenuInput.TargetMethod();
-            Assert.Equal(new[] { "varID", "labelID", "def", "maxLength", "parentTransform" }, target.GetParameters().Select(p => p.Name));
-        }
-
         /// <summary>
-        /// The mod finds ModMenus by name at run time, so it loads without it.
+        /// The mod reads its settings through the game's variables, never ModMenus' code, so it loads without it.
         /// </summary>
         [Fact]
         public void ModDll_DoesNotReferenceModMenus()

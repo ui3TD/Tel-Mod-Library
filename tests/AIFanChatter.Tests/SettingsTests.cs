@@ -78,6 +78,16 @@ namespace AIFanChatter.Tests
             }
         }
 
+        /// <summary>
+        /// ModMenus (3.0.0 and later) shows the key as asterisks.
+        /// </summary>
+        [Fact]
+        public void KeyField_IsTheOnlyPasswordField()
+        {
+            Assert.True(Item(Settings.ApiKeyVar)["password"].AsBool);
+            Assert.All(Items().Where(i => i["varID"].Value != Settings.ApiKeyVar), i => Assert.False(i["password"].AsBool));
+        }
+
         [Fact]
         public void EverySetting_UsesTheModsPrefix()
         {

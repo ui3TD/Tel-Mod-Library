@@ -9,48 +9,11 @@ using Xunit;
 namespace UnofficialPatch.Tests
 {
     /// <summary>
-    /// Automated clinics take injured idols whatever their training preference except 'don't train', and never take
-    /// an idol who is busy in another room.
+    /// Automated clinics never take an idol who is busy in another room.
     /// </summary>
     public class ClinicTests
     {
-        private static readonly MethodInfo CanAutoTrain = AccessTools.Method(typeof(agency._room), "CanAutoTrain");
-
         public ClinicTests() => TestGame.Reset();
-
-        [Theory]
-        [InlineData(data_girls.girls._training.vocal, true)]
-        [InlineData(data_girls.girls._training.dance, true)]
-        [InlineData(data_girls.girls._training.visual, true)]
-        [InlineData(data_girls.girls._training.cute, true)]
-        [InlineData(data_girls.girls._training.sexy, true)]
-        [InlineData(data_girls.girls._training.default_, true)]
-        [InlineData(data_girls.girls._training.dont_train, false)]
-        public void ClinicAcceptsAnyTrainingPreference(data_girls.girls._training training, bool expected)
-        {
-            agency.GirlsBannedFromAutoTasks = new List<data_girls.girls>();
-
-            Assert.Equal(expected, AutoTrain(agency._type.doctorsOffice, new data_girls.girls { training = training }));
-        }
-
-        [Fact]
-        public void ClinicStillRejectsSickAndBannedIdols()
-        {
-            data_girls.girls sick = new() { training = data_girls.girls._training.vocal, status = data_girls._status.injured };
-            data_girls.girls banned = new() { training = data_girls.girls._training.vocal };
-            agency.GirlsBannedFromAutoTasks = new List<data_girls.girls> { banned };
-
-            Assert.False(AutoTrain(agency._type.doctorsOffice, sick));
-            Assert.False(AutoTrain(agency._type.doctorsOffice, banned));
-        }
-
-        [Fact]
-        public void OtherRoomsKeepTheirPreferenceCheck()
-        {
-            agency.GirlsBannedFromAutoTasks = new List<data_girls.girls>();
-
-            Assert.False(AutoTrain(agency._type.danceStudio, new data_girls.girls { training = data_girls.girls._training.vocal }));
-        }
 
         [Fact]
         public void ClinicRefusesIdolsBusyElsewhere()
@@ -86,11 +49,6 @@ namespace UnofficialPatch.Tests
             Assert.True(clinic.canAssign(exWorker));
             Assert.True(clinic.canAssign(sickWorker));
             Assert.False(clinic.canAssign(leavingWorker));
-        }
-
-        private static bool AutoTrain(agency._type type, data_girls.girls girl)
-        {
-            return (bool)CanAutoTrain.Invoke(new agency._room { type = type }, new object[] { girl });
         }
     }
 

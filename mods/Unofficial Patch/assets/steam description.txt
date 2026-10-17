@@ -8,6 +8,7 @@ Also recommended, for bugs this mod doesn't fix:
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3680171587]Staff Firing Freeze Fix[/url] by Cosmo
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3783683172]Dialogue Click Race Fix[/url] by Cosmo
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750618658]Show Cast Assignment Fix[/url] by Cosmo
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864574]Clinic Recovery Priority Fix[/url] by Cosmo
 
 [h3]Bug Fixes:[/h3]
 [b]Theater[/b]
@@ -47,7 +48,6 @@ Also recommended, for bugs this mod doesn't fix:
 - Fixed display for Stamina cost of Performances to be correct for 'Energetic' performance policy.
 
 [b]Clinics and Break Room[/b]
-- Fixed automated clinics passing over injured idols who have a training preference. Idols set to 'don't train' still stay out.
 - Fixed clinics taking idols who are busy in another room.
 - Fixed idols getting stuck after hanging out in the Break Room, and Break Room chats curing injuries or bringing back graduated idols.
 
@@ -76,12 +76,12 @@ These mods found these bugs first. Unofficial Patch includes these fixes, so you
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3810566069]Save n Load Fixes[/url] by Cosmo: expected salaries, concerts' place in the Special Events list, the bankruptcy deadline after loading, and a show's next episode date. Unofficial Patch doesn't change how your game is saved.
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864808]Unavailable Idols Fix[/url] by Cosmo: Cancel in the concert editor. Unofficial Patch works better with other mods that change concerts.
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3807347510]Birthday Text Fix[/url] by Cosmo: the birthday popup title (21th birthday). Unofficial Patch uses simpler wording: Mio turns 21!
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864574]Clinic Recovery Priority Fix[/url] by Cosmo: clinics passing over injured idols, and idols left stuck after hanging out in the Break Room. Unofficial Patch keeps 'don't train' idols out of clinics, stops idols getting stuck instead of freeing them later, and a Break Room chat can no longer cure an injury or bring back a graduated idol.
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864574]Clinic Recovery Priority Fix[/url] by Cosmo: idols left stuck after hanging out in the Break Room. Unofficial Patch stops idols getting stuck instead of freeing them later, and a Break Room chat can no longer cure an injury or bring back a graduated idol.
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750618476]Room Assignment Fix[/url] by Cosmo: clinics taking idols who are busy in another room. Unofficial Patch leaves every other room as in the base game.
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750618658]Show Cast Assignment Fix[/url] by Cosmo: an idol in two spots of the same show. Unofficial Patch gives the empty spot a new idol instead of leaving it empty, and greys out idols already in a show or concert cast.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.10.0: Idols already in a show or concert cast can't be picked for a second slot.
 - 1.11.0: Best Employer can be lost, salaries follow recent pay, plus 10 fixes found by other mods.
+- 1.12.0: Clinics follow the game's Auto Practice rule again; see Clinic Recovery Priority Fix.

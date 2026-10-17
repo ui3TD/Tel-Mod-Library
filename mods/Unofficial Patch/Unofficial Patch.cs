@@ -984,25 +984,6 @@ namespace UnofficialPatch
     }
 
 
-    // Fixes automated clinics passing over injured idols whose training preference is vocal, dance or a visual
-    // style: CanAutoTrain checks the preference against the room before anything else. For clinics, accept them
-    // when the preference was the only reason; 'don't train', sick and banned idols are still rejected (the stamina
-    // check always passes for clinics).
-    [HarmonyPatch(typeof(agency._room), nameof(agency._room.CanAutoTrain))]
-    public class agency__room_CanAutoTrain
-    {
-        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<agency__room_CanAutoTrain>(ex);
-
-        public static void Postfix(agency._room __instance, data_girls.girls _girl, ref bool __result)
-        {
-            if (__result || __instance.type != agency._type.doctorsOffice || _girl == null)
-                return;
-            if (_girl.training == data_girls.girls._training.dont_train || _girl.training == data_girls.girls._training.default_)
-                return;
-            __result = !_girl.IsSick() && !agency.GirlsBannedFromAutoTasks.Contains(_girl);
-        }
-    }
-
     // Fixes clinics taking an idol who is already working in another room: canAssign returns true for clinics
     // before the busy check other rooms make. A room link alone doesn't mean she is busy (the game leaves it set
     // after some jobs end), so only a room that still holds her counts.

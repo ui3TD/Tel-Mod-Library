@@ -109,6 +109,7 @@ namespace ModMenus
         public const string JSON_FIELD_IGNORE = "ignore";
         public const string JSON_FIELD_LIST = "itemIDList";
         public const string JSON_FIELD_MAXLEN = "maxLength";
+        public const string JSON_FIELD_PASSWORD = "password";
         public const string JSON_TYPE_TEXT = "text";
         public const string JSON_TYPE_DROPDOWN = "dropdown";
         public const string JSON_TYPE_SLIDER = "slider";
@@ -668,7 +669,7 @@ namespace ModMenus
                                 continue;
 
                             id = item[JSON_FIELD_VARID];
-                            AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, parentTransform);
+                            AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, item[JSON_FIELD_PASSWORD].AsBool, parentTransform);
                             break;
                     }
                 }
@@ -1027,9 +1028,10 @@ namespace ModMenus
         /// <param name="labelID">The label ID for the text field.</param>
         /// <param name="def">The default text.</param>
         /// <param name="maxLength">The most characters the player can type, or 0 for no limit.</param>
+        /// <param name="password">Whether the field shows asterisks instead of what's typed, for secrets such as keys.</param>
         /// <param name="parentTransform">The parent transform to add the text field to.</param>
         /// <returns>The GameObject representing the text field element.</returns>
-        public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, Transform parentTransform)
+        public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, bool password, Transform parentTransform)
         {
             string labelText = Language.Data.TryGetValue(labelID, out string tx) ? tx : labelID;
 
@@ -1079,6 +1081,11 @@ namespace ModMenus
             // Configure field events; vanilla's would rename the rival
             TMP_InputField modInputField = modField.GetComponent<TMP_InputField>();
             modInputField.characterLimit = maxLength;
+            if (password)
+            {
+                // Only the display changes: Apply still saves the text as typed
+                modInputField.contentType = TMP_InputField.ContentType.Password;
+            }
             modInputField.onValueChanged = new TMP_InputField.OnChangeEvent();
             modInputField.onValueChanged.AddListener(modInputMenuItem.onUpdateInput);
 

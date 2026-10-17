@@ -108,6 +108,7 @@ Text field elements let the player type free text, and output it to an in-game v
 - **labelID**: ID for text defined in `JSON/Constants/constants.json`
 - **defaultValue**: Optional string. Default: empty
 - **maxLength**: Optional integer, the most characters the player can type. Default: no limit
+- **password**: Optional boolean. When true, the field shows asterisks instead of what's typed, for API keys and other secrets. The value is still saved exactly as typed, in the save file, so a mod that must keep a secret out of saves has to move it elsewhere itself. Default: false
 
 ## How settings are stored
 

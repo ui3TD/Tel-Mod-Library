@@ -349,6 +349,22 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
+        /// A password field shows asterisks; Apply still saves the text as typed.
+        /// </summary>
+        [Theory]
+        [InlineData("", TMP_InputField.ContentType.Standard)]
+        [InlineData(""", "password": false""", TMP_InputField.ContentType.Standard)]
+        [InlineData(""", "password": true""", TMP_InputField.ContentType.Password)]
+        public void TextFieldIsMaskedOnlyWhenItAsks(string passwordField, TMP_InputField.ContentType expected)
+        {
+            Menu menu = Build($$"""[ { "type": "input", "varID": "A_Key", "labelID": "TEST__MOTTO"{{passwordField}} } ]""");
+
+            Assert.Equal(expected, menu.Field("A_Key").contentType);
+            menu.Type("A_Key", "secret-123");
+            Assert.Equal("secret-123", menu.Item("A_Key").tempText);
+        }
+
+        /// <summary>
         /// The other items keep no text, which is how Apply tells them from text fields.
         /// </summary>
         [Fact]

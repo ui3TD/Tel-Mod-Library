@@ -280,6 +280,9 @@ namespace InGameTests.TelMods
                     ctx.Assert(actual.SequenceEqual(expected), "The test mod's rows are " + string.Join(", ", actual));
                 }
 
+                // A row of several lines takes its height a frame after the menu opens; measure once it has
+                yield return new WaitForSecondsRealtime(0.5f);
+                Canvas.ForceUpdateCanvases();
                 var corners = new Vector3[4];
                 float previousBottom = float.MaxValue;
                 for (int i = 0; i < rows.Count; i++)
@@ -369,12 +372,14 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
-        /// A menu with text fields: one with a default, one limited to 5 characters, and a checkbox under them.
+        /// A menu with text fields: one with a default, one limited to 5 characters, a password field, and a
+        /// checkbox under them.
         /// </summary>
         private const string InputMenu = @"[
             { ""type"": ""text"", ""labelID"": ""Text fields"" },
             { ""type"": ""input"", ""varID"": ""ModMenusTest_Name"", ""labelID"": ""Agency motto"", ""defaultValue"": ""Hello"" },
             { ""type"": ""input"", ""varID"": ""ModMenusTest_Short"", ""labelID"": ""Five characters at most"", ""maxLength"": 5 },
+            { ""type"": ""input"", ""varID"": ""ModMenusTest_Secret"", ""labelID"": ""Secret"", ""password"": true },
             { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check1"", ""labelID"": ""Checkbox"" }
         ]";
 
@@ -382,7 +387,8 @@ namespace InGameTests.TelMods
         /// A text field is a copy of the game's rival name field, cut loose from the rival popup: typing in it
         /// changes only the setting, Tab doesn't jump to the rival's fields, and the game's hotkeys are off
         /// while the menu is open. It shows its default, takes typing (Japanese too) up to its limit, is what a
-        /// click on it hits, and fits its row. Apply saves the text as typed; Cancel throws it away.
+        /// click on it hits, and fits its row. A password field shows asterisks. Apply saves the text as typed;
+        /// Cancel throws it away.
         /// </summary>
         [InGameTest(Suite = ModTest.Suite)]
         private static IEnumerator TextFieldsTakeTypingAndSave(TestContext ctx)
@@ -415,6 +421,9 @@ namespace InGameTests.TelMods
                 }
                 TMP_InputField name = nameRow.GetComponentInChildren<TMP_InputField>(true);
                 TMP_InputField limited = shortRow.GetComponentInChildren<TMP_InputField>(true);
+                TMP_InputField secret = menu.Find("ModMenuInput_ModMenusTest_Secret")?.GetComponentInChildren<TMP_InputField>(true);
+                ctx.Assert(secret != null && secret.contentType == TMP_InputField.ContentType.Password, "The password field isn't a password field");
+                ctx.Assert(name.contentType == TMP_InputField.ContentType.Standard, "A plain text field is " + name.contentType);
 
                 // Cut loose from the rival popup
                 GameObject rivalPopup = Game.Main.Data.GetComponent<ActiveDialogueController>().VN_Popups.GetComponent<vn_popups>().Popup_RivalName;
@@ -487,12 +496,19 @@ namespace InGameTests.TelMods
                 yield return new WaitForSecondsRealtime(0.5f);
                 ctx.Assert(name.text == "Hello" && limited.text == "", "After Cancel the fields show '" + name.text + "' and '" + limited.text + "'");
 
-                // Apply saves the text as typed, and the menu reopens showing it
+                // Apply saves the text as typed, and the menu reopens showing it. The password field draws only asterisks.
                 yield return TypeInto(name, "Bye", "!");
+                if (secret != null)
+                {
+                    yield return TypeInto(secret, null, "key-42");
+                    ctx.Assert(secret.text == "key-42", "The password field holds '" + secret.text + "', expected what was typed");
+                    ctx.Assert(!secret.textComponent.text.Contains("key") && secret.textComponent.text.Contains("*"), "The password field draws '" + secret.textComponent.text + "'");
+                }
                 Type managerType = AccessTools.TypeByName("ModMenus.ModMenusUtils+ModMenuManager");
                 AccessTools.Method(managerType, "OnApply").Invoke(popup.GetComponentInChildren(managerType, true), null);
                 ctx.Assert(variables.Get("ModMenusTest_Name") == "Bye!", "Apply saved '" + variables.Get("ModMenusTest_Name") + "', expected 'Bye!'");
                 ctx.Assert(variables.Get("ModMenusTest_Short") == "", "Apply saved the empty field as '" + (variables.Get("ModMenusTest_Short") ?? "nothing") + "'");
+                ctx.Assert(variables.Get("ModMenusTest_Secret") == "key-42", "Apply saved the password field as '" + (variables.Get("ModMenusTest_Secret") ?? "nothing") + "'");
                 yield return Game.CloseAllPopups(ctx);
                 reopened.Clear();
                 yield return OpenModSettings(ctx, reopened);

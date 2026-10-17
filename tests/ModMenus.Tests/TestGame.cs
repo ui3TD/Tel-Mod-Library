@@ -550,7 +550,7 @@ namespace ModMenus.Tests
         public static void PlaceDropdownInRow(RectTransform dropdown) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, Transform parentTransform) => throw NotInstalled();
+        public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, bool password, Transform parentTransform) => throw NotInstalled();
 
         /// <summary>
         /// AddMenuDropdown's lambda that finds the settings popup's Screen tab by name.

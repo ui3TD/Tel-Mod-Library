@@ -236,7 +236,7 @@ namespace StarSigns.Tests
             DateTime birthday = TestGame.Birthday(Zodiac.Leo);
 
             Assert.Empty(UniqueIdolSigns);
-            Assert.Contains("Star sign not found: " + starsign, Log.Messages);
+            Assert.Contains("[Star Signs] Star sign not found: " + starsign, Log.Messages);
             Assert.Equal(birthday, Generate(Generated(birthday)).birthday);
         }
 

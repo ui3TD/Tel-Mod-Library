@@ -280,7 +280,7 @@ namespace StarSigns
             string zodiacStr = jsonnode["starsign"];
             if (!Enum.TryParse(zodiacStr, true, out Zodiac tryZodiac) || tryZodiac == Zodiac.None || !Enum.IsDefined(typeof(Zodiac), tryZodiac))
             {
-                Debug.LogWarning("Star sign not found: " + zodiacStr);
+                Debug.LogWarning("[Star Signs] Star sign not found: " + zodiacStr);
                 return;
             }
             UniqueIdolSigns[UniqueIdolKey(textureAsset.ModName, textureAsset.body_id)] = tryZodiac;

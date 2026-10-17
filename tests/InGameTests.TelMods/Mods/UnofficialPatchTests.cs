@@ -131,5 +131,69 @@ namespace InGameTests.TelMods
         }
 
         private static int Renderers() => UnityEngine.Object.FindObjectsOfType<Portrait_Renderer>().Length;
+
+        /// <summary>
+        /// The show editor's idol picker keeps cast idols greyed out when it is opened before its list is built.
+        /// Opens a cast slot in the same frame the editor opens, so every idol button is created after the game
+        /// greyed the (still empty) list, then checks the finished list. Only the real editor builds its buttons
+        /// over frames and draws them through the patched native GirlButtonSmall.UpdateData.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator ShowPickerKeepsCastGreyed(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out _))
+                yield break;
+            yield return Game.CloseAllPopups(ctx);
+
+            List<data_girls.girls> idols = data_girls.girl.Where(g => g.status != data_girls._status.graduated).ToList();
+            // Idols the game's own button draw enables (GirlButtonSmall.UpdateData), so without the fix
+            // the cast ones could be picked.
+            List<data_girls.girls> free = data_girls.GetActiveGirls().Where(g => g.CanBeDragged()).ToList();
+            ctx.Record("idols", idols.Count);
+            if (free.Count < 3)
+            {
+                ctx.Fail("The fixture save needs 3 idols free to drag, has " + free.Count);
+                yield break;
+            }
+            data_girls.girls[] cast = { free[0], free[1], null };
+
+            PopupManager popups = Game.Main.Data.GetComponent<PopupManager>();
+            popups.Open(PopupManager._type.show_new);
+            Show_Popup editor = popups.GetByType(PopupManager._type.show_new).obj.GetComponent<Show_Popup>();
+            editor.Reset();
+            AccessTools.Field(typeof(Show_Popup), "girls").SetValue(editor, cast);
+            editor.OnCastClick(2);
+
+            // The list is rebuilt one idol every two frames, so it can't be complete one frame later.
+            yield return null;
+            int builtEarly = IdolButtons(editor).Count;
+            ctx.Record("idolButtonsAfterOneFrame", builtEarly);
+            ctx.Assert(builtEarly < idols.Count, "The idol list was already built when the slot was clicked, so this didn't test the race");
+
+            yield return TestTools.WaitFor(ctx, () => IdolButtons(editor).Count == idols.Count, 30f, "the show editor's idol list to be built");
+            List<GirlButtonSmall> buttons = IdolButtons(editor);
+            foreach (data_girls.girls girl in cast.Where(g => g != null))
+            {
+                GirlButtonSmall button = buttons.FirstOrDefault(b => b.girl == girl);
+                ctx.Assert(button != null && !Pickable(button),
+                    girl.girlName() + " is in the cast but can still be picked");
+            }
+            GirlButtonSmall freeButton = buttons.FirstOrDefault(b => b.girl == free[2]);
+            ctx.Assert(freeButton != null && Pickable(freeButton),
+                free[2].girlName() + " isn't in the cast but can't be picked");
+
+            yield return Game.CloseAllPopups(ctx);
+        }
+
+        /// <summary>Whether a click on the button reaches the game (ButtonDefault.Activate sets both).</summary>
+        private static bool Pickable(GirlButtonSmall button)
+        {
+            Button unityButton = button.GetComponent<Button>();
+            return button.buttonDefault.active && (unityButton == null || unityButton.interactable);
+        }
+
+        /// <summary>The show editor picker's idol buttons that have their idol set (not the clear button).</summary>
+        private static List<GirlButtonSmall> IdolButtons(Show_Popup editor) =>
+            editor.Girl_Select_Grid.GetComponentsInChildren<GirlButtonSmall>().Where(b => b.girl != null).ToList();
     }
 }

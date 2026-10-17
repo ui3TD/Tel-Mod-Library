@@ -40,6 +40,7 @@ namespace UnofficialPatch.Tests
                 new[]
                 {
                     nameof(data_girls_textures_SetSprite),
+                    nameof(GirlButtonSmall_UpdateData),
                     nameof(Popup_Audition_Close),
                     nameof(Popup_Audition_LoadCards),
                     nameof(Popup_Audition_OpenCard),

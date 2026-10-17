@@ -33,6 +33,7 @@ Also recommended mods by magier:
 - Fixed a freeze when generating some platinum and gold idols (auditions, Aya, hiring a rival): a roll whose points can't fit is rolled again instead of looping forever.
 - Fixed Edgy and Artsy PVs so that they change sales and new fans of the fan types their tooltips show (they did nothing on success or failure).
 - Fixed auditions waiting forever when a portrait won't load: after 2 seconds the cards unlock, and any portrait still loading appears when it's ready. A slow portrait render no longer stops portraits elsewhere in the game from loading.
+- Fixed the show and concert editors letting you pick an idol already in the cast when you opened a slot right after opening the editor, which put her in two slots. Bug found by Cosmo's Show Cast Assignment Fix.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
@@ -45,3 +46,4 @@ Also recommended mods by magier:
 - 1.8.0: Fixes cafe novelty, depressed waitstaff, tour award savings and tour fame.
 - 1.8.1: Works more safely alongside other mods that change the same game code.
 - 1.9.0: Depressed idols can work cafe shifts again and stay depressed.
+- 1.10.0: Idols already in a show or concert cast can't be picked for a second slot.

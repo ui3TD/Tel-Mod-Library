@@ -358,6 +358,68 @@ namespace UnofficialPatch
         }
     }
 
+    // Fixes the show and concert editors' idol pickers letting you pick an idol who is already in the cast, which put
+    // her in two slots. The picker greys out cast idols when it opens, but its list is still being built for a
+    // moment after the editor opens, and every idol button enables itself when it is drawn. Keep cast idols greyed
+    // out whenever a picker button is drawn. It only greys buttons, so other greying (injured idols) is kept.
+    [HarmonyPatch(typeof(GirlButtonSmall), nameof(GirlButtonSmall.UpdateData))]
+    public class GirlButtonSmall_UpdateData
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<GirlButtonSmall_UpdateData>(ex);
+
+        // The faded look the concert picker gives cast idols (Concert_New_Popup.UpdateGirlsList).
+        private const float ConcertGreyAlpha = 0.4f;
+
+        // The casts the editors grey out: the show's slots, and the concert setlist item being cast.
+        private static readonly AccessTools.FieldRef<Show_Popup, data_girls.girls[]> ShowGirls =
+            AccessTools.FieldRefAccess<Show_Popup, data_girls.girls[]>("girls");
+        private static readonly AccessTools.FieldRef<Concert_New_Popup, SEvent_Concerts._concert.ISetlistItem> ConcertItem =
+            AccessTools.FieldRefAccess<Concert_New_Popup, SEvent_Concerts._concert.ISetlistItem>("girl_setListItem");
+
+        // Applies the editor's own greying rule to the button the game just drew.
+        public static void Postfix(GirlButtonSmall __instance)
+        {
+            try
+            {
+                ButtonDefault button = __instance.buttonDefault;
+                if (__instance.girl == null || button == null || !button.active || !__instance.gameObject.activeInHierarchy)
+                    return;
+                Transform grid = __instance.transform.parent;
+                if (grid == null)
+                    return;
+
+                Show_Popup show = grid.GetComponentInParent<Show_Popup>();
+                if (show != null && show.Girl_Select_Grid != null && grid == show.Girl_Select_Grid.transform)
+                {
+                    if (InCast(__instance.girl, ShowCast(show)))
+                        button.Activate(val: false);
+                    return;
+                }
+
+                Concert_New_Popup concert = grid.GetComponentInParent<Concert_New_Popup>();
+                if (concert != null && concert.Girl_Select_Grid != null && grid == concert.Girl_Select_Grid.transform
+                    && InCast(__instance.girl, ConcertCast(concert)))
+                {
+                    button.Activate(val: false);
+                    CanvasGroup group = __instance.GetComponent<CanvasGroup>();
+                    if (group != null)
+                        group.alpha = ConcertGreyAlpha;
+                }
+            }
+            catch (Exception ex)
+            {
+                PatchLog.WarnOncePerPatch<GirlButtonSmall_UpdateData>("failed: " + ex);
+            }
+        }
+
+        public static IEnumerable<data_girls.girls> ShowCast(Show_Popup popup) => ShowGirls(popup);
+
+        // Null until the concert picker is first opened.
+        public static IEnumerable<data_girls.girls> ConcertCast(Concert_New_Popup popup) => ConcertItem(popup)?.GetGirls();
+
+        public static bool InCast(data_girls.girls girl, IEnumerable<data_girls.girls> cast) => girl != null && cast != null && cast.Contains(girl);
+    }
+
     // Fixes tour savings with the Most Prolific Group award or nomination, or the cheaper events choice. The game
     // cut the production cost but took the regional saving off at full size, so extra stops in a discounted region
     // could cost nothing or less. Cut the saving by the same share, so the discounts stack.

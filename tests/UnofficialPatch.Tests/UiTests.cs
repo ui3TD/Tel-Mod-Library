@@ -1,4 +1,5 @@
 using System;
+using HarmonyLib;
 using UnityEngine;
 using Xunit;
 
@@ -133,6 +134,69 @@ namespace UnofficialPatch.Tests
         public void NotProfitable_IsRed(int revenue, int cost, int saving)
         {
             Assert.Equal(mainScript.red32, RevenueColor(revenue, cost, saving));
+        }
+    }
+
+    /// <summary>
+    /// The show and concert editors' idol pickers keep cast idols greyed out. The postfix's hierarchy lookups are
+    /// Unity native code and are checked in game; these tests cover which idols count as the cast.
+    /// </summary>
+    public class PickerCastTests
+    {
+        public PickerCastTests() => TestGame.Reset();
+
+        private static Show_Popup ShowEditor(params data_girls.girls[] slots)
+        {
+            Show_Popup popup = TestGame.Component<Show_Popup>();
+            AccessTools.Field(typeof(Show_Popup), "girls").SetValue(popup, slots);
+            return popup;
+        }
+
+        private static Concert_New_Popup ConcertEditor(SEvent_Concerts._concert.ISetlistItem item)
+        {
+            Concert_New_Popup popup = TestGame.Component<Concert_New_Popup>();
+            AccessTools.Field(typeof(Concert_New_Popup), "girl_setListItem").SetValue(popup, item);
+            return popup;
+        }
+
+        [Fact]
+        public void ShowEditor_CastIdolsAreGreyed()
+        {
+            data_girls.girls cast = TestGame.Idol(name: "Cast");
+            data_girls.girls free = TestGame.Idol(name: "Free");
+            Show_Popup popup = ShowEditor(cast, null, null);
+
+            Assert.True(GirlButtonSmall_UpdateData.InCast(cast, GirlButtonSmall_UpdateData.ShowCast(popup)));
+            Assert.False(GirlButtonSmall_UpdateData.InCast(free, GirlButtonSmall_UpdateData.ShowCast(popup)));
+        }
+
+        [Fact]
+        public void ConcertEditor_CastIdolsOfTheItemBeingCastAreGreyed()
+        {
+            data_girls.girls cast = TestGame.Idol(name: "Cast");
+            data_girls.girls free = TestGame.Idol(name: "Free");
+            SEvent_Concerts._concert._mc mc = new SEvent_Concerts._concert._mc();
+            mc.Girls[1] = cast;
+            Concert_New_Popup popup = ConcertEditor(mc);
+
+            Assert.True(GirlButtonSmall_UpdateData.InCast(cast, GirlButtonSmall_UpdateData.ConcertCast(popup)));
+            Assert.False(GirlButtonSmall_UpdateData.InCast(free, GirlButtonSmall_UpdateData.ConcertCast(popup)));
+        }
+
+        [Fact]
+        public void ConcertEditor_BeforeThePickerFirstOpens_NothingIsGreyed()
+        {
+            Concert_New_Popup popup = ConcertEditor(null);
+
+            Assert.Null(GirlButtonSmall_UpdateData.ConcertCast(popup));
+            Assert.False(GirlButtonSmall_UpdateData.InCast(TestGame.Idol(), GirlButtonSmall_UpdateData.ConcertCast(popup)));
+        }
+
+        [Fact]
+        public void EmptySlots_DontGreyTheClearButton()
+        {
+            // The picker's "nobody" button has no idol; empty slots must not match it
+            Assert.False(GirlButtonSmall_UpdateData.InCast(null, GirlButtonSmall_UpdateData.ShowCast(ShowEditor(null, null, null))));
         }
     }
 }

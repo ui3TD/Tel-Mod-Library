@@ -121,6 +121,28 @@ namespace UnofficialPatch.Tests
         }
 
         /// <summary>
+        /// A bare idol with this ID and status, registered in data_girls.girl (no stats, no group).
+        /// </summary>
+        public static data_girls.girls Registered(int id, data_girls._status status = data_girls._status.normal)
+        {
+            data_girls.girls girl = new() { id = id, status = status };
+            data_girls.girl.Add(girl);
+            return girl;
+        }
+
+        /// <summary>
+        /// The mod's folder in this checkout (mods/Unofficial Patch), for tests of its asset files.
+        /// </summary>
+        public static string ModDir()
+        {
+            string dir = AppContext.BaseDirectory;
+            while (dir != null && !System.IO.Directory.Exists(System.IO.Path.Combine(dir, "mods", "Unofficial Patch")))
+                dir = System.IO.Path.GetDirectoryName(dir);
+            return dir != null ? System.IO.Path.Combine(dir, "mods", "Unofficial Patch")
+                : throw new System.IO.DirectoryNotFoundException("Tel-Mod-Library checkout not found above " + AppContext.BaseDirectory);
+        }
+
+        /// <summary>
         /// Adds the idol to the agency and its main group.
         /// </summary>
         public static data_girls.girls Hire(data_girls.girls girl)

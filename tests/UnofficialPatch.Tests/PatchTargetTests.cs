@@ -39,6 +39,9 @@ namespace UnofficialPatch.Tests
             Assert.Equal(
                 new[]
                 {
+                    nameof(Awards_Awake),
+                    nameof(Awards_OnDestroy),
+                    nameof(Concert_New_Popup_OnCancel),
                     nameof(data_girls_textures_SetSprite),
                     nameof(GirlButtonSmall_UpdateData),
                     nameof(Popup_Audition_Close),
@@ -46,6 +49,9 @@ namespace UnofficialPatch.Tests
                     nameof(Popup_Audition_OpenCard),
                     nameof(Popup_Audition_PortraitsLoaded),
                     nameof(SaveManager_SaveData),
+                    nameof(SEvent_Concerts_LoadFunction),
+                    nameof(staff_GetPortrait),
+                    nameof(staff_LoadPortrait_Small_AtlasLoaded),
                     nameof(vn_requirements_CheckGirl),
                     nameof(vn_requirements_CheckGirl_Variable),
                 },

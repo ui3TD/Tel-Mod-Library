@@ -35,7 +35,8 @@ namespace TelModTests.Common
             foreach (Type patchClass in classes)
             {
                 HarmonyMethod info = HarmonyMethod.Merge(HarmonyMethodExtensions.GetFromType(patchClass));
-                MethodBase target = ResolveTarget(info);
+                // A class without a target in its attributes finds it in code (Harmony's TargetMethod)
+                MethodBase target = ResolveTarget(info) ?? AccessTools.Method(patchClass, "TargetMethod")?.Invoke(null, null) as MethodBase;
                 if (target == null)
                     failures.Add($"{patchClass.Name}: {info.declaringType?.FullName ?? "?"}.{info.methodName ?? "?"} not found");
             }

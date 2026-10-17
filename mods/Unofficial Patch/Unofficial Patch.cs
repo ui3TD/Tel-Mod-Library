@@ -5,7 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System;
+using System.IO;
 using UnityEngine;
+using UnityEngine.U2D;
 using UnityEngine.UI;
 
 namespace UnofficialPatch
@@ -982,6 +984,153 @@ namespace UnofficialPatch
     }
 
 
+    // Fixes automated clinics passing over injured idols whose training preference is vocal, dance or a visual
+    // style: CanAutoTrain checks the preference against the room before anything else. For clinics, accept them
+    // when the preference was the only reason; 'don't train', sick and banned idols are still rejected (the stamina
+    // check always passes for clinics).
+    [HarmonyPatch(typeof(agency._room), nameof(agency._room.CanAutoTrain))]
+    public class agency__room_CanAutoTrain
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<agency__room_CanAutoTrain>(ex);
+
+        public static void Postfix(agency._room __instance, data_girls.girls _girl, ref bool __result)
+        {
+            if (__result || __instance.type != agency._type.doctorsOffice || _girl == null)
+                return;
+            if (_girl.training == data_girls.girls._training.dont_train || _girl.training == data_girls.girls._training.default_)
+                return;
+            __result = !_girl.IsSick() && !agency.GirlsBannedFromAutoTasks.Contains(_girl);
+        }
+    }
+
+    // Fixes clinics taking an idol who is already working in another room: canAssign returns true for clinics
+    // before the busy check other rooms make. A room link alone doesn't mean she is busy (the game leaves it set
+    // after some jobs end), so only a room that still holds her counts.
+    [HarmonyPatch(typeof(agency._room), nameof(agency._room.canAssign), new[] { typeof(data_girls.girls), typeof(data_girls._paramType?) })]
+    public class agency__room_canAssign
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<agency__room_canAssign>(ex);
+
+        public static void Postfix(agency._room __instance, data_girls.girls _girl, ref bool __result)
+        {
+            if (!__result || __instance.type != agency._type.doctorsOffice || _girl == null)
+                return;
+            if (_girl.status == data_girls._status.practice || (_girl.room != __instance && Holds(_girl.room, _girl)))
+                __result = false;
+        }
+
+        // The room is working with her: its own idol, or a cafe shift she is still on (a sick idol isn't working).
+        public static bool Holds(agency._room room, data_girls.girls girl)
+        {
+            if (room == null)
+                return false;
+            if (room.girl == girl)
+                return true;
+            return room.type == agency._type.cafeAndShop && !girl.IsSick() && room.GetCafe()?.WorkingGirls.Contains(girl) == true;
+        }
+    }
+
+    // Fixes idols stuck in a Break Room scene after the room is demolished: CancelJob sets the room back to normal
+    // without FinishScene, so its idols keep the scene status with no scene behind it, and no automatic room or new
+    // scene takes them. End the scene first with the game's FinishScene, which resets only idols still in it.
+    // Runs after other prefixes so they still see the scene. Idempotent: a finished scene leaves the room normal.
+    [HarmonyPatch(typeof(agency._room), nameof(agency._room.CancelJob))]
+    public class agency__room_CancelJob
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<agency__room_CancelJob>(ex);
+
+        // The game's FinishScene draws sprites; tests replace it
+        public static Action<agency._room> FinishScene = room => room.FinishScene();
+
+        [HarmonyPriority(Priority.Last)]
+        public static void Prefix(agency._room __instance, bool __runOriginal)
+        {
+            if (__runOriginal && __instance.status == agency._room._status.scene && __instance.sceneGirls != null)
+                FinishScene(__instance);
+        }
+    }
+
+    // Fixes Break Room scenes starting with idols who are no longer free. OnNewDay picks free idols and a free room,
+    // and AssignSceneWithDelay starts the scene up to 19 hours later without checking either again. An idol injured,
+    // depressed, sent on hiatus, graduated or put in training meanwhile was put in the scene (and set back to normal
+    // when it ended, curing her), and a scene whose room was demolished, or that was picked before a save was
+    // loaded, stranded its idols. Start the scene only if it can still happen; otherwise the next day picks new ones.
+    // Pattern-based, so it does nothing if another mod has replaced the call.
+    [HarmonyPatch]
+    public class Scenes_AssignSceneWithDelay
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Scenes_AssignSceneWithDelay>(ex);
+
+        private static readonly MethodInfo Assign = AccessTools.Method(typeof(agency._room), nameof(agency._room.assign),
+            new[] { typeof(Scenes.type), typeof(List<data_girls.girls>) });
+        private static readonly MethodInfo StartMethod = AccessTools.Method(typeof(Scenes_AssignSceneWithDelay), nameof(StartDelayedScene));
+        private static readonly FieldInfo CurrentAgency = AccessTools.Field(typeof(agency), nameof(agency._this));
+
+        public static MethodBase TargetMethod() => AccessTools.EnumeratorMoveNext(AccessTools.Method(typeof(Scenes), nameof(Scenes.AssignSceneWithDelay)));
+
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            List<CodeInstruction> codes = instructions.ToList();
+            int replaced = 0;
+            foreach (CodeInstruction code in codes)
+            {
+                if ((code.opcode == OpCodes.Call || code.opcode == OpCodes.Callvirt) && ReferenceEquals(code.operand, Assign))
+                {
+                    code.opcode = OpCodes.Call;
+                    code.operand = StartMethod;
+                    replaced++;
+                }
+            }
+            if (replaced == 0)
+                PatchLog.WarnOncePerPatch<Scenes_AssignSceneWithDelay>("no scene start left to check (another mod may have changed it).");
+            return codes;
+        }
+
+        public static void StartDelayedScene(agency._room room, Scenes.type type, List<data_girls.girls> girls)
+        {
+            if (CanStart(room, girls))
+                room.assign(type, girls);
+        }
+
+        // The room is still one of the agency's and free, and every idol is still free by the test OnNewDay chose
+        // them with. Rooms and idols from before a load aren't in the current lists.
+        public static bool CanStart(agency._room room, List<data_girls.girls> girls)
+        {
+            if (room == null || girls == null || room.status != agency._room._status.normal)
+                return false;
+            if (CurrentAgency.GetValue(null) is agency owner && !owner.allRooms().Contains(room))
+                return false;
+            List<data_girls.girls> free = data_girls.GetFreeGirls(includeSceneGirls: false);
+            return girls.All(free.Contains);
+        }
+    }
+
+    // Repairs idols already stuck in the scene status (from saves made before these fixes, or anything else that ends
+    // a scene room's work without FinishScene): sets back to normal every idol in the scene status that no room's
+    // scene holds, before the day's scenes are picked. Idempotent: once nobody is stuck, it changes nothing.
+    [HarmonyPatch(typeof(Scenes), nameof(Scenes.OnNewDay))]
+    public class Scenes_OnNewDay
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Scenes_OnNewDay>(ex);
+
+        // Leaving the scene status makes the game look for the idol's scene through Camera.main; tests replace it
+        public static Action<data_girls.girls> SetNormal = girl => girl.SetStatus(data_girls._status.normal);
+
+        public static void Prefix(agency ___Agency) => Repair(___Agency);
+
+        public static void Repair(agency owner)
+        {
+            if (owner is null || data_girls.girl == null)
+                return;
+            List<agency._room> scenes = owner.allRooms().Where(r => r.status == agency._room._status.scene && r.sceneGirls != null).ToList();
+            foreach (data_girls.girls girl in data_girls.girl.ToList())
+            {
+                if (girl != null && girl.status == data_girls._status.scene && !scenes.Any(r => r.sceneGirls.Contains(girl)))
+                    SetNormal(girl);
+            }
+        }
+    }
+
 	// Fixed so that when girls dating within the group break up, their relationship status is no longer known
     [HarmonyPatch(typeof(Relationships._relationship), nameof(Relationships._relationship.BreakUp))]
     public class Relationships__relationship_BreakUp
@@ -1125,6 +1274,219 @@ namespace UnofficialPatch
             // The game rounds to the nearest percent, so 99.5-99.9% attendance showed as 100% (sold out).
             // Round down instead; the game's rounding then keeps the whole percent.
             _val = Mathf.Floor(_val * PercentScale + FloorTolerance) / PercentScale;
+        }
+    }
+
+    // Fixes concerts in production losing their place in the Special Events list after loading: loading runs Initiate
+    // on every concert, which sets FinishDate to today for unfinished ones, and the list sorts by that date. Keep the
+    // loaded date. Idempotent: it only puts back the date the concert had before Initiate.
+    [HarmonyPatch(typeof(SEvent_Concerts), nameof(SEvent_Concerts.LoadFunction))]
+    public class SEvent_Concerts_LoadFunction
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SEvent_Concerts_LoadFunction>(ex);
+
+        internal static bool Loading;
+
+        public static void Prefix() => Loading = true;
+
+        public static void Finalizer() => Loading = false;
+    }
+
+    [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Initiate))]
+    public class SEvent_Concerts__concert_Initiate
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SEvent_Concerts__concert_Initiate>(ex);
+
+        public static void Prefix(SEvent_Concerts._concert __instance, out DateTime __state)
+        {
+            __state = __instance.FinishDate;
+        }
+
+        public static void Postfix(SEvent_Concerts._concert __instance, DateTime __state)
+        {
+            if (SEvent_Concerts_LoadFunction.Loading && __state != default && __instance.Status != SEvent_Tour.tour._status.finished)
+                __instance.FinishDate = __state;
+        }
+    }
+
+    // Fixes Cancel in the concert editor keeping every change: the editor edits the real concert. Remember what the
+    // editor can change when it opens an existing concert, and put it back when the editor is closed with Cancel.
+    // Idempotent: restoring the same snapshot again gives the same concert.
+    [HarmonyPatch(typeof(Concert_New_Popup), nameof(Concert_New_Popup.Reset))]
+    public class Concert_New_Popup_Reset
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Concert_New_Popup_Reset>(ex);
+
+        internal static ConcertSnapshot Snapshot;
+
+        public static void Prefix(SEvent_Concerts._concert _Concert)
+        {
+            Snapshot = _Concert != null ? new ConcertSnapshot(_Concert) : null;
+        }
+    }
+
+    [HarmonyPatch(typeof(Concert_New_Popup), nameof(Concert_New_Popup.OnCancel))]
+    public class Concert_New_Popup_OnCancel
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Concert_New_Popup_OnCancel>(ex);
+
+        public static void Prefix(Concert_New_Popup __instance, bool ___showing_PanelGirls, bool ___showing_PanelSingle, bool ___IsEditing)
+        {
+            // Cancel inside the idol or single picker only closes the picker
+            if (___showing_PanelGirls || ___showing_PanelSingle || !___IsEditing)
+                return;
+            ConcertSnapshot snapshot = Concert_New_Popup_Reset.Snapshot;
+            if (snapshot != null && snapshot.Concert == __instance.Concert)
+                snapshot.Restore();
+            Concert_New_Popup_Reset.Snapshot = null;
+        }
+    }
+
+    // What the concert editor can change on an existing concert.
+    public class ConcertSnapshot
+    {
+        public readonly SEvent_Concerts._concert Concert;
+        private readonly List<SEvent_Concerts._concert.ISetlistItem> items;
+        private readonly List<string> titles;
+        private readonly List<List<data_girls.girls>> girls;
+        private readonly SEvent_Concerts._venue venue;
+        private readonly int ticketPrice;
+        private readonly string title;
+        private readonly bool castChanged;
+
+        public ConcertSnapshot(SEvent_Concerts._concert concert)
+        {
+            Concert = concert;
+            items = concert.SetListItems.ToList();
+            titles = items.Select(i => i.GetTitle()).ToList();
+            girls = items.Select(i => i.GetGirls().ToList()).ToList();
+            venue = concert.Venue;
+            ticketPrice = concert.ProjectedValues.TicketPrice;
+            title = concert.Title;
+            castChanged = concert.Cast_Changed;
+        }
+
+        public void Restore()
+        {
+            Concert.SetListItems.Clear();
+            Concert.SetListItems.AddRange(items);
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i].isMC())
+                    items[i].SetTitle(titles[i]);
+                for (int slot = 0; slot < girls[i].Count; slot++)
+                    items[i].SetGirl(girls[i][slot], slot);
+            }
+            Concert.Venue = venue;
+            Concert.ProjectedValues.TicketPrice = ticketPrice;
+            Concert.Title = title;
+            Concert.Cast_Changed = castChanged;
+            Concert.RecalcProjectedValues();
+            Concert.RecalcFanAppeal();
+        }
+    }
+
+    // Stores the result of DateTime.AddMonths/AddDays calls whose result the game throws away (DateTime is immutable).
+    // Compatible without knowing other mods: it only rewrites the discarded-call pattern, so once any mod has fixed a
+    // call site there is nothing left to match and this does nothing there.
+    public static class DiscardedDate
+    {
+        private static readonly MethodInfo AddMonths = AccessTools.Method(typeof(DateTime), nameof(DateTime.AddMonths));
+        private static readonly MethodInfo AddDays = AccessTools.Method(typeof(DateTime), nameof(DateTime.AddDays));
+        private static readonly MethodInfo AddMonthsToMethod = AccessTools.Method(typeof(DiscardedDate), nameof(AddMonthsTo));
+        private static readonly MethodInfo AddDaysToMethod = AccessTools.Method(typeof(DiscardedDate), nameof(AddDaysTo));
+
+        public static void AddMonthsTo(ref DateTime date, int months) => date = date.AddMonths(months);
+
+        public static void AddDaysTo(ref DateTime date, double days) => date = date.AddDays(days);
+
+        // Rewrites `<address>; <argument>; call AddMonths/AddDays; pop` where the address load matches isDate.
+        public static IEnumerable<CodeInstruction> Store(IEnumerable<CodeInstruction> instructions, Func<CodeInstruction, bool> isDate, Type patchType)
+        {
+            List<CodeInstruction> codes = instructions.ToList();
+            int stored = 0;
+            for (int i = 2; i < codes.Count - 1; i++)
+            {
+                MethodInfo replacement = ReferenceEquals(codes[i].operand, AddMonths) ? AddMonthsToMethod
+                    : ReferenceEquals(codes[i].operand, AddDays) ? AddDaysToMethod : null;
+                if (replacement == null || codes[i].opcode != OpCodes.Call || codes[i + 1].opcode != OpCodes.Pop || !isDate(codes[i - 2]))
+                    continue;
+
+                codes[i].operand = replacement;
+                codes[i + 1].opcode = OpCodes.Nop;
+                stored++;
+            }
+            if (stored == 0)
+                PatchLog.WarnOncePerPatch(patchType, "no discarded date change left to fix (another mod may have fixed it).");
+            return codes;
+        }
+    }
+
+    // Fixes the show tooltip's next episode date: GetNextEpisodeDate throws away its first AddDays(1), so on the
+    // show's weekday the next episode shown is today rather than next week (also used for the cancellation date).
+    // Pattern-based, so it does nothing once another mod has fixed the call.
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.GetNextEpisodeDate), new[] { typeof(DateTime) })]
+    public class Shows__show_GetNextEpisodeDate
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Shows__show_GetNextEpisodeDate>(ex);
+
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            return DiscardedDate.Store(instructions, ci => ci.opcode == OpCodes.Ldarga || ci.opcode == OpCodes.Ldarga_S, typeof(Shows__show_GetNextEpisodeDate));
+        }
+    }
+
+    // Fixes an idol taking two slots of the same show cast: when an idol leaves a permanent cast, the game refills
+    // her slot with a random active idol who may already be in another slot, so she then counts twice everywhere the
+    // show uses its cast. Swap such a duplicate for an idol who isn't in the cast, or leave the slot empty if there
+    // is none. State-based: does nothing when the refill isn't a duplicate, and refills a slot another mod emptied
+    // after the game's refill. When another mod skips the game's RemoveGirl, its result is kept.
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.RemoveGirl))]
+    public class Shows__show_RemoveGirl
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Shows__show_RemoveGirl>(ex);
+
+        private static readonly System.Random Rng = new System.Random();
+
+        public static void Prefix(Shows._show __instance, data_girls.girls _Girl, out List<int> __state)
+        {
+            __state = new List<int>();
+            if (__instance.castType != Shows._show._castType.permanentCast)
+                return;
+            for (int i = 0; i < __instance.girls.Length; i++)
+            {
+                if (__instance.girls[i] == _Girl)
+                    __state.Add(i);
+            }
+        }
+
+        public static void Postfix(Shows._show __instance, data_girls.girls _Girl, List<int> __state, bool __runOriginal)
+        {
+            if (!__runOriginal)
+                return;
+            bool changed = false;
+            foreach (int slot in __state)
+            {
+                data_girls.girls refill = __instance.girls[slot];
+                if (refill != null && !IsElsewhere(__instance.girls, slot, refill))
+                    continue;
+                List<data_girls.girls> free = data_girls.GetActiveGirls().Where(g => g != _Girl && !__instance.girls.Contains(g)).ToList();
+                data_girls.girls replacement = free.Count > 0 ? free[Rng.Next(free.Count)] : null;
+                changed |= replacement != refill;
+                __instance.girls[slot] = replacement;
+            }
+            if (changed)
+                __instance.Update?.Invoke();
+        }
+
+        public static bool IsElsewhere(data_girls.girls[] cast, int slot, data_girls.girls girl)
+        {
+            for (int i = 0; i < cast.Length; i++)
+            {
+                if (i != slot && cast[i] == girl)
+                    return true;
+            }
+            return false;
         }
     }
 
@@ -1490,6 +1852,39 @@ namespace UnofficialPatch
     }
 
 
+    // Fixes the English birthday title, which says "@th birthday" for every age ("21th"). In English, uses this mod's
+    // UNOFFICIALPATCH__BD_TITLE_1/2 text instead, which needs no ordinal. Other languages, and a title another mod
+    // already changed, are left alone.
+    [HarmonyPatch(typeof(Birthday_Popup), nameof(Birthday_Popup.RenderTitle))]
+    public class Birthday_Popup_RenderTitle
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Birthday_Popup_RenderTitle>(ex);
+
+        public const string TextLanguage = "en";
+        public const string Title1 = "UNOFFICIALPATCH__BD_TITLE_1";
+        public const string Title2 = "UNOFFICIALPATCH__BD_TITLE_2";
+
+        public static void Postfix(Birthday_Popup __instance)
+        {
+            if (__instance.Title == null || __instance.Girl == null)
+                return;
+            string title = NewTitle(staticVars.Settings.Language, ExtensionMethods.GetText(__instance.Title),
+                __instance.Girl.GetName(), __instance.Girl.GetAge().ToString());
+            if (title != null)
+                ExtensionMethods.SetText(__instance.Title, title);
+        }
+
+        /// <summary>The title from this mod's text; null to keep the current title.</summary>
+        public static string NewTitle(string language, string title, string name, string age)
+        {
+            if (language != TextLanguage || !Language.Data.ContainsKey(Title1) || !Language.Data.ContainsKey(Title2))
+                return null;
+            if (title != Language.Insert("BD__TITLE_1", name) + " " + Language.Insert("BD__TITLE_2", age))
+                return null;
+            return Language.Insert(Title1, name) + " " + Language.Insert(Title2, age);
+        }
+    }
+
     // Dating status is visible for underage members. The game returns "" unless the idol is an adult
     // (Is_AOC); treat every idol as one, so the rest of the game's own method builds the text.
     [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetPartnerString))]
@@ -1837,6 +2232,120 @@ namespace UnofficialPatch
         }
     }
 
+    // Fixes the monthly event never happening: the game declares mainScript.onNewMonth but never raises it, so its
+    // subscribers never run: Awards.OnNewMonth (Best Employer strikes, so the award was won every year) and
+    // data_girls.OnNewMonth (monthly earnings history, which salary expectations average over).
+    // Raised on the first tick of the 1st of each month, after onNewDay, as the time loop would have.
+    // Compatible without knowing other mods: if anything else raises onNewMonth that day, ours doesn't; and if a mod
+    // already ran the Best Employer check that day, the Awards subscriber is skipped.
+    public static class MonthlyEvent
+    {
+        private static readonly FieldInfo OnNewMonthField = AccessTools.Field(typeof(mainScript), "onNewMonth");
+
+        private static mainScript Main;
+        // Set by a real day change to the 1st (not by loading a save), cleared once the month is raised.
+        internal static bool Pending;
+        // Best Employer strikes before anyone ran the check today; -1 when not recorded.
+        internal static int StrikesAtDayStart = -1;
+
+        public static void Attach(mainScript main)
+        {
+            Detach();
+            Main = main;
+            Main.onNewDay += OnNewDay;
+            Main.onNewMonth += OnNewMonthRaised;
+            Main.onTimeTick += OnTimeTick;
+        }
+
+        public static void Detach()
+        {
+            if (Main is object)
+            {
+                Main.onNewDay -= OnNewDay;
+                Main.onNewMonth -= OnNewMonthRaised;
+                Main.onTimeTick -= OnTimeTick;
+            }
+            Main = null;
+            Pending = false;
+        }
+
+        public static void OnNewDay()
+        {
+            Pending = staticVars.dateTime.Day == 1;
+        }
+
+        public static void OnNewMonthRaised()
+        {
+            Pending = false;
+        }
+
+        public static void OnTimeTick()
+        {
+            if (!Pending)
+                return;
+            Pending = false;
+            Raise(Main);
+        }
+
+        // Calls each onNewMonth subscriber. One failing subscriber is logged and doesn't stop the others or the clock.
+        public static void Raise(mainScript main)
+        {
+            if (main is null || !(OnNewMonthField.GetValue(main) is Delegate handlers))
+                return;
+
+            bool employerCheckDone = StrikesAtDayStart >= 0 && Awards.Checks.Best_Employer_Counter != StrikesAtDayStart;
+            foreach (Delegate handler in handlers.GetInvocationList())
+            {
+                if (handler.Target is Awards && employerCheckDone)
+                    continue;
+                try
+                {
+                    ((mainScript.newWeek)handler)();
+                }
+                catch (Exception e)
+                {
+                    PatchLog.Error<Awards_Awake>("onNewMonth subscriber " + handler.Method.DeclaringType?.Name + "." + handler.Method.Name + " failed: " + e);
+                }
+            }
+        }
+    }
+
+    // Starts the monthly event with the game's awards, which the game creates with each game scene.
+    [HarmonyPatch(typeof(Awards), nameof(Awards.Awake))]
+    public class Awards_Awake
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Awards_Awake>(ex);
+
+        public static void Postfix()
+        {
+            MonthlyEvent.Attach(Camera.main.GetComponent<mainScript>());
+        }
+    }
+
+    // Stops it with them; unpatching doesn't remove event subscriptions.
+    [HarmonyPatch(typeof(Awards), nameof(Awards.OnDestroy))]
+    public class Awards_OnDestroy
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Awards_OnDestroy>(ex);
+
+        public static void Postfix()
+        {
+            MonthlyEvent.Detach();
+        }
+    }
+
+    // Records the strike count before anything runs Awards' day logic (including other mods' postfixes).
+    [HarmonyPatch(typeof(Awards), nameof(Awards.OnNewDay))]
+    public class Awards_OnNewDay
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Awards_OnNewDay>(ex);
+
+        public static void Prefix()
+        {
+            MonthlyEvent.StrikesAtDayStart = staticVars.dateTime.Day == 1 ? Awards.Checks.Best_Employer_Counter : -1;
+        }
+    }
+
     // Base game bugfix:
     // SaveManager.LoadData(...) assigns SaveManager.Data = null when the target file is missing/corrupt,
     // then returns early ("huh"). Autosave later calls SaveEvent, and staticVars.SaveFunction crashes
@@ -1938,6 +2447,35 @@ namespace UnofficialPatch
         public static void Postfix(SaveManager __instance, FailedLoadGuard.LoadState __state)
         {
             FailedLoadGuard.AfterLoad<SaveManager_LoadData_Path_NullGuard>(__instance, __state, WarningMessage);
+        }
+    }
+
+    // Fixes saving and loading pushing back the bankruptcy deadline: BankruptcyDanger isn't saved, so loading a save
+    // in the red clears it, and the next day the game sets it again with a fresh one-month deadline. Restore the flag
+    // after a load, keeping the loaded deadline (OnMoneyChange sets it whenever money is below zero).
+    // Idempotent: it sets the flag from the same condition however often it runs.
+    [HarmonyPatch(typeof(SaveManager), nameof(SaveManager.LoadData), new Type[] { typeof(bool) })]
+    public class SaveManager_LoadData_Bool_Bankruptcy
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SaveManager_LoadData_Bool_Bankruptcy>(ex);
+
+        public static void Postfix() => Bankruptcy_Restore.AfterLoad();
+    }
+
+    [HarmonyPatch(typeof(SaveManager), nameof(SaveManager.LoadData), new Type[] { typeof(string) })]
+    public class SaveManager_LoadData_Path_Bankruptcy
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<SaveManager_LoadData_Path_Bankruptcy>(ex);
+
+        public static void Postfix() => Bankruptcy_Restore.AfterLoad();
+    }
+
+    public static class Bankruptcy_Restore
+    {
+        public static void AfterLoad()
+        {
+            if (resources.Money() < 0)
+                loans.BankruptcyDanger = true;
         }
     }
 
@@ -2343,6 +2881,86 @@ namespace UnofficialPatch
             destroys[0].opcode = OpCodes.Call;
             destroys[0].operand = destroyRenderer;
             return codes;
+        }
+    }
+
+    // Fixes a promoted male producer's blank small portrait: the staff thumbnail atlas has Player_Female_Pro but no
+    // Player_Male_Pro. Both patches below fill in this mod's ready-made picture (assets/Images) only when the atlas
+    // lookup came back empty, so a mod that supplies the sprite or takes over LoadPortrait_Small wins.
+    public static class PlayerThumbnail
+    {
+        public const string ModTitle = "Unofficial Patch";
+        public static readonly string RelativePath = Path.Combine("Images", "Player_Male_Pro.png");
+
+        private static Sprite sprite;
+        private static bool loadFailed;
+
+        /// <summary>True for the one thumbnail the atlas lacks: small, promoted, the male producer, not unique staff.</summary>
+        public static bool IsMissingThumbnail(staff._type type, bool big, bool pro, staff._staff._unique_type uniqueType)
+        {
+            return !big && pro && uniqueType == staff._staff._unique_type.NONE && type == staff._type.player;
+        }
+
+        /// <summary>The picture's path: next to the DLL, else in a mod folder with this mod's title; null if neither has it.</summary>
+        public static string FindFile(string assemblyDir, IEnumerable<string> modDirs)
+        {
+            return new[] { assemblyDir }.Concat(modDirs)
+                .Where(dir => !string.IsNullOrEmpty(dir))
+                .Select(dir => Path.Combine(dir, RelativePath))
+                .FirstOrDefault(File.Exists);
+        }
+
+        /// <summary>The picture, loaded once; null (logged once) if it can't be loaded, which leaves the game's blank portrait.</summary>
+        public static Sprite Get()
+        {
+            if (sprite != null || loadFailed)
+                return sprite;
+
+            string path = FindFile(Path.GetDirectoryName(typeof(PlayerThumbnail).Assembly.Location),
+                Mods._Mods.Where(mod => mod.Title == ModTitle).Select(mod => mod.GetPath()));
+            sprite = path != null ? IMG2Sprite.instance.LoadNewSprite(path, 100f) : null;
+            if (sprite != null)
+                sprite.name = "Player_Male_Pro";
+            else
+            {
+                loadFailed = true;
+                PatchLog.Error<staff_GetPortrait>("couldn't load " + RelativePath + "; a promoted male producer keeps the game's blank thumbnail.");
+            }
+            return sprite;
+        }
+    }
+
+    // Thumbnails once the atlas is loaded: LoadPortrait_Small uses GetPortrait's sprite if it isn't null.
+    [HarmonyPatch(typeof(staff), nameof(staff.GetPortrait))]
+    public class staff_GetPortrait
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<staff_GetPortrait>(ex);
+
+        public static void Postfix(staff._type Type, bool Big, bool Pro, staff._staff._unique_type UniqueType, SpriteAtlas ___Portrait_Thumbs, ref Sprite __result)
+        {
+            // A null atlas means it isn't loaded yet: LoadPortrait_Small then loads it, and the patch below takes over
+            if (__result == null && ___Portrait_Thumbs != null && PlayerThumbnail.IsMissingThumbnail(Type, Big, Pro, UniqueType))
+                __result = PlayerThumbnail.Get();
+        }
+    }
+
+    // The first thumbnail: LoadPortrait_Small loads the atlas and sets the sprite in a callback (a compiler-made closure).
+    [HarmonyPatch]
+    public class staff_LoadPortrait_Small_AtlasLoaded
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<staff_LoadPortrait_Small_AtlasLoaded>(ex);
+
+        public static MethodBase TargetMethod()
+        {
+            return typeof(staff).GetNestedTypes(AccessTools.all)
+                .SelectMany(type => type.GetMethods(AccessTools.all))
+                .Single(method => method.Name.Contains("<" + nameof(staff.LoadPortrait_Small) + ">"));
+        }
+
+        public static void Postfix(Image ___target, staff._type ___Type, bool ___Pro, staff._staff._unique_type ___UniqueType)
+        {
+            if (___target != null && ___target.sprite == null && PlayerThumbnail.IsMissingThumbnail(___Type, false, ___Pro, ___UniqueType))
+                ___target.sprite = PlayerThumbnail.Get();
         }
     }
 

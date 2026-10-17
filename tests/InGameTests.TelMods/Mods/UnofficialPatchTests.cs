@@ -192,6 +192,97 @@ namespace InGameTests.TelMods
             return button.buttonDefault.active && (unityButton == null || unityButton.interactable);
         }
 
+        /// <summary>
+        /// The monthly event on the real clock: crossing the 1st raises onNewMonth exactly once, on the 1st, and the
+        /// game's own subscriber records every idol's monthly earnings. Only the game attaches the event to
+        /// the real Awards and runs the real tick order.
+        /// </summary>
+        [InGameTest(Suite = ModTest.ClockSuite, Order = 20)]
+        private static IEnumerator MonthlyEventRaisedOnceOnTheFirst(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out _))
+                yield break;
+            yield return Game.CloseAllPopups(ctx);
+
+            mainScript main = Game.Main;
+            var months = new List<DateTime>();
+            mainScript.newWeek onMonth = () => months.Add(staticVars.dateTime.Date);
+            DateTime start = staticVars.dateTime.Date;
+            DateTime first = new DateTime(start.Year, start.Month, 1).AddMonths(1);
+            List<data_girls.girls> idols = data_girls.GetActiveGirls().ToList();
+            Dictionary<data_girls.girls, int> history = idols.ToDictionary(g => g, g => g.Earnings_History.Count);
+
+            using (Game.Option(staticVars._playerData._options.randomEvents, false))
+            using (Game.Option(staticVars._playerData._options.substories, false))
+            using (Game.Option(staticVars._playerData._options.datingScandals, false))
+            {
+                main.onNewMonth += onMonth;
+                try
+                {
+                    yield return Game.AdvanceDays(ctx, (first - start).Days + 1);
+                }
+                finally
+                {
+                    main.onNewMonth -= onMonth;
+                }
+            }
+
+            ctx.Record("from", start.ToString("yyyy-MM-dd"));
+            ctx.Record("monthEvents", string.Join(", ", months.Select(d => d.ToString("yyyy-MM-dd"))));
+            ctx.Assert(months.Count == 1 && months[0] == first, "onNewMonth wasn't raised exactly once on " + first.ToString("yyyy-MM-dd"));
+            int recorded = idols.Count(g => g.status != data_girls._status.graduated && g.Earnings_History.Count == history[g] + 1);
+            ctx.Record("idolsWithAMonthRecorded", recorded + "/" + idols.Count);
+            ctx.Assert(recorded > 0 && idols.All(g => g.status == data_girls._status.graduated || g.Earnings_History.Count == history[g] + 1),
+                "Not every idol got exactly one month of earnings recorded");
+        }
+
+        /// <summary>
+        /// The promoted male producer's small portrait comes from the picture in the mod's own folder: only the
+        /// game has the deployed Images folder, the real staff atlas and the sprite loader.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator PromotedMaleProducerThumbnail(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out _))
+                yield break;
+
+            staff staffData = Game.Main.Data.GetComponent<staff>();
+            FieldInfo atlas = AccessTools.Field(typeof(staff), "Portrait_Thumbs");
+            GameObject holder = new GameObject("UnofficialPatch thumbnail test", typeof(RectTransform), typeof(Image));
+            try
+            {
+                // The atlas loads with the first small portrait the game draws
+                if (atlas.GetValue(staffData) == null)
+                {
+                    staffData.LoadPortrait_Small(staff._type.physician, holder.GetComponent<Image>());
+                    yield return TestTools.WaitFor(ctx, () => atlas.GetValue(staffData) != null, 30f, "the staff thumbnail atlas to load");
+                }
+                Sprite sprite = (Sprite)AccessTools.Method(typeof(staff), "GetPortrait")
+                    .Invoke(staffData, new object[] { staff._type.player, false, true, staff._staff._unique_type.NONE });
+                ctx.Record("sprite", sprite == null ? "none" : sprite.name + " " + sprite.texture.width + "x" + sprite.texture.height);
+                ctx.Assert(sprite != null && sprite.name == "Player_Male_Pro" && sprite.texture.width == 128 && sprite.texture.height == 128,
+                    "The promoted male producer's small portrait isn't the mod's 128x128 picture");
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(holder);
+            }
+        }
+
+        /// <summary>The birthday title text loads from the mod's own constants file into the game's text.</summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator BirthdayTitleTextLoaded(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out _))
+                yield break;
+
+            foreach (string id in new[] { "UNOFFICIALPATCH__BD_TITLE_1", "UNOFFICIALPATCH__BD_TITLE_2" })
+                ctx.Assert(Language.Data.ContainsKey(id), id + " isn't in the game's text");
+            if (Language.Data.ContainsKey("UNOFFICIALPATCH__BD_TITLE_2"))
+                ctx.Record("title2", Language.Data["UNOFFICIALPATCH__BD_TITLE_2"]);
+            yield break;
+        }
+
         /// <summary>The show editor picker's idol buttons that have their idol set (not the clear button).</summary>
         private static List<GirlButtonSmall> IdolButtons(Show_Popup editor) =>
             editor.Girl_Select_Grid.GetComponentsInChildren<GirlButtonSmall>().Where(b => b.girl != null).ToList();

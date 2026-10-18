@@ -84,9 +84,10 @@ namespace InGameTests.TelMods
         /// <summary>
         /// A request through the real transport, to a plain-http server on this PC: the reply comes back to
         /// the main thread, and as the game clock runs every post and reply lands in the real feed, with
-        /// the game's avatars.
+        /// the game's avatars. Running the clock can't be undone (training and treatment finish), so it's
+        /// in the clock suite, after the checks that rely on the fixture as it loads.
         /// </summary>
-        [InGameTest(Suite = ModTest.Suite)]
+        [InGameTest(Suite = ModTest.ClockSuite, Order = 10)]
         private static IEnumerator RequestFillsTheFeedAsTheClockRuns(TestContext ctx)
         {
             if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))

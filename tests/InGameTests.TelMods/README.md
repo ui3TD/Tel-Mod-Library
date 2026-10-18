@@ -77,7 +77,7 @@ Theater's attendance or Concert Rebalance's forecast.
 
 | File | Fails when |
 |---|---|
-| `AIFanChatterTests` | A key typed into ModMenus' real key field isn't kept out of the save on Apply, or isn't kept on a later Apply with the field blank. The prompt's wording doesn't come from the mod's constants.json as the game loads it. The 12 fan types don't each get an opinion from 0 to 100 from the game's fans. A nicknamed idol doesn't go to the AI as her nickname followed by the full name the game would show. A request through the real transport to a plain-http server on this PC doesn't put every post and reply in the real feed, in order and with avatars, as the clock runs. Past 20 posts, a real save doesn't keep the newest 20 in the game's own field, or a real load doesn't bring back the whole feed and the queue. It also records which symbols the feed's font has. |
+| `AIFanChatterTests` | A key typed into ModMenus' real key field isn't kept out of the save on Apply, or isn't kept on a later Apply with the field blank. A nicknamed idol doesn't go to the AI as her nickname followed by the full name the game would show. Past 20 posts, a real save doesn't keep the newest 20 in the game's own field, or a real load doesn't bring back the whole feed and the queue. |
 | `ModMenusTests` | Opening Settings doesn't give exactly one Mod Settings button right after Settings, or a second opening adds another. Clicking it doesn't open a menu with a row for every setting in the enabled mods' `modmenu.json`. Apply doesn't save the value. A text field, copied from the rival name popup, keeps a tie to that popup, isn't what a click on it hits, draws outside its row, or doesn't take typing up to its limit, save it on Apply and drop it on Cancel. A password field draws anything but asterisks, or doesn't save what was typed. A row draws outside itself or leaves more than 6 units empty above or below what it draws (measured on screen), a slider's track doesn't start at the left edge, or the margins inside the panel differ. |
 | `PoliciesThatMatterTests` | After every mod's policy file loads, a policy type lacks one header and one selected choice, or lists a choice twice. A real training tick under Quality doesn't cost 0.5/7 mental stamina a day. Quality doesn't halve the trainee's training time. |
 | `EffortlessTrainingTests` | A real training tick doesn't cost 1 physical stamina a day, times the game's Quality and Moonlighter factors. |
@@ -99,7 +99,7 @@ Two helpers do most of the work:
 
 ### Tier 3: scenarios (`auditions`, `elections`, `clock` suites)
 
-Each runs a whole game scenario: an audition, an election's results, or four weeks of the clock. The
+Each runs a whole game scenario: an audition, an election's results, or the clock running for days or weeks. The
 same rule applies as for tiers 1 and 2, and each asserts only what the unit tests can't. `run.py --scope
 "<Mod>"` runs them along with the mod's other checks; `--suite <name>` runs one scenario for every mod in
 scope.
@@ -109,6 +109,7 @@ scope.
 | `TargetedAuditionsTests` | `auditions` | A 16-candidate nationwide audition doesn't give 16 cards that are all revealed and clickable, inside exactly one scroll area. A body repeats before the pool of bodies the game can pick from runs out, or a unique idol's body appears twice. With vocal prioritised, vocal isn't the best rolled skill of at least 10 of 16 candidates, read as the stat roll leaves them (so Unofficial Patch's reroll in the same method is included). |
 | `UnofficialPatchTests` | `auditions` | With every portrait job started 3 s late, no card unlocks showing the placeholder; a late portrait doesn't reach the opened card and the stats panel; or closing the audition while portraits are still to come logs an error or leaves the queue or a render running. |
 | `ExtendedSskTests` | `elections` | A new election, started as the concert's end starts it, doesn't rank every idol who can take part up to 64 (15 on the fixture, past vanilla's 10), or its results popup doesn't award each place's fame once and finish. |
+| `AIFanChatterTests` | `clock` | A request through the real transport to a plain-http server on this PC doesn't put every post and reply in the real feed, in order and with avatars, as the clock runs for 3 days. The prompt's wording doesn't come from the mod's constants.json as the game loads it. The 12 fan types don't each get an opinion from 0 to 100 from the game's fans. It also records which symbols the feed's font has. |
 | `FastForwardTests` | `clock` | Two clicks on the real fast button don't give 28x (5600 minutes a second) with a gold label, or four weeks at that speed miss or repeat a day's or a Monday's event. |
 
 Left to the unit tests: Targeted Auditions' settings, body pool rules, ages, orientation and priority

@@ -280,6 +280,10 @@ namespace AIFanChatter
                 .AddTo(section, "Group", () => group != null ? Members.GroupName(group) : staticVars.PlayerData.GetGroupName())
                 .AddTo(section, "Sister group of", () => !sister ? "" : main != null ? Members.GroupName(main) : staticVars.PlayerData.GetGroupName())
                 .AddTo(section, "Members in the group", () => group?.GetNumberOfNonGraduatedGirls())
+                // The group's totals, once here rather than in every idol's line
+                .AddTo(section, "Group formed", () => group != null ? History.Ago(group.Date_Created, Now) : "")
+                .AddTo(section, "Singles released by the group", () => Members.ReleasedSingles(group).Count)
+                .AddTo(section, "Idols ranked in the last election", () => Members.LatestElection()?.Results?.Count(r => r != null && r.Place > 0))
                 .AddTo(section, "Most popular members", () => group == null ? ""
                     : string.Join(", ", Members.ByFans(group.GetGirls(true)).Take(Members.MostPopular).Select(Name).ToArray()))
                 // The game's fame levels run from 0 to 10 (resources.FamePointsToLevel)

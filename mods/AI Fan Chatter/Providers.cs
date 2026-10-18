@@ -114,7 +114,11 @@ namespace AIFanChatter
         /// The request for a system prompt and one user message; null with an error when the settings are incomplete.
         /// </summary>
         /// <param name="schema">A JSON schema the reply must follow, for services that support one; null for none.</param>
-        public static HttpRequestSpec BuildRequest(Connection connection, string system, string user, int maxTokens, out string error, string schema = null)
+        /// <param name="lowEffort">Asks a model that reasons before it answers to reason only a little: Anthropic's
+        /// effort, OpenAI's reasoning_effort, and OpenRouter's reasoning setting, which other compatible services
+        /// mostly ignore. A model that can't take it rejects the request.</param>
+        public static HttpRequestSpec BuildRequest(Connection connection, string system, string user, int maxTokens, out string error, string schema = null,
+            bool lowEffort = false)
         {
             string url = ResolveUrl(connection, out error);
             if (url == null)
@@ -143,9 +147,18 @@ namespace AIFanChatter
                 request.Headers.Add(new KeyValuePair<string, string>("anthropic-version", AnthropicVersion));
                 body.Append("{\"model\":").Append(Json.Quote(model))
                     .Append(",\"max_tokens\":").Append(Json.Number(maxTokens));
-                if (schema != null)
+                if (schema != null || lowEffort)
                 {
-                    body.Append(",\"output_config\":{\"format\":{\"type\":\"json_schema\",\"schema\":").Append(schema).Append("}}");
+                    List<string> config = new();
+                    if (schema != null)
+                    {
+                        config.Add("\"format\":{\"type\":\"json_schema\",\"schema\":" + schema + "}");
+                    }
+                    if (lowEffort)
+                    {
+                        config.Add("\"effort\":\"low\"");
+                    }
+                    body.Append(",\"output_config\":{").Append(string.Join(",", config.ToArray())).Append('}');
                 }
                 body.Append(",\"system\":").Append(Json.Quote(system))
                     .Append(",\"messages\":[{\"role\":\"user\",\"content\":").Append(Json.Quote(user)).Append("}]}");
@@ -164,6 +177,10 @@ namespace AIFanChatter
                 {
                     body.Append(",\"response_format\":{\"type\":\"json_schema\",\"json_schema\":{\"name\":\"fan_posts\",\"strict\":true,\"schema\":")
                         .Append(schema).Append("}}");
+                }
+                if (lowEffort)
+                {
+                    body.Append(connection.Provider == Provider.OpenAI ? ",\"reasoning_effort\":\"low\"" : ",\"reasoning\":{\"effort\":\"low\"}");
                 }
                 body.Append(",\"messages\":[{\"role\":\"system\",\"content\":").Append(Json.Quote(system))
                     .Append("},{\"role\":\"user\",\"content\":").Append(Json.Quote(user)).Append("}]}");

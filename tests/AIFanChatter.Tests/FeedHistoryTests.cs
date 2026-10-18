@@ -19,29 +19,29 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void Posts_AreListedOldestFirst_WithTheirReplies()
+        public void Posts_AreListedOldestFirst_WithoutTheirReplies()
         {
             List<SNS_Manager._message> feed = new()
             {
                 TestEnv.Post("F_C_T", "first", TestEnv.Post("M_C_A", "reply one")),
                 TestEnv.Post("M_HC_YA", "second")
             };
-            Assert.Equal("- F_C_T: first\n  - reply from M_C_A: reply one\n- M_HC_YA: second", FeedHistory.Describe(feed));
+            Assert.Equal("- F_C_T: first\n- M_HC_YA: second", FeedHistory.Describe(feed));
         }
 
         [Fact]
-        public void Limits_KeepTheNewestPosts_FirstReplies_AndShortTexts()
+        public void Limits_KeepTheNewestEightPosts_AndShortTexts()
         {
             List<SNS_Manager._message> feed = TestEnv.Feed(40);
             feed[39].Replies.AddRange(Enumerable.Range(0, 6).Select(i => TestEnv.Post("M_C_T", "reply " + i)));
             feed[38].Message = new string('a', 400);
             string text = FeedHistory.Describe(feed);
-            List<string> posts = text.Split('\n').Where(l => l.StartsWith("- ")).ToList();
-            Assert.Equal(FeedHistory.MaxPosts, posts.Count);
-            Assert.Equal("- F_C_T: post 25", posts[0]);
-            Assert.Equal(FeedHistory.MaxReplies, text.Split('\n').Count(l => l.StartsWith("  - reply from")));
-            Assert.Contains("reply 2", text);
-            Assert.DoesNotContain("reply 3", text);
+            List<string> lines = text.Split('\n').ToList();
+            Assert.Equal(8, FeedHistory.MaxPosts);
+            Assert.Equal(FeedHistory.MaxPosts, lines.Count);
+            Assert.All(lines, l => Assert.StartsWith("- F_C_T: ", l));
+            Assert.Equal("- F_C_T: post 32", lines[0]);
+            Assert.DoesNotContain("reply", text);
             Assert.Contains("- F_C_T: " + new string('a', FeedHistory.MaxText - 3) + "...\n", text);
         }
 

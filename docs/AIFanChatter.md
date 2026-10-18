@@ -92,10 +92,10 @@ The group these parts call "the group" is the group the moment is about:
 |---|---|
 | `{event}` | What kind of moment it is, such as `Event: the group released a new single`. |
 | `{facts}` | The moment's own details, one per line. For a single: its title, center, members, genre, lyrics, choreography, sales, quality, fan satisfaction, new fans and marketing. For a concert: its title, venue, audience, attendance, hype, whether it made a profit, its performers, and its set list in order: each song with its genre, lyrics, choreography and the idol at its center, and each talk break with its idols. For a graduation: the idol and what she did after graduating, when the game says. For a random event: what happened, the details, the agency's response, the outcome and who was involved. |
-| `{agency}` | The group and the agency. The group's name, and the main group's name when it's a sister group. The number of members, and the three with the most fans. The agency's fame level and total fans, its reputation from scandals in words, and the date. |
-| `{members}` | One line for each idol the moment is about, most involved first: up to 7 for a single, 5 for a concert and 3 for a random event, plus the graduating idol for a graduation. Each line gives her trait, up to 2 trivia facts (only for the first 2 idols), her scandal record in words, her age, her mental stamina and stamina, her time in the group, her place in the last election, her place by fans in the group, and how many of the group's singles she's in. An idol from another group has her time and place given in her own group, by name. |
+| `{agency}` | The group and the agency. The group's name, and the main group's name when it's a sister group. The number of members, and the three with the most fans. When the group was formed, how many singles it has released, and how many idols were ranked in the last election. The agency's fame level and total fans, its reputation from scandals in words, and the date. |
+| `{members}` | One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, plus the graduating idol for a graduation. Each line gives her trait, up to 2 trivia facts (only for the first 2 idols), her scandal record in words when she has one, her age, her mental stamina and stamina when either is 50 or lower, her time in the group, her place in the last election, her place by fans in the group, and how many of the group's singles she's in. The group's own totals are in `{agency}`, so the lines leave them out. An idol from another group has her time and place given in her own group, by name and out of that group's totals. |
 | `{history}` | Earlier results to compare with: the group's last 3 singles, each with its genre, lyrics, choreography and results, and its best-selling one, the previous concert and the biggest audience so far, the previous graduation, or how often the same random event happened before. Empty when there's nothing earlier. |
-| `{feed}` | The latest 15 posts on the game's feed, oldest first, with up to 3 replies each. It includes posts the mod has queued that haven't appeared yet. Empty when the feed has no posts. |
+| `{feed}` | The latest 8 posts on the game's feed, oldest first, without their replies. It includes posts the mod has queued that haven't appeared yet. Empty when the feed has no posts. |
 
 ## Example
 
@@ -185,18 +185,21 @@ Attendance: 100%
 Hype (0 to 200): 199
 Made a profit: yes
 Performers: 中澤 実香, 村上 映子, 望月 有紗, 小澤 のぞみ, 今井 康子, 吉川 心
-Set list 1: "私 を巡って" (Metal, Regret lyrics, Cute choreography), center 中澤 実香
-Set list 2: "Woman Of A Fool" (Metal, Regret lyrics, Cute choreography), center 村上 映子
-Set list 3: "He knows I Like To Party" (Metal, Regret lyrics, Cute choreography), center 望月 有紗
-Set list 4: "Honey, Put Your Hands Up" (Metal, Regret lyrics, Cute choreography), center 村上 映子
-Set list 5: "Music Of A Promise" (Metal, Regret lyrics, Cute choreography), center 小澤 のぞみ
-Set list 6: "Night Of Days" (Metal, Regret lyrics, Cute choreography), center 村上 映子
-Set list 7: "Loved By Your Voice" (Metal, Regret lyrics, Cute choreography), center 今井 康子
-Set list 8: "Darling, Get Out" (Metal, Regret lyrics, Cute choreography), center 小澤 のぞみ
-Set list 9: "Respect For Tomorrow" (Metal, Regret lyrics, Cute choreography), center 吉川 心
-Set list 10: "Magic Of Ice" (Metal, Regret lyrics, Cute choreography), center 吉川 心
+Set list 1: "私 を巡って" (Metal, Regret lyrics, Cool choreography), center 中澤 実香
+Set list 2: "Woman Of A Fool" (Enka, Regret lyrics, Elegant choreography), center 村上 映子
+Set list 3: "He knows I Like To Party" (Metal, Partying lyrics, Energetic choreography), center 望月 有紗
+Set list 4: "Honey, Put Your Hands Up" (EDM, Friends lyrics, Energetic choreography), center 村上 映子
+Set list 5: "Music Of A Promise" (Metal, Anxiety lyrics, Cool choreography), center 小澤 のぞみ
+Set list 6: "Night Of Days" (Funk, Partying lyrics, Energetic choreography), center 村上 映子
+Set list 7: "Loved By Your Voice" (Pop, Love lyrics, Cute choreography), center 今井 康子
+Set list 8: "Darling, Get Out" (Metal, Rebelling lyrics, Cool choreography), center 小澤 のぞみ
+Set list 9: "Respect For Tomorrow" (Rock, Happiness lyrics, Energetic choreography), center 吉川 心
+Set list 10: "Magic Of Ice" (Pop, Loneliness lyrics, Elegant choreography), center 吉川 心
 Group: Sakura Drops
 Members in the group: 11
+Group formed: 2 years ago
+Singles released by the group: 17
+Idols ranked in the last election: 9
 Most popular members: 吉川 心, 望月 有紗, 中澤 実香
 Agency fame level (0 to 10): 10
 Total fans: 678748
@@ -204,11 +207,11 @@ Agency reputation: no scandals
 Date: 24 March 2024
 
 The idols in the new event:
-村上 映子: Trait: Snitch. Doesn't like carbonated drinks. No scandals. Age 25. Mental stamina 100/100, stamina 92/100. A member of Hoshizora Lane for 18 of its 18 months, 1st of 9 in the last election, the most fans of 4 in Hoshizora Lane, in 8 of the group's 17 singles.
-小澤 のぞみ: Trait: Hypochondriac. No scandals. Age 17. Mental stamina 100/100, stamina 92/100. A member for 19 months of the group's 2 years, 7th of 9 in the last election, 5th most fans of 11 in the group, in 7 of the group's 17 singles (center of 3).
-吉川 心: Trait: Steadfast. No scandals. Age 15. Mental stamina 100/100, stamina 92/100. A member for 2 of the group's 2 years, 8th of 9 in the last election, the most fans of 11 in the group, in 14 of the group's 17 singles (center of 3).
-中澤 実香: Trait: Secretive. No scandals. Age 22. Mental stamina 100/100, stamina 92/100. A member for 20 months of the group's 2 years, 2nd of 9 in the last election, 3rd most fans of 11 in the group, in 9 of the group's 17 singles (center of 2).
-望月 有紗: Trait: Asexual. No scandals. Age 18. Mental stamina 100/100, stamina 92/100. A member for 2 of the group's 2 years, 4th of 9 in the last election, 2nd most fans of 11 in the group, in 15 of the group's 17 singles (center of 4).
+村上 映子: Trait: Snitch. Doesn't like carbonated drinks. Age 25. A member of Hoshizora Lane for 18 of its 18 months, 1st in the last election, the most fans of 4 in Hoshizora Lane, in 8 of the group's singles.
+小澤 のぞみ: Trait: Hypochondriac. Age 17. Stamina 18/100. A member for 19 months, 7th in the last election, 5th most fans in the group, in 7 of the group's singles (center of 3).
+吉川 心: Trait: Steadfast. Age 15. A member for 2 years, 8th in the last election, the most fans in the group, in 14 of the group's singles (center of 3).
+中澤 実香: Trait: Secretive. Age 22. A member for 20 months, 2nd in the last election, 3rd most fans in the group, in 9 of the group's singles (center of 2).
+望月 有紗: Trait: Asexual. Age 18. A member for 2 years, 4th in the last election, 2nd most fans in the group, in 15 of the group's singles (center of 4).
 
 History, for context only (not what the posts are about):
 Previous concert: Concert [Open Air Stage]
@@ -220,13 +223,10 @@ Concerts held before this one: 3
 Biggest audience at an earlier concert: 5000
 
 History: earlier posts on the feed, oldest first, for context only. Don't reply to them or repeat them:
-- F_HC_A: DJ, Never Let Me Go is out! Metal sound, cute choreo, and Sakura Drops never misses. So proud.
-  - reply from M_C_A: Agree, the choreo is so cute. Sales are lower than before though, hope it picks up.
-- M_C_T: 10000 sales? Same metal and regret lyrics again. No marketing at all, why would anyone buy it?
-  - reply from F_HC_T: Sales are low but the song is fine. Stop being so negative kazubuta.
-- F_C_YA: DJ, Never Let Me Go is decent. The cute choreo is fun, but I wish the lyrics would change a bit.
-- M_HC_YA: 望月 有紗's center part in DJ, Never Let Me Go is great. 吉川 心's vocals shine too.
-  - reply from F_C_A: Agreed, 望月 有紗 looks so good on stage. The sales are a surprise though.
+- F_HC_T: DJ, Never Let Me Go is out! Metal with cute choreo, I'm obsessed. Arisa center, so proud!
+- M_C_T: Sakura Drops single again. Metal is kinda mid, not really my thing tbh.
+- F_C_YA: Cute choreo with metal is an odd mix. Curious how it sounds live.
+- M_HC_A: Solid release from the group. Sakura Drops keep getting stronger. Keep supporting them.
 ```
 
 Each placeholder was filled in as follows:
@@ -237,7 +237,7 @@ Each placeholder was filled in as follows:
 - **`{members}`:** the header `The idols in the new event:` from `AIFANCHATTER__PROMPT__MEMBERS`, then one line per idol.
   - 村上 映子 is from the sister group, so her time and her place by fans are given in that group, by name.
 - **`{history}`:** the header from `AIFANCHATTER__PROMPT__HISTORY`, then the group's earlier concerts.
-- **`{feed}`:** the header from `AIFANCHATTER__PROMPT__FEED`, then the earlier posts with their replies.
+- **`{feed}`:** the header from `AIFANCHATTER__PROMPT__FEED`, then the earlier posts.
 
 ## What the mod does whatever the prompt says
 
@@ -247,3 +247,4 @@ Each placeholder was filled in as follows:
 - **Emoji:** it takes them out, because the feed can't show them.
 - **Timing:** it releases the posts into the feed over the next in-game day or two.
 - **Reply format:** when your AI service supports it, it asks for replies in the reply format, so the replies always come back in that shape.
+- **Reasoning:** it asks models that reason before answering to reason only a little (low effort), which makes requests cheaper. A service or model that rejects the reply format or the low effort gets the same request again without either, and neither is asked for again until you change a setting.

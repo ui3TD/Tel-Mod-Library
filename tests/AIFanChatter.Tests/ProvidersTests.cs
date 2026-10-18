@@ -174,7 +174,34 @@ namespace AIFanChatter.Tests
                 string body = Providers.BuildRequest(new Connection { Provider = provider, ApiKey = "k", Model = "m", BaseUrl = "http://localhost:1" }, "s", "u", 1, out _).Body;
                 Assert.DoesNotContain("output_config", body);
                 Assert.DoesNotContain("response_format", body);
+                Assert.DoesNotContain("effort", body);
             }
+        }
+
+        /// <summary>
+        /// Low effort where each service reads it: Anthropic's output_config next to the schema, OpenAI's
+        /// reasoning_effort, and OpenRouter's reasoning object for the compatible services.
+        /// </summary>
+        [Fact]
+        public void LowEffort_GoesWhereEachServiceReadsIt()
+        {
+            Connection Of(Provider provider) => new() { Provider = provider, ApiKey = "k", Model = "m", BaseUrl = "http://localhost:1" };
+
+            JSONNode both = JSON.Parse(Providers.BuildRequest(Of(Provider.Anthropic), "s", "u", 1, out _, Prompt.ReplySchema, lowEffort: true).Body)["output_config"];
+            Assert.Equal("low", both["effort"].Value);
+            Assert.Equal("json_schema", both["format"]["type"].Value);
+            JSONNode effortOnly = JSON.Parse(Providers.BuildRequest(Of(Provider.Anthropic), "s", "u", 1, out _, lowEffort: true).Body)["output_config"];
+            Assert.Equal("low", effortOnly["effort"].Value);
+            Assert.DoesNotContain("format", effortOnly.ToString());
+
+            JSONNode openAI = JSON.Parse(Providers.BuildRequest(Of(Provider.OpenAI), "s", "u", 1, out _, lowEffort: true).Body);
+            Assert.Equal("low", openAI["reasoning_effort"].Value);
+            Assert.DoesNotContain("\"reasoning\"", openAI.ToString());
+
+            JSONNode compatible = JSON.Parse(Providers.BuildRequest(Of(Provider.Compatible), "s", "u", 1, out _, Prompt.ReplySchema, lowEffort: true).Body);
+            Assert.Equal("low", compatible["reasoning"]["effort"].Value);
+            Assert.DoesNotContain("reasoning_effort", compatible.ToString());
+            Assert.Equal("json_schema", compatible["response_format"]["type"].Value);
         }
     }
 

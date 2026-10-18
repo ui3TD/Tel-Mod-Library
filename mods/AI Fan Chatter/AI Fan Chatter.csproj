@@ -5,7 +5,7 @@
 		<HarmonyID>com.tel.aifanchatter</HarmonyID>
 		<ModDescription>Fans post about your idols on social media, written by an AI service of your choice (Anthropic, OpenAI or any OpenAI-compatible service).</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>0.3.0</Version>
+		<Version>0.3.1</Version>
 		<WorkshopID>3821906838</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 

@@ -20,7 +20,8 @@ namespace AIFanChatter.Tests
             Members.Line(girl, withTrivia, Today, girl.GetGroup(), null, Members.RankIn);
 
         /// <summary>
-        /// Who she is comes first, then how she's doing, then her place in the group, every count out of its whole.
+        /// Who she is comes first, then how she's doing, then her place in the group. The group's own totals
+        /// are in the agency section.
         /// </summary>
         [Fact]
         public void Line_HasEveryItem_InOrder()
@@ -40,7 +41,7 @@ namespace AIFanChatter.Tests
             Election(Today.AddDays(-50), 40, mei, rin, aya);
 
             Assert.Equal("Trait: Thick Skin. Has a pet spider. A minor scandal in her past. Age 19. Mental stamina 30/100, stamina 45/100. "
-                + "A member for 2 of the group's 6 years, 3rd of 40 in the last election, 2nd most fans of 3 in the group, in 2 of the group's 3 singles (center of 1).",
+                + "A member for 2 years, 3rd in the last election, 2nd most fans in the group, in 2 of the group's singles (center of 1).",
                 LineOf(aya));
         }
 
@@ -64,7 +65,23 @@ namespace AIFanChatter.Tests
         public void Line_LeavesOutWhatTheGameCantGive()
         {
             data_girls.girls aya = Idol("Aya", age: 22);
-            Assert.Equal("No scandals. Age 22. Mental stamina 0/100, stamina 0/100. A member for 12 months.", LineOf(aya));
+            Assert.Equal("Age 22. Mental stamina 0/100, stamina 0/100. A member for 12 months.", LineOf(aya));
+        }
+
+        /// <summary>
+        /// Stamina shows only at half or below, where fans would see signs, and a scandal record only when
+        /// there is one.
+        /// </summary>
+        [Theory]
+        [InlineData(51f, 100f, "Age 19. A member for 12 months.")]
+        [InlineData(50f, 100f, "Age 19. Mental stamina 50/100. A member for 12 months.")]
+        [InlineData(80f, 25f, "Age 19. Stamina 25/100. A member for 12 months.")]
+        public void Stamina_ShowsOnlyWhenLow(float mental, float physical, string expected)
+        {
+            data_girls.girls aya = Idol("Aya")
+                .With(data_girls._paramType.mentalStamina, mental)
+                .With(data_girls._paramType.physicalStamina, physical);
+            Assert.Equal(expected, LineOf(aya));
         }
 
         [Fact]
@@ -75,7 +92,7 @@ namespace AIFanChatter.Tests
             string line = LineOf(aya);
             Assert.DoesNotContain("123456", line);
             Assert.DoesNotContain("fame", line, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("the most fans of 1 in the group", line);
+            Assert.Contains("the most fans in the group", line);
         }
 
         [Fact]
@@ -86,12 +103,13 @@ namespace AIFanChatter.Tests
             moved.TransferDate = Today.AddDays(-90);
             Group("Stars", Today.AddYears(-8));
             Group("Moons", Today.AddYears(-2), moved);
-            Assert.Equal("a member for 3 months of the group's 2 years", Members.Tenure(moved, Today, moved.GetGroup()));
+            Assert.Equal("a member for 3 months", Members.Tenure(moved, Today, moved.GetGroup()));
 
             data_girls.girls founder = Idol("Founder");
             founder.Hiring_Date = Today.AddYears(-9);
             Group("Suns", Today.AddYears(-4).AddDays(-1), founder);
-            Assert.Equal("a member for 4 of the group's 4 years", Members.Tenure(founder, Today, founder.GetGroup()));
+            Assert.Equal("a member for 4 years", Members.Tenure(founder, Today, founder.GetGroup()));
+            Assert.Equal("a member of Suns for 4 of its 4 years", Members.Tenure(founder, Today, founder.GetGroup(), "Suns"));
         }
 
         [Fact]
@@ -101,7 +119,7 @@ namespace AIFanChatter.Tests
             data_girls.girls mei = Idol("Mei");
             Election(Today.AddDays(-400), 10, aya);
             Election(Today.AddDays(-30), 25, mei);
-            Assert.Equal("1st of 25 in the last election", Members.Election(mei));
+            Assert.Equal("1st in the last election", Members.Election(mei));
 
             aya.SSK_History.Add(4);
             Assert.Equal("4th in her last election", Members.Election(aya));
@@ -116,11 +134,11 @@ namespace AIFanChatter.Tests
             Single("Out", Today.AddDays(-10), 1, aya).In(group);
             singles._single planned = Single("Planned", Today, 1, aya).In(group);
             planned.status = singles._single._status.working;
-            Assert.Equal("in 1 of the group's 1 singles (center of 1)", Members.Singles(aya, group));
+            Assert.Equal("in 1 of the group's singles (center of 1)", Members.Singles(aya, group));
         }
 
         [Theory]
-        [InlineData(0, "No scandals")]
+        [InlineData(0, "")]
         [InlineData(1, "A minor scandal in her past")]
         [InlineData(2, "A minor scandal in her past")]
         [InlineData(3, "Several scandals behind her")]
@@ -168,9 +186,9 @@ namespace AIFanChatter.Tests
             string cut = Members.Cut("Collects " + new string('x', 200), Members.TriviaLength);
             Assert.Equal(Members.TriviaLength, cut.Length);
             Assert.EndsWith("...", cut);
-            Assert.StartsWith(cut + " No scandals.", lines[0]);
-            Assert.StartsWith(cut + " No scandals.", lines[1]);
-            Assert.StartsWith("No scandals.", lines[2]);
+            Assert.StartsWith(cut + " Age 19.", lines[0]);
+            Assert.StartsWith(cut + " Age 19.", lines[1]);
+            Assert.StartsWith("Age 19.", lines[2]);
         }
 
         [Fact]
@@ -184,11 +202,12 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void Single_KeepsTheSevenFrontMost()
+        public void Single_KeepsTheFiveFrontMost()
         {
             List<data_girls.girls> idols = Enumerable.Range(0, 10).Select(i => Idol("Idol" + i)).ToList();
             singles._single single = Single("Song", Today, 1, idols.ToArray());
-            Assert.Equal(idols.Take(7), Members.ForSingle(single));
+            Assert.Equal(5, Members.SingleCap);
+            Assert.Equal(idols.Take(5), Members.ForSingle(single));
         }
 
         [Fact]
@@ -275,8 +294,8 @@ namespace AIFanChatter.Tests
             singles._single single = Single("Song", Today, 1, lead, guest).In(main);
 
             Moment moment = MomentContext.Single(single);
-            Assert.EndsWith("A member of Moons for 18 of its 18 months, the most fans of 2 in Moons, in 1 of the group's 1 singles.", moment.Fact(M, "Guest"));
-            Assert.EndsWith("A member for 12 months of the group's 6 years, the most fans of 1 in the group, in 1 of the group's 1 singles (center of 1).", moment.Fact(M, "Lead"));
+            Assert.EndsWith("A member of Moons for 18 of its 18 months, the most fans of 2 in Moons, in 1 of the group's singles.", moment.Fact(M, "Guest"));
+            Assert.EndsWith("A member for 12 months, the most fans in the group, in 1 of the group's singles (center of 1).", moment.Fact(M, "Lead"));
             Assert.Null(moment.Fact(Moment.AgencySection, "Sister group of"));
         }
 
@@ -294,7 +313,7 @@ namespace AIFanChatter.Tests
             Assert.Equal(Members.GroupName(main), moment.Fact(Moment.AgencySection, "Sister group of"));
             Assert.Equal("2", moment.Fact(Moment.AgencySection, "Members in the group"));
             Assert.Equal("B, A", moment.Fact(Moment.AgencySection, "Most popular members"));
-            Assert.Contains("2nd most fans of 2 in the group", moment.Fact(M, "A"));
+            Assert.Contains("2nd most fans in the group", moment.Fact(M, "A"));
         }
 
         [Fact]
@@ -305,7 +324,7 @@ namespace AIFanChatter.Tests
             Group("Moons", Today.AddYears(-1), subject);
             Moment moment = MomentContext.Event(Event("scandal", Today, subject), new Event_Manager._randomEvent._reply());
             Assert.Equal("Moons", moment.Fact(Moment.AgencySection, "Group"));
-            Assert.Contains("the most fans of 1 in the group", moment.Fact(M, "Subject"));
+            Assert.Contains("the most fans in the group", moment.Fact(M, "Subject"));
         }
 
         [Fact]
@@ -338,6 +357,27 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
+        /// The group's totals that the idol lines leave out: its age, its singles and the election's size.
+        /// </summary>
+        [Fact]
+        public void Agency_GivesTheGroupsTotals_ForTheIdolLines()
+        {
+            data_girls.girls aya = Idol("Aya");
+            Groups._group stars = Group("Stars", Today.AddYears(-3).AddDays(-10), aya);
+            Single("Old", Today.AddDays(-90), 1, aya).In(stars);
+            singles._single single = Single("Song", Today, 1, aya).In(stars);
+            Moment before = MomentContext.Single(single);
+            Assert.Equal("3 years ago", before.Fact(Moment.AgencySection, "Group formed"));
+            Assert.Equal("2", before.Fact(Moment.AgencySection, "Singles released by the group"));
+            Assert.Null(before.Fact(Moment.AgencySection, "Idols ranked in the last election"));
+
+            Election(Today.AddDays(-20), 12, aya);
+            Moment after = MomentContext.Single(single);
+            Assert.Equal("12", after.Fact(Moment.AgencySection, "Idols ranked in the last election"));
+            Assert.Contains("1st in the last election", after.Fact(M, "Aya"));
+        }
+
+        /// <summary>
         /// A huge roster doesn't make the message grow: only the moment's idols get lines, and lists are cut.
         /// </summary>
         [Fact]
@@ -362,8 +402,8 @@ namespace AIFanChatter.Tests
         }
 
         [Theory]
-        [InlineData(1, false, null, "the most fans of 5 in the group")]
-        [InlineData(2, false, null, "2nd most fans of 5 in the group")]
+        [InlineData(1, false, null, "the most fans in the group")]
+        [InlineData(2, false, null, "2nd most fans in the group")]
         [InlineData(1, true, null, "had the most fans of 5 in the group")]
         [InlineData(3, true, null, "had the 3rd most fans of 5 in the group")]
         [InlineData(2, false, "Moons", "2nd most fans of 5 in Moons")]

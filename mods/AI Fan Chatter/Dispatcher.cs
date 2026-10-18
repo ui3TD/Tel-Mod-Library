@@ -37,8 +37,9 @@ namespace AIFanChatter
     /// Sends the requests and keeps them within the player's limits: the weekly setting, one at a time,
     /// 30 seconds apart and 20 an hour in real time, so fast-forwarding can't run up a bill. A rejected
     /// key, model or address stops requests until the settings change; a busy or unreachable service
-    /// pauses them for 10 minutes. Requests ask for the reply schema; a service that rejects it gets the
-    /// same request again without one, and no schema until the settings change. A reply with a single
+    /// pauses them for 10 minutes. Requests ask for the reply schema and for low reasoning effort; a
+    /// service or model that rejects either gets the same request again without both, and neither until
+    /// the settings change. A reply with a single
     /// post, when the prompt asked for several, is taken as a failed reply and the request is sent once
     /// more; if that one has a single post too, it's shown, and there are no more such retries until the
     /// settings change.
@@ -74,7 +75,7 @@ namespace AIFanChatter
         private double lastErrorNotice = double.NegativeInfinity;
         private bool showNextError = true;
         private bool testPending;
-        private bool noSchema;
+        private bool noExtras;
         private bool noRetry;
 
         public Dispatcher(IGameHost host, IHttpTransport transport, Random random)
@@ -139,8 +140,9 @@ namespace AIFanChatter
                 Log.Warn("Couldn't read the feed for the prompt; it's sent without it: " + e.Message);
             }
             string user = Prompt.User(moment, feed);
-            bool withSchema = !noSchema;
-            HttpRequestSpec request = Providers.BuildRequest(connection, system, user, Providers.MaxOutputTokens, out string error, withSchema ? Prompt.ReplySchema : null);
+            bool withExtras = !noExtras;
+            HttpRequestSpec request = Providers.BuildRequest(connection, system, user, Providers.MaxOutputTokens, out string error,
+                withExtras ? Prompt.ReplySchema : null, lowEffort: withExtras);
             if (request == null)
             {
                 suspended = true;
@@ -163,23 +165,24 @@ namespace AIFanChatter
             // A player's prompt that asks for a set number of posts has no {min}, and may ask for one
             bool mayRetry = !noRetry && Prompt.AsksForSeveralPosts();
 
-            void Handle(HttpRequestSpec sent, HttpResult result, bool schemaSent, bool retried)
+            void Handle(HttpRequestSpec sent, HttpResult result, bool extrasSent, bool retried)
             {
-                if (schemaSent && (result.Status == 400 || result.Status == 422))
+                if (extrasSent && (result.Status == 400 || result.Status == 422))
                 {
-                    // The service won't take the schema: the same request again without it, which counts as the same request
+                    // The service or model won't take the schema or the effort: the same request again without
+                    // both, which counts as the same request
                     HttpRequestSpec plain = Providers.BuildRequest(connection, system, user, Providers.MaxOutputTokens, out _);
                     if (plain != null)
                     {
-                        Log.Warn("The service doesn't accept a reply schema (HTTP " + result.Status + "); sending the request without one.");
+                        Log.Warn("The service doesn't accept a reply schema or low reasoning effort (HTTP " + result.Status + "); sending the request without them.");
                         Send(plain, retry => Handle(plain, retry, false, retried));
                         return;
                     }
                 }
                 inFlight = false;
-                if (!schemaSent && withSchema && result.Status >= 200 && result.Status < 300)
+                if (!extrasSent && withExtras && result.Status >= 200 && result.Status < 300)
                 {
-                    noSchema = true;
+                    noExtras = true;
                 }
                 ProviderReply reply = Providers.ParseResponse(connection.Provider, result);
                 if (!reply.Ok)
@@ -205,7 +208,7 @@ namespace AIFanChatter
                         // Taken as a failed reply: the same request again, which counts as the same request
                         Log.Warn("The model's reply had only one post; sending the request again.");
                         inFlight = true;
-                        Send(sent, retry => Handle(sent, retry, schemaSent, true));
+                        Send(sent, retry => Handle(sent, retry, extrasSent, true));
                         return;
                     }
                     // Twice in a row: this model keeps to one post, so it's shown, and no more retries for now
@@ -215,19 +218,19 @@ namespace AIFanChatter
                 host.Queue(posts);
             }
 
-            Send(request, result => Handle(request, result, withSchema, false));
+            Send(request, result => Handle(request, result, withExtras, false));
             return true;
         }
 
         /// <summary>
         /// Called when Apply changes one of the mod's settings: requests may run again, ask for the reply
-        /// schema again, retry one-post replies again, the next error shows at once, and a connection test
+        /// schema and low effort again, retry one-post replies again, the next error shows at once, and a connection test
         /// runs on the next frame, after every setting is saved.
         /// </summary>
         public void OnSettingsChanged()
         {
             suspended = false;
-            noSchema = false;
+            noExtras = false;
             noRetry = false;
             backoffUntil = double.NegativeInfinity;
             showNextError = true;

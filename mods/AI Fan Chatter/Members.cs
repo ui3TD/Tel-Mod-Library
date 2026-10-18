@@ -11,7 +11,9 @@ namespace AIFanChatter
     /// </summary>
     public static class Members
     {
-        public const int SingleCap = 7;
+        public const int SingleCap = 5;
+        /// <summary>Stamina at or below this shows in an idol's line; above it, fans would see nothing to remark on.</summary>
+        public const int LowStamina = 50;
         public const int ConcertCap = 5;
         public const int EventCap = 3;
         /// <summary>Only the idols this far up the order get their trivia, to keep the prompt short.</summary>
@@ -145,9 +147,12 @@ namespace AIFanChatter
 
         /// <summary>
         /// An idol's line, from who she is to her place in the group: trait, trivia, scandal record, age,
-        /// how she's doing, then time in the group, election, rank by fans and singles. An idol from another
-        /// group than the moment's (a sister group's member in a main single) has her time and rank given in
-        /// her own group, by name; her singles are still counted in the moment's group.
+        /// how she's doing, then time in the group, election, rank by fans and singles. The scandal record
+        /// shows only when she has one, and stamina only when it's low. The group's own totals (its age,
+        /// members, singles, the election's size) are in the agency section, so the line leaves them out.
+        /// An idol from another group than the moment's (a sister group's member in a main single) has her
+        /// time and rank given in her own group, by name and with its totals; her singles are still counted
+        /// in the moment's group.
         /// </summary>
         public static string Line(data_girls.girls girl, bool withTrivia, DateTime now, Groups._group eventGroup, Rank knownRank,
             Func<data_girls.girls, Groups._group, string, Rank> rankIn)
@@ -169,8 +174,8 @@ namespace AIFanChatter
             Sentence(sentences, Part(() => ScandalRecord(girl.GetScandalPoints())));
             Sentence(sentences, Part(() => "Age " + girl.GetAge()));
             Sentence(sentences, Join(
-                Part(() => "mental stamina " + OutOf100(girl.GetMentalStamina())),
-                Part(() => "stamina " + OutOf100(girl.GetPhysicalStamina()))));
+                Part(() => girl.GetMentalStamina() <= LowStamina ? "mental stamina " + OutOf100(girl.GetMentalStamina()) : ""),
+                Part(() => girl.GetPhysicalStamina() <= LowStamina ? "stamina " + OutOf100(girl.GetPhysicalStamina()) : "")));
             Sentence(sentences, Join(
                 Part(() => Tenure(girl, now, home, named)),
                 Part(() => Election(girl)),
@@ -223,15 +228,16 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// An idol's scandal points in words, which the model can follow where the number means nothing. The
-        /// bands follow the game's own cutoffs for an idol: business deals' liability rises above 2 points
-        /// and doubles above 4 (business.cs).
+        /// An idol's scandal points in words, which the model can follow where the number means nothing; ""
+        /// for none, as the agency's reputation already says when nobody has any. The bands follow the
+        /// game's own cutoffs for an idol: business deals' liability rises above 2 points and doubles above 4
+        /// (business.cs).
         /// </summary>
         public static string ScandalRecord(int points)
         {
             if (points <= 0)
             {
-                return "No scandals";
+                return "";
             }
             if (points <= 2)
             {
@@ -271,9 +277,10 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// "a member for 2 of the group's 6 years", or "a member of Moons for 8 of its 18 months" when the
-        /// group is named: her time since she joined it (hired, moved over from another group, or when the
-        /// group was formed, whichever is latest), out of the group's age.
+        /// "a member for 2 years", or "a member of Moons for 8 of its 18 months" when the group is named: her
+        /// time since she joined it (hired, moved over from another group, or when the group was formed,
+        /// whichever is latest). The moment's group's age is in the agency section; a named group's is given
+        /// here.
         /// </summary>
         public static string Tenure(data_girls.girls girl, DateTime now, Groups._group group, string named = null)
         {
@@ -291,7 +298,11 @@ namespace AIFanChatter
                 return "";
             }
             int hers = (now.Date - start.Date).Days;
-            string member = string.IsNullOrEmpty(named) ? "a member" : "a member of " + named;
+            if (string.IsNullOrEmpty(named))
+            {
+                return "a member for " + History.Span(hers);
+            }
+            string member = "a member of " + named;
             if (group == null || !History.Known(group.Date_Created))
             {
                 return member + " for " + History.Span(hers);
@@ -299,24 +310,23 @@ namespace AIFanChatter
             int groups = (now.Date - group.Date_Created.Date).Days;
             int herCount = History.Count(hers, out string herUnit);
             History.Count(groups, out string groupUnit);
-            string theirs = (string.IsNullOrEmpty(named) ? "the group's " : "its ") + History.Span(groups);
+            string theirs = "its " + History.Span(groups);
             return herUnit == groupUnit
                 ? member + " for " + herCount + " of " + theirs
                 : member + " for " + History.Span(hers) + " of " + theirs;
         }
 
         /// <summary>
-        /// Her place in the latest finished election, out of its number of results; her own latest result
-        /// alone when she isn't in that election.
+        /// Her place in the latest finished election (its number of results is in the agency section); her
+        /// own latest result when she isn't in that election.
         /// </summary>
         public static string Election(data_girls.girls girl)
         {
-            SEvent_SSK._SSK latest = History.Latest(
-                SEvent_SSK.Elections.Where(e => e != null && e.Status == SEvent_Tour.tour._status.finished).ToList(), e => e.FinishDate);
+            SEvent_SSK._SSK latest = LatestElection();
             SEvent_SSK._SSK._result result = latest?.Results?.FirstOrDefault(r => r != null && r.Girl == girl);
             if (result != null && result.Place > 0)
             {
-                return Ordinal(result.Place) + " of " + latest.Results.Count + " in the last election";
+                return Ordinal(result.Place) + " in the last election";
             }
             int? place = girl.SSK_GetLatestResult();
             return place.HasValue && place.Value > 0 ? Ordinal(place.Value) + " in her last election" : "";
@@ -329,25 +339,46 @@ namespace AIFanChatter
                 return "";
             }
             string place = rank.Place == 1 ? "the most fans" : (past ? "the " : "") + Ordinal(rank.Place) + " most fans";
-            return (past ? "had " : "") + place + " of " + rank.Of + " in " + (string.IsNullOrEmpty(rank.Group) ? "the group" : rank.Group);
+            // The moment's group's size is in the agency section, but not a named group's, or the size before
+            // a graduation
+            string of = !string.IsNullOrEmpty(rank.Group) || past ? " of " + rank.Of : "";
+            return (past ? "had " : "") + place + of + " in " + (string.IsNullOrEmpty(rank.Group) ? "the group" : rank.Group);
         }
 
         /// <summary>
-        /// "in 5 of the group's 12 singles (center of 2)": the group's released singles she's in.
+        /// "in 5 of the group's singles (center of 2)": the group's released singles she's in. Their number is
+        /// in the agency section.
         /// </summary>
         public static string Singles(data_girls.girls girl, Groups._group group)
         {
-            List<singles._single> released = singles.Singles
-                .Where(s => s != null && s.status == singles._single._status.released)
-                .Where(s => group == null || History.GroupOf(s) == group)
-                .ToList();
+            List<singles._single> released = ReleasedSingles(group);
             if (released.Count == 0)
             {
                 return "";
             }
             int hers = released.Count(s => s.girls.Contains(girl));
             int centers = released.Count(s => s.GetCenter() == girl);
-            return "in " + hers + " of the group's " + released.Count + " singles" + (centers > 0 ? " (center of " + centers + ")" : "");
+            return "in " + hers + " of the group's singles" + (centers > 0 ? " (center of " + centers + ")" : "");
+        }
+
+        /// <summary>
+        /// A group's released singles; every released single when there's no group.
+        /// </summary>
+        public static List<singles._single> ReleasedSingles(Groups._group group)
+        {
+            return singles.Singles
+                .Where(s => s != null && s.status == singles._single._status.released)
+                .Where(s => group == null || History.GroupOf(s) == group)
+                .ToList();
+        }
+
+        /// <summary>
+        /// The latest finished election, or null before the first one.
+        /// </summary>
+        public static SEvent_SSK._SSK LatestElection()
+        {
+            return History.Latest(
+                SEvent_SSK.Elections.Where(e => e != null && e.Status == SEvent_Tour.tour._status.finished).ToList(), e => e.FinishDate);
         }
 
         /// <summary>

@@ -7,19 +7,18 @@ namespace AIFanChatter
 {
     /// <summary>
     /// The feed's recent posts for the prompt, so fans keep up with what was said and don't repeat it.
+    /// Replies are left out: fans only compare with the history, and the posts carry it.
     /// </summary>
     public static class FeedHistory
     {
-        public const int MaxPosts = 15;
-        public const int MaxReplies = 3;
+        public const int MaxPosts = 8;
         public const int MaxText = 150;
 
         private const string NoparseOpen = "<noparse>";
         private const string NoparseClose = "</noparse>";
 
         /// <summary>
-        /// The newest posts, oldest first, each with its first replies: "- F_HC_T: text" and
-        /// "  - reply from M_C_A: text". "" when there are none.
+        /// The newest posts, oldest first, without their replies: "- F_HC_T: text". "" when there are none.
         /// </summary>
         public static string Describe(IList<SNS_Manager._message> posts)
         {
@@ -36,14 +35,6 @@ namespace AIFanChatter
                     sb.Append('\n');
                 }
                 sb.Append("- ").Append(User(post.User)).Append(": ").Append(Text(post.Message));
-                if (post.Replies == null)
-                {
-                    continue;
-                }
-                foreach (SNS_Manager._message reply in post.Replies.Where(r => r != null && Text(r.Message) != "").Take(MaxReplies))
-                {
-                    sb.Append("\n  - reply from ").Append(User(reply.User)).Append(": ").Append(Text(reply.Message));
-                }
             }
             return sb.ToString();
         }

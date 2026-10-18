@@ -270,10 +270,31 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void Requests_AskForTheReplySchema()
+        public void Requests_AskForTheReplySchema_AndLowEffort()
         {
             dispatcher.Request(Moment());
             Assert.Contains("\"output_config\":{\"format\":{\"type\":\"json_schema\"", transport.Sent.Single().Body);
+            Assert.Contains("\"effort\":\"low\"", transport.Sent.Single().Body);
+            Assert.Equal(Providers.MaxOutputTokens, SimpleJSON.JSON.Parse(transport.Sent.Single().Body)["max_tokens"].AsInt);
+        }
+
+        /// <summary>
+        /// A model that can't take low effort rejects the request like a service that can't take the schema:
+        /// the same request goes again without either.
+        /// </summary>
+        [Fact]
+        public void RejectedEffort_SendsTheRequestAgainWithoutSchemaOrEffort()
+        {
+            TestEnv.Configure(Provider.Compatible, model: "local-model", baseUrl: "http://localhost:1");
+            Assert.True(dispatcher.Request(Moment()));
+            Assert.Contains("\"reasoning\":{\"effort\":\"low\"}", transport.Sent[0].Body);
+            transport.Reply(400, "{\"error\":{\"message\":\"unknown field reasoning\"}}");
+            Assert.Equal(2, transport.Sent.Count);
+            Assert.DoesNotContain("reasoning", transport.Sent[1].Body);
+            Assert.DoesNotContain("response_format", transport.Sent[1].Body);
+            transport.Reply(200, Replies.OpenAI(Replies.Posts));
+            Assert.Single(host.Queued);
+            Assert.Contains(TestEnv.Logs, l => l.Contains("low reasoning effort"));
         }
 
         /// <summary>

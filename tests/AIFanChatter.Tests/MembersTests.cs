@@ -266,7 +266,9 @@ namespace AIFanChatter.Tests
             Moment moment = MomentContext.Graduation(leaving, before);
             Assert.Contains("had the most fans of 2 in the group", moment.Fact(M, "Leaving"));
             Assert.Equal("Got a job as a broadcast anchor", moment.Fact(Moment.FactsSection, "After graduating"));
-            Assert.Equal("1", moment.Fact(Moment.AgencySection, "Members in the group"));
+            // After she left, and labelled so, where other moments say "Members in the group"
+            Assert.Equal("1", moment.Fact(Moment.AgencySection, "Members left in the group"));
+            Assert.Null(moment.Fact(Moment.AgencySection, "Members in the group"));
             Assert.DoesNotContain(moment.Facts, f => f.Key == "Her fans" || f.Key == "Her fame level" || f.Key == "Years in the group");
         }
 
@@ -327,13 +329,16 @@ namespace AIFanChatter.Tests
             Assert.Contains("the most fans in the group", moment.Fact(M, "Subject"));
         }
 
+        /// <summary>
+        /// Fame isn't sent anywhere; the date names its day of the week.
+        /// </summary>
         [Fact]
-        public void AgencyFameLevel_GivesItsScale()
+        public void Agency_HasNoFame_AndADateWithItsWeekday()
         {
-            // The game's resources, all at 0, so its own GetFameLevel runs
-            resources.resource.AddRange(Enumerable.Repeat(0L, Enum.GetValues(typeof(resources.type)).Length));
             Moment moment = MomentContext.Single(Single("Song", Today, 1));
-            Assert.Equal("0", moment.Fact(Moment.AgencySection, "Agency fame level (0 to 10)"));
+            Assert.DoesNotContain(moment.Facts(Moment.AgencySection), f => f.Key.IndexOf("fame", StringComparison.OrdinalIgnoreCase) >= 0);
+            Assert.DoesNotContain("fame", moment.Describe(), StringComparison.OrdinalIgnoreCase);
+            Assert.Equal("Sunday 24 March 2024", moment.Fact(Moment.AgencySection, "Date"));
         }
 
         [Fact]

@@ -91,8 +91,8 @@ The group these parts call "the group" is the group the moment is about:
 | Placeholder | The mod fills in |
 |---|---|
 | `{event}` | What kind of moment it is, such as `Event: the group released a new single`. |
-| `{facts}` | The moment's own details, one per line. For a single: its title, center, members, genre, lyrics, choreography, sales, quality, fan satisfaction, new fans and marketing. For a concert: its title, venue, audience, attendance, hype, whether it made a profit, its performers, and its set list in order: each song with its genre, lyrics, choreography and the idol at its center, and each talk break with its idols. For a graduation: the idol and what she did after graduating, when the game says. For a random event: what happened, the details, the agency's response, the outcome and who was involved. |
-| `{agency}` | The group and the agency. The group's name, and the main group's name when it's a sister group. The number of members, and the three with the most fans. When the group was formed, how many singles it has released, and how many idols were ranked in the last election. The agency's fame level and total fans, its reputation from scandals in words, and the date. |
+| `{facts}` | The moment's own details, one per line. For a single: its title, center, members, genre, lyrics, choreography, sales, quality, fan satisfaction, new fans and marketing. For a concert: its title, venue, audience, attendance, hype, its performers, and its set list, in order and one item per line: each song with its genre, lyrics, choreography and the idol at its center, and each talk break with its idols. For a graduation: the idol and what she did after graduating, when the game says. For a random event: what happened, the details, the agency's response, the outcome and who was involved. |
+| `{agency}` | The group and the agency. The group's name, and the main group's name when it's a sister group. The number of members (for a graduation, the members left after she graduated), and the three with the most fans. When the group was formed, how many singles it has released, and how many idols were ranked in the last election. The agency's total fans, its reputation from scandals in words, and the date with its day of the week. |
 | `{members}` | One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, plus the graduating idol for a graduation. Each line gives her trait, up to 2 trivia facts (only for the first 2 idols), her scandal record in words when she has one, her age, her mental stamina and stamina when either is 50 or lower, her time in the group, her place in the last election, her place by fans in the group, and how many of the group's singles she's in. The group's own totals are in `{agency}`, so the lines leave them out. An idol from another group has her time and place given in her own group, by name and out of that group's totals. |
 | `{history}` | Earlier results to compare with: the group's last 3 singles, each with its genre, lyrics, choreography and results, and its best-selling one, the previous concert and the biggest audience so far, the previous graduation, or how often the same random event happened before. Empty when there's nothing earlier. |
 | `{feed}` | The latest 8 posts on the game's feed, oldest first, without their replies. It includes posts the mod has queued that haven't appeared yet. Empty when the feed has no posts. |
@@ -183,28 +183,27 @@ Venue: Stadium
 Audience: 15000
 Attendance: 100%
 Hype (0 to 200): 199
-Made a profit: yes
 Performers: 中澤 実香, 村上 映子, 望月 有紗, 小澤 のぞみ, 今井 康子, 吉川 心
-Set list 1: "私 を巡って" (Metal, Regret lyrics, Cool choreography), center 中澤 実香
-Set list 2: "Woman Of A Fool" (Enka, Regret lyrics, Elegant choreography), center 村上 映子
-Set list 3: "He knows I Like To Party" (Metal, Partying lyrics, Energetic choreography), center 望月 有紗
-Set list 4: "Honey, Put Your Hands Up" (EDM, Friends lyrics, Energetic choreography), center 村上 映子
-Set list 5: "Music Of A Promise" (Metal, Anxiety lyrics, Cool choreography), center 小澤 のぞみ
-Set list 6: "Night Of Days" (Funk, Partying lyrics, Energetic choreography), center 村上 映子
-Set list 7: "Loved By Your Voice" (Pop, Love lyrics, Cute choreography), center 今井 康子
-Set list 8: "Darling, Get Out" (Metal, Rebelling lyrics, Cool choreography), center 小澤 のぞみ
-Set list 9: "Respect For Tomorrow" (Rock, Happiness lyrics, Energetic choreography), center 吉川 心
-Set list 10: "Magic Of Ice" (Pop, Loneliness lyrics, Elegant choreography), center 吉川 心
+Set list, in order:
+- "私 を巡って" (Metal, Regret lyrics, Cool choreography), center 中澤 実香
+- "Woman Of A Fool" (Enka, Regret lyrics, Elegant choreography), center 村上 映子
+- "He knows I Like To Party" (Metal, Partying lyrics, Energetic choreography), center 望月 有紗
+- "Honey, Put Your Hands Up" (EDM, Friends lyrics, Energetic choreography), center 村上 映子
+- "Music Of A Promise" (Metal, Anxiety lyrics, Cool choreography), center 小澤 のぞみ
+- "Night Of Days" (Funk, Partying lyrics, Energetic choreography), center 村上 映子
+- "Loved By Your Voice" (Pop, Love lyrics, Cute choreography), center 今井 康子
+- "Darling, Get Out" (Metal, Rebelling lyrics, Cool choreography), center 小澤 のぞみ
+- "Respect For Tomorrow" (Rock, Happiness lyrics, Energetic choreography), center 吉川 心
+- "Magic Of Ice" (Pop, Loneliness lyrics, Elegant choreography), center 吉川 心
 Group: Sakura Drops
 Members in the group: 11
 Group formed: 2 years ago
 Singles released by the group: 17
 Idols ranked in the last election: 9
 Most popular members: 吉川 心, 望月 有紗, 中澤 実香
-Agency fame level (0 to 10): 10
 Total fans: 678748
 Agency reputation: no scandals
-Date: 24 March 2024
+Date: Sunday 24 March 2024
 
 The idols in the new event:
 村上 映子: Trait: Snitch. Doesn't like carbonated drinks. Age 25. A member of Hoshizora Lane for 18 of its 18 months, 1st in the last election, the most fans of 4 in Hoshizora Lane, in 8 of the group's singles.
@@ -223,16 +222,16 @@ Concerts held before this one: 3
 Biggest audience at an earlier concert: 5000
 
 History: earlier posts on the feed, oldest first, for context only. Don't reply to them or repeat them:
-- F_HC_T: DJ, Never Let Me Go is out! Metal with cute choreo, I'm obsessed. Arisa center, so proud!
-- M_C_T: Sakura Drops single again. Metal is kinda mid, not really my thing tbh.
-- F_C_YA: Cute choreo with metal is an odd mix. Curious how it sounds live.
-- M_HC_A: Solid release from the group. Sakura Drops keep getting stronger. Keep supporting them.
+- F_HC_T: Yesss DJ, Never Let Me Go is finally out! Sana looks amazing in the center, I've been replaying it all day
+- M_C_T: Only 10k sales? Fans really dropped off. Another meh metal single from Sakura Drops, I'm skipping this one
+- F_HC_A: Sales are way down after those 200k hits, but the group still has us. So proud of Kokoro and the whole team
+- M_HC_YA: The production feels a bit rough, but the regret lyrics hit hard. This song suits them
 ```
 
 Each placeholder was filled in as follows:
 
 - **`{event}`:** the line `Event: the group held a concert`.
-- **`{facts}`:** the lines from `Title` to the last `Set list` line.
+- **`{facts}`:** the lines from `Title` to the end of the set list.
 - **`{agency}`:** the lines from `Group` to `Date`.
 - **`{members}`:** the header `The idols in the new event:` from `AIFANCHATTER__PROMPT__MEMBERS`, then one line per idol.
   - 村上 映子 is from the sister group, so her time and her place by fans are given in that group, by name.

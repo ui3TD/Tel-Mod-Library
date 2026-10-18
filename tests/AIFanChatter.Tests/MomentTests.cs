@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
@@ -22,8 +23,9 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// The set list in order: each song with its single's style and the idol at its center, each talk
-        /// break with its idols. Hype is out of 200, as in the game.
+        /// The set list in order, as one unnumbered list: each song with its single's style and the idol at
+        /// its center, each talk break with its idols. Hype is out of 200, as in the game, and whether it made
+        /// a profit isn't sent.
         /// </summary>
         [Fact]
         public void Concert_GivesItsSetList_AndHypeOutOf200()
@@ -43,13 +45,24 @@ namespace AIFanChatter.Tests
 
             Moment moment = MomentContext.Concert(concert);
             Assert.Equal("199", moment.Fact(Moment.FactsSection, "Hype (0 to 200)"));
-            Assert.Equal(new[]
-            {
-                "Set list 1: \"DJ, Never Let Me Go\" (Metal, Regret lyrics, Cute choreography), center Arisa",
-                "Set list 2: Talk break with Kokoro and Mika",
-                "Set list 3: \"Old Song\"",
-                "Set list 4: Talk break"
-            }, moment.Facts.Where(f => f.Key.StartsWith("Set list")).Select(f => f.Key + ": " + f.Value));
+            Assert.Null(moment.Fact(Moment.FactsSection, "Made a profit"));
+            string lines = moment.Lines(Moment.FactsSection);
+            Assert.Contains("\nSet list, in order:\n"
+                + "- \"DJ, Never Let Me Go\" (Metal, Regret lyrics, Cute choreography), center Arisa\n"
+                + "- Talk break with Kokoro and Mika\n"
+                + "- \"Old Song\"\n"
+                + "- Talk break", lines);
+            Assert.DoesNotContain("Set list 1", lines);
+        }
+
+        [Fact]
+        public void Lists_LeaveOutItemsTheGameCantGive_AndAreLeftOutWhenEmpty()
+        {
+            Moment moment = new Moment("x")
+                .AddList(Moment.FactsSection, "Things", new Func<object>[] { () => "one", () => throw new InvalidOperationException(), () => " ", () => "two" })
+                .AddList(Moment.FactsSection, "Nothing", new Func<object>[] { () => null })
+                .Add("After", () => "yes");
+            Assert.Equal("Things:\n- one\n- two\nAfter: yes", moment.Lines(Moment.FactsSection));
         }
 
         [Fact]

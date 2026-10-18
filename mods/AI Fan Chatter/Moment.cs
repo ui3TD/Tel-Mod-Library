@@ -76,11 +76,50 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// A section's facts as "key: value" lines; "" when it has none.
+        /// Adds a list to a section: a header line, then one "- " line per item, in order. Each item is read
+        /// on its own, so one the game can't give only leaves that item out; a list with no items is left out.
+        /// </summary>
+        public Moment AddList(string section, string header, IEnumerable<Func<object>> items)
+        {
+            List<string> lines = new();
+            foreach (Func<object> item in items)
+            {
+                try
+                {
+                    string text = Clean(Convert.ToString(item(), CultureInfo.InvariantCulture));
+                    if (text != "")
+                    {
+                        lines.Add("- " + text);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Left out
+                }
+            }
+            if (lines.Count > 0)
+            {
+                if (!sections.TryGetValue(section, out List<KeyValuePair<string, string>> facts))
+                {
+                    facts = new List<KeyValuePair<string, string>>();
+                    sections[section] = facts;
+                }
+                facts.Add(new KeyValuePair<string, string>(header, ListStart + string.Join("\n", lines.ToArray())));
+            }
+            return this;
+        }
+
+        // A list's value starts on the line after its header, as AddList stores it
+        private const string ListStart = "\n";
+
+        /// <summary>
+        /// A section's facts as "key: value" lines, and lists as their header and items; "" when it has none.
         /// </summary>
         public string Lines(string section)
         {
-            return string.Join("\n", Section(section).Select(fact => fact.Key + ": " + fact.Value).ToArray());
+            return string.Join("\n", Section(section).Select(fact => fact.Value.StartsWith(ListStart, StringComparison.Ordinal)
+                ? fact.Key + ":" + fact.Value
+                : fact.Key + ": " + fact.Value).ToArray());
         }
 
         /// <summary>
@@ -270,7 +309,8 @@ namespace AIFanChatter
         /// The agency's facts, with the moment's group as "the group": a sister group's moment names that
         /// group and the main group it belongs to. Null is the main group.
         /// </summary>
-        private static Moment Agency(Moment moment, Groups._group group)
+        /// <param name="graduation">The moment is a graduation, so the member count is after she left.</param>
+        private static Moment Agency(Moment moment, Groups._group group, bool graduation = false)
         {
             const string section = Moment.AgencySection;
             Groups._group main = MainGroup();
@@ -279,18 +319,16 @@ namespace AIFanChatter
             return moment
                 .AddTo(section, "Group", () => group != null ? Members.GroupName(group) : staticVars.PlayerData.GetGroupName())
                 .AddTo(section, "Sister group of", () => !sister ? "" : main != null ? Members.GroupName(main) : staticVars.PlayerData.GetGroupName())
-                .AddTo(section, "Members in the group", () => group?.GetNumberOfNonGraduatedGirls())
+                .AddTo(section, graduation ? "Members left in the group" : "Members in the group", () => group?.GetNumberOfNonGraduatedGirls())
                 // The group's totals, once here rather than in every idol's line
                 .AddTo(section, "Group formed", () => group != null ? History.Ago(group.Date_Created, Now) : "")
                 .AddTo(section, "Singles released by the group", () => Members.ReleasedSingles(group).Count)
                 .AddTo(section, "Idols ranked in the last election", () => Members.LatestElection()?.Results?.Count(r => r != null && r.Place > 0))
                 .AddTo(section, "Most popular members", () => group == null ? ""
                     : string.Join(", ", Members.ByFans(group.GetGirls(true)).Take(Members.MostPopular).Select(Name).ToArray()))
-                // The game's fame levels run from 0 to 10 (resources.FamePointsToLevel)
-                .AddTo(section, "Agency fame level (0 to 10)", () => resources.GetFameLevel())
                 .AddTo(section, "Total fans", () => resources.GetFansTotal())
                 .AddTo(section, "Agency reputation", () => Members.AgencyReputation(resources.GetScandalPointsTotal()))
-                .AddTo(section, "Date", () => staticVars.dateTime.ToString("d MMMM yyyy", CultureInfo.InvariantCulture));
+                .AddTo(section, "Date", () => staticVars.dateTime.ToString("dddd d MMMM yyyy", CultureInfo.InvariantCulture));
         }
 
         public static Moment Single(singles._single single)
@@ -323,14 +361,11 @@ namespace AIFanChatter
                 .Add("Attendance", () => Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "%")
                 // The game's hype runs from 0 to 200 (Concert_Popup.AddHype)
                 .Add("Hype (0 to 200)", () => concert.ProjectedValues.Actual_Hype)
-                .Add("Made a profit", () => concert.ProjectedValues.Actual_Revenue >= concert.ProjectedValues.Actual_Cost ? "yes" : "no")
                 .Add("Performers", () => Names(concert.GetGirls(false), 10));
-            List<SEvent_Concerts._concert.ISetlistItem> setList = concert.SetListItems ?? new List<SEvent_Concerts._concert.ISetlistItem>();
-            for (int i = 0; i < setList.Count; i++)
-            {
-                SEvent_Concerts._concert.ISetlistItem item = setList[i];
-                moment.Add("Set list " + (i + 1), () => SetListItem(item));
-            }
+            // Unnumbered, so the songs are named by title rather than by their place in the list
+            moment.AddList(Moment.FactsSection, "Set list, in order",
+                (concert.SetListItems ?? new List<SEvent_Concerts._concert.ISetlistItem>())
+                .Select(item => (Func<object>)(() => SetListItem(item))).ToList());
             // The game's concerts are the main group's
             Groups._group group = MainGroup();
             Members.Add(moment, Members.ForConcert(concert), Now, group);
@@ -353,7 +388,7 @@ namespace AIFanChatter
             Groups._group group = GroupOf(() => girl.GetGroup());
             Members.Add(moment, new List<data_girls.girls> { girl }, Now, group, ranks);
             History.Graduation(moment, girl, data_girls.girl, Now);
-            return Agency(moment, group);
+            return Agency(moment, group, graduation: true);
         }
 
         /// <param name="log">The game's events so far (Event_Manager.activeEvents), for how often this one happened before.</param>

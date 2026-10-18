@@ -190,7 +190,7 @@ namespace AIFanChatter
         /// how she's doing, her standout stats, then time in the group, election, rank by fans and singles.
         /// The scandal record shows only when she has one, stamina only when it's low, and stats only where
         /// she alone is highest or lowest in the group. The group's own totals (its age,
-        /// members, singles, the election's size) are in the agency section, so the line leaves them out.
+        /// members, singles) are in the agency section, so the line leaves them out.
         /// An idol from another group than the moment's (a sister group's member in a main single) has her
         /// time and rank given in her own group, by name and with its totals; her singles are still counted
         /// in the moment's group.
@@ -446,8 +446,53 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// Her place in the latest finished election (its number of results is in the agency section); her
-        /// own latest result when she isn't in that election.
+        /// Smallest field in which second and second-to-last places are named. In a smaller one they're the
+        /// same middle places, so only first and last are.
+        /// </summary>
+        public const int SecondPlacesFrom = 5;
+
+        public enum Standing
+        {
+            None,
+            First,
+            Second,
+            SecondLast,
+            Last
+        }
+
+        /// <summary>
+        /// Whether a place is one worth naming: first and last when there are 2 or more, second and second to
+        /// last too from SecondPlacesFrom. A field of one has no standing.
+        /// </summary>
+        public static Standing StandingOf(int place, int of)
+        {
+            if (place <= 0 || of < 2 || place > of)
+            {
+                return Standing.None;
+            }
+            if (place == 1)
+            {
+                return Standing.First;
+            }
+            if (place == of)
+            {
+                return Standing.Last;
+            }
+            if (of >= SecondPlacesFrom && place == 2)
+            {
+                return Standing.Second;
+            }
+            if (of >= SecondPlacesFrom && place == of - 1)
+            {
+                return Standing.SecondLast;
+            }
+            return Standing.None;
+        }
+
+        /// <summary>
+        /// Her place in the latest finished election when it's first, second, second to last or last, out of
+        /// the idols it ranked. When she isn't in that election, her own latest
+        /// result if first or second: how many it ranked isn't kept.
         /// </summary>
         public static string Election(data_girls.girls girl)
         {
@@ -455,19 +500,40 @@ namespace AIFanChatter
             SEvent_SSK._SSK._result result = latest?.Results?.FirstOrDefault(r => r != null && r.Girl == girl);
             if (result != null && result.Place > 0)
             {
-                return Ordinal(result.Place) + " in the last election";
+                return StandingOf(result.Place, latest.Results.Count(r => r != null && r.Place > 0)) switch
+                {
+                    Standing.First => "1st in the last election",
+                    Standing.Second => "2nd in the last election",
+                    Standing.SecondLast => "second from bottom in the last election",
+                    Standing.Last => "bottom in the last election",
+                    _ => "",
+                };
             }
             int? place = girl.SSK_GetLatestResult();
-            return place.HasValue && place.Value > 0 ? Ordinal(place.Value) + " in her last election" : "";
+            return place == 1 ? "1st in her last election" : place == 2 ? "2nd in her last election" : "";
         }
 
+        /// <summary>
+        /// Her place by fans in a group when it's the most, second most, second fewest or fewest.
+        /// </summary>
         public static string RankText(Rank rank, bool past)
         {
-            if (rank == null || rank.Place <= 0)
+            if (rank == null)
             {
                 return "";
             }
-            string place = rank.Place == 1 ? "the most fans" : (past ? "the " : "") + Ordinal(rank.Place) + " most fans";
+            string place = StandingOf(rank.Place, rank.Of) switch
+            {
+                Standing.First => "the most fans",
+                Standing.Second => "the second most fans",
+                Standing.SecondLast => "the second fewest fans",
+                Standing.Last => "the fewest fans",
+                _ => "",
+            };
+            if (place == "")
+            {
+                return "";
+            }
             // The moment's group's size is in the agency section, but not a named group's, or the size before
             // a graduation
             string of = !string.IsNullOrEmpty(rank.Group) || past ? " of " + rank.Of : "";
@@ -547,14 +613,6 @@ namespace AIFanChatter
             {
                 return 0;
             }
-        }
-
-        public static string Ordinal(int number)
-        {
-            int lastTwo = number % 100;
-            string suffix = lastTwo >= 11 && lastTwo <= 13 ? "th"
-                : (number % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" };
-            return number.ToString(CultureInfo.InvariantCulture) + suffix;
         }
 
         private static string OutOf100(float value)

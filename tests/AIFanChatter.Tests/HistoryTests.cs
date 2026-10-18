@@ -145,18 +145,31 @@ namespace AIFanChatter.Tests
         [Fact]
         public void Concert_ComparesWithThePreviousFinishedConcert()
         {
+            Language.Data["CONCERT__CONCERT_HALL"] = "Concert Hall";
             Concert("Spring Live", Today.AddDays(-90), 5000);
-            Concert("Summer Live", Today.AddDays(-30), 3000);
+            SEvent_Concerts._concert summer = Concert("Summer Live", Today.AddDays(-30), 3000);
+            summer.Venue = SEvent_Concerts._venue.concertHall;
+            summer.ProjectedValues.Actual_Attendance = 0.9f;
             Concert("Planned", Today, 99999, done: false);
             SEvent_Concerts._concert current = Concert("Autumn Live", Today, 4000);
 
             Moment moment = new("x");
             History.Concert(moment, current, SEvent_Concerts.Concerts, Today);
-            Assert.Equal("Summer Live", moment.Fact(H, "Previous concert"));
-            Assert.Equal("3000", moment.Fact(H, "Previous concert audience"));
-            Assert.Equal("30 days ago", moment.Fact(H, "Previous concert held"));
+            // One line, without the concert's name: the game's names are the venue's
+            Assert.Equal("Concert Hall, audience 3000, attendance 90%, held 30 days ago", moment.Fact(H, "Previous concert"));
+            Assert.Equal(new[] { "Previous concert", "Concerts held before this one", "Biggest audience at an earlier concert" },
+                moment.Facts(H).Select(f => f.Key));
             Assert.Equal("2", moment.Fact(H, "Concerts held before this one"));
             Assert.Equal("5000", moment.Fact(H, "Biggest audience at an earlier concert"));
+        }
+
+        [Fact]
+        public void PreviousConcert_WithoutAVenueName_KeepsTheRest()
+        {
+            SEvent_Concerts._concert old = Concert("Old", Today.AddDays(-30), 3000);
+            old.Venue = (SEvent_Concerts._venue)99;
+            old.ProjectedValues.Actual_Attendance = 1f;
+            Assert.Equal("audience 3000, attendance 100%, held 30 days ago", History.ConcertSummary(old, Today));
         }
 
         [Fact]

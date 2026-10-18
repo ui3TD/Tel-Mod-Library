@@ -33,15 +33,15 @@ namespace AIFanChatter.Tests
             aya.Trivia.Add("Has a pet spider");
             aya.Hiring_Date = Today.AddYears(-2).AddDays(-5);
             data_girls.girls mei = Idol("Mei", fans: 9000);
-            data_girls.girls rin = Idol("Rin", fans: 100);
+            data_girls.girls rin = Idol("Rin", fans: 7000);
             Groups._group group = Group("Stars", Today.AddYears(-6).AddDays(-20), aya, mei, rin);
             Single("One", Today.AddDays(-300), 1, aya, mei).In(group);
             Single("Two", Today.AddDays(-200), 1, mei, aya).In(group);
             Single("Three", Today.AddDays(-100), 1, rin).In(group);
-            Election(Today.AddDays(-50), 40, mei, rin, aya);
+            Election(Today.AddDays(-50), 40, mei, aya, rin);
 
             Assert.Equal("Trait: Thick Skin. Has a pet spider. A minor scandal in her past. Age 19. Mental stamina 30/100, stamina 45/100. "
-                + "A member for 2 years, 3rd in the last election, 2nd most fans in the group, in 2 of the group's singles (center of 1).",
+                + "A member for 2 years, 2nd in the last election, the fewest fans in the group, in 2 of the group's singles (center of 1).",
                 LineOf(aya));
         }
 
@@ -88,7 +88,7 @@ namespace AIFanChatter.Tests
         public void Line_NeverGivesFameOrFanCounts()
         {
             data_girls.girls aya = Idol("Aya", fans: 123456).With(data_girls._paramType.famePoints, 777f);
-            Group("Stars", Today.AddYears(-3), aya);
+            Group("Stars", Today.AddYears(-3), aya, Idol("Mei", fans: 10));
             string line = LineOf(aya);
             Assert.DoesNotContain("123456", line);
             Assert.DoesNotContain("fame", line, StringComparison.OrdinalIgnoreCase);
@@ -121,9 +121,41 @@ namespace AIFanChatter.Tests
             Election(Today.AddDays(-30), 25, mei);
             Assert.Equal("1st in the last election", Members.Election(mei));
 
+            // How many her own last election ranked isn't kept, so only first and second are named
+            aya.SSK_History.Add(2);
+            Assert.Equal("2nd in her last election", Members.Election(aya));
             aya.SSK_History.Add(4);
-            Assert.Equal("4th in her last election", Members.Election(aya));
+            Assert.Equal("", Members.Election(aya));
             Assert.Equal("", Members.Election(Idol("New")));
+        }
+
+        /// <summary>
+        /// Only the top two and bottom two places of the election are named, out of the idols it ranked.
+        /// </summary>
+        [Theory]
+        [InlineData(1, "1st in the last election")]
+        [InlineData(2, "2nd in the last election")]
+        [InlineData(3, "")]
+        [InlineData(10, "")]
+        [InlineData(11, "second from bottom in the last election")]
+        [InlineData(12, "bottom in the last election")]
+        public void Election_NamesOnlyTheTopAndBottomTwo(int place, string expected)
+        {
+            data_girls.girls[] ranked = Enumerable.Range(1, 12).Select(i => Idol("Idol" + i)).ToArray();
+            Election(Today.AddDays(-30), 12, ranked);
+            Assert.Equal(expected, Members.Election(ranked[place - 1]));
+        }
+
+        /// <summary>
+        /// Results past the idols ranked (place 0) don't count towards the bottom.
+        /// </summary>
+        [Fact]
+        public void Election_BottomIsTheLastRankedPlace()
+        {
+            data_girls.girls[] ranked = Enumerable.Range(1, 6).Select(i => Idol("Idol" + i)).ToArray();
+            SEvent_SSK._SSK election = Election(Today.AddDays(-30), 6, ranked);
+            election.Results.Add(new SEvent_SSK._SSK._result { Girl = Idol("Unranked"), Place = 0 });
+            Assert.Equal("bottom in the last election", Members.Election(ranked[5]));
         }
 
         [Fact]
@@ -291,7 +323,7 @@ namespace AIFanChatter.Tests
             data_girls.girls guest = Idol("Guest", fans: 100);
             data_girls.girls mate = Idol("Mate", fans: 50);
             guest.Hiring_Date = Today.AddYears(-3);
-            Groups._group main = Group("Stars", Today.AddYears(-6), lead);
+            Groups._group main = Group("Stars", Today.AddYears(-6), lead, Idol("Back", fans: 10));
             Group("Moons", Today.AddDays(-540), guest, mate);
             singles._single single = Single("Song", Today, 1, lead, guest).In(main);
 
@@ -315,15 +347,15 @@ namespace AIFanChatter.Tests
             Assert.Equal(Members.GroupName(main), moment.Fact(Moment.AgencySection, "Sister group of"));
             Assert.Equal("2", moment.Fact(Moment.AgencySection, "Members in the group"));
             Assert.Equal("B, A", moment.Fact(Moment.AgencySection, "Most popular members"));
-            Assert.Contains("2nd most fans in the group", moment.Fact(M, "A"));
+            Assert.Contains("the fewest fans in the group", moment.Fact(M, "A"));
         }
 
         [Fact]
         public void Event_IsAboutItsMainSubjectsGroup()
         {
             Group("Stars", Today.AddYears(-6), Idol("Main"));
-            data_girls.girls subject = Idol("Subject");
-            Group("Moons", Today.AddYears(-1), subject);
+            data_girls.girls subject = Idol("Subject", fans: 5000);
+            Group("Moons", Today.AddYears(-1), subject, Idol("Mate", fans: 10));
             Moment moment = MomentContext.Event(Event("scandal", Today, subject), new Event_Manager._randomEvent._reply());
             Assert.Equal("Moons", moment.Fact(Moment.AgencySection, "Group"));
             Assert.Contains("the most fans in the group", moment.Fact(M, "Subject"));
@@ -374,11 +406,11 @@ namespace AIFanChatter.Tests
             Moment before = MomentContext.Single(single);
             Assert.Equal("3 years ago", before.Fact(Moment.AgencySection, "Group formed"));
             Assert.Equal("2", before.Fact(Moment.AgencySection, "Singles released by the group"));
-            Assert.Null(before.Fact(Moment.AgencySection, "Idols ranked in the last election"));
 
+            // The election's size isn't sent: an idol's place says first, second, second from bottom or bottom
             Election(Today.AddDays(-20), 12, aya);
             Moment after = MomentContext.Single(single);
-            Assert.Equal("12", after.Fact(Moment.AgencySection, "Idols ranked in the last election"));
+            Assert.DoesNotContain(after.Facts(Moment.AgencySection), f => f.Key.Contains("election"));
             Assert.Contains("1st in the last election", after.Fact(M, "Aya"));
         }
 
@@ -407,21 +439,64 @@ namespace AIFanChatter.Tests
         }
 
         [Theory]
-        [InlineData(1, false, null, "the most fans in the group")]
-        [InlineData(2, false, null, "2nd most fans in the group")]
-        [InlineData(1, true, null, "had the most fans of 5 in the group")]
-        [InlineData(3, true, null, "had the 3rd most fans of 5 in the group")]
-        [InlineData(2, false, "Moons", "2nd most fans of 5 in Moons")]
-        public void Rank_ReadsNaturally(int place, bool past, string group, string expected)
+        [InlineData(1, 5, false, null, "the most fans in the group")]
+        [InlineData(2, 5, false, null, "the second most fans in the group")]
+        [InlineData(3, 5, false, null, "")]
+        [InlineData(4, 5, false, null, "the second fewest fans in the group")]
+        [InlineData(5, 5, false, null, "the fewest fans in the group")]
+        [InlineData(1, 5, true, null, "had the most fans of 5 in the group")]
+        [InlineData(4, 5, true, null, "had the second fewest fans of 5 in the group")]
+        [InlineData(2, 5, false, "Moons", "the second most fans of 5 in Moons")]
+        [InlineData(5, 5, false, "Moons", "the fewest fans of 5 in Moons")]
+        public void Rank_ReadsNaturally(int place, int of, bool past, string group, string expected)
         {
-            Assert.Equal(expected, Members.RankText(new Members.Rank { Place = place, Of = 5, Group = group }, past));
+            Assert.Equal(expected, Members.RankText(new Members.Rank { Place = place, Of = of, Group = group }, past));
+        }
+
+        /// <summary>
+        /// First and last are named from 2 idols; second and second to last only from 5, as in smaller groups
+        /// they are the middle places. Alone, an idol has no place.
+        /// </summary>
+        [Theory]
+        [InlineData(1, 1, Members.Standing.None)]
+        [InlineData(1, 2, Members.Standing.First)]
+        [InlineData(2, 2, Members.Standing.Last)]
+        [InlineData(2, 3, Members.Standing.None)]
+        [InlineData(3, 3, Members.Standing.Last)]
+        [InlineData(2, 4, Members.Standing.None)]
+        [InlineData(3, 4, Members.Standing.None)]
+        [InlineData(4, 4, Members.Standing.Last)]
+        [InlineData(2, 5, Members.Standing.Second)]
+        [InlineData(3, 5, Members.Standing.None)]
+        [InlineData(4, 5, Members.Standing.SecondLast)]
+        [InlineData(5, 5, Members.Standing.Last)]
+        [InlineData(0, 5, Members.Standing.None)]
+        [InlineData(6, 5, Members.Standing.None)]
+        public void Standing_NamesOnlyTheEnds(int place, int of, Members.Standing expected)
+        {
+            Assert.Equal(expected, Members.StandingOf(place, of));
         }
 
         [Fact]
-        public void Ordinals()
+        public void IdolAlone_HasNoPlaceByFans()
         {
-            Assert.Equal(new[] { "1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "102nd" },
-                new[] { 1, 2, 3, 4, 11, 12, 13, 21, 102 }.Select(Members.Ordinal));
+            data_girls.girls solo = Idol("Solo", fans: 900);
+            Group("Solo", Today.AddYears(-1), solo);
+            Assert.DoesNotContain("fans", LineOf(solo));
+        }
+
+        [Fact]
+        public void SmallGroup_NamesOnlyTheMostAndFewestFans()
+        {
+            data_girls.girls most = Idol("Most", fans: 900);
+            data_girls.girls middle = Idol("Middle", fans: 500);
+            data_girls.girls fewest = Idol("Fewest", fans: 100);
+            Groups._group group = Group("Trio", Today.AddYears(-1), most, middle, fewest);
+            singles._single single = Single("Song", Today, 1, middle, most, fewest).In(group);
+            Moment moment = MomentContext.Single(single);
+            Assert.Contains("the most fans in the group", moment.Fact(M, "Most"));
+            Assert.DoesNotContain("fans in the group", moment.Fact(M, "Middle"));
+            Assert.Contains("the fewest fans in the group", moment.Fact(M, "Fewest"));
         }
     }
 }

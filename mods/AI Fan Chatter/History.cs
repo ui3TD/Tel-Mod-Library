@@ -167,11 +167,7 @@ namespace AIFanChatter
                 }
                 SEvent_Concerts._concert previous = Latest(earlier, c => c.FinishDate);
                 moment
-                    .AddTo(Section, "Previous concert", () => previous.GetTitle())
-                    .AddTo(Section, "Previous concert venue", () => SEvent_Concerts.GetVenueTitle(previous.Venue))
-                    .AddTo(Section, "Previous concert audience", () => previous.ProjectedValues.Actual_Audience)
-                    .AddTo(Section, "Previous concert attendance", () => Math.Round(previous.ProjectedValues.Actual_Attendance * 100) + "%")
-                    .AddTo(Section, "Previous concert held", () => Ago(previous.FinishDate, now))
+                    .AddTo(Section, "Previous concert", () => ConcertSummary(previous, now))
                     .AddTo(Section, "Concerts held before this one", () => earlier.Count)
                     .AddTo(Section, "Biggest audience at an earlier concert", () => earlier.Max(c => c.ProjectedValues.Actual_Audience));
             }
@@ -179,6 +175,26 @@ namespace AIFanChatter
             {
                 // No history for this concert
             }
+        }
+
+        /// <summary>
+        /// "Concert Hall, audience 2000, attendance 100%, held 6 months ago"; without the venue when the game
+        /// has no name for it.
+        /// </summary>
+        public static string ConcertSummary(SEvent_Concerts._concert concert, DateTime now)
+        {
+            string venue;
+            try
+            {
+                venue = Moment.Clean(SEvent_Concerts.GetVenueTitle(concert.Venue));
+            }
+            catch (Exception)
+            {
+                venue = "";
+            }
+            string ago = Ago(concert.FinishDate, now);
+            return (venue == "" ? "" : venue + ", ") + "audience " + concert.ProjectedValues.Actual_Audience
+                + ", attendance " + Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "%" + (ago == "" ? "" : ", held " + ago);
         }
 
         /// <summary>

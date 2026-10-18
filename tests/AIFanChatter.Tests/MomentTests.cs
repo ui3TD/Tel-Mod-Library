@@ -24,11 +24,12 @@ namespace AIFanChatter.Tests
 
         /// <summary>
         /// The set list in order, as one unnumbered list: each song with its single's style and the idol at
-        /// its center, each talk break with its idols. Hype is out of 200, as in the game, and whether it made
-        /// a profit isn't sent.
+        /// its center, each talk break with its idols. Hype is a percentage up to 200%, as in the game. The
+        /// concert's name (the game's is its venue's), its performers (the set list names them) and whether it
+        /// made a profit aren't sent.
         /// </summary>
         [Fact]
-        public void Concert_GivesItsSetList_AndHypeOutOf200()
+        public void Concert_GivesItsSetList_AndHypeAsAPercentage()
         {
             data_girls.girls arisa = TestGame.Idol("Arisa");
             data_girls.girls kokoro = TestGame.Idol("Kokoro");
@@ -44,8 +45,10 @@ namespace AIFanChatter.Tests
             concert.SetListItems.Add(new SEvent_Concerts._concert._song { Center = arisa });
 
             Moment moment = MomentContext.Concert(concert);
-            Assert.Equal("199", moment.Fact(Moment.FactsSection, "Hype (0 to 200)"));
+            Assert.Equal("199%", moment.Fact(Moment.FactsSection, "Hype"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Made a profit"));
+            Assert.Null(moment.Fact(Moment.FactsSection, "Title"));
+            Assert.Null(moment.Fact(Moment.FactsSection, "Performers"));
             string lines = moment.Lines(Moment.FactsSection);
             Assert.Contains("\nSet list, in order:\n"
                 + "- \"DJ, Never Let Me Go\" (Metal, Regret lyrics, Cute choreography), center Arisa\n"

@@ -324,12 +324,11 @@ namespace AIFanChatter
                 // The group's totals, once here rather than in every idol's line
                 .AddTo(section, "Group formed", () => group != null ? History.Ago(group.Date_Created, Now) : "")
                 .AddTo(section, "Singles released by the group", () => Members.ReleasedSingles(group).Count)
-                .AddTo(section, "Idols ranked in the last election", () => Members.LatestElection()?.Results?.Count(r => r != null && r.Place > 0))
                 .AddTo(section, "Most popular members", () => group == null ? ""
                     : string.Join(", ", Members.ByFans(group.GetGirls(true)).Take(Members.MostPopular).Select(Name).ToArray()))
                 .AddTo(section, "Total fans", () => resources.GetFansTotal())
-                .AddTo(section, "Agency reputation", () => Members.AgencyReputation(resources.GetScandalPointsTotal()))
-                .AddTo(section, "Agency concept", AgencyRules.Concept);
+                .AddTo(section, "Group reputation", () => Members.AgencyReputation(resources.GetScandalPointsTotal()))
+                .AddTo(section, "Group concept", AgencyRules.Concept);
             return (rules?.Invoke(moment) ?? moment)
                 .AddTo(section, "Date", () => staticVars.dateTime.ToString("dddd d MMMM yyyy", CultureInfo.InvariantCulture));
         }
@@ -353,20 +352,18 @@ namespace AIFanChatter
             Members.Add(moment, Members.ForSingle(single), Now, group);
             History.Single(moment, single, singles.Singles, Now);
             return Agency(moment, group, rules: m => m
-                .AddTo(Moment.AgencySection, "Agency handshake event security", () => AgencyRules.HandshakeSecurity(single)));
+                .AddTo(Moment.AgencySection, "Group handshake event security", () => AgencyRules.HandshakeSecurity(single)));
         }
 
         public static Moment Concert(SEvent_Concerts._concert concert)
         {
             Moment moment = new Moment("the group held a concert")
-                .Add("Title", () => concert.GetTitle())
                 .Add("Venue", () => SEvent_Concerts.GetVenueTitle(concert.Venue))
                 .Add("Audience", () => concert.ProjectedValues.Actual_Audience)
                 .Add("Attendance", () => Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "%")
-                // The game's hype runs from 0 to 200 (Concert_Popup.AddHype)
-                .Add("Hype (0 to 200)", () => concert.ProjectedValues.Actual_Hype)
-                .Add("Performers", () => Names(concert.GetGirls(false), 10));
-            // Unnumbered, so the songs are named by title rather than by their place in the list
+                // The game's hype runs from 0 to 200 (Concert_Popup.AddHype) and shows as a percentage
+                .Add("Hype", () => concert.ProjectedValues.Actual_Hype + "%");
+            // The set list names who performed. Unnumbered, so the songs are named by title rather than by their place in the list
             moment.AddList(Moment.FactsSection, "Set list, in order",
                 (concert.SetListItems ?? new List<SEvent_Concerts._concert.ISetlistItem>())
                 .Select(item => (Func<object>)(() => SetListItem(item))).ToList());
@@ -375,8 +372,8 @@ namespace AIFanChatter
             Members.Add(moment, Members.ForConcert(concert), Now, group);
             History.Concert(moment, concert, SEvent_Concerts.Concerts, Now);
             return Agency(moment, group, rules: m => m
-                .AddTo(Moment.AgencySection, "Agency stage costumes", AgencyRules.Costumes)
-                .AddTo(Moment.AgencySection, "Agency performance style", AgencyRules.PerformanceStyle));
+                .AddTo(Moment.AgencySection, "Stage costumes", AgencyRules.Costumes)
+                .AddTo(Moment.AgencySection, "Performance style", AgencyRules.PerformanceStyle));
         }
 
         /// <param name="rankBefore">Her place by fans in her group before she left, taken before the game moved her fans.</param>
@@ -412,7 +409,7 @@ namespace AIFanChatter
             Members.Add(moment, idols, Now, group ?? MainGroup());
             History.Event(moment, active, log, Now);
             return Agency(moment, group, rules: m => m
-                .AddTo(Moment.AgencySection, "Agency dating rule", AgencyRules.Dating));
+                .AddTo(Moment.AgencySection, "Group dating rule", AgencyRules.Dating));
         }
     }
 }

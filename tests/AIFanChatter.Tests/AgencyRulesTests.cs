@@ -40,12 +40,12 @@ namespace AIFanChatter.Tests
             GameDefaults();
             foreach (Moment moment in new[] { SingleMoment(handshake: true), ConcertMoment(), EventMoment() })
             {
-                Assert.Null(moment.Fact(A, "Agency concept"));
-                Assert.Null(moment.Fact(A, "Agency performance style"));
-                Assert.Null(moment.Fact(A, "Agency handshake event security"));
+                Assert.Null(moment.Fact(A, "Group concept"));
+                Assert.Null(moment.Fact(A, "Performance style"));
+                Assert.Null(moment.Fact(A, "Group handshake event security"));
             }
-            Assert.Equal("short skirts with safety shorts", ConcertMoment().Fact(A, "Agency stage costumes"));
-            Assert.Equal("unclear: dating is neither allowed nor forbidden", EventMoment().Fact(A, "Agency dating rule"));
+            Assert.Equal("short skirts with safety shorts", ConcertMoment().Fact(A, "Stage costumes"));
+            Assert.Equal("unclear: dating is neither allowed nor forbidden", EventMoment().Fact(A, "Group dating rule"));
         }
 
         [Theory]
@@ -57,10 +57,10 @@ namespace AIFanChatter.Tests
         {
             Policy(policies._type.vibe, vibe);
             Policy(policies._type.image, image);
-            Assert.Equal(expected, SingleMoment(handshake: false).Fact(A, "Agency concept"));
-            Assert.Equal(expected, ConcertMoment().Fact(A, "Agency concept"));
-            Assert.Equal(expected, EventMoment().Fact(A, "Agency concept"));
-            Assert.Equal(expected, MomentContext.Graduation(Idol("C"), null).Fact(A, "Agency concept"));
+            Assert.Equal(expected, SingleMoment(handshake: false).Fact(A, "Group concept"));
+            Assert.Equal(expected, ConcertMoment().Fact(A, "Group concept"));
+            Assert.Equal(expected, EventMoment().Fact(A, "Group concept"));
+            Assert.Equal(expected, MomentContext.Graduation(Idol("C"), null).Fact(A, "Group concept"));
         }
 
         [Theory]
@@ -71,9 +71,9 @@ namespace AIFanChatter.Tests
         public void Costumes_OnlyAtConcerts(policies._value skirts, string expected)
         {
             Policy(policies._type.skirts, skirts);
-            Assert.Equal(expected, ConcertMoment().Fact(A, "Agency stage costumes"));
-            Assert.Null(SingleMoment(handshake: true).Fact(A, "Agency stage costumes"));
-            Assert.Null(EventMoment().Fact(A, "Agency stage costumes"));
+            Assert.Equal(expected, ConcertMoment().Fact(A, "Stage costumes"));
+            Assert.Null(SingleMoment(handshake: true).Fact(A, "Stage costumes"));
+            Assert.Null(EventMoment().Fact(A, "Stage costumes"));
         }
 
         [Theory]
@@ -82,9 +82,9 @@ namespace AIFanChatter.Tests
         public void PerformanceStyle_OnlyAtConcerts(policies._value style, string expected)
         {
             Policy(policies._type.performances, style);
-            Assert.Equal(expected, ConcertMoment().Fact(A, "Agency performance style"));
-            Assert.Null(SingleMoment(handshake: true).Fact(A, "Agency performance style"));
-            Assert.Null(EventMoment().Fact(A, "Agency performance style"));
+            Assert.Equal(expected, ConcertMoment().Fact(A, "Performance style"));
+            Assert.Null(SingleMoment(handshake: true).Fact(A, "Performance style"));
+            Assert.Null(EventMoment().Fact(A, "Performance style"));
         }
 
         [Theory]
@@ -93,9 +93,9 @@ namespace AIFanChatter.Tests
         public void DatingRule_OnlyInEvents(policies._value dating, string expected)
         {
             Policy(policies._type.dating, dating);
-            Assert.Equal(expected, EventMoment().Fact(A, "Agency dating rule"));
-            Assert.Null(SingleMoment(handshake: true).Fact(A, "Agency dating rule"));
-            Assert.Null(ConcertMoment().Fact(A, "Agency dating rule"));
+            Assert.Equal(expected, EventMoment().Fact(A, "Group dating rule"));
+            Assert.Null(SingleMoment(handshake: true).Fact(A, "Group dating rule"));
+            Assert.Null(ConcertMoment().Fact(A, "Group dating rule"));
         }
 
         [Theory]
@@ -105,10 +105,10 @@ namespace AIFanChatter.Tests
         {
             Policy(policies._type.security, security);
             singles._single single = Single("Song", Today, 1, Idol("A")).WithHandshake(groupHandshake);
-            Assert.Equal(expected, MomentContext.Single(single).Fact(A, "Agency handshake event security"));
-            Assert.Null(SingleMoment(handshake: false).Fact(A, "Agency handshake event security"));
-            Assert.Null(ConcertMoment().Fact(A, "Agency handshake event security"));
-            Assert.Null(EventMoment().Fact(A, "Agency handshake event security"));
+            Assert.Equal(expected, MomentContext.Single(single).Fact(A, "Group handshake event security"));
+            Assert.Null(SingleMoment(handshake: false).Fact(A, "Group handshake event security"));
+            Assert.Null(ConcertMoment().Fact(A, "Group handshake event security"));
+            Assert.Null(EventMoment().Fact(A, "Group handshake event security"));
         }
 
         /// <summary>
@@ -118,14 +118,14 @@ namespace AIFanChatter.Tests
         public void MissingOrUnknownPolicies_LeaveTheLinesOut()
         {
             Moment none = EventMoment();
-            Assert.Null(none.Fact(A, "Agency concept"));
-            Assert.Null(none.Fact(A, "Agency dating rule"));
+            Assert.Null(none.Fact(A, "Group concept"));
+            Assert.Null(none.Fact(A, "Group dating rule"));
             Assert.NotNull(none.Fact(A, "Date"));
 
             Policy(policies._type.dating, (policies._value)999);
             Policy(policies._type.skirts, policies._value.vibe_cute);
-            Assert.Null(EventMoment().Fact(A, "Agency dating rule"));
-            Assert.Null(ConcertMoment().Fact(A, "Agency stage costumes"));
+            Assert.Null(EventMoment().Fact(A, "Group dating rule"));
+            Assert.Null(ConcertMoment().Fact(A, "Stage costumes"));
         }
 
         /// <summary>The rules come after the agency's other facts and before the date.</summary>
@@ -135,10 +135,10 @@ namespace AIFanChatter.Tests
             Policy(policies._type.vibe, policies._value.vibe_cool);
             Policy(policies._type.skirts, policies._value.skirts_pants);
             string lines = ConcertMoment().Lines(A);
-            int concept = lines.IndexOf("Agency concept: cool");
-            int costumes = lines.IndexOf("Agency stage costumes: pants");
+            int concept = lines.IndexOf("Group concept: cool");
+            int costumes = lines.IndexOf("Stage costumes: pants");
             int date = lines.IndexOf("Date: ");
-            Assert.True(concept > lines.IndexOf("Agency reputation") && concept < costumes && costumes < date, lines);
+            Assert.True(concept > lines.IndexOf("Group reputation") && concept < costumes && costumes < date, lines);
         }
     }
 }

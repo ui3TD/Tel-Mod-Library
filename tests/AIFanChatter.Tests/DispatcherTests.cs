@@ -279,68 +279,89 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// A model that can't take low effort rejects the request like a service that can't take the schema:
-        /// the same request goes again without either.
+        /// A model that can't take low effort gets the same request again without it, keeping the schema.
+        /// That counts as one request, and the effort isn't asked for again until the settings change.
         /// </summary>
         [Fact]
-        public void RejectedEffort_SendsTheRequestAgainWithoutSchemaOrEffort()
+        public void RejectedEffort_SendsTheRequestAgainWithoutIt_KeepingTheSchema()
         {
             TestEnv.Configure(Provider.Compatible, model: "local-model", baseUrl: "http://localhost:1");
+            TestEnv.Vars[Settings.PerWeekVar] = "2";
             Assert.True(dispatcher.Request(Moment()));
-            Assert.Contains("\"reasoning\":{\"effort\":\"low\"}", transport.Sent[0].Body);
-            transport.Reply(400, "{\"error\":{\"message\":\"unknown field reasoning\"}}");
+            Assert.Contains("\"reasoning_effort\":\"low\"", transport.Sent[0].Body);
+            transport.Reply(400, "{\"error\":{\"message\":\"unknown field reasoning_effort\"}}");
             Assert.Equal(2, transport.Sent.Count);
             Assert.DoesNotContain("reasoning", transport.Sent[1].Body);
-            Assert.DoesNotContain("response_format", transport.Sent[1].Body);
+            Assert.Contains("response_format", transport.Sent[1].Body);
             transport.Reply(200, Replies.OpenAI(Replies.Posts));
             Assert.Single(host.Queued);
-            Assert.Contains(TestEnv.Logs, l => l.Contains("low reasoning effort"));
+            Assert.Empty(host.Notices);
+            Assert.Contains(TestEnv.Logs, l => l.Contains("doesn't accept low reasoning effort"));
+
+            // The second try wasn't another request; the next asks for the schema but not the effort
+            host.RealTime += 31;
+            Assert.True(dispatcher.Request(Moment()));
+            Assert.DoesNotContain("reasoning", transport.Sent[2].Body);
+            Assert.Contains("response_format", transport.Sent[2].Body);
+            transport.Reply(200, Replies.OpenAI(Replies.Posts));
+
+            dispatcher.OnSettingsChanged();
+            host.GameTime = host.GameTime.AddDays(7);
+            host.RealTime += 31;
+            Assert.True(dispatcher.Request(Moment()));
+            Assert.Contains("\"reasoning_effort\":\"low\"", transport.Sent[3].Body);
         }
 
         /// <summary>
-        /// A service that rejects the schema gets the same request again without it. That counts as one
-        /// request, and no schema is sent again until the settings change.
+        /// A service that rejects the request without the effort too gets it a third time without the schema.
+        /// All three count as one request, and neither is asked for again until the settings change.
         /// </summary>
         [Theory]
         [InlineData(400)]
         [InlineData(422)]
-        public void RejectedSchema_SendsTheRequestAgainWithoutIt(long status)
+        public void RejectedSchema_SendsTheRequestAgainWithoutEffortThenWithoutSchema(long status)
         {
             TestEnv.Vars[Settings.PerWeekVar] = "2";
             Assert.True(dispatcher.Request(Moment()));
             transport.Reply(status, "{\"error\":{\"message\":\"output_config is not supported\"}}");
             Assert.Equal(2, transport.Sent.Count);
-            Assert.Contains("output_config", transport.Sent[0].Body);
-            Assert.DoesNotContain("output_config", transport.Sent[1].Body);
+            Assert.Contains("\"effort\":\"low\"", transport.Sent[0].Body);
+            Assert.Contains("\"format\"", transport.Sent[1].Body);
+            Assert.DoesNotContain("effort", transport.Sent[1].Body);
             Assert.False(dispatcher.Request(Moment()));
+            transport.Reply(status, "{\"error\":{\"message\":\"output_config is not supported\"}}");
+            Assert.Equal(3, transport.Sent.Count);
+            Assert.DoesNotContain("output_config", transport.Sent[2].Body);
             transport.Reply(200, Replies.Anthropic(Replies.Posts));
             Assert.Single(host.Queued);
             Assert.False(dispatcher.Suspended);
             Assert.Empty(host.Notices);
             Assert.Contains(TestEnv.Logs, l => l.Contains("doesn't accept a reply schema"));
 
-            // The second try wasn't another request: the week still has room for one more
+            // The retries weren't other requests: the week still has room for one more, without either
             host.RealTime += 31;
             Assert.True(dispatcher.Request(Moment()));
-            Assert.DoesNotContain("output_config", transport.Sent[2].Body);
+            Assert.DoesNotContain("output_config", transport.Sent[3].Body);
             transport.Reply(200, Replies.Anthropic(Replies.Posts));
 
             dispatcher.OnSettingsChanged();
             host.GameTime = host.GameTime.AddDays(7);
             host.RealTime += 31;
             Assert.True(dispatcher.Request(Moment()));
-            Assert.Contains("output_config", transport.Sent[3].Body);
+            Assert.Contains("\"effort\":\"low\"", transport.Sent[4].Body);
+            Assert.Contains("\"format\"", transport.Sent[4].Body);
         }
 
         [Fact]
-        public void RejectedAgainWithoutTheSchema_StopsRequests()
+        public void RejectedWithoutEitherToo_StopsRequests()
         {
             Assert.True(dispatcher.Request(Moment()));
             transport.Reply(400, "{\"error\":{\"message\":\"bad request\"}}");
             transport.Reply(400, "{\"error\":{\"message\":\"still bad\"}}");
-            Assert.Equal(2, transport.Sent.Count);
+            transport.Reply(400, "{\"error\":{\"message\":\"bad every time\"}}");
+            Assert.Equal(3, transport.Sent.Count);
             Assert.True(dispatcher.Suspended);
-            Assert.Contains("still bad", host.Notices.Single().Text);
+            Assert.Contains("bad every time", host.Notices.Single().Text);
         }
 
         [Theory]

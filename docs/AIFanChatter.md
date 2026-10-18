@@ -246,4 +246,4 @@ Each placeholder was filled in as follows:
 - **Emoji:** it takes them out, because the feed can't show them.
 - **Timing:** it releases the posts into the feed over the next in-game day or two.
 - **Reply format:** when your AI service supports it, it asks for replies in the reply format, so the replies always come back in that shape.
-- **Reasoning:** it asks models that reason before answering to reason only a little (low effort), which makes requests cheaper. A service or model that rejects the reply format or the low effort gets the same request again without either, and neither is asked for again until you change a setting.
+- **Reasoning:** it asks models that reason before answering to reason only a little (low effort), which makes requests cheaper. A service ignores the setting if it doesn't know it. A service or model that rejects the request gets it again without the low effort, and if it rejects that too, without the reply format. What it rejected isn't asked for again until you change a setting.

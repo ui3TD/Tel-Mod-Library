@@ -115,8 +115,9 @@ namespace AIFanChatter
         /// </summary>
         /// <param name="schema">A JSON schema the reply must follow, for services that support one; null for none.</param>
         /// <param name="lowEffort">Asks a model that reasons before it answers to reason only a little: Anthropic's
-        /// effort, OpenAI's reasoning_effort, and OpenRouter's reasoning setting, which other compatible services
-        /// mostly ignore. A model that can't take it rejects the request.</param>
+        /// effort, OpenAI's reasoning_effort, and for compatible services both the top-level reasoning_effort that
+        /// most of them read (OpenRouter, Ollama, LM Studio, Gemini, Groq) and OpenRouter's own reasoning setting;
+        /// a service ignores the one it doesn't know. A model that can't take it may reject the request.</param>
         public static HttpRequestSpec BuildRequest(Connection connection, string system, string user, int maxTokens, out string error, string schema = null,
             bool lowEffort = false)
         {
@@ -180,7 +181,11 @@ namespace AIFanChatter
                 }
                 if (lowEffort)
                 {
-                    body.Append(connection.Provider == Provider.OpenAI ? ",\"reasoning_effort\":\"low\"" : ",\"reasoning\":{\"effort\":\"low\"}");
+                    body.Append(",\"reasoning_effort\":\"low\"");
+                    if (connection.Provider == Provider.Compatible)
+                    {
+                        body.Append(",\"reasoning\":{\"effort\":\"low\"}");
+                    }
                 }
                 body.Append(",\"messages\":[{\"role\":\"system\",\"content\":").Append(Json.Quote(system))
                     .Append("},{\"role\":\"user\",\"content\":").Append(Json.Quote(user)).Append("}]}");

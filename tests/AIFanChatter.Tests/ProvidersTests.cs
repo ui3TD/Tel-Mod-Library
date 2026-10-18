@@ -180,7 +180,8 @@ namespace AIFanChatter.Tests
 
         /// <summary>
         /// Low effort where each service reads it: Anthropic's output_config next to the schema, OpenAI's
-        /// reasoning_effort, and OpenRouter's reasoning object for the compatible services.
+        /// reasoning_effort, and for compatible services both the top-level reasoning_effort most of them read
+        /// and OpenRouter's reasoning object.
         /// </summary>
         [Fact]
         public void LowEffort_GoesWhereEachServiceReadsIt()
@@ -200,7 +201,7 @@ namespace AIFanChatter.Tests
 
             JSONNode compatible = JSON.Parse(Providers.BuildRequest(Of(Provider.Compatible), "s", "u", 1, out _, Prompt.ReplySchema, lowEffort: true).Body);
             Assert.Equal("low", compatible["reasoning"]["effort"].Value);
-            Assert.DoesNotContain("reasoning_effort", compatible.ToString());
+            Assert.Equal("low", compatible["reasoning_effort"].Value);
             Assert.Equal("json_schema", compatible["response_format"]["type"].Value);
         }
     }

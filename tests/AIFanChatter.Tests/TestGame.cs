@@ -21,6 +21,7 @@ namespace AIFanChatter.Tests
             SEvent_SSK.Elections.Clear();
             traits.Traits.Clear();
             resources.resource.Clear();
+            policies.Values.Clear();
             staticVars.dateTime = Today;
         }
 
@@ -122,6 +123,23 @@ namespace AIFanChatter.Tests
             }
             SEvent_SSK.Elections.Add(election);
             return election;
+        }
+
+        /// <summary>
+        /// Selects a policy value, as the game holds it: one selected value per policy type.
+        /// </summary>
+        public static void Policy(policies._type type, policies._value value)
+        {
+            policies.Values.Add(new policies.value { Type = type, Value = value, Selected = true });
+        }
+
+        /// <summary>
+        /// A handshake event in the single's promotion, for the whole group or for each idol.
+        /// </summary>
+        public static singles._single WithHandshake(this singles._single single, bool group = true)
+        {
+            single.marketing.Add(new singles._param { type = singles._param._type.marketing, Group_Handshake = group, Individual_Handshake = !group });
+            return single;
         }
 
         public static Event_Manager._activeEvent Event(string id, DateTime date, params data_girls.girls[] girls)

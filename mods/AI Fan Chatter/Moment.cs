@@ -310,13 +310,14 @@ namespace AIFanChatter
         /// group and the main group it belongs to. Null is the main group.
         /// </summary>
         /// <param name="graduation">The moment is a graduation, so the member count is after she left.</param>
-        private static Moment Agency(Moment moment, Groups._group group, bool graduation = false)
+        /// <param name="rules">Adds the agency rules that matter to this kind of moment, after the concept.</param>
+        private static Moment Agency(Moment moment, Groups._group group, bool graduation = false, Func<Moment, Moment> rules = null)
         {
             const string section = Moment.AgencySection;
             Groups._group main = MainGroup();
             group ??= main;
             bool sister = group != null && !group.IsMain();
-            return moment
+            moment
                 .AddTo(section, "Group", () => group != null ? Members.GroupName(group) : staticVars.PlayerData.GetGroupName())
                 .AddTo(section, "Sister group of", () => !sister ? "" : main != null ? Members.GroupName(main) : staticVars.PlayerData.GetGroupName())
                 .AddTo(section, graduation ? "Members left in the group" : "Members in the group", () => group?.GetNumberOfNonGraduatedGirls())
@@ -328,6 +329,8 @@ namespace AIFanChatter
                     : string.Join(", ", Members.ByFans(group.GetGirls(true)).Take(Members.MostPopular).Select(Name).ToArray()))
                 .AddTo(section, "Total fans", () => resources.GetFansTotal())
                 .AddTo(section, "Agency reputation", () => Members.AgencyReputation(resources.GetScandalPointsTotal()))
+                .AddTo(section, "Agency concept", AgencyRules.Concept);
+            return (rules?.Invoke(moment) ?? moment)
                 .AddTo(section, "Date", () => staticVars.dateTime.ToString("dddd d MMMM yyyy", CultureInfo.InvariantCulture));
         }
 
@@ -349,7 +352,8 @@ namespace AIFanChatter
             Groups._group group = History.GroupOf(single);
             Members.Add(moment, Members.ForSingle(single), Now, group);
             History.Single(moment, single, singles.Singles, Now);
-            return Agency(moment, group);
+            return Agency(moment, group, rules: m => m
+                .AddTo(Moment.AgencySection, "Agency handshake event security", () => AgencyRules.HandshakeSecurity(single)));
         }
 
         public static Moment Concert(SEvent_Concerts._concert concert)
@@ -370,7 +374,9 @@ namespace AIFanChatter
             Groups._group group = MainGroup();
             Members.Add(moment, Members.ForConcert(concert), Now, group);
             History.Concert(moment, concert, SEvent_Concerts.Concerts, Now);
-            return Agency(moment, group);
+            return Agency(moment, group, rules: m => m
+                .AddTo(Moment.AgencySection, "Agency stage costumes", AgencyRules.Costumes)
+                .AddTo(Moment.AgencySection, "Agency performance style", AgencyRules.PerformanceStyle));
         }
 
         /// <param name="rankBefore">Her place by fans in her group before she left, taken before the game moved her fans.</param>
@@ -405,7 +411,8 @@ namespace AIFanChatter
             Groups._group group = idols.Count > 0 ? GroupOf(() => idols[0].GetGroup()) : null;
             Members.Add(moment, idols, Now, group ?? MainGroup());
             History.Event(moment, active, log, Now);
-            return Agency(moment, group);
+            return Agency(moment, group, rules: m => m
+                .AddTo(Moment.AgencySection, "Agency dating rule", AgencyRules.Dating));
         }
     }
 }

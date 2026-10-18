@@ -75,7 +75,7 @@ Make your changes in a small mod of your own, not in AI Fan Chatter's files. Ste
 | `{replies}` | The default most replies per post: 3. | A smaller number works. The mod keeps at most 3 replies per post. |
 | `{length}` | The default most characters per post or reply: 100. | Any number up to 200. The mod cuts any text over 200 characters, so a larger number only gets texts cut short. |
 | `{language}` | The game's language setting: English, Japanese, Simplified Chinese, Brazilian Portuguese or Russian, or a translation mod's language code. | A language name, to always get posts in that language. |
-| `{fan_types}` | The list of the 12 fan accounts, one per line, from your game. Each line gives the account's code (such as `F_HC_T`), what kind of fan it is (such as devoted teen girl), its name in the game's feed, and that kind of fan's current opinion of your group out of 100. | Your text must still give the AI the 12 codes. A post with any other code gets a random one, and the feed picks each fan's picture from the code. |
+| `{fan_types}` | The list of the 12 fan accounts, one per line, from your game. Each line gives the account's code (such as `F_HC_T`), what kind of fan it is (such as devoted teen girl), its name in the game's feed, and that kind of fan's current opinion of your group as a percentage. | Your text must still give the AI the 12 codes. A post with any other code gets a random one, and the feed picks each fan's picture from the code. |
 | `{format}` | The reply format the mod can read: an example of posts, each with a fan code, a text and replies. | Keep it. If it's missing, the mod adds it at the end. |
 
 ## Placeholders in the user message
@@ -88,21 +88,84 @@ The group these parts call "the group" is the group the moment is about:
 - for a graduation, the graduating idol's group;
 - for a random event, the group of the idol it's mainly about, or the main group when no idol is involved.
 
-| Placeholder | The mod fills in |
-|---|---|
-| `{event}` | What kind of moment it is, such as `Event: the group released a new single`. |
-| `{facts}` | The moment's own details, one per line. For a single: its title, center, members, genre, lyrics, choreography, sales, quality, fan satisfaction, new fans and marketing. For a concert: its title, venue, audience, attendance, hype, its performers, and its set list, in order and one item per line: each song with its genre, lyrics, choreography and the idol at its center, and each talk break with its idols. For a graduation: the idol and what she did after graduating, when the game says. For a random event: what happened, the details, the agency's response, the outcome and who was involved. |
-| `{agency}` | The group and the agency. The group's name, and the main group's name when it's a sister group. The number of members (for a graduation, the members left after she graduated), and the three with the most fans. When the group was formed, how many singles it has released, and how many idols were ranked in the last election. The agency's total fans, its reputation from scandals in words, and the date with its day of the week. |
-| `{members}` | One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, plus the graduating idol for a graduation. Each line gives her trait, up to 2 trivia facts (only for the first 2 idols), her scandal record in words when she has one, her age, her mental stamina and stamina when either is 50 or lower, her time in the group, her place in the last election, her place by fans in the group, and how many of the group's singles she's in. The group's own totals are in `{agency}`, so the lines leave them out. An idol from another group has her time and place given in her own group, by name and out of that group's totals. |
-| `{history}` | Earlier results to compare with: the group's last 3 singles, each with its genre, lyrics, choreography and results, and its best-selling one, the previous concert and the biggest audience so far, the previous graduation, or how often the same random event happened before. Empty when there's nothing earlier. |
-| `{feed}` | The latest 8 posts on the game's feed, oldest first, without their replies. It includes posts the mod has queued that haven't appeared yet. Empty when the feed has no posts. |
+### `{event}`
+
+What kind of moment it is, such as `Event: the group released a new single`.
+
+### `{facts}`
+
+The moment's own details, one per line.
+
+- **A single:**
+  - its title, center and members, and its genre, lyrics and choreography;
+  - its sales, quality and fan satisfaction, both as percentages, and its new fans;
+  - its marketing: each promotion by the game's name for it, such as Group Handshake Event. The game rolls the outcome of a risky promotion (a campaign, a fake scandal or a daring PV), and that outcome follows its name in parentheses: success, great success, failure or major failure.
+- **A concert:**
+  - its venue;
+  - its attendance, as the share of seats filled followed by the number of people, such as `92% (4600)`;
+  - its hype, as a percentage that can go up to 200%;
+  - its ticket price;
+  - its set list, in order, one item per line. Each song comes with its genre, lyrics, choreography and the idol at its center, and each talk break with its idols.
+- **A graduation:**
+  - the idol, and what she did after graduating, when the game says;
+  - her singles as center, up to her 5 best-selling ones, best-selling first. The list is left out when she was never a center.
+- **A random event:**
+  - what happened, the details, the agency's response, the outcome, and who was involved.
+  - The game writes its events to the player. When the details, the response or the outcome say "you", a line `You: the group's producer (name)` tells the AI who that is, with the player's name as the game shows it.
+
+### `{agency}`
+
+The group and the agency, one fact per line:
+
+- the group's name, and the main group's name when it's a sister group;
+- the number of members, or for a graduation the members left after she graduated;
+- when the group was formed, how many singles it has released, and the three members with the most fans;
+- the reputation from scandals, in words;
+- the concept, from the agency's policies;
+- the policies that matter to this kind of moment:
+  - handshake event security, for a single promoted with a handshake event;
+  - stage costumes and performance style, for a concert;
+  - the dating rule, for a random event;
+- the date, with its day of the week.
+
+### `{members}`
+
+One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, and the graduating idol for a graduation.
+
+Each line gives, in this order:
+
+1. her trait;
+2. up to 2 trivia facts, only for the first 2 idols;
+3. her scandal record in words, when she has one;
+4. her age;
+5. her mental stamina and her stamina, each only when it's 50 or lower;
+6. the skills where she alone is the best or the worst in her group, such as `Top dance skill in the group`;
+7. her time in the group, her place in the last election, her place by fans in the group, and how many of the group's singles she's in;
+8. `Member of sister group (name)` or `Member of main group (name)`, when she isn't in the group the moment is about.
+
+**Places:**
+- **What's named:** a place in the election or by fans is only named when it's first, second, second from the bottom or the bottom.
+- **Small groups:** second and second from the bottom are only named in a group of 5 or more, because in a smaller group they're the middle places. A group of 2 to 4 gets only first and last, and an idol alone gets no place by fans.
+- **Another group:** an idol from another group has her time and her place by fans given in her own group, by name.
+
+The group's own totals are in `{agency}`, so the lines leave them out.
+
+### `{history}`
+
+Earlier results to compare with. Empty when there's nothing earlier.
+
+- **A single:** the group's last 3 singles, each with its genre, lyrics, choreography, sales, quality, fan satisfaction and release date, then how many singles came before and the best-selling one.
+- **A concert:** the previous concert's venue, attendance and date, how many concerts came before, and the biggest audience so far.
+- **A graduation:** the previous graduate from the same group and when she left, and how many of the group's idols graduated before her. When she's the group's first graduate, it says so.
+- **A random event:** how often the same event happened before, and when it last did.
+
+### `{feed}`
+
+The latest 8 posts on the game's feed, oldest first, without their replies. It includes posts the mod has queued that haven't appeared yet. Empty when the feed has no posts.
 
 ## Example
 
-This is a real prompt the mod sent, for a concert in a test save.
-
-- **The idols' names** are in kanji because that save uses the Japanese Name Generator mod.
-- **The earlier posts** in the feed part are ones the AI wrote for a single released just before.
+This is a prompt the mod built for a concert. The agency in it is made up: it's the one the mod's report tool uses, so its names and numbers aren't from a real save. The posts in the feed part are posts the agency starts with.
 
 ### The system message
 
@@ -115,14 +178,14 @@ Fan accounts. Use these exact codes as "user":
 {fan_types}
 
 Rules:
-- Write {min} to {max} posts reacting to the event the user describes. Each post can have 0 to {replies} replies from other fans.
+- Write {min} to {max} posts reacting to the event the user describes. Each post can have 0 to {replies} replies from other fans but not themselves.
 - Keep every post and reply under {length} characters, in the voice of a fan online.
 - Mix the kinds of fans, and let them react to each other in the replies.
 - Every post reacts to the new event. The background and the earlier posts are history, given only for context: fans can refer back to them or compare with them, but they are never the subject of a post, and earlier posts are never repeated.
 - Use plain text without emoji: the game can't show them.
 - Write in {language}.
-- Match each fan's tone to their opinion of the group: low is critical or disappointed, around 50 is mixed, high is enthusiastic.
-- Don't quote exact stats. Exact sales and attendance can be quoted where it fits.
+- Match each fan's tone to their opinion of the group: low is critical or disappointed, around 50% is mixed, high is enthusiastic.
+- Don't quote stats, but approximate sales and attendance numbers can be mentioned where it fits.
 - Stamina and mental stamina aren't public: fans only notice signs, such as an idol looking tired. Scandals are public, and fans know about them.
 
 Reply with only this JSON and nothing else:
@@ -139,21 +202,21 @@ When the mod sent it, it filled in these values:
   {"posts":[{"user":"F_HC_T","text":"...","replies":[{"user":"M_C_A","text":"..."}]}]}
   ```
 
-- `{fan_types}` became the fan accounts from the save:
+- `{fan_types}` became the fan accounts:
 
   ```text
-  - M_C_T: casual teen boy (shown as @kazubuta), opinion of the group: 0/100
-  - M_C_YA: casual young adult man (shown as @satoshi_cars), opinion of the group: 50/100
-  - M_C_A: casual adult man (shown as @takuya_nozawa_72), opinion of the group: 100/100
-  - M_HC_T: devoted teen boy (shown as @pizzakk), opinion of the group: 33/100
-  - M_HC_YA: devoted young adult man (shown as @shinji1602), opinion of the group: 60/100
-  - M_HC_A: devoted adult man (shown as @heihachiro1960), opinion of the group: 67/100
-  - F_C_T: casual teen girl (shown as @ICECREAMNAKAI), opinion of the group: 0/100
-  - F_C_YA: casual young adult woman (shown as @machi_panpkn), opinion of the group: 50/100
-  - F_C_A: casual adult woman (shown as @wanitamaru), opinion of the group: 100/100
-  - F_HC_T: devoted teen girl (shown as @kazunyan_dm), opinion of the group: 33/100
-  - F_HC_YA: devoted young adult woman (shown as @sakisuki69), opinion of the group: 60/100
-  - F_HC_A: devoted adult woman (shown as @wakana_1967), opinion of the group: 67/100
+  - M_C_T: casual teen boy (shown as @kazubuta), opinion of the group: 33%
+  - M_C_YA: casual young adult man (shown as @satoshi_cars), opinion of the group: 50%
+  - M_C_A: casual adult man (shown as @takuya_nozawa_72), opinion of the group: 67%
+  - M_HC_T: devoted teen boy (shown as @pizzakk), opinion of the group: 67%
+  - M_HC_YA: devoted young adult man (shown as @shinji1602), opinion of the group: 83%
+  - M_HC_A: devoted adult man (shown as @heihachiro1960), opinion of the group: 100%
+  - F_C_T: casual teen girl (shown as @ICECREAMNAKAI), opinion of the group: 0%
+  - F_C_YA: casual young adult woman (shown as @machi_panpkn), opinion of the group: 17%
+  - F_C_A: casual adult woman (shown as @wanitamaru), opinion of the group: 33%
+  - F_HC_T: devoted teen girl (shown as @kazunyan_dm), opinion of the group: 33%
+  - F_HC_YA: devoted young adult woman (shown as @sakisuki69), opinion of the group: 50%
+  - F_HC_A: devoted adult woman (shown as @wakana_1967), opinion of the group: 67%
   ```
 
 ### The user message
@@ -178,63 +241,63 @@ What the mod sent:
 ```text
 The new event, which every post reacts to:
 Event: the group held a concert
-Title: Concert [Stadium]
-Venue: Stadium
-Audience: 15000
-Attendance: 100%
-Hype (0 to 200): 199
-Performers: 中澤 実香, 村上 映子, 望月 有紗, 小澤 のぞみ, 今井 康子, 吉川 心
+Venue: Open Air Stage
+Attendance: 92% (4600)
+Hype: 156%
+Ticket price: 4800 yen
 Set list, in order:
-- "私 を巡って" (Metal, Regret lyrics, Cool choreography), center 中澤 実香
-- "Woman Of A Fool" (Enka, Regret lyrics, Elegant choreography), center 村上 映子
-- "He knows I Like To Party" (Metal, Partying lyrics, Energetic choreography), center 望月 有紗
-- "Honey, Put Your Hands Up" (EDM, Friends lyrics, Energetic choreography), center 村上 映子
-- "Music Of A Promise" (Metal, Anxiety lyrics, Cool choreography), center 小澤 のぞみ
-- "Night Of Days" (Funk, Partying lyrics, Energetic choreography), center 村上 映子
-- "Loved By Your Voice" (Pop, Love lyrics, Cute choreography), center 今井 康子
-- "Darling, Get Out" (Metal, Rebelling lyrics, Cool choreography), center 小澤 のぞみ
-- "Respect For Tomorrow" (Rock, Happiness lyrics, Energetic choreography), center 吉川 心
-- "Magic Of Ice" (Pop, Loneliness lyrics, Elegant choreography), center 吉川 心
-Group: Sakura Drops
-Members in the group: 11
+- "Signal Fire" (Rock, Friends lyrics, Energetic choreography), center Takeda Rin
+- "Platform 7 Promise" (Pop, Love lyrics, Cute choreography), center Hoshino Mirai
+- "Neon Timetable" (EDM, Partying lyrics, Energetic choreography), center Hina (Aoki Hinata)
+- Talk break with Fujii Mao, Shimizu Kaede and Nishida Koharu
+- "Cloudline" (EDM, Love lyrics, Cool choreography), center Kato Hikari
+- "Goodbye, Ticket Gate" (Ballad, Regret lyrics, Elegant choreography), center Mori Sayaka
+- "Under the Overpass" (Funk, Anxiety lyrics, Cool choreography), center Ogawa Rena
+- "Spring Express" (Pop, Happiness lyrics, Cute choreography), center Kudo Nanami
+- Talk break with Hina (Aoki Hinata) and Ishikawa Yui
+- "Rush Hour Rebellion" (Rock, Rebelling lyrics, Cool choreography), center Takeda Rin
+- "Midnight Platform" (Pop, Loneliness lyrics, Elegant choreography), center Hoshino Mirai
+- "Departure Bell" (Pop, Friends lyrics, Cute choreography), center Hoshino Mirai
+Group: Kirameki Station
+Members in the group: 14
 Group formed: 2 years ago
-Singles released by the group: 17
-Idols ranked in the last election: 9
-Most popular members: 吉川 心, 望月 有紗, 中澤 実香
-Total fans: 678748
-Agency reputation: no scandals
-Date: Sunday 24 March 2024
+Singles released by the group: 12
+Most popular members: Hoshino Mirai, Hina (Aoki Hinata), Takeda Rin
+Group reputation: a few scandals
+Group concept: cute, traditional idol image
+Stage costumes: short skirts with safety shorts
+Performance style: energy and enthusiasm
+Date: Sunday 14 September 2025
 
 The idols in the new event:
-村上 映子: Trait: Snitch. Doesn't like carbonated drinks. Age 25. A member of Hoshizora Lane for 18 of its 18 months, 1st in the last election, the most fans of 4 in Hoshizora Lane, in 8 of the group's singles.
-小澤 のぞみ: Trait: Hypochondriac. Age 17. Stamina 18/100. A member for 19 months, 7th in the last election, 5th most fans in the group, in 7 of the group's singles (center of 3).
-吉川 心: Trait: Steadfast. Age 15. A member for 2 years, 8th in the last election, the most fans in the group, in 14 of the group's singles (center of 3).
-中澤 実香: Trait: Secretive. Age 22. A member for 20 months, 2nd in the last election, 3rd most fans in the group, in 9 of the group's singles (center of 2).
-望月 有紗: Trait: Asexual. Age 18. A member for 2 years, 4th in the last election, 2nd most fans in the group, in 15 of the group's singles (center of 4).
+Hoshino Mirai: Trait: Prodigy. Practises scales in the stairwell before every show. Owns more than forty pairs of headphones. Age 19. Top vocal skill in the group. A member for 2 years, 1st in the last election, the most fans in the group, in 11 of the group's singles (center of 4).
+Takeda Rin: Trait: Steadfast. Captained her high school's volleyball team. Writes every fan letter's sender a short reply. Age 21. Top dance skill in the group. A member for 2 years, in 9 of the group's singles (center of 2).
+Hina (Aoki Hinata): Trait: Photogenic. Age 17. Cutest and prettiest in the group. A member for 2 years, 2nd in the last election, the second most fans in the group, in 8 of the group's singles (center of 3).
+Kato Hikari: Trait: Shameless. Age 20. Sexiest in Aozora Chapter. A member of Aozora Chapter for 11 of its 11 months, the most fans of 5 in Aozora Chapter, in 0 of the group's singles. Member of sister group Aozora Chapter.
+Mori Sayaka: Trait: Perfectionist. A minor scandal in her past. Age 23. Smartest in the group. A member for 2 years, in 8 of the group's singles (center of 1).
 
 History, for context only (not what the posts are about):
-Previous concert: Concert [Open Air Stage]
-Previous concert venue: Open Air Stage
-Previous concert audience: 5000
-Previous concert attendance: 100%
-Previous concert held: 21 months ago
-Concerts held before this one: 3
-Biggest audience at an earlier concert: 5000
+Previous concert: Concert Hall, attendance 100% (2000), held 6 months ago
+Concerts held before this one: 4
+Biggest audience at an earlier concert: 3800
 
 History: earlier posts on the feed, oldest first, for context only. Don't reply to them or repeat them:
-- F_HC_T: Yesss DJ, Never Let Me Go is finally out! Sana looks amazing in the center, I've been replaying it all day
-- M_C_T: Only 10k sales? Fans really dropped off. Another meh metal single from Sakura Drops, I'm skipping this one
-- F_HC_A: Sales are way down after those 200k hits, but the group still has us. So proud of Kokoro and the whole team
-- M_HC_YA: The production feels a bit rough, but the regret lyrics hit hard. This song suits them
+- M_HC_YA: Handshake tickets for Midnight Platform secured. Row 3 at the open air show too, best week ever
+- F_C_T: Hina's photo book preview is so cute I can't
+- M_C_A: Kirameki Station on the morning radio. Mirai sings live better than on the CD
+- F_HC_A: Missed the Aozora Chapter stream. Did Kaho say anything about her break?
+- M_C_T: why are the open air tickets so expensive lol
 ```
 
 Each placeholder was filled in as follows:
 
 - **`{event}`:** the line `Event: the group held a concert`.
-- **`{facts}`:** the lines from `Title` to the end of the set list.
+- **`{facts}`:** the lines from `Venue` to the end of the set list.
 - **`{agency}`:** the lines from `Group` to `Date`.
 - **`{members}`:** the header `The idols in the new event:` from `AIFANCHATTER__PROMPT__MEMBERS`, then one line per idol.
-  - 村上 映子 is from the sister group, so her time and her place by fans are given in that group, by name.
+  - Hina has a nickname, so her full name follows it.
+  - Kato Hikari is from the sister group, so her time and her place by fans are given in that group, by name, and her line ends by naming it.
+  - Takeda Rin was 3rd in the election and 3rd by fans, so neither place is named.
 - **`{history}`:** the header from `AIFANCHATTER__PROMPT__HISTORY`, then the group's earlier concerts.
 - **`{feed}`:** the header from `AIFANCHATTER__PROMPT__FEED`, then the earlier posts.
 
@@ -242,6 +305,7 @@ Each placeholder was filled in as follows:
 
 - **Fan codes:** it uses only the 12 fan codes, and gives a random one to a post with another code.
 - **Limits:** it keeps at most 6 posts and 3 replies per post, and cuts texts over 200 characters.
+- **Replies to themselves:** it drops a reply from the fan who wrote the post.
 - **One post:** when the prompt asks for several posts through `{min}` and the reply has only one, it sends the request once more. If that reply has only one post too, it shows it, and doesn't send one-post replies again until you change a setting.
 - **Emoji:** it takes them out, because the feed can't show them.
 - **Timing:** it releases the posts into the feed over the next in-game day or two.

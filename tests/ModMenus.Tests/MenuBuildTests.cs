@@ -174,6 +174,44 @@ namespace ModMenus.Tests
             Assert.Equal("Not a constant", TextOf(menu.Rows[2]).text);
         }
 
+        /// <summary>
+        /// Added in 3.1.0: a label too long for one line used to run past the menu's edge or get cut off. Each
+        /// setting's label can now wrap, with the control under it (beside it, for a checkbox) moving with it.
+        /// The wrapping itself needs the game's text layout, so the in-game test checks it.
+        /// </summary>
+        [Fact]
+        public void EverySettingsLabelCanWrap()
+        {
+            Menu menu = Build("""
+                [
+                    { "type": "slider", "varID": "A_Volume", "labelID": "TEST__VOLUME" },
+                    { "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST"] },
+                    { "type": "checkbox", "varID": "A_Loud", "labelID": "TEST__LOUD" },
+                    { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO" }
+                ]
+                """);
+
+            (string row, string below, string box)[] expected =
+            {
+                ("ModMenuSlider_A_Volume", "Slider", null),
+                ("ModMenuDropdown_A_Pick", "Dropdown", null),
+                ("ModMenuCheckbox_A_Loud", null, "Checkbox"),
+                ("ModMenuInput_A_Motto", "Field", null),
+            };
+            foreach (var (name, below, box) in expected)
+            {
+                GameObject row = menu.Rows.Single(r => Seams.NameOf(r) == name);
+                LabelWrap wrap = Seams.GetComponent<LabelWrap>(row);
+                Assert.NotNull((object)wrap);
+                GameObject label = Seams.OwnerOf(wrap.label);
+                Assert.Equal("Title", Seams.NameOf(label));
+                Assert.Contains(label, Seams.ChildrenOf(row), new SameObject());
+                Assert.Equal(below == null ? new string[0] : new[] { below }, wrap.below.Select(b => Seams.NameOf(Seams.OwnerOf(b))));
+                Assert.Equal(box, wrap.box is null ? null : Seams.NameOf(Seams.OwnerOf(wrap.box)));
+            }
+            Assert.Null((object)Seams.GetComponent<LabelWrap>(menu.Rows[0]));
+        }
+
         [Fact]
         public void TitleShowsTheModNameCentred()
         {

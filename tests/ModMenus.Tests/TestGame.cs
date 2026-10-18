@@ -443,6 +443,7 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuDropdown))] = Stub(nameof(AddMenuDropdown)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.PlaceDropdownInRow))] = Stub(nameof(PlaceDropdownInRow)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuInput))] = Stub(nameof(AddMenuInput)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddLabelWrap))] = Stub(nameof(AddLabelWrap)),
             [AccessTools.FirstMethod(AccessTools.Inner(typeof(ModMenusUtils), "<>c"), m => m.Name.Contains(nameof(ModMenusUtils.AddMenuDropdown)))] = Stub(nameof(IsScreenTab)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.Awake))] = Stub(nameof(ItemAwake)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.OnEnable))] = Stub(nameof(ItemOnEnable)),
@@ -547,10 +548,13 @@ namespace ModMenus.Tests
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static GameObject AddMenuDropdown(string varID, string labelID, string[] itemLabelIDs, int def, Transform parentTransform, Transform dropdownLayer) => throw NotInstalled();
-        public static void PlaceDropdownInRow(RectTransform dropdown) => throw NotInstalled();
+        public static void PlaceDropdownInRow(RectTransform dropdown, float labelHeight) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, bool password, Transform parentTransform) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void AddLabelWrap(GameObject row, TextMeshProUGUI label, RectTransform box, RectTransform[] below) => throw NotInstalled();
 
         /// <summary>
         /// AddMenuDropdown's lambda that finds the settings popup's Screen tab by name.

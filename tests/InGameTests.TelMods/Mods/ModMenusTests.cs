@@ -531,6 +531,10 @@ namespace InGameTests.TelMods
             { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check1"", ""labelID"": ""Checkbox"" },
             { ""type"": ""dropdown"", ""varID"": ""ModMenusTest_Top"", ""labelID"": ""Dropdown"", ""itemIDList"": [""One"", ""Two""] },
             { ""type"": ""input"", ""varID"": ""ModMenusTest_Name"", ""labelID"": ""Text field"", ""defaultValue"": ""Typed text"" },
+            { ""type"": ""slider"", ""varID"": ""ModMenusTest_LongSlider"", ""labelID"": ""A slider whose label is too long for one line of the menu, so it wraps"", ""minValue"": 1, ""maxValue"": 20, ""defaultValue"": 1 },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_LongCheck"", ""labelID"": ""A checkbox whose label is too long for one line of the menu, so it wraps"" },
+            { ""type"": ""dropdown"", ""varID"": ""ModMenusTest_LongDropdown"", ""labelID"": ""A dropdown whose label is too long for one line of the menu, so it wraps"", ""itemIDList"": [""One"", ""Two""] },
+            { ""type"": ""input"", ""varID"": ""ModMenusTest_LongName"", ""labelID"": ""A text field whose label is too long for one line of the menu, so it wraps"" },
             { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check2"", ""labelID"": ""Checkbox 2"" },
             { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider2"", ""labelID"": ""Slider at the end"", ""minValue"": 1, ""maxValue"": 20, ""defaultValue"": 20 }
         ]";
@@ -539,7 +543,8 @@ namespace InGameTests.TelMods
         /// Rows are spaced evenly: each draws only inside itself and fills it, top to bottom, so the gaps between
         /// what's drawn are the same between any two rows (a title keeps room around it, and a blank text row
         /// draws nothing). A slider's track starts at the left edge, like the labels and boxes. The menu keeps the
-        /// same margin on every side of the panel.
+        /// same margin on every side of the panel. A label too long for one line wraps inside its row, above its
+        /// control, and a dropdown's box goes back under its wrapped label when its list closes.
         /// </summary>
         [InGameTest(Suite = ModTest.Suite)]
         private static IEnumerator RowsAreEvenlySpacedAndAligned(TestContext ctx)
@@ -624,6 +629,34 @@ namespace InGameTests.TelMods
                     float trackLeft = corners.Min(c => RectTransformUtility.WorldToScreenPoint(camera, c).x);
                     ctx.Assert(Mathf.Abs(trackLeft - ScreenRect(row).xMin) <= unit, row.name + "'s track starts " + ((trackLeft - ScreenRect(row).xMin) / unit).ToString("0.0") + " right of the row's left edge");
                 }
+
+                // Long labels wrap inside their rows, above their controls (beside it, for a checkbox)
+                foreach (RectTransform row in rows.Where(r => r.name.Contains("_ModMenusTest_Long")))
+                {
+                    ScrollToMiddle(row);
+                    yield return null;
+                    Rect text = TextRect(LabelOf(row));
+                    Rect rect = ScreenRect(row);
+                    ctx.Record(row.name + "Label", text + " row " + rect);
+                    ctx.Assert(text.height >= 1.8f * 15 * unit, row.name + "'s label is on one line: " + (text.height / unit).ToString("0.0") + " tall");
+                    ctx.Assert(text.xMax <= rect.xMax + unit && text.yMin >= rect.yMin - unit && text.yMax <= rect.yMax + unit, row.name + "'s label runs outside its row: " + text + ", the row is " + rect);
+                    Transform control = row.Find("Slider") ?? row.Find("Dropdown") ?? row.Find("Field");
+                    if (control != null)
+                        ctx.Assert(ScreenRect((RectTransform)control).yMax <= text.yMin + unit, row.name + "'s control overlaps its label: its top is " + ((ScreenRect((RectTransform)control).yMax - text.yMin) / unit).ToString("0.0") + " above the label's last line");
+                }
+                RectTransform longDropdownRow = rows.First(r => r.name == "ModMenuDropdown_ModMenusTest_LongDropdown");
+                ScrollToMiddle(longDropdownRow);
+                CustomDropdown longDropdown = longDropdownRow.GetComponentInChildren<CustomDropdown>(true);
+                longDropdown.Animate();
+                yield return new WaitForSecondsRealtime(0.5f);
+                Component longItem = longDropdownRow.GetComponent(AccessTools.TypeByName("ModMenus.ModMenusUtils+ModMenuItem"));
+                AccessTools.Method(longItem.GetType(), "CloseList").Invoke(longItem, null);
+                yield return new WaitForSecondsRealtime(0.5f);
+                Rect boxAfter = ScreenRect((RectTransform)longDropdown.transform);
+                Rect labelAfter = TextRect(LabelOf(longDropdownRow));
+                ctx.Assert(longDropdown.transform.parent == longDropdownRow && boxAfter.yMax <= labelAfter.yMin + unit && Inside(boxAfter, ScreenRect(longDropdownRow)),
+                    "After its list closed, the long dropdown's box isn't under its label in its row: box " + boxAfter + ", label " + labelAfter);
+
                 yield return Screenshot(Path.Combine(Path.Combine(Path.GetTempPath(), "ModMenusInputScreens"), "3-layout.png"));
 
                 yield return Game.CloseAllPopups(ctx);
@@ -798,6 +831,22 @@ namespace InGameTests.TelMods
             }
             scroll.verticalNormalizedPosition = best;
             Canvas.ForceUpdateCanvases();
+        }
+
+        /// <summary>The label ModMenus wraps in this row.</summary>
+        private static TextMeshProUGUI LabelOf(RectTransform row) =>
+            Traverse.Create(row.GetComponent(AccessTools.TypeByName("ModMenus.ModMenusUtils+LabelWrap"))).Field("label").GetValue<TextMeshProUGUI>();
+
+        /// <summary>The screen area a text's characters take up, rather than its box.</summary>
+        private static Rect TextRect(TMP_Text text)
+        {
+            text.ForceMeshUpdate();
+            Bounds bounds = text.textBounds;
+            Canvas canvas = text.GetComponentInParent<Canvas>().rootCanvas;
+            Camera camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            Vector2 min = RectTransformUtility.WorldToScreenPoint(camera, text.transform.TransformPoint(bounds.min));
+            Vector2 max = RectTransformUtility.WorldToScreenPoint(camera, text.transform.TransformPoint(bounds.max));
+            return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
         }
 
         private static Rect ScreenRect(RectTransform rect)

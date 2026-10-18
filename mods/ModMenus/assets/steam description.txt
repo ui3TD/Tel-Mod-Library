@@ -25,3 +25,4 @@ Format, examples and tips: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/ma
 - 2.1.0: Tidier menu: even spacing, aligned sliders, wider dropdowns, long text fits, blue scrollbar.
 - 2.2.0: Mod titles sit closer to their own settings, and rows are closer together.
 - 3.0.0: New password option for text fields: API keys and other secrets show as asterisks.
+- 3.1.0: Long setting labels wrap onto more lines instead of being cut off.

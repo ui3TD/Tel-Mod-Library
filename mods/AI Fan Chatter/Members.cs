@@ -21,6 +21,46 @@ namespace AIFanChatter
         public const int TriviaLength = 120;
         public const int GraduationTriviaLength = 150;
         public const int MostPopular = 3;
+        /// <summary>Groups smaller than this have no standouts: with two members, each would top or trail every stat.</summary>
+        public const int StandoutGroupSize = 3;
+        public const int AdultAge = 16;
+
+        /// <summary>
+        /// The stats a standout is named for, with how a top and a bottom value read.
+        /// </summary>
+        private static readonly Standout[] StandoutStats =
+        {
+            new(data_girls._paramType.vocal, skill: "vocal"),
+            new(data_girls._paramType.dance, skill: "dance"),
+            new(data_girls._paramType.cute, top: "cutest", bottom: "cute"),
+            new(data_girls._paramType.cool, top: "coolest", bottom: "cool"),
+            new(data_girls._paramType.pretty, top: "prettiest", bottom: "pretty"),
+            new(data_girls._paramType.sexy, top: "sexiest", bottom: "sexy", adultsOnly: true),
+            new(data_girls._paramType.funny, top: "funniest", bottom: "funny"),
+            new(data_girls._paramType.smart, top: "smartest", bottom: "smart"),
+        };
+
+        /// <summary>
+        /// A skill reads "top vocal skill" and "poorest vocal skill"; any other stat reads as its superlative
+        /// ("cutest") and after "least" ("least cute").
+        /// </summary>
+        private sealed class Standout
+        {
+            public readonly data_girls._paramType Type;
+            public readonly string Skill;
+            public readonly string Top;
+            public readonly string Bottom;
+            public readonly bool AdultsOnly;
+
+            public Standout(data_girls._paramType type, string skill = null, string top = null, string bottom = null, bool adultsOnly = false)
+            {
+                Type = type;
+                Skill = skill;
+                Top = top;
+                Bottom = bottom;
+                AdultsOnly = adultsOnly;
+            }
+        }
 
         /// <summary>
         /// An idol's place by fans among a group's members who haven't graduated. Group is that group's name
@@ -147,8 +187,9 @@ namespace AIFanChatter
 
         /// <summary>
         /// An idol's line, from who she is to her place in the group: trait, trivia, scandal record, age,
-        /// how she's doing, then time in the group, election, rank by fans and singles. The scandal record
-        /// shows only when she has one, and stamina only when it's low. The group's own totals (its age,
+        /// how she's doing, her standout stats, then time in the group, election, rank by fans and singles.
+        /// The scandal record shows only when she has one, stamina only when it's low, and stats only where
+        /// she alone is highest or lowest in the group. The group's own totals (its age,
         /// members, singles, the election's size) are in the agency section, so the line leaves them out.
         /// An idol from another group than the moment's (a sister group's member in a main single) has her
         /// time and rank given in her own group, by name and with its totals; her singles are still counted
@@ -176,12 +217,100 @@ namespace AIFanChatter
             Sentence(sentences, Join(
                 Part(() => girl.GetMentalStamina() <= LowStamina ? "mental stamina " + OutOf100(girl.GetMentalStamina()) : ""),
                 Part(() => girl.GetPhysicalStamina() <= LowStamina ? "stamina " + OutOf100(girl.GetPhysicalStamina()) : "")));
+            Sentence(sentences, Part(() => Standouts(girl, home, named)));
             Sentence(sentences, Join(
                 Part(() => Tenure(girl, now, home, named)),
                 Part(() => Election(girl)),
                 Part(() => RankText(knownRank ?? rankIn?.Invoke(girl, home, named), knownRank != null)),
                 Part(() => Singles(girl, eventGroup ?? own))));
             return string.Join(" ", sentences.ToArray());
+        }
+
+        /// <summary>
+        /// "top vocal and dance skills, cutest and smartest in the group, but least funny": the stats where
+        /// she alone has the highest or the lowest value among the group's members, herself included even
+        /// after she graduates. A tie names no one. Group is the group's name when it isn't the moment's group.
+        /// </summary>
+        public static string Standouts(data_girls.girls girl, Groups._group group, string named)
+        {
+            if (girl == null || group == null)
+            {
+                return "";
+            }
+            List<data_girls.girls> members = group.GetGirls(true).Where(g => g != null).ToList();
+            if (!members.Contains(girl))
+            {
+                members.Add(girl);
+            }
+            if (members.Count < StandoutGroupSize)
+            {
+                return "";
+            }
+            List<Standout> tops = new();
+            List<Standout> bottoms = new();
+            bool adult = Part(() => girl.GetAge() >= AdultAge ? "adult" : "") != "";
+            foreach (Standout stat in StandoutStats.Where(s => adult || !s.AdultsOnly))
+            {
+                float? Value(data_girls.girls g)
+                {
+                    try
+                    {
+                        return g.getParam(stat.Type)?.val;
+                    }
+                    catch (Exception)
+                    {
+                        return null;
+                    }
+                }
+                float? own = Value(girl);
+                if (own == null)
+                {
+                    continue;
+                }
+                List<float> others = members.Where(g => g != girl).Select(Value).Where(v => v != null).Select(v => v.Value).ToList();
+                if (others.Count == 0)
+                {
+                    continue;
+                }
+                if (own > others.Max())
+                {
+                    tops.Add(stat);
+                }
+                else if (own < others.Min())
+                {
+                    bottoms.Add(stat);
+                }
+            }
+            // Skills share one "top ... skills", other stats one "least ...", and the group is named once
+            string top = AndList(new[] { Skills("top", tops) }.Concat(tops.Where(t => t.Skill == null).Select(t => t.Top)).ToList());
+            string bottom = AndList(new[] { Skills("poorest", bottoms), Least(bottoms) }.ToList());
+            string where = "in " + (string.IsNullOrEmpty(named) ? "the group" : named);
+            return top != "" && bottom != "" ? top + " " + where + ", but " + bottom
+                : top != "" ? top + " " + where
+                : bottom != "" ? bottom + " " + where
+                : "";
+        }
+
+        /// <summary>"top vocal skill", "poorest vocal and dance skills"; "" without skills.</summary>
+        private static string Skills(string level, List<Standout> stats)
+        {
+            List<string> skills = stats.Where(s => s.Skill != null).Select(s => s.Skill).ToList();
+            return skills.Count == 0 ? "" : level + " " + AndList(skills) + (skills.Count == 1 ? " skill" : " skills");
+        }
+
+        /// <summary>"least cute and funny"; "" without other stats.</summary>
+        private static string Least(List<Standout> stats)
+        {
+            List<string> words = stats.Where(s => s.Skill == null).Select(s => s.Bottom).ToList();
+            return words.Count == 0 ? "" : "least " + AndList(words);
+        }
+
+        /// <summary>"a", "a and b", "a, b and c"; empty items are left out.</summary>
+        private static string AndList(List<string> items)
+        {
+            items = items.Where(i => !string.IsNullOrEmpty(i)).ToList();
+            return items.Count == 0 ? "" : items.Count == 1 ? items[0]
+                : string.Join(", ", items.Take(items.Count - 1).ToArray()) + " and " + items[items.Count - 1];
         }
 
         private static Groups._group OwnGroup(data_girls.girls girl)

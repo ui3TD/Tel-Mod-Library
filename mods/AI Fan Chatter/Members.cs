@@ -223,7 +223,19 @@ namespace AIFanChatter
                 Part(() => Election(girl)),
                 Part(() => RankText(knownRank ?? rankIn?.Invoke(girl, home, named), knownRank != null)),
                 Part(() => Singles(girl, eventGroup ?? own))));
+            // Last, so it reads as a label: she isn't in the group the moment is about
+            Sentence(sentences, guest ? Part(() => OtherGroup(own)) : "");
             return string.Join(" ", sentences.ToArray());
+        }
+
+        /// <summary>
+        /// "Member of sister group Moons" for an idol from a sister group; "Member of main group Stars" for
+        /// a main-group idol in a sister group's moment.
+        /// </summary>
+        public static string OtherGroup(Groups._group own)
+        {
+            string name = GroupName(own);
+            return name == "" ? "" : "Member of " + (own.IsMain() ? "main" : "sister") + " group " + name;
         }
 
         /// <summary>

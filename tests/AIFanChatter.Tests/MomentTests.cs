@@ -38,6 +38,7 @@ namespace AIFanChatter.Tests
             singles._single plain = TestGame.Single("Old Song", TestGame.Today.AddDays(-50), 1);
             SEvent_Concerts._concert concert = TestGame.Concert("Live", TestGame.Today, 15000);
             concert.ProjectedValues.Actual_Hype = 199;
+            concert.ProjectedValues.Actual_Attendance = 0.92f;
             concert.SetListItems.Add(new SEvent_Concerts._concert._song { Single = metal, Center = arisa });
             concert.SetListItems.Add(new SEvent_Concerts._concert._mc { Girls = new List<data_girls.girls> { kokoro, null, mika } });
             concert.SetListItems.Add(new SEvent_Concerts._concert._song { Single = plain });
@@ -46,6 +47,9 @@ namespace AIFanChatter.Tests
 
             Moment moment = MomentContext.Concert(concert);
             Assert.Equal("199%", moment.Fact(Moment.FactsSection, "Hype"));
+            // The share of seats filled and the people who came, in one line
+            Assert.Equal("92% (15000)", moment.Fact(Moment.FactsSection, "Attendance"));
+            Assert.Null(moment.Fact(Moment.FactsSection, "Audience"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Made a profit"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Title"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Performers"));
@@ -147,6 +151,49 @@ namespace AIFanChatter.Tests
             }
         }
 
+        /// <summary>
+        /// The game's event texts speak to the player; when one says "you", the model is told who that is.
+        /// </summary>
+        [Theory]
+        [InlineData("Announce that you'll be taking a sabbatical", "", true)]
+        [InlineData("Stay quiet", "Fans praise your restraint.", true)]
+        [InlineData("Stay quiet", "Nothing changes.", false)]
+        [InlineData("Young fans cheer", "", false)]
+        public void Event_SayingYou_NamesTheProducer(string answer, string outcome, bool named)
+        {
+            Event_Manager._activeEvent active = new() { data = new Event_Manager._randomEvent { title = "" } };
+            Event_Manager._randomEvent._reply reply = new() { text = answer, description = outcome };
+            Moment moment = MomentContext.Event(active, reply);
+            Assert.Equal(named ? "the group's producer" : null, moment.Fact(Moment.FactsSection, "You"));
+        }
+
+        /// <summary>
+        /// The producer goes by the name the game shows for the player: a nickname when one is set.
+        /// </summary>
+        [Fact]
+        public void Producer_IsNamedAsTheGameShowsThePlayer()
+        {
+            Language.Variables.Add(new Language._variable { Variable = "default", Male = "lastName firstName", Female = "lastName firstName" });
+            staticVars._playerData before = staticVars.PlayerData;
+            List<staff._staff> staffBefore = staff.Staff.ToList();
+            try
+            {
+                staticVars.PlayerData = new staticVars._playerData { FirstName = "Haruto", LastName = "Sato" };
+                staff.Staff.Clear();
+                staff._staff player = new() { type = staff._type.player };
+                staff.Staff.Add(player);
+                Assert.Equal("the group's producer (Sato Haruto)", MomentContext.Producer());
+                player.nickname = "Boss";
+                Assert.Equal("the group's producer (Boss)", MomentContext.Producer());
+            }
+            finally
+            {
+                staticVars.PlayerData = before;
+                staff.Staff.Clear();
+                staff.Staff.AddRange(staffBefore);
+            }
+        }
+
         [Theory]
         [InlineData("en", "English")]
         [InlineData("jp", "Japanese")]
@@ -180,11 +227,11 @@ namespace AIFanChatter.Tests
             string prompt = Prompt.System("Japanese", new Dictionary<string, string>(), null);
             Assert.StartsWith("You write fan posts for the social media feed of an idol management game.", prompt);
             Assert.Contains("\n- Write 3 to 6 posts reacting to the event", prompt);
-            Assert.Contains("0 to 3 replies", prompt);
+            Assert.Contains("0 to 3 replies from other fans but not themselves.", prompt);
             Assert.Contains("under 100 characters", prompt);
             Assert.Contains("- Write in Japanese.", prompt);
             Assert.Contains("- Match each fan's tone to their opinion of the group", prompt);
-            Assert.Contains("\n- Don't quote exact stats. Exact sales and attendance can be quoted where it fits.\n", prompt);
+            Assert.Contains("\n- Don't repeat game stats. Exact sales and attendance can be quoted where it fits.\n", prompt);
             Assert.True(Prompt.AsksForSeveralPosts());
             Assert.DoesNotContain("real people", prompt);
             foreach (string placeholder in new[] { "{min}", "{max}", "{replies}", "{length}", "{language}" })

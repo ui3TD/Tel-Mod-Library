@@ -178,7 +178,7 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// "Concert Hall, audience 2000, attendance 100%, held 6 months ago"; without the venue when the game
+        /// "Concert Hall, attendance 100% (2000), held 6 months ago"; without the venue when the game
         /// has no name for it.
         /// </summary>
         public static string ConcertSummary(SEvent_Concerts._concert concert, DateTime now)
@@ -193,23 +193,28 @@ namespace AIFanChatter
                 venue = "";
             }
             string ago = Ago(concert.FinishDate, now);
-            return (venue == "" ? "" : venue + ", ") + "audience " + concert.ProjectedValues.Actual_Audience
-                + ", attendance " + Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "%" + (ago == "" ? "" : ", held " + ago);
+            return (venue == "" ? "" : venue + ", ") + "attendance " + Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "% ("
+                + concert.ProjectedValues.Actual_Audience + ")" + (ago == "" ? "" : ", held " + ago);
         }
 
         /// <summary>
-        /// The previous graduation and how many idols graduated before her. An unknown graduation date
-        /// (old saves) counts towards the number but is never the previous one.
+        /// The previous graduation and how many idols graduated before her, from her own group: a graduate
+        /// stays in her group's list. Without a group, every graduate counts. The first graduate is said to
+        /// be. An unknown graduation date (old saves) counts towards the number but is never the previous one.
         /// </summary>
         public static void Graduation(Moment moment, data_girls.girls girl, IEnumerable<data_girls.girls> all, DateTime now)
         {
             try
             {
+                Groups._group group = GroupOfIdol(girl);
                 List<data_girls.girls> earlier = (all ?? Enumerable.Empty<data_girls.girls>())
                     .Where(g => g != null && g != girl && g.status == data_girls._status.graduated)
+                    .Where(g => group == null || GroupOfIdol(g) == group)
                     .ToList();
+                string countKey = group == null ? "Idols who graduated before her" : "Idols who graduated from the group before her";
                 if (earlier.Count == 0)
                 {
+                    moment.AddTo(Section, countKey, () => "none, she is the first");
                     return;
                 }
                 List<data_girls.girls> dated = earlier.Where(g => Known(g.Graduation_Date)).ToList();
@@ -220,11 +225,23 @@ namespace AIFanChatter
                         .AddTo(Section, "Previous graduate", () => MomentContext.Name(previous))
                         .AddTo(Section, "Previous graduation", () => Ago(previous.Graduation_Date, now));
                 }
-                moment.AddTo(Section, "Idols who graduated before her", () => earlier.Count);
+                moment.AddTo(Section, countKey, () => earlier.Count);
             }
             catch (Exception)
             {
                 // No history for this graduation
+            }
+        }
+
+        private static Groups._group GroupOfIdol(data_girls.girls girl)
+        {
+            try
+            {
+                return girl.GetGroup();
+            }
+            catch (Exception)
+            {
+                return null;
             }
         }
 

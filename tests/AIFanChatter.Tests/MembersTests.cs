@@ -328,9 +328,28 @@ namespace AIFanChatter.Tests
             singles._single single = Single("Song", Today, 1, lead, guest).In(main);
 
             Moment moment = MomentContext.Single(single);
-            Assert.EndsWith("A member of Moons for 18 of its 18 months, the most fans of 2 in Moons, in 1 of the group's singles.", moment.Fact(M, "Guest"));
+            Assert.EndsWith("A member of Moons for 18 of its 18 months, the most fans of 2 in Moons, in 1 of the group's singles. Member of sister group Moons.", moment.Fact(M, "Guest"));
+            Assert.DoesNotContain("Member of", moment.Fact(M, "Lead"));
             Assert.EndsWith("A member for 12 months, the most fans in the group, in 1 of the group's singles (center of 1).", moment.Fact(M, "Lead"));
             Assert.Null(moment.Fact(Moment.AgencySection, "Sister group of"));
+        }
+
+        /// <summary>
+        /// A main-group idol in a sister group's moment is labelled with the main group.
+        /// </summary>
+        [Fact]
+        public void MainGroupIdol_InASisterGroupsMoment_IsLabelled()
+        {
+            data_girls.girls lead = Idol("Lead", fans: 5000);
+            data_girls.girls a = Idol("A", fans: 10);
+            data_girls.girls b = Idol("B", fans: 20);
+            Group("Stars", Today.AddYears(-6), lead, Idol("Back", fans: 10));
+            Groups._group sister = Group("Moons", Today.AddYears(-1), a, b);
+            singles._single single = Single("Song", Today, 1, a, lead).In(sister);
+
+            Moment moment = MomentContext.Single(single);
+            Assert.EndsWith(" Member of main group " + Members.GroupName(Groups.Groups_[0]) + ".", moment.Fact(M, "Lead"));
+            Assert.DoesNotContain("Member of", moment.Fact(M, "A"));
         }
 
         [Fact]

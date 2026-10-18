@@ -156,7 +156,7 @@ namespace AIFanChatter.Tests
             Moment moment = new("x");
             History.Concert(moment, current, SEvent_Concerts.Concerts, Today);
             // One line, without the concert's name: the game's names are the venue's
-            Assert.Equal("Concert Hall, audience 3000, attendance 90%, held 30 days ago", moment.Fact(H, "Previous concert"));
+            Assert.Equal("Concert Hall, attendance 90% (3000), held 30 days ago", moment.Fact(H, "Previous concert"));
             Assert.Equal(new[] { "Previous concert", "Concerts held before this one", "Biggest audience at an earlier concert" },
                 moment.Facts(H).Select(f => f.Key));
             Assert.Equal("2", moment.Fact(H, "Concerts held before this one"));
@@ -169,7 +169,83 @@ namespace AIFanChatter.Tests
             SEvent_Concerts._concert old = Concert("Old", Today.AddDays(-30), 3000);
             old.Venue = (SEvent_Concerts._venue)99;
             old.ProjectedValues.Actual_Attendance = 1f;
-            Assert.Equal("audience 3000, attendance 100%, held 30 days ago", History.ConcertSummary(old, Today));
+            Assert.Equal("attendance 100% (3000), held 30 days ago", History.ConcertSummary(old, Today));
+        }
+
+        /// <summary>
+        /// A sister group's graduation compares only with its own graduates; the main group's don't count.
+        /// </summary>
+        [Fact]
+        public void Graduation_ComparesOnlyWithHerOwnGroup()
+        {
+            data_girls.girls mainGraduate = Idol("Main graduate").Graduated(Today.AddDays(-20));
+            data_girls.girls sisterGraduate = Idol("Sister graduate").Graduated(Today.AddDays(-200));
+            data_girls.girls leaving = Idol("Leaving").Graduated(Today);
+            Group("Stars", Today.AddYears(-3), Idol("Main"), mainGraduate);
+            Group("Moons", Today.AddYears(-1), Idol("Sister"), sisterGraduate, leaving);
+
+            Moment moment = new("x");
+            History.Graduation(moment, leaving, data_girls.girl, Today);
+            Assert.Equal("Sister graduate", moment.Fact(H, "Previous graduate"));
+            Assert.Equal("6 months ago", moment.Fact(H, "Previous graduation"));
+            Assert.Equal("1", moment.Fact(H, "Idols who graduated from the group before her"));
+            Assert.Null(moment.Fact(H, "Idols who graduated before her"));
+        }
+
+        [Fact]
+        public void Graduation_FirstInHerGroup_SaysSo()
+        {
+            data_girls.girls mainGraduate = Idol("Main graduate").Graduated(Today.AddDays(-20));
+            data_girls.girls leaving = Idol("Leaving").Graduated(Today);
+            Group("Stars", Today.AddYears(-3), Idol("Main"), mainGraduate);
+            Group("Moons", Today.AddYears(-1), Idol("Sister"), leaving);
+
+            Moment moment = new("x");
+            History.Graduation(moment, leaving, data_girls.girl, Today);
+            Assert.Equal(new[] { "Idols who graduated from the group before her" }, moment.Facts(H).Select(f => f.Key));
+            Assert.Equal("none, she is the first", moment.Fact(H, "Idols who graduated from the group before her"));
+        }
+
+        /// <summary>
+        /// Her released singles as center, best-selling first, with their style; none leaves the list out.
+        /// </summary>
+        [Fact]
+        public void Graduation_ListsTheSinglesSheCentered()
+        {
+            data_girls.girls leaving = Idol("Leaving");
+            data_girls.girls other = Idol("Other");
+            Group("Stars", Today.AddYears(-3), leaving, other);
+            Single("Second", Today.AddDays(-50), 900, leaving, other).Styled("Rock", "Friends", "Cool");
+            Single("First", Today.AddDays(-300), 5000, leaving).Styled("Pop", "Love", "Cute");
+            Single("Not hers", Today.AddDays(-100), 1, other, leaving);
+            singles._single planned = Single("Planned", Today, 1, leaving);
+            planned.status = singles._single._status.normal;
+            leaving.Graduated(Today);
+
+            string lines = MomentContext.Graduation(leaving, null).Lines(Moment.FactsSection);
+            Assert.Contains("Singles she was the center of, best-selling first:\n"
+                + "- \"First\" (Pop, Love lyrics, Cute choreography)\n"
+                + "- \"Second\" (Rock, Friends lyrics, Cool choreography)", lines);
+            Assert.DoesNotContain("Not hers", lines);
+            Assert.DoesNotContain("Planned", lines);
+            Assert.DoesNotContain("center of", MomentContext.Graduation(Idol("Nobody").Graduated(Today), null).Lines(Moment.FactsSection));
+        }
+
+        [Fact]
+        public void Graduation_ListsOnlyHerFiveBestSellingCenterSingles()
+        {
+            data_girls.girls leaving = Idol("Leaving");
+            Group("Stars", Today.AddYears(-3), leaving);
+            for (int i = 1; i <= 7; i++)
+            {
+                Single("Song " + i, Today.AddDays(-10 * i), i * 1000, leaving);
+            }
+            leaving.Graduated(Today);
+
+            string lines = MomentContext.Graduation(leaving, null).Lines(Moment.FactsSection);
+            Assert.Contains("Singles she was the center of, best-selling first:\n- \"Song 7\"\n- \"Song 6\"\n- \"Song 5\"\n- \"Song 4\"\n- \"Song 3\"", lines);
+            Assert.DoesNotContain("Song 2", lines);
+            Assert.DoesNotContain("Song 1\"", lines);
         }
 
         [Fact]

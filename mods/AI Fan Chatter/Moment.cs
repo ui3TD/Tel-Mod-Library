@@ -326,7 +326,6 @@ namespace AIFanChatter
                 .AddTo(section, "Singles released by the group", () => Members.ReleasedSingles(group).Count)
                 .AddTo(section, "Most popular members", () => group == null ? ""
                     : string.Join(", ", Members.ByFans(group.GetGirls(true)).Take(Members.MostPopular).Select(Name).ToArray()))
-                .AddTo(section, "Total fans", () => resources.GetFansTotal())
                 .AddTo(section, "Group reputation", () => Members.AgencyReputation(resources.GetScandalPointsTotal()))
                 .AddTo(section, "Group concept", AgencyRules.Concept);
             return (rules?.Invoke(moment) ?? moment)
@@ -359,8 +358,8 @@ namespace AIFanChatter
         {
             Moment moment = new Moment("the group held a concert")
                 .Add("Venue", () => SEvent_Concerts.GetVenueTitle(concert.Venue))
-                .Add("Audience", () => concert.ProjectedValues.Actual_Audience)
-                .Add("Attendance", () => Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "%")
+                // The share of seats filled, with the people who came
+                .Add("Attendance", () => Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "% (" + concert.ProjectedValues.Actual_Audience + ")")
                 // The game's hype runs from 0 to 200 (Concert_Popup.AddHype) and shows as a percentage
                 .Add("Hype", () => concert.ProjectedValues.Actual_Hype + "%");
             // The set list names who performed. Unnumbered, so the songs are named by title rather than by their place in the list
@@ -382,6 +381,13 @@ namespace AIFanChatter
             Moment moment = new Moment("an idol graduated (left the group)")
                 .Add("Idol", () => Name(girl))
                 .Add("After graduating", () => Members.Cut(Moment.Clean(girl.Graduation_Trivia_Text), Members.GraduationTriviaLength));
+            // Her best-selling released singles as center, best first; left out when she centered none
+            moment.AddList(Moment.FactsSection, "Singles she was the center of, best-selling first",
+                singles.Singles
+                    .Where(s => s != null && s.status == singles._single._status.released && s.ReleaseData != null && CenterOf(s) == girl)
+                    .OrderByDescending(s => s.ReleaseData.Sales)
+                    .Take(CenterSingles)
+                    .Select(s => (Func<object>)(() => TitleWithStyle(s))).ToList());
             Dictionary<data_girls.girls, Members.Rank> ranks = new();
             if (rankBefore != null)
             {
@@ -394,11 +400,59 @@ namespace AIFanChatter
             return Agency(moment, group, graduation: true);
         }
 
+        /// <summary>
+        /// Whether any of these texts says "you" or "your", as the game's event texts do to the player.
+        /// </summary>
+        public static bool SpeaksToYou(params string[] texts)
+        {
+            return texts.Any(t => t != null && Regex.IsMatch(t, @"\byou(r|rs|rself|'re|'ll|'ve|'d)?\b", RegexOptions.IgnoreCase));
+        }
+
+        /// <summary>The most singles a graduate's list of center singles holds.</summary>
+        public const int CenterSingles = 5;
+
+        private static data_girls.girls CenterOf(singles._single single)
+        {
+            try
+            {
+                return single.GetCenter();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// "the group's producer (Haruto Sato)": the player, by the name the game shows; without the name when
+        /// the game has none.
+        /// </summary>
+        public static string Producer()
+        {
+            string name = Moment.Clean(Part(() => staticVars.PlayerData.GetPlayerName(staticVars._playerData.name_type.full_name)));
+            return "the group's producer" + (name == "" ? "" : " (" + name + ")");
+        }
+
+        private static string Part(Func<string> text)
+        {
+            try
+            {
+                return text() ?? "";
+            }
+            catch (Exception)
+            {
+                return "";
+            }
+        }
+
         /// <param name="log">The game's events so far (Event_Manager.activeEvents), for how often this one happened before.</param>
         public static Moment Event(Event_Manager._activeEvent active, Event_Manager._randomEvent._reply reply, IEnumerable<Event_Manager._activeEvent> log = null)
         {
             Moment moment = new Moment("something happened at the agency")
                 .Add("What happened", () => Translate(active.data?.title))
+                // The game's event texts speak to the player, who is the producer
+                .Add("You", () => SpeaksToYou(Part(() => active.GetDescription()), Part(() => Translate(reply.text)), Part(() => Translate(reply.description)))
+                    ? Producer() : "")
                 .Add("Details", () => active.GetDescription())
                 .Add("The agency's response", () => active.SwitchVariables(Translate(reply.text)))
                 .Add("Outcome", () => reply.description == "-" ? "" : active.SwitchVariables(Translate(reply.description)))

@@ -160,6 +160,80 @@ namespace AIFanChatter
             return actor.name == "" && actor.girl != null ? Name(actor.girl) : actor.GetName(true);
         }
 
+        /// <summary>
+        /// "A, B and C".
+        /// </summary>
+        public static string JoinAnd(IList<string> items)
+        {
+            if (items.Count <= 1)
+            {
+                return items.Count == 1 ? items[0] : "";
+            }
+            return string.Join(", ", items.Take(items.Count - 1).ToArray()) + " and " + items[items.Count - 1];
+        }
+
+        /// <summary>
+        /// A single's genre, lyrics and choreography as the game titles them: "Metal, Regret lyrics, Cute
+        /// choreography". One the single doesn't have is left out.
+        /// </summary>
+        public static string Style(singles._single single)
+        {
+            List<string> parts = new();
+            void Part(Func<string> title, string suffix)
+            {
+                try
+                {
+                    string text = Moment.Clean(title());
+                    if (text != "")
+                    {
+                        parts.Add(text + suffix);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Left out
+                }
+            }
+            Part(() => single.genre?.GetTitle(), "");
+            Part(() => single.lyrics?.GetTitle(), " lyrics");
+            Part(() => single.choreography?.GetTitle(), " choreography");
+            return string.Join(", ", parts.ToArray());
+        }
+
+        /// <summary>
+        /// A single's title in quotes, as titles can hold commas, with its style: "\"Title\" (Metal, Regret
+        /// lyrics, Cute choreography)".
+        /// </summary>
+        public static string TitleWithStyle(singles._single single)
+        {
+            string style = Style(single);
+            return "\"" + Moment.Clean(single.title) + "\"" + (style == "" ? "" : " (" + style + ")");
+        }
+
+        /// <summary>
+        /// One item of a concert's set list: a song with its single's style and the idol at its center (a
+        /// song has one), or a talk break with its idols. The game's talk breaks have no title of their own,
+        /// only a number it shows on screen and doesn't save.
+        /// </summary>
+        public static string SetListItem(SEvent_Concerts._concert.ISetlistItem item)
+        {
+            if (item is SEvent_Concerts._concert._song song)
+            {
+                if (song.Single == null)
+                {
+                    return "";
+                }
+                string text = TitleWithStyle(song.Single);
+                return song.Center != null ? text + ", center " + Name(song.Center) : text;
+            }
+            if (item is SEvent_Concerts._concert._mc mc)
+            {
+                List<string> names = mc.GetGirls(true).Select(Name).ToList();
+                return names.Count == 0 ? "Talk break" : "Talk break with " + JoinAnd(names);
+            }
+            return "";
+        }
+
         private static DateTime Now => staticVars.dateTime;
 
         /// <summary>
@@ -208,7 +282,8 @@ namespace AIFanChatter
                 .AddTo(section, "Members in the group", () => group?.GetNumberOfNonGraduatedGirls())
                 .AddTo(section, "Most popular members", () => group == null ? ""
                     : string.Join(", ", Members.ByFans(group.GetGirls(true)).Take(Members.MostPopular).Select(Name).ToArray()))
-                .AddTo(section, "Agency fame level", () => resources.GetFameLevel())
+                // The game's fame levels run from 0 to 10 (resources.FamePointsToLevel)
+                .AddTo(section, "Agency fame level (0 to 10)", () => resources.GetFameLevel())
                 .AddTo(section, "Total fans", () => resources.GetFansTotal())
                 .AddTo(section, "Agency reputation", () => Members.AgencyReputation(resources.GetScandalPointsTotal()))
                 .AddTo(section, "Date", () => staticVars.dateTime.ToString("d MMMM yyyy", CultureInfo.InvariantCulture));
@@ -242,9 +317,16 @@ namespace AIFanChatter
                 .Add("Venue", () => SEvent_Concerts.GetVenueTitle(concert.Venue))
                 .Add("Audience", () => concert.ProjectedValues.Actual_Audience)
                 .Add("Attendance", () => Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "%")
-                .Add("Hype (0 to 100)", () => concert.ProjectedValues.Actual_Hype)
+                // The game's hype runs from 0 to 200 (Concert_Popup.AddHype)
+                .Add("Hype (0 to 200)", () => concert.ProjectedValues.Actual_Hype)
                 .Add("Made a profit", () => concert.ProjectedValues.Actual_Revenue >= concert.ProjectedValues.Actual_Cost ? "yes" : "no")
                 .Add("Performers", () => Names(concert.GetGirls(false), 10));
+            List<SEvent_Concerts._concert.ISetlistItem> setList = concert.SetListItems ?? new List<SEvent_Concerts._concert.ISetlistItem>();
+            for (int i = 0; i < setList.Count; i++)
+            {
+                SEvent_Concerts._concert.ISetlistItem item = setList[i];
+                moment.Add("Set list " + (i + 1), () => SetListItem(item));
+            }
             // The game's concerts are the main group's
             Groups._group group = MainGroup();
             Members.Add(moment, Members.ForConcert(concert), Now, group);

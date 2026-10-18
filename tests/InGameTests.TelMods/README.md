@@ -119,6 +119,17 @@ clamping, parsing, third click and hotkey.
 These suites leave the game changed for the rest of the boot (an election can't be undone), so each test
 starts by closing every popup and doesn't rely on what ran before it.
 
+## Reporting tools (`Reports/`)
+
+These aren't tests: they record how a mod behaves for a report and check nothing. Like the checks, each
+class names its mod with `[ModUnderTest]`, but a report does its work only when its tool has asked for
+it; in any other run, such as `--scope "<Mod>"`, it notes that and stops.
+
+- `live-report` suite (`Reports/AIFanChatterLiveReport.cs`): sends real AI Fan Chatter requests to an
+  AI service and records the prompts and replies. Each request costs money. Start it only through
+  `python tools/ai_fan_chatter_live_report.py`, which writes the request file the suite needs and deletes
+  it afterwards; without that file it sends nothing, even in a `--scope` or `--suite all` run.
+
 ## Writing checks
 
 Tests are static coroutines marked `[InGameTest(Suite = ..., Order = ...)]`; see the runner's README.

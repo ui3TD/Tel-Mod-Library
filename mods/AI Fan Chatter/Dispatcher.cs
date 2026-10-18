@@ -38,7 +38,10 @@ namespace AIFanChatter
     /// 30 seconds apart and 20 an hour in real time, so fast-forwarding can't run up a bill. A rejected
     /// key, model or address stops requests until the settings change; a busy or unreachable service
     /// pauses them for 10 minutes. Requests ask for the reply schema; a service that rejects it gets the
-    /// same request again without one, and no schema until the settings change.
+    /// same request again without one, and no schema until the settings change. A reply with a single
+    /// post, when the prompt asked for several, is taken as a failed reply and the request is sent once
+    /// more; if that one has a single post too, it's shown, and there are no more such retries until the
+    /// settings change.
     /// </summary>
     public sealed class Dispatcher
     {
@@ -72,6 +75,7 @@ namespace AIFanChatter
         private bool showNextError = true;
         private bool testPending;
         private bool noSchema;
+        private bool noRetry;
 
         public Dispatcher(IGameHost host, IHttpTransport transport, Random random)
         {
@@ -156,8 +160,10 @@ namespace AIFanChatter
             sentThisWeek++;
             inFlight = true;
             object session = host.Session;
+            // A player's prompt that asks for a set number of posts has no {min}, and may ask for one
+            bool mayRetry = !noRetry && Prompt.AsksForSeveralPosts();
 
-            void Handle(HttpResult result, bool schemaSent)
+            void Handle(HttpRequestSpec sent, HttpResult result, bool schemaSent, bool retried)
             {
                 if (schemaSent && (result.Status == 400 || result.Status == 422))
                 {
@@ -166,7 +172,7 @@ namespace AIFanChatter
                     if (plain != null)
                     {
                         Log.Warn("The service doesn't accept a reply schema (HTTP " + result.Status + "); sending the request without one.");
-                        Send(plain, retry => Handle(retry, false));
+                        Send(plain, retry => Handle(plain, retry, false, retried));
                         return;
                     }
                 }
@@ -192,22 +198,37 @@ namespace AIFanChatter
                     Log.Warn("Posts arrived after a different game was loaded; dropped.");
                     return;
                 }
+                if (posts.Count == 1 && mayRetry)
+                {
+                    if (!retried)
+                    {
+                        // Taken as a failed reply: the same request again, which counts as the same request
+                        Log.Warn("The model's reply had only one post; sending the request again.");
+                        inFlight = true;
+                        Send(sent, retry => Handle(sent, retry, schemaSent, true));
+                        return;
+                    }
+                    // Twice in a row: this model keeps to one post, so it's shown, and no more retries for now
+                    noRetry = true;
+                    Log.Warn("The model's reply had only one post again; it's shown, and one-post replies aren't sent again until the settings change.");
+                }
                 host.Queue(posts);
             }
 
-            Send(request, result => Handle(result, withSchema));
+            Send(request, result => Handle(request, result, withSchema, false));
             return true;
         }
 
         /// <summary>
         /// Called when Apply changes one of the mod's settings: requests may run again, ask for the reply
-        /// schema again, the next error shows at once, and a connection test runs on the next frame, after
-        /// every setting is saved.
+        /// schema again, retry one-post replies again, the next error shows at once, and a connection test
+        /// runs on the next frame, after every setting is saved.
         /// </summary>
         public void OnSettingsChanged()
         {
             suspended = false;
             noSchema = false;
+            noRetry = false;
             backoffUntil = double.NegativeInfinity;
             showNextError = true;
             if (testPending)

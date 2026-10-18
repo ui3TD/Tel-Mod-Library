@@ -14,6 +14,12 @@ namespace AIFanChatter
     public static class PostParser
     {
         /// <summary>
+        /// The most characters a post or reply keeps. The prompt asks for under Prompt.MaxLength, and models
+        /// sometimes write a little more, which the feed has room for.
+        /// </summary>
+        public const int MaxShownLength = 200;
+
+        /// <summary>
         /// The posts, or an empty list when there are none usable.
         /// </summary>
         public static List<SNS_Manager._message> Parse(string text, Random random)
@@ -101,9 +107,9 @@ namespace AIFanChatter
             {
                 text = text.Replace("  ", " ");
             }
-            if (text.Length > Prompt.MaxLength)
+            if (text.Length > MaxShownLength)
             {
-                text = text.Substring(0, Prompt.MaxLength - 3).TrimEnd() + "...";
+                text = text.Substring(0, MaxShownLength - 3).TrimEnd() + "...";
             }
             return text;
         }

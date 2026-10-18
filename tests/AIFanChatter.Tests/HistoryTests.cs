@@ -34,22 +34,51 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void Single_ComparesWithThePreviousReleasedSingle()
+        public void Single_ListsTheLastThreeReleased_LatestFirst()
         {
-            Single("First", Today.AddDays(-200), 50000);
-            Single("Second", Today.AddDays(-40), 20000).ReleaseData.Quality = 6;
+            Single("Oldest", Today.AddDays(-400), 10000);
+            Single("First", Today.AddDays(-200), 50000).Styled("Pop", "Love", "Cool");
+            Single("Second", Today.AddDays(-90), 40000);
+            singles._single third = Single("Third", Today.AddDays(-40), 20000).Styled("Metal", "Regret", "Cute");
+            third.ReleaseData.Quality = 6;
+            third.ReleaseData.Fan_Satisfaction = 80;
             singles._single unreleased = Single("Unfinished", Today.AddDays(-1), 999999);
             unreleased.status = singles._single._status.working;
-            singles._single current = Single("Third", Today, 30000);
+            singles._single current = Single("Now", Today, 30000);
 
             Moment moment = new("x");
             History.Single(moment, current, singles.Singles, Today);
-            Assert.Equal("Second", moment.Fact(H, "Previous single"));
-            Assert.Equal("20000", moment.Fact(H, "Previous single sales"));
-            Assert.Equal("6", moment.Fact(H, "Previous single quality (0 to 10)"));
-            Assert.Equal("40 days ago", moment.Fact(H, "Previous single released"));
-            Assert.Equal("2", moment.Fact(H, "Singles released before this one"));
-            Assert.Equal("First, 50000 sales", moment.Fact(H, "Best-selling earlier single"));
+            Assert.Equal("\"Third\" (Metal, Regret lyrics, Cute choreography): 20000 sales, quality 6 of 10, fan satisfaction 80 of 100, released 40 days ago",
+                moment.Fact(H, "Previous single"));
+            Assert.Equal("\"Second\": 40000 sales, quality 0 of 10, fan satisfaction 0 of 100, released 3 months ago", moment.Fact(H, "2nd previous single"));
+            Assert.StartsWith("\"First\" (Pop, Love lyrics, Cool choreography): 50000 sales", moment.Fact(H, "3rd previous single"));
+            Assert.DoesNotContain(moment.Facts(H), f => f.Value.Contains("Oldest"));
+            Assert.Equal("4", moment.Fact(H, "Singles released before this one"));
+            Assert.Equal("\"First\" (Pop, Love lyrics, Cool choreography), 50000 sales", moment.Fact(H, "Best-selling earlier single"));
+        }
+
+        [Fact]
+        public void Single_FewerThanThreeEarlier_ListsThoseThereAre()
+        {
+            Single("Debut", Today.AddDays(-30), 1);
+            singles._single current = Single("Now", Today, 1);
+            Moment moment = new("x");
+            History.Single(moment, current, singles.Singles, Today);
+            Assert.StartsWith("\"Debut\": ", moment.Fact(H, "Previous single"));
+            Assert.Null(moment.Fact(H, "2nd previous single"));
+            Assert.Null(moment.Fact(H, "3rd previous single"));
+        }
+
+        /// <summary>
+        /// A style part the single doesn't have is left out; titles keep their commas inside the quotes.
+        /// </summary>
+        [Theory]
+        [InlineData("Rock", null, "Cool", "\"DJ, Go\" (Rock, Cool choreography)")]
+        [InlineData(null, "Love", null, "\"DJ, Go\" (Love lyrics)")]
+        [InlineData(null, null, null, "\"DJ, Go\"")]
+        public void TitleWithStyle_LeavesOutWhatTheSingleLacks(string genre, string lyrics, string choreography, string expected)
+        {
+            Assert.Equal(expected, MomentContext.TitleWithStyle(Single("DJ, Go", Today, 1).Styled(genre, lyrics, choreography)));
         }
 
         /// <summary>
@@ -64,7 +93,8 @@ namespace AIFanChatter.Tests
             singles._single current = Single("Now", Today, 1);
             Moment moment = new("x");
             History.Single(moment, current, singles.Singles, Today);
-            Assert.Equal("Released later", moment.Fact(H, "Previous single"));
+            Assert.StartsWith("\"Released later\"", moment.Fact(H, "Previous single"));
+            Assert.StartsWith("\"Released earlier\"", moment.Fact(H, "2nd previous single"));
         }
 
         [Fact]
@@ -91,13 +121,13 @@ namespace AIFanChatter.Tests
 
             Moment moment = new("x");
             History.Single(moment, current, singles.Singles, Today);
-            Assert.Equal("Sister single", moment.Fact(H, "Previous single"));
+            Assert.StartsWith("\"Sister single\"", moment.Fact(H, "Previous single"));
             Assert.Equal("1", moment.Fact(H, "Singles released before this one"));
 
             Groups.Groups_.Clear();
             Moment ungrouped = new("x");
             History.Single(ungrouped, current, singles.Singles, Today);
-            Assert.Equal("Main single", ungrouped.Fact(H, "Previous single"));
+            Assert.StartsWith("\"Main single\"", ungrouped.Fact(H, "Previous single"));
         }
 
         [Fact]

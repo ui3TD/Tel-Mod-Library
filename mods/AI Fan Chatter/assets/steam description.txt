@@ -31,3 +31,4 @@ Your saves load normally without it. The feed then keeps its newest 20 posts.
 [h3]Changelog[/h3]
 - 0.1.0: First test version
 - 0.2.0: Fans see recent posts, earlier results and the idols in each event
+- 0.3.0: Concert set lists, last 3 singles, longer posts, retry when only one post comes back

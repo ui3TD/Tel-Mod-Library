@@ -333,6 +333,90 @@ namespace AIFanChatter.Tests
             Assert.Single(transport.Sent);
         }
 
+        private const string OnePost = "{\"posts\":[{\"user\":\"F_C_T\",\"text\":\"So random.Pass.Pass.Pass\",\"replies\":[]}]}";
+
+        /// <summary>
+        /// A single post when the prompt asked for several is taken as a failed reply: the same request goes
+        /// again, once, and counts as one request.
+        /// </summary>
+        [Fact]
+        public void OnePost_SendsTheRequestOnceMore()
+        {
+            TestEnv.Vars[Settings.PerWeekVar] = "2";
+            Assert.True(dispatcher.Request(Moment()));
+            transport.Reply(200, Replies.Anthropic(OnePost));
+            Assert.Equal(2, transport.Sent.Count);
+            Assert.Equal(transport.Sent[0].Body, transport.Sent[1].Body);
+            Assert.Empty(host.Queued);
+            Assert.True(dispatcher.InFlight);
+            transport.Reply(200, Replies.Anthropic(Replies.Posts));
+            Assert.Equal(3, host.Queued.Single().Count);
+            Assert.Empty(host.Notices);
+            Assert.Contains(TestEnv.Logs, l => l.Contains("only one post"));
+
+            // The second try wasn't another request: the week still has room for one more
+            host.RealTime += 31;
+            Assert.True(dispatcher.Request(Moment()));
+        }
+
+        /// <summary>
+        /// A second single post in a row is shown, and single posts aren't retried again until the settings
+        /// change, so a model that keeps to one post costs one extra request at most.
+        /// </summary>
+        [Fact]
+        public void OnePostTwice_IsShown_AndNotRetriedUntilTheSettingsChange()
+        {
+            TestEnv.Vars[Settings.PerWeekVar] = "7";
+            Assert.True(dispatcher.Request(Moment()));
+            transport.Reply(200, Replies.Anthropic(OnePost));
+            transport.Reply(200, Replies.Anthropic(OnePost));
+            Assert.Equal(2, transport.Sent.Count);
+            Assert.Single(host.Queued.Single());
+            Assert.False(dispatcher.InFlight);
+
+            host.RealTime += 31;
+            Assert.True(dispatcher.Request(Moment()));
+            transport.Reply(200, Replies.Anthropic(OnePost));
+            Assert.Equal(3, transport.Sent.Count);
+            Assert.Equal(2, host.Queued.Count);
+
+            dispatcher.OnSettingsChanged();
+            host.RealTime += 31;
+            Assert.True(dispatcher.Request(Moment()));
+            transport.Reply(200, Replies.Anthropic(OnePost));
+            Assert.Equal(5, transport.Sent.Count(r => r.Body.Contains("Title: Song")));
+        }
+
+        [Fact]
+        public void SeveralPosts_AreNotRetried()
+        {
+            Assert.True(SendAndReply());
+            Assert.Single(transport.Sent);
+        }
+
+        /// <summary>
+        /// A prompt without {min} says how many posts in its own words, and may ask for one.
+        /// </summary>
+        [Fact]
+        public void OnePost_NotRetried_WhenThePromptDoesntUseMin()
+        {
+            Language.Data[Prompt.SystemKey] = "Write 1 post in {language}.";
+            Assert.True(SendAndReply(Replies.Anthropic(OnePost)));
+            Assert.Single(transport.Sent);
+            Assert.Single(host.Queued.Single());
+        }
+
+        [Fact]
+        public void FailedRetry_ReportsTheError()
+        {
+            Assert.True(dispatcher.Request(Moment()));
+            transport.Reply(200, Replies.Anthropic(OnePost));
+            transport.Reply(500, "{\"error\":{\"message\":\"overloaded\"}}");
+            Assert.Empty(host.Queued);
+            Assert.False(dispatcher.InFlight);
+            Assert.Contains("overloaded", host.Notices.Single().Text);
+        }
+
         [Fact]
         public void WeekOf_IsTheMonday()
         {

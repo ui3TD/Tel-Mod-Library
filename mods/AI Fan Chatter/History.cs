@@ -93,8 +93,12 @@ namespace AIFanChatter
             }
         }
 
+        public const int PreviousSingles = 3;
+
+        private static readonly string[] PreviousSingleKeys = { "Previous single", "2nd previous single", "3rd previous single" };
+
         /// <summary>
-        /// The previous released single of the same group, how it did, and the group's earlier singles.
+        /// The same group's last released singles, latest first, how each did, and the group's earlier singles.
         /// </summary>
         public static void Single(Moment moment, singles._single single, IEnumerable<singles._single> all, DateTime now)
         {
@@ -109,22 +113,41 @@ namespace AIFanChatter
                 {
                     return;
                 }
-                // Several singles can be in production at once, so release order isn't list order
-                singles._single previous = Latest(earlier, s => s.ReleaseData.ReleaseDate);
+                // Several singles can be in production at once, so release order isn't list order; of those
+                // released on the same day, the one later in the list counts as later, as in Latest
+                List<singles._single> latestFirst = earlier
+                    .Select((s, index) => new { s, index })
+                    .OrderByDescending(x => x.s.ReleaseData.ReleaseDate)
+                    .ThenByDescending(x => x.index)
+                    .Select(x => x.s)
+                    .Take(PreviousSingles)
+                    .ToList();
+                for (int i = 0; i < latestFirst.Count; i++)
+                {
+                    singles._single previous = latestFirst[i];
+                    moment.AddTo(Section, PreviousSingleKeys[i], () => Summary(previous, now));
+                }
                 singles._single best = earlier.OrderByDescending(s => s.ReleaseData.Sales).First();
                 moment
-                    .AddTo(Section, "Previous single", () => previous.title)
-                    .AddTo(Section, "Previous single sales", () => previous.ReleaseData.Sales)
-                    .AddTo(Section, "Previous single quality (0 to 10)", () => previous.ReleaseData.Quality)
-                    .AddTo(Section, "Previous single fan satisfaction (0 to 100)", () => previous.ReleaseData.Fan_Satisfaction)
-                    .AddTo(Section, "Previous single released", () => Ago(previous.ReleaseData.ReleaseDate, now))
                     .AddTo(Section, "Singles released before this one", () => earlier.Count)
-                    .AddTo(Section, "Best-selling earlier single", () => Moment.Clean(best.title) + ", " + best.ReleaseData.Sales + " sales");
+                    .AddTo(Section, "Best-selling earlier single", () => MomentContext.TitleWithStyle(best) + ", " + best.ReleaseData.Sales + " sales");
             }
             catch (Exception)
             {
                 // No history for this single
             }
+        }
+
+        /// <summary>
+        /// "\"Title\" (Pop, Love lyrics, Cool choreography): 200000 sales, quality 4 of 10, fan satisfaction
+        /// 100 of 100, released 7 months ago". The game shows quality as stars out of 10 (Single_Released_Button).
+        /// </summary>
+        public static string Summary(singles._single single, DateTime now)
+        {
+            singles._single._releaseData data = single.ReleaseData;
+            string ago = Ago(data.ReleaseDate, now);
+            return MomentContext.TitleWithStyle(single) + ": " + data.Sales + " sales, quality " + data.Quality + " of 10, fan satisfaction "
+                + data.Fan_Satisfaction + " of 100" + (ago == "" ? "" : ", released " + ago);
         }
 
         /// <summary>

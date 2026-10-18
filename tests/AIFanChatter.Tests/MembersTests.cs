@@ -64,7 +64,7 @@ namespace AIFanChatter.Tests
         public void Line_LeavesOutWhatTheGameCantGive()
         {
             data_girls.girls aya = Idol("Aya", age: 22);
-            Assert.Equal("Clean image. Age 22. Mental stamina 0/100, stamina 0/100. A member for 12 months.", LineOf(aya));
+            Assert.Equal("No scandals. Age 22. Mental stamina 0/100, stamina 0/100. A member for 12 months.", LineOf(aya));
         }
 
         [Fact]
@@ -120,7 +120,7 @@ namespace AIFanChatter.Tests
         }
 
         [Theory]
-        [InlineData(0, "Clean image")]
+        [InlineData(0, "No scandals")]
         [InlineData(1, "A minor scandal in her past")]
         [InlineData(2, "A minor scandal in her past")]
         [InlineData(3, "Several scandals behind her")]
@@ -168,9 +168,9 @@ namespace AIFanChatter.Tests
             string cut = Members.Cut("Collects " + new string('x', 200), Members.TriviaLength);
             Assert.Equal(Members.TriviaLength, cut.Length);
             Assert.EndsWith("...", cut);
-            Assert.StartsWith(cut + " Clean image.", lines[0]);
-            Assert.StartsWith(cut + " Clean image.", lines[1]);
-            Assert.StartsWith("Clean image.", lines[2]);
+            Assert.StartsWith(cut + " No scandals.", lines[0]);
+            Assert.StartsWith(cut + " No scandals.", lines[1]);
+            Assert.StartsWith("No scandals.", lines[2]);
         }
 
         [Fact]
@@ -306,6 +306,15 @@ namespace AIFanChatter.Tests
             Moment moment = MomentContext.Event(Event("scandal", Today, subject), new Event_Manager._randomEvent._reply());
             Assert.Equal("Moons", moment.Fact(Moment.AgencySection, "Group"));
             Assert.Contains("the most fans of 1 in the group", moment.Fact(M, "Subject"));
+        }
+
+        [Fact]
+        public void AgencyFameLevel_GivesItsScale()
+        {
+            // The game's resources, all at 0, so its own GetFameLevel runs
+            resources.resource.AddRange(Enumerable.Repeat(0L, Enum.GetValues(typeof(resources.type)).Length));
+            Moment moment = MomentContext.Single(Single("Song", Today, 1));
+            Assert.Equal("0", moment.Fact(Moment.AgencySection, "Agency fame level (0 to 10)"));
         }
 
         [Fact]

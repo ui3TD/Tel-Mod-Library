@@ -20,6 +20,7 @@ namespace AIFanChatter.Tests
             SEvent_Concerts.Concerts.Clear();
             SEvent_SSK.Elections.Clear();
             traits.Traits.Clear();
+            resources.resource.Clear();
             staticVars.dateTime = Today;
         }
 
@@ -81,6 +82,17 @@ namespace AIFanChatter.Tests
             single.ReleaseData.ReleaseDate = released;
             single.ReleaseData.Sales = sales;
             singles.Singles.Add(single);
+            return single;
+        }
+
+        /// <summary>
+        /// A single's genre, lyrics and choreography, by the titles the game shows; null leaves one unset.
+        /// </summary>
+        public static singles._single Styled(this singles._single single, string genre, string lyrics, string choreography)
+        {
+            single.genre = genre == null ? null : new singles._param { type = singles._param._type.genre, title = genre };
+            single.lyrics = lyrics == null ? null : new singles._param { type = singles._param._type.lyrics, title = lyrics };
+            single.choreography = choreography == null ? null : new singles._param { type = singles._param._type.choreography, title = choreography };
             return single;
         }
 

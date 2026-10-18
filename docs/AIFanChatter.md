@@ -70,10 +70,10 @@ Make your changes in a small mod of your own, not in AI Fan Chatter's files. Ste
 
 | Placeholder | The mod fills in | If you type your own value instead |
 |---|---|---|
-| `{min}` | The default fewest posts per request: 3. | Any number. |
+| `{min}` | The default fewest posts per request: 3. | Any number. While `{min}` is in the text, a reply with only one post is taken as a failed reply and the mod sends the request once more. If you type your own number, it doesn't. |
 | `{max}` | The default most posts per request: 6. | A smaller number works. The mod keeps at most 6 posts, so a larger number doesn't add any. |
 | `{replies}` | The default most replies per post: 3. | A smaller number works. The mod keeps at most 3 replies per post. |
-| `{length}` | The default most characters per post or reply: 100. | A smaller number works. The mod cuts any text over 100 characters, so a larger number only gets texts cut short. |
+| `{length}` | The default most characters per post or reply: 100. | Any number up to 200. The mod cuts any text over 200 characters, so a larger number only gets texts cut short. |
 | `{language}` | The game's language setting: English, Japanese, Simplified Chinese, Brazilian Portuguese or Russian, or a translation mod's language code. | A language name, to always get posts in that language. |
 | `{fan_types}` | The list of the 12 fan accounts, one per line, from your game. Each line gives the account's code (such as `F_HC_T`), what kind of fan it is (such as devoted teen girl), its name in the game's feed, and that kind of fan's current opinion of your group out of 100. | Your text must still give the AI the 12 codes. A post with any other code gets a random one, and the feed picks each fan's picture from the code. |
 | `{format}` | The reply format the mod can read: an example of posts, each with a fan code, a text and replies. | Keep it. If it's missing, the mod adds it at the end. |
@@ -91,10 +91,10 @@ The group these parts call "the group" is the group the moment is about:
 | Placeholder | The mod fills in |
 |---|---|
 | `{event}` | What kind of moment it is, such as `Event: the group released a new single`. |
-| `{facts}` | The moment's own details, one per line. For a single: its title, center, members, genre, lyrics, choreography, sales, quality, fan satisfaction, new fans and marketing. For a concert: its title, venue, audience, attendance, hype, whether it made a profit, and its performers. For a graduation: the idol and what she did after graduating, when the game says. For a random event: what happened, the details, the agency's response, the outcome and who was involved. |
+| `{facts}` | The moment's own details, one per line. For a single: its title, center, members, genre, lyrics, choreography, sales, quality, fan satisfaction, new fans and marketing. For a concert: its title, venue, audience, attendance, hype, whether it made a profit, its performers, and its set list in order: each song with its genre, lyrics, choreography and the idol at its center, and each talk break with its idols. For a graduation: the idol and what she did after graduating, when the game says. For a random event: what happened, the details, the agency's response, the outcome and who was involved. |
 | `{agency}` | The group and the agency. The group's name, and the main group's name when it's a sister group. The number of members, and the three with the most fans. The agency's fame level and total fans, its reputation from scandals in words, and the date. |
 | `{members}` | One line for each idol the moment is about, most involved first: up to 7 for a single, 5 for a concert and 3 for a random event, plus the graduating idol for a graduation. Each line gives her trait, up to 2 trivia facts (only for the first 2 idols), her scandal record in words, her age, her mental stamina and stamina, her time in the group, her place in the last election, her place by fans in the group, and how many of the group's singles she's in. An idol from another group has her time and place given in her own group, by name. |
-| `{history}` | Earlier results to compare with: the group's previous single and its best-selling one, the previous concert and the biggest audience so far, the previous graduation, or how often the same random event happened before. Empty when there's nothing earlier. |
+| `{history}` | Earlier results to compare with: the group's last 3 singles, each with its genre, lyrics, choreography and results, and its best-selling one, the previous concert and the biggest audience so far, the previous graduation, or how often the same random event happened before. Empty when there's nothing earlier. |
 | `{feed}` | The latest 15 posts on the game's feed, oldest first, with up to 3 replies each. It includes posts the mod has queued that haven't appeared yet. Empty when the feed has no posts. |
 
 ## Example
@@ -122,6 +122,7 @@ Rules:
 - Use plain text without emoji: the game can't show them.
 - Write in {language}.
 - Match each fan's tone to their opinion of the group: low is critical or disappointed, around 50 is mixed, high is enthusiastic.
+- Don't quote exact stats. Exact sales and attendance can be quoted where it fits.
 - Stamina and mental stamina aren't public: fans only notice signs, such as an idol looking tired. Scandals are public, and fans know about them.
 
 Reply with only this JSON and nothing else:
@@ -181,23 +182,33 @@ Title: Concert [Stadium]
 Venue: Stadium
 Audience: 15000
 Attendance: 100%
-Hype (0 to 100): 199
+Hype (0 to 200): 199
 Made a profit: yes
 Performers: 中澤 実香, 村上 映子, 望月 有紗, 小澤 のぞみ, 今井 康子, 吉川 心
-Group: Test Group
+Set list 1: "私 を巡って" (Metal, Regret lyrics, Cute choreography), center 中澤 実香
+Set list 2: "Woman Of A Fool" (Metal, Regret lyrics, Cute choreography), center 村上 映子
+Set list 3: "He knows I Like To Party" (Metal, Regret lyrics, Cute choreography), center 望月 有紗
+Set list 4: "Honey, Put Your Hands Up" (Metal, Regret lyrics, Cute choreography), center 村上 映子
+Set list 5: "Music Of A Promise" (Metal, Regret lyrics, Cute choreography), center 小澤 のぞみ
+Set list 6: "Night Of Days" (Metal, Regret lyrics, Cute choreography), center 村上 映子
+Set list 7: "Loved By Your Voice" (Metal, Regret lyrics, Cute choreography), center 今井 康子
+Set list 8: "Darling, Get Out" (Metal, Regret lyrics, Cute choreography), center 小澤 のぞみ
+Set list 9: "Respect For Tomorrow" (Metal, Regret lyrics, Cute choreography), center 吉川 心
+Set list 10: "Magic Of Ice" (Metal, Regret lyrics, Cute choreography), center 吉川 心
+Group: Sakura Drops
 Members in the group: 11
 Most popular members: 吉川 心, 望月 有紗, 中澤 実香
-Agency fame level: 10
+Agency fame level (0 to 10): 10
 Total fans: 678748
 Agency reputation: no scandals
 Date: 24 March 2024
 
 The idols in the new event:
-村上 映子: Trait: Snitch. Doesn't like carbonated drinks. Clean image. Age 25. Mental stamina 100/100, stamina 92/100. A member of Test Group Sister 1 for 18 of its 18 months, 1st of 9 in the last election, the most fans of 4 in Test Group Sister 1, in 8 of the group's 17 singles.
-小澤 のぞみ: Trait: Hypochondriac. Clean image. Age 17. Mental stamina 100/100, stamina 92/100. A member for 19 months of the group's 2 years, 7th of 9 in the last election, 5th most fans of 11 in the group, in 7 of the group's 17 singles (center of 3).
-吉川 心: Trait: Steadfast. Clean image. Age 15. Mental stamina 100/100, stamina 92/100. A member for 2 of the group's 2 years, 8th of 9 in the last election, the most fans of 11 in the group, in 14 of the group's 17 singles (center of 3).
-中澤 実香: Trait: Secretive. Clean image. Age 22. Mental stamina 100/100, stamina 92/100. A member for 20 months of the group's 2 years, 2nd of 9 in the last election, 3rd most fans of 11 in the group, in 9 of the group's 17 singles (center of 2).
-望月 有紗: Trait: Asexual. Clean image. Age 18. Mental stamina 100/100, stamina 92/100. A member for 2 of the group's 2 years, 4th of 9 in the last election, 2nd most fans of 11 in the group, in 15 of the group's 17 singles (center of 4).
+村上 映子: Trait: Snitch. Doesn't like carbonated drinks. No scandals. Age 25. Mental stamina 100/100, stamina 92/100. A member of Hoshizora Lane for 18 of its 18 months, 1st of 9 in the last election, the most fans of 4 in Hoshizora Lane, in 8 of the group's 17 singles.
+小澤 のぞみ: Trait: Hypochondriac. No scandals. Age 17. Mental stamina 100/100, stamina 92/100. A member for 19 months of the group's 2 years, 7th of 9 in the last election, 5th most fans of 11 in the group, in 7 of the group's 17 singles (center of 3).
+吉川 心: Trait: Steadfast. No scandals. Age 15. Mental stamina 100/100, stamina 92/100. A member for 2 of the group's 2 years, 8th of 9 in the last election, the most fans of 11 in the group, in 14 of the group's 17 singles (center of 3).
+中澤 実香: Trait: Secretive. No scandals. Age 22. Mental stamina 100/100, stamina 92/100. A member for 20 months of the group's 2 years, 2nd of 9 in the last election, 3rd most fans of 11 in the group, in 9 of the group's 17 singles (center of 2).
+望月 有紗: Trait: Asexual. No scandals. Age 18. Mental stamina 100/100, stamina 92/100. A member for 2 of the group's 2 years, 4th of 9 in the last election, 2nd most fans of 11 in the group, in 15 of the group's 17 singles (center of 4).
 
 History, for context only (not what the posts are about):
 Previous concert: Concert [Open Air Stage]
@@ -209,23 +220,19 @@ Concerts held before this one: 3
 Biggest audience at an earlier concert: 5000
 
 History: earlier posts on the feed, oldest first, for context only. Don't reply to them or repeat them:
-- F_HC_T: DJ, Never Let Me Go is out!! Metal with cute choreo?? Arisa as center and I am screaming
-  - reply from M_C_A: Metal plus cute dance is a mix nobody else in the industry really does.
-  - reply from F_C_T: Metal is not what I expected from them at all lol
-- M_C_YA: Only 10000 sales for DJ, Never Let Me Go? Fear of the Road did 200000. That is a big drop.
-  - reply from F_HC_YA: Sales are not everything. 95 satisfaction means the fans who bought it really love it.
-  - reply from M_HC_YA: Quality at 5 out of 10 explains some of it, but the fans are still happy.
-- F_C_A: Fan satisfaction at 95 says it all. The regret theme suits Arisa's voice really well.
-  - reply from M_HC_T: The regret lyrics fit the metal sound perfectly, I played it three times already.
-- M_HC_A: 3667 new fans came in with no marketing at all. Kokoro is still the fan favorite, and it shows.
-- F_C_T: Metal genre? Not really my thing, sorry. Maybe I will like the choreo more than the song.
-  - reply from F_HC_A: Give it a listen, the chorus is catchy even if metal is not your style.
+- F_HC_A: DJ, Never Let Me Go is out! Metal sound, cute choreo, and Sakura Drops never misses. So proud.
+  - reply from M_C_A: Agree, the choreo is so cute. Sales are lower than before though, hope it picks up.
+- M_C_T: 10000 sales? Same metal and regret lyrics again. No marketing at all, why would anyone buy it?
+  - reply from F_HC_T: Sales are low but the song is fine. Stop being so negative kazubuta.
+- F_C_YA: DJ, Never Let Me Go is decent. The cute choreo is fun, but I wish the lyrics would change a bit.
+- M_HC_YA: 望月 有紗's center part in DJ, Never Let Me Go is great. 吉川 心's vocals shine too.
+  - reply from F_C_A: Agreed, 望月 有紗 looks so good on stage. The sales are a surprise though.
 ```
 
 Each placeholder was filled in as follows:
 
 - **`{event}`:** the line `Event: the group held a concert`.
-- **`{facts}`:** the lines from `Title` to `Performers`.
+- **`{facts}`:** the lines from `Title` to the last `Set list` line.
 - **`{agency}`:** the lines from `Group` to `Date`.
 - **`{members}`:** the header `The idols in the new event:` from `AIFANCHATTER__PROMPT__MEMBERS`, then one line per idol.
   - 村上 映子 is from the sister group, so her time and her place by fans are given in that group, by name.
@@ -235,7 +242,8 @@ Each placeholder was filled in as follows:
 ## What the mod does whatever the prompt says
 
 - **Fan codes:** it uses only the 12 fan codes, and gives a random one to a post with another code.
-- **Limits:** it keeps at most 6 posts and 3 replies per post, and cuts texts over 100 characters.
+- **Limits:** it keeps at most 6 posts and 3 replies per post, and cuts texts over 200 characters.
+- **One post:** when the prompt asks for several posts through `{min}` and the reply has only one, it sends the request once more. If that reply has only one post too, it shows it, and doesn't send one-post replies again until you change a setting.
 - **Emoji:** it takes them out, because the feed can't show them.
 - **Timing:** it releases the posts into the feed over the next in-game day or two.
 - **Reply format:** when your AI service supports it, it asks for replies in the reply format, so the replies always come back in that shape.

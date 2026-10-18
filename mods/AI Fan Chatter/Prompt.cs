@@ -118,6 +118,15 @@ namespace AIFanChatter
         }
 
         /// <summary>
+        /// Whether the system template asks for several posts: it does through {min}, which is MinPosts. A
+        /// template that says how many posts in its own words may ask for just one.
+        /// </summary>
+        public static bool AsksForSeveralPosts()
+        {
+            return MinPosts > 1 && TryText(SystemKey, out string template) && template.Contains("{min}");
+        }
+
+        /// <summary>
         /// One line per fan code: who the fans are, the game's name for the account, and their opinion.
         /// </summary>
         public static string FanTypes(IDictionary<string, string> handles, IDictionary<string, int> opinions)

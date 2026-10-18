@@ -328,7 +328,8 @@ namespace AIFanChatter.Tests
             var posts = PostParser.Parse("{\"posts\":[" + string.Join(",", Enumerable.Repeat(post, 10)) + "]}", Random);
             Assert.Equal(Prompt.MaxPosts, posts.Count);
             Assert.Equal(Prompt.MaxReplies, posts[0].Replies.Count);
-            Assert.Equal(Prompt.MaxLength, PostParser.Clean(longText).Length);
+            Assert.Equal(PostParser.MaxShownLength, PostParser.Clean(longText).Length);
+            Assert.Equal(150, PostParser.Clean(new string('b', 150)).Length);
             Assert.EndsWith("...", PostParser.Clean(longText));
             Assert.Equal(PostParser.ForFeed(PostParser.Clean(longText)), posts[0].Message);
         }

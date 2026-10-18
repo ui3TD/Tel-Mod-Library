@@ -21,6 +21,46 @@ namespace AIFanChatter.Tests
             Assert.Contains("New fans: 789", text);
         }
 
+        /// <summary>
+        /// The set list in order: each song with its single's style and the idol at its center, each talk
+        /// break with its idols. Hype is out of 200, as in the game.
+        /// </summary>
+        [Fact]
+        public void Concert_GivesItsSetList_AndHypeOutOf200()
+        {
+            data_girls.girls arisa = TestGame.Idol("Arisa");
+            data_girls.girls kokoro = TestGame.Idol("Kokoro");
+            data_girls.girls mika = TestGame.Idol("Mika");
+            singles._single metal = TestGame.Single("DJ, Never Let Me Go", TestGame.Today.AddDays(-5), 1).Styled("Metal", "Regret", "Cute");
+            singles._single plain = TestGame.Single("Old Song", TestGame.Today.AddDays(-50), 1);
+            SEvent_Concerts._concert concert = TestGame.Concert("Live", TestGame.Today, 15000);
+            concert.ProjectedValues.Actual_Hype = 199;
+            concert.SetListItems.Add(new SEvent_Concerts._concert._song { Single = metal, Center = arisa });
+            concert.SetListItems.Add(new SEvent_Concerts._concert._mc { Girls = new List<data_girls.girls> { kokoro, null, mika } });
+            concert.SetListItems.Add(new SEvent_Concerts._concert._song { Single = plain });
+            concert.SetListItems.Add(new SEvent_Concerts._concert._mc());
+            concert.SetListItems.Add(new SEvent_Concerts._concert._song { Center = arisa });
+
+            Moment moment = MomentContext.Concert(concert);
+            Assert.Equal("199", moment.Fact(Moment.FactsSection, "Hype (0 to 200)"));
+            Assert.Equal(new[]
+            {
+                "Set list 1: \"DJ, Never Let Me Go\" (Metal, Regret lyrics, Cute choreography), center Arisa",
+                "Set list 2: Talk break with Kokoro and Mika",
+                "Set list 3: \"Old Song\"",
+                "Set list 4: Talk break"
+            }, moment.Facts.Where(f => f.Key.StartsWith("Set list")).Select(f => f.Key + ": " + f.Value));
+        }
+
+        [Fact]
+        public void JoinAnd_ReadsAsAList()
+        {
+            Assert.Equal("", MomentContext.JoinAnd(new string[0]));
+            Assert.Equal("A", MomentContext.JoinAnd(new[] { "A" }));
+            Assert.Equal("A and B", MomentContext.JoinAnd(new[] { "A", "B" }));
+            Assert.Equal("A, B and C", MomentContext.JoinAnd(new[] { "A", "B", "C" }));
+        }
+
         [Fact]
         public void FactsTheGameCantGive_AreLeftOut()
         {
@@ -105,6 +145,8 @@ namespace AIFanChatter.Tests
             Assert.Contains("under 100 characters", prompt);
             Assert.Contains("- Write in Japanese.", prompt);
             Assert.Contains("- Match each fan's tone to their opinion of the group", prompt);
+            Assert.Contains("\n- Don't quote exact stats. Exact sales and attendance can be quoted where it fits.\n", prompt);
+            Assert.True(Prompt.AsksForSeveralPosts());
             Assert.DoesNotContain("real people", prompt);
             foreach (string placeholder in new[] { "{min}", "{max}", "{replies}", "{length}", "{language}" })
             {

@@ -231,7 +231,7 @@ namespace AIFanChatter
         {
             if (points <= 0)
             {
-                return "Clean image";
+                return "No scandals";
             }
             if (points <= 2)
             {

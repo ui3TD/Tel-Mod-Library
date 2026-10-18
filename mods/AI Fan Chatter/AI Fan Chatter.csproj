@@ -6,7 +6,7 @@
 		<ModDescription>Fans post about your idols on social media, written by an AI service of your choice (Anthropic, OpenAI or any OpenAI-compatible service).</ModDescription>
 		<Authors>Tel</Authors>
 		<Version>1.0.0</Version>
-		<WorkshopID></WorkshopID>
+		<WorkshopID>3821906838</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->

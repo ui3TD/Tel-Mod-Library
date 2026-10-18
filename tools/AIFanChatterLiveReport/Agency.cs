@@ -174,11 +174,11 @@ namespace AIFanChatter.LiveReport
 
         private void Concerts()
         {
-            Concert(SEvent_Concerts._venue.club, new DateTime(2023, 8, 20), 280, 0.93f, 88);
-            Concert(SEvent_Concerts._venue.concertHall, new DateTime(2024, 3, 17), 1400, 0.88f, 112);
-            Concert(SEvent_Concerts._venue.openAirStage, new DateTime(2024, 8, 25), 3800, 0.76f, 97);
-            Concert(SEvent_Concerts._venue.concertHall, new DateTime(2025, 2, 23), 2000, 1f, 143);
-            NewConcert = Concert(SEvent_Concerts._venue.openAirStage, Today, 4600, 0.92f, 156);
+            Concert(SEvent_Concerts._venue.club, new DateTime(2023, 8, 20), 0.93f, 88);
+            Concert(SEvent_Concerts._venue.concertHall, new DateTime(2024, 3, 17), 0.88f, 112);
+            Concert(SEvent_Concerts._venue.openAirStage, new DateTime(2024, 8, 25), 0.76f, 97);
+            Concert(SEvent_Concerts._venue.concertHall, new DateTime(2025, 2, 23), 1f, 143);
+            NewConcert = Concert(SEvent_Concerts._venue.openAirStage, Today, 0.92f, 156);
             SetList(setList ?? DefaultSetList);
         }
 
@@ -356,10 +356,13 @@ namespace AIFanChatter.LiveReport
             return single;
         }
 
-        private static SEvent_Concerts._concert Concert(SEvent_Concerts._venue venue, DateTime finished, long audience, float attendance, int hype)
+        /// <summary>
+        /// A finished concert; its audience is the venue's capacity times the attendance, as the game works it out.
+        /// </summary>
+        private static SEvent_Concerts._concert Concert(SEvent_Concerts._venue venue, DateTime finished, float attendance, int hype)
         {
             SEvent_Concerts._concert concert = new() { Venue = venue, FinishDate = finished, Status = SEvent_Tour.tour._status.finished };
-            concert.ProjectedValues.Actual_Audience = audience;
+            concert.ProjectedValues.Actual_Audience = (long)Math.Round(concert.GetCapacity() * attendance);
             concert.ProjectedValues.Actual_Attendance = attendance;
             concert.ProjectedValues.Actual_Hype = hype;
             concert.ProjectedValues.TicketPrice = venue == SEvent_Concerts._venue.club ? 2500 : 4800;

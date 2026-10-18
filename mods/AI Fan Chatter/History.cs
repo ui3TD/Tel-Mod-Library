@@ -178,7 +178,7 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// "Concert Hall, attendance 100% (2000), held 6 months ago"; without the venue when the game
+        /// "Concert Hall, attendance 100% (1500/1500), held 6 months ago"; without the venue when the game
         /// has no name for it.
         /// </summary>
         public static string ConcertSummary(SEvent_Concerts._concert concert, DateTime now)
@@ -193,8 +193,7 @@ namespace AIFanChatter
                 venue = "";
             }
             string ago = Ago(concert.FinishDate, now);
-            return (venue == "" ? "" : venue + ", ") + "attendance " + Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "% ("
-                + concert.ProjectedValues.Actual_Audience + ")" + (ago == "" ? "" : ", held " + ago);
+            return (venue == "" ? "" : venue + ", ") + "attendance " + MomentContext.Attendance(concert) + (ago == "" ? "" : ", held " + ago);
         }
 
         /// <summary>

@@ -345,7 +345,6 @@ namespace AIFanChatter
                 // The game rounds quality to 0 to 10 and shows it as stars out of 10 (Single_Released_Button)
                 .Add("Quality", () => single.ReleaseData.Quality * 10 + "%")
                 .Add("Fan satisfaction", () => single.ReleaseData.Fan_Satisfaction + "%")
-                .Add("New fans", () => single.ReleaseData.NewFans)
                 .Add("Marketing", () => Marketing(single));
             Groups._group group = History.GroupOf(single);
             Members.Add(moment, Members.ForSingle(single), Now, group);
@@ -358,8 +357,7 @@ namespace AIFanChatter
         {
             Moment moment = new Moment("the group held a concert")
                 .Add("Venue", () => SEvent_Concerts.GetVenueTitle(concert.Venue))
-                // The share of seats filled, with the people who came
-                .Add("Attendance", () => Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "% (" + concert.ProjectedValues.Actual_Audience + ")")
+                .Add("Attendance", () => Attendance(concert))
                 // The game's hype runs from 0 to 200 (Concert_Popup.AddHype) and shows as a percentage
                 .Add("Hype", () => concert.ProjectedValues.Actual_Hype + "%")
                 .Add("Ticket price", () => concert.ProjectedValues.TicketPrice + " yen");
@@ -437,6 +435,17 @@ namespace AIFanChatter
             Single_Marketing_Roll._result.fail_crit => "major failure",
             _ => "",
         };
+
+        /// <summary>
+        /// The share of seats filled, then the people who came out of the venue's capacity: "92% (4600/5000)".
+        /// Without the capacity when the game can't give it.
+        /// </summary>
+        public static string Attendance(SEvent_Concerts._concert concert)
+        {
+            string capacity = Part(() => concert.GetCapacity().ToString(CultureInfo.InvariantCulture));
+            return Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "% (" + concert.ProjectedValues.Actual_Audience
+                + (capacity == "" ? "" : "/" + capacity) + ")";
+        }
 
         /// <summary>The most singles a graduate's list of center singles holds.</summary>
         public const int CenterSingles = 5;

@@ -19,7 +19,8 @@ namespace AIFanChatter.Tests
             Assert.StartsWith("The new event, which every post reacts to:\nEvent: the group released a new single", text);
             Assert.Contains("Title: Summer Love", text);
             Assert.Contains("Sales: 123456", text);
-            Assert.Contains("New fans: 789", text);
+            // How many fans a single brought isn't something fans could know
+            Assert.DoesNotContain("New fans", text);
         }
 
         /// <summary>
@@ -48,7 +49,7 @@ namespace AIFanChatter.Tests
             Moment moment = MomentContext.Concert(concert);
             Assert.Equal("199%", moment.Fact(Moment.FactsSection, "Hype"));
             // The share of seats filled and the people who came, in one line
-            Assert.Equal("92% (15000)", moment.Fact(Moment.FactsSection, "Attendance"));
+            Assert.Equal("92% (15000/" + SEvent_Concerts.GetVenueCapacity(concert.Venue) + ")", moment.Fact(Moment.FactsSection, "Attendance"));
             Assert.Equal("3000 yen", moment.Fact(Moment.FactsSection, "Ticket price"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Audience"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Made a profit"));

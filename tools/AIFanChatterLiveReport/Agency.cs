@@ -52,6 +52,27 @@ namespace AIFanChatter.LiveReport
             return rank;
         }
 
+        /// <summary>
+        /// The random event happening today, its idol parts played by these idols in order.
+        /// </summary>
+        public Event_Manager._activeEvent Event(Event_Manager._randomEvent data, IList<string> names)
+        {
+            Event_Manager._activeEvent active = new() { data = data, date = Today, state = Event_Manager._activeEvent._state.active };
+            for (int i = 0; i < data.actor.Count; i++)
+            {
+                if (data.actor[i].type != Event_Manager._randomEvent.actorType.idol)
+                {
+                    throw new ArgumentException("Event " + data.id + " has a staff part; only idol parts can be played");
+                }
+                if (i >= names.Count || !idols.TryGetValue(names[i], out data_girls.girls girl))
+                {
+                    throw new ArgumentException("Event " + data.id + " needs " + data.actor.Count + " idols by first name; idols: " + string.Join(", ", idols.Keys.ToArray()));
+                }
+                active.actors.Add(new Event_Manager._activeEvent._actor { data = data.actor[i], girl = girl, name = "" });
+            }
+            return active;
+        }
+
         private static void Clear()
         {
             data_girls.girl.Clear();
@@ -66,6 +87,12 @@ namespace AIFanChatter.LiveReport
             SNS_Manager.Messages.Clear();
             staticVars.dateTime = Today;
             staticVars.PlayerData.GroupName = MainName;
+            // The producer, whom random events name, and the rival group
+            staticVars.PlayerData.FirstName = "Haruto";
+            staticVars.PlayerData.LastName = "Sato";
+            staticVars.PlayerData.Rival_Group_Name = "Starlight Ribbon";
+            staff.Staff.Clear();
+            staff.Staff.Add(new staff._staff { type = staff._type.player });
         }
 
         private void Fill()
@@ -209,16 +236,18 @@ namespace AIFanChatter.LiveReport
 
         /// <summary>
         /// The agency's resources (money, fans, buzz, scandal points, fame) and its fan groups, with each fan
-        /// type's record of good and bad reactions, as resources.GetFanOpinion reads them.
+        /// type's record of good and bad reactions, as resources.GetFanOpinion reads them. Each trait leans one
+        /// way, so the fan types use the whole scale: devoted adult men 100, casual teen girls 0, and 17, 33,
+        /// 50, 67 and 83 between.
         /// </summary>
         private static void Fans()
         {
             resources.resource.AddRange(new long[] { 48000000, 0, 1200, 0, 4 });
             var opinions = new (resources.fanType Type, int Good, int Bad)[]
             {
-                (resources.fanType.male, 34, 12), (resources.fanType.female, 19, 14),
-                (resources.fanType.casual, 22, 15), (resources.fanType.hardcore, 41, 9),
-                (resources.fanType.teen, 13, 16), (resources.fanType.youngAdult, 30, 11), (resources.fanType.adult, 21, 13),
+                (resources.fanType.male, 20, 0), (resources.fanType.female, 0, 20),
+                (resources.fanType.casual, 0, 20), (resources.fanType.hardcore, 20, 0),
+                (resources.fanType.teen, 0, 20), (resources.fanType.youngAdult, 10, 10), (resources.fanType.adult, 20, 0),
             };
             foreach (var (type, good, bad) in opinions)
             {

@@ -1,3 +1,4 @@
+using HarmonyLib;
 using SimpleJSON;
 using System;
 using System.Collections.Generic;
@@ -10,15 +11,18 @@ using System.Runtime.CompilerServices;
 namespace AIFanChatter.LiveReport
 {
     /// <summary>
-    /// Sends three moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
+    /// Sends four moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
     /// prompt, dispatcher, request and reply code, once per model, and writes every request, reply and
     /// queued post to a JSON file for tools/ai_fan_chatter_live_report.py. Runs outside the game: the
     /// game's text comes from its install folder and the key from the mod's key file. It costs money.
     ///
     ///     AIFanChatterLiveReport --game-dir DIR --provider 2 --base-url URL --model M [--model M2] --out FILE
     ///     AIFanChatterLiveReport --game-dir DIR --dry-run 1      (prints the prompts; sends nothing)
-    /// Options: --moment single|concert|graduation (repeat to pick several; all three by default) and
-    /// --setlist "Signal Fire/Rin; talk: Mao, Kaede" for the concert (see Agency.SetList).
+    /// Options: --moment single|concert|event|graduation (repeat to pick several; all four by default),
+    /// --setlist "Signal Fire/Rin; talk: Mao, Kaede" for the concert (see Agency.SetList), and for the
+    /// random event --event ID (from the game's random_events.json), --event-reply N (the player's
+    /// answer, from 0; by default the first one without posts of its own) and --event-idols "Rena, Mao"
+    /// (who plays the event's idols, by first name; Rin by default).
     /// </summary>
     internal static class Program
     {
@@ -32,6 +36,9 @@ namespace AIFanChatter.LiveReport
             bool dryRun = Option("dry-run") == "1";
             setList = Option("setlist");
             picked = options.TryGetValue("moment", out List<string> p) ? p : null;
+            eventId = Option("event") ?? eventId;
+            eventReply = Option("event-reply") is string r ? int.Parse(r, CultureInfo.InvariantCulture) : null;
+            eventIdols = Option("event-idols") ?? eventIdols;
             if (gameDir == null || !dryRun && (outFile == null || models.Count == 0))
             {
                 Console.Error.WriteLine("Usage: AIFanChatterLiveReport --game-dir DIR --provider N --base-url URL --model M [--model M2] --out FILE");
@@ -42,6 +49,7 @@ namespace AIFanChatter.LiveReport
             KeyStore.FolderOverride = KeyStore.FolderUnder(Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "LocalLow", "Glitch Pitch", "Idol Manager"));
             GameText.Load(gameDir, ModFolder());
+            OutsideUnity.Patch();
 
             Dictionary<string, string> settings = new()
             {
@@ -147,6 +155,9 @@ namespace AIFanChatter.LiveReport
 
         private static string setList;
         private static List<string> picked;
+        private static string eventId = "dating_caught_aftermath";
+        private static int? eventReply;
+        private static string eventIdols = "Rin";
 
         /// <summary>
         /// Builds the agency afresh, with an empty queue, and gives the moments picked, in order.
@@ -159,12 +170,14 @@ namespace AIFanChatter.LiveReport
             {
                 new("single", () => MomentContext.Single(agency.NewSingle)),
                 new("concert", () => MomentContext.Concert(agency.NewConcert)),
+                new("event", () => EventMoment(agency)),
+                // Last, as the graduate leaves the group
                 new("graduation", () => MomentContext.Graduation(agency.Graduate, agency.GraduateNow())),
             };
             string unknown = picked?.FirstOrDefault(name => all.All(m => m.Key != name));
             if (unknown != null)
             {
-                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert and graduation");
+                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event and graduation");
             }
             return all.Where(m => picked == null || picked.Contains(m.Key))
                 .Select(m => new KeyValuePair<string, Func<Moment>>(Names[m.Key], m.Value)).ToList();
@@ -174,8 +187,32 @@ namespace AIFanChatter.LiveReport
         {
             ["single"] = "a single release",
             ["concert"] = "a concert",
+            ["event"] = "a random event",
             ["graduation"] = "a graduation",
         };
+
+        /// <summary>
+        /// The game's random event as the player answered it, with the agency's idols in its parts. Only an
+        /// answer without posts of its own reaches the mod: the game posts those itself.
+        /// </summary>
+        private static Moment EventMoment(Agency agency)
+        {
+            if (!GameText.Events.TryGetValue(eventId, out Event_Manager._randomEvent data))
+            {
+                throw new ArgumentException("No random event " + eventId + " in the game's random_events.json");
+            }
+            int reply = eventReply ?? data.reply.FindIndex(r => r.SNS.Count == 0);
+            if (reply < 0 || reply >= data.reply.Count)
+            {
+                throw new ArgumentException("Event " + eventId + " has no answer " + reply + "; it has " + data.reply.Count);
+            }
+            if (data.reply[reply].SNS.Count > 0)
+            {
+                throw new ArgumentException("Answer " + reply + " of " + eventId + " posts on the feed itself, so the mod sends nothing for it");
+            }
+            Event_Manager._activeEvent active = agency.Event(data, eventIdols.Split(',').Select(n => n.Trim()).Where(n => n != "").ToList());
+            return MomentContext.Event(active, data.reply[reply], new List<Event_Manager._activeEvent> { active });
+        }
 
         /// <summary>
         /// "--name value" pairs; a name given more than once keeps every value.
@@ -205,6 +242,9 @@ namespace AIFanChatter.LiveReport
     /// </summary>
     internal static class GameText
     {
+        /// <summary>The game's random events by id.</summary>
+        public static readonly Dictionary<string, Event_Manager._randomEvent> Events = new();
+
         public static void Load(string gameDir, string modFolder)
         {
             string english = Path.Combine(gameDir, "IM_Data", "StreamingAssets", "Languages", "en", "JSON");
@@ -220,6 +260,13 @@ namespace AIFanChatter.LiveReport
             foreach (JSONNode item in Read(Path.Combine(english, "Constants", "vars.json")).AsArray)
             {
                 Language.Variables.Add(new Language._variable { Variable = item["variable"], Male = item["male"], Female = item["female"], Color = item["color"] ?? "" });
+            }
+            Events.Clear();
+            foreach (JSONNode item in Read(Path.Combine(english, "Events", "random_events.json")).AsArray)
+            {
+                Event_Manager._randomEvent data = new();
+                data.Set(item);
+                Events[data.id] = data;
             }
             traits.Traits.Clear();
             foreach (JSONNode item in Read(Path.Combine(english, "Idols", "traits.json")).AsArray)
@@ -237,6 +284,30 @@ namespace AIFanChatter.LiveReport
                 throw new FileNotFoundException("The game's text isn't there; check --game-dir: " + file);
             }
             return JSON.Parse(File.ReadAllText(file));
+        }
+    }
+
+    /// <summary>
+    /// Game methods that call into the engine's native code, which only runs inside the game, replaced with
+    /// managed equivalents.
+    /// </summary>
+    internal static class OutsideUnity
+    {
+        private static readonly Random Random = new();
+
+        public static void Patch()
+        {
+            Harmony harmony = new("com.tel.aifanchatter.livereport");
+            // A random event's text names a random idol for [random_idol], with UnityEngine.Random
+            harmony.Patch(AccessTools.Method(typeof(data_girls), nameof(data_girls.GetRandomActiveGirl), Type.EmptyTypes),
+                prefix: new HarmonyMethod(typeof(OutsideUnity), nameof(RandomActiveGirl)));
+        }
+
+        private static bool RandomActiveGirl(ref data_girls.girls __result)
+        {
+            List<data_girls.girls> active = data_girls.GetActiveGirls();
+            __result = active.Count == 0 ? null : active[Random.Next(active.Count)];
+            return false;
         }
     }
 

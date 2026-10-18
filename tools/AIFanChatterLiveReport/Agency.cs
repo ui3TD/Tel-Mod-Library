@@ -162,7 +162,9 @@ namespace AIFanChatter.LiveReport
             NewSingle = Single(main, "Midnight Platform", Today, 104000, 8, 82, "Pop", "Loneliness", "Elegant",
                 "Mirai", "Hinata", "Rin", "Sayaka", "Nanami", "Kaede", "Yui", "Emi");
             NewSingle.ReleaseData.NewFans = 4100;
-            NewSingle.marketing.Add(new singles._param { type = singles._param._type.marketing, Group_Handshake = true });
+            // A group handshake event and an ad campaign, the game's own, and the campaign's roll a success
+            NewSingle.marketing.Add(GameText.Marketing.First(m => m.Group_Handshake));
+            NewSingle.marketing.Add(GameText.Marketing.First(m => m.Special_Type == singles._param._special_type.ad_campaign));
             NewSingle.Marketing_Result_Status = Single_Marketing_Roll._result.success;
 
             Single(sister, "Blue Hour", new DateTime(2024, 12, 8), 14000, 4, 63, "Pop", "Friends", "Cute", "Sora", "Hikari", "Kaho", "Miyu");
@@ -360,6 +362,7 @@ namespace AIFanChatter.LiveReport
             concert.ProjectedValues.Actual_Audience = audience;
             concert.ProjectedValues.Actual_Attendance = attendance;
             concert.ProjectedValues.Actual_Hype = hype;
+            concert.ProjectedValues.TicketPrice = venue == SEvent_Concerts._venue.club ? 2500 : 4800;
             SEvent_Concerts.Concerts.Add(concert);
             return concert;
         }

@@ -242,6 +242,9 @@ namespace AIFanChatter.LiveReport
     /// </summary>
     internal static class GameText
     {
+        /// <summary>The game's ways to promote a single, as singles.Params holds them.</summary>
+        public static readonly List<singles._param> Marketing = new();
+
         /// <summary>The game's random events by id.</summary>
         public static readonly Dictionary<string, Event_Manager._randomEvent> Events = new();
 
@@ -260,6 +263,18 @@ namespace AIFanChatter.LiveReport
             foreach (JSONNode item in Read(Path.Combine(english, "Constants", "vars.json")).AsArray)
             {
                 Language.Variables.Add(new Language._variable { Variable = item["variable"], Male = item["male"], Female = item["female"], Color = item["color"] ?? "" });
+            }
+            Marketing.Clear();
+            foreach (JSONNode item in Read(Path.Combine(english, "Singles", "marketing.json")).AsArray)
+            {
+                Marketing.Add(new singles._param
+                {
+                    type = singles._param._type.marketing,
+                    id = item["id"].AsInt,
+                    title = item["title"],
+                    Group_Handshake = item["group_handshake"].AsBool,
+                    Individual_Handshake = item["individual_handshake"].AsBool,
+                });
             }
             Events.Clear();
             foreach (JSONNode item in Read(Path.Combine(english, "Events", "random_events.json")).AsArray)

@@ -100,7 +100,7 @@ def fans_from(system: str) -> dict:
         if "_" not in code or " " in code:
             continue
         handle = rest.split("(shown as @", 1)[1].split(")", 1)[0] if "(shown as @" in rest else ""
-        opinion = rest.split("opinion of the group: ", 1)[1].split("/", 1)[0] if "opinion of the group: " in rest else ""
+        opinion = rest.split("opinion of the group: ", 1)[1].split("%", 1)[0].split("/", 1)[0] if "opinion of the group: " in rest else ""
         fans[code] = (handle, opinion)
     return fans
 
@@ -203,7 +203,7 @@ def posts_markdown(queued: list, fans: dict, raw_texts: list) -> str:
     def who(code: str, due: str) -> str:
         handle, opinion = fans.get(code, ("", ""))
         name = f"@{handle}" if handle else code
-        return f"**{name}** ({code}, {describe(code)}, opinion {opinion}/100) · {due_text(due)}"
+        return f"**{name}** ({code}, {describe(code)}, opinion {opinion}%) · {due_text(due)}"
 
     def quote(text: str) -> str:
         shown = strip_feed(text)

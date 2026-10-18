@@ -30,7 +30,8 @@ namespace AIFanChatter
         IList<SNS_Manager._message> RecentPosts { get; }
         void Notify(string text, bool error);
         void NextFrame(Action action);
-        void Queue(List<SNS_Manager._message> posts);
+        /// <summary>Queues the posts for the moment that happened at this in-game time.</summary>
+        void Queue(List<SNS_Manager._message> posts, DateTime moment);
     }
 
     /// <summary>
@@ -155,7 +156,9 @@ namespace AIFanChatter
             double now = host.RealTime;
             lastSend = now;
             sentThisHour.Add(now);
-            DateTime thisWeek = WeekOf(host.GameTime);
+            // The posts come in over the days after the moment, not after the reply
+            DateTime momentTime = host.GameTime;
+            DateTime thisWeek = WeekOf(momentTime);
             if (thisWeek != week)
             {
                 week = thisWeek;
@@ -223,7 +226,7 @@ namespace AIFanChatter
                     noRetry = true;
                     Log.Warn("The model's reply had only one post again; it's shown, and one-post replies aren't sent again until the settings change.");
                 }
-                host.Queue(posts);
+                host.Queue(posts, momentTime);
             }
 
             Send(request, result => Handle(request, result, withSchema, withEffort, false));

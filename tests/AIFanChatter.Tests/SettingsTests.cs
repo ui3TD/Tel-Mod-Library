@@ -103,7 +103,7 @@ namespace AIFanChatter.Tests
         public void NoSettings_GiveTheDefaults()
         {
             Assert.False(Settings.Enabled);
-            Assert.Equal(Provider.Anthropic, Settings.Provider);
+            Assert.Equal(Provider.OpenAI, Settings.Provider);
             Assert.Equal(2, Settings.PerWeek);
             Assert.Equal("", Settings.Model);
             Assert.Equal("", Settings.BaseUrl);
@@ -139,7 +139,7 @@ namespace AIFanChatter.Tests
         public void Provider_PastTheListGivesTheDefault()
         {
             TestEnv.Vars[Settings.ProviderVar] = "5";
-            Assert.Equal(Provider.Anthropic, Settings.Provider);
+            Assert.Equal(Settings.DefaultProvider, Settings.Provider);
             TestEnv.Vars[Settings.ProviderVar] = "2";
             Assert.Equal(Provider.Compatible, Settings.Provider);
         }
@@ -170,10 +170,10 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void BlankModel_IsAnthropicsDefaultOnlyOnAnthropic()
+        public void BlankModel_IsTheServicesDefault_OnOpenAIAndAnthropic()
         {
             Assert.Equal(Settings.DefaultAnthropicModel, new Connection { Provider = Provider.Anthropic }.ResolvedModel);
-            Assert.Equal("", new Connection { Provider = Provider.OpenAI }.ResolvedModel);
+            Assert.Equal("gpt-6-luna", new Connection { Provider = Provider.OpenAI }.ResolvedModel);
             Assert.Equal("", new Connection { Provider = Provider.Compatible }.ResolvedModel);
             Assert.Equal("mine", new Connection { Provider = Provider.Anthropic, Model = "mine" }.ResolvedModel);
         }
@@ -199,6 +199,7 @@ namespace AIFanChatter.Tests
             Connection connection = new() { Provider = Provider.Compatible, BaseUrl = "https://openrouter.ai/api/v1", Model = "anthropic/claude-haiku-5.5" };
             Assert.Equal("openrouter.ai with anthropic/claude-haiku-5.5", connection.Describe());
             Assert.Equal("Anthropic with claude-haiku-5-5", new Connection { Provider = Provider.Anthropic }.Describe());
+            Assert.Equal("OpenAI with gpt-6-luna", new Connection { Provider = Provider.OpenAI }.Describe());
         }
 
         [Fact]

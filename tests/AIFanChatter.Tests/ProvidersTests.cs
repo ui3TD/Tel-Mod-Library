@@ -78,13 +78,23 @@ namespace AIFanChatter.Tests
 
         [Theory]
         [InlineData(Provider.Anthropic, null, "", "API key")]
-        [InlineData(Provider.OpenAI, "k", "", "model")]
         [InlineData(Provider.OpenAI, null, "gpt-x", "API key")]
         [InlineData(Provider.Compatible, null, "", "Base URL")]
         public void IncompleteSettings_SayWhatsMissing(Provider provider, string key, string model, string missing)
         {
             Assert.Null(Providers.BuildRequest(new Connection { Provider = provider, ApiKey = key, Model = model }, "s", "u", 1, out string error));
             Assert.Contains(missing, error);
+        }
+
+        /// <summary>
+        /// OpenAI, the default service, needs no model typed in: a blank one is gpt-6-luna.
+        /// </summary>
+        [Fact]
+        public void OpenAI_WithoutAModel_UsesItsDefault()
+        {
+            HttpRequestSpec request = Providers.BuildRequest(new Connection { Provider = Provider.OpenAI, ApiKey = "k" }, "s", "u", 1, out string error);
+            Assert.Null(error);
+            Assert.Contains("\"model\":\"gpt-6-luna\"", request.Body);
         }
 
         [Fact]

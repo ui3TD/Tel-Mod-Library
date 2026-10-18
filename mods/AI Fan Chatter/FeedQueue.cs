@@ -29,8 +29,10 @@ namespace AIFanChatter
     {
         public const string QueueVar = Settings.Prefix + "Queue";
         public const int MaxBatches = 3;
-        public const int MinGapHours = 2;
-        public const int MaxGapHours = 8;
+        /// <summary>The in-game hours after the moment that its posts and replies come in over.</summary>
+        public const int WindowHours = 48;
+        /// <summary>The most in-game hours a reply comes after its post.</summary>
+        public const int MaxReplyDelayHours = 6;
 
         public static readonly List<QueuedItem> Items = new();
         private static int lastBatch;
@@ -42,30 +44,34 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// Queues a batch: the first post at once, each later one 2 to 8 in-game hours after the one before,
-        /// and each reply with its post or up to 6 hours after it. The oldest batches still waiting are
-        /// dropped past three.
+        /// Queues a batch over the 48 in-game hours after its moment: the hours are split into one stretch per
+        /// post, in order, and each post comes at a random time in its stretch. Each reply comes with its post
+        /// or up to 6 hours after it, within the 48 hours. Times already past when the reply arrives are due at
+        /// once. The oldest batches still waiting are dropped past three.
         /// </summary>
-        public static void AddBatch(List<SNS_Manager._message> posts, DateTime now, Random random)
+        /// <param name="moment">When the moment happened: the request was sent then.</param>
+        public static void AddBatch(List<SNS_Manager._message> posts, DateTime moment, Random random)
         {
             if (posts == null || posts.Count == 0)
             {
                 return;
             }
             int batch = ++lastBatch;
-            DateTime due = now;
+            int stretch = WindowHours * 60 / posts.Count;
+            DateTime end = moment.AddHours(WindowHours);
             for (int i = 0; i < posts.Count; i++)
             {
                 SNS_Manager._message post = posts[i];
-                if (i > 0)
-                {
-                    due = due.AddHours(random.Next(MinGapHours, MaxGapHours + 1)).AddMinutes(random.Next(60));
-                }
+                DateTime due = moment.AddMinutes(i * stretch + random.Next(stretch));
                 Items.Add(new QueuedItem { Batch = batch, First = i == 0, Due = due, User = post.User, Text = post.Message });
                 foreach (SNS_Manager._message reply in post.Replies)
                 {
                     // Half the replies come with the post, the rest trickle in after it
-                    DateTime replyDue = random.Next(2) == 0 ? due : due.AddHours(random.Next(1, 7)).AddMinutes(random.Next(60));
+                    DateTime replyDue = random.Next(2) == 0 ? due : due.AddMinutes(random.Next(1, MaxReplyDelayHours * 60 + 1));
+                    if (replyDue > end)
+                    {
+                        replyDue = end;
+                    }
                     Items.Add(new QueuedItem
                     {
                         Batch = batch,

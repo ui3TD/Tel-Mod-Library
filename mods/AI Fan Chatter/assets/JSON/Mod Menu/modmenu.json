@@ -14,7 +14,7 @@
 		"varID": "AIFanChatter_Provider",
 		"labelID": "AIFANCHATTER__MODMENU__PROVIDER",
 		"itemIDList": ["AIFANCHATTER__MODMENU__ANTHROPIC", "AIFANCHATTER__MODMENU__OPENAI", "AIFANCHATTER__MODMENU__COMPATIBLE"],
-		"defaultValue": 0
+		"defaultValue": 1
 	},
 	{
 		"type": "input",

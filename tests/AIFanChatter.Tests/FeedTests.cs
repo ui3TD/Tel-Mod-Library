@@ -34,29 +34,64 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void FirstPost_IsDueAtOnceAndIsTheOnlyFirst()
+        public void FirstPost_IsTheOnlyFirst()
         {
             FeedQueue.AddBatch(Batch("a"), Now, new Random(1));
-            QueuedItem first = FeedQueue.TakeDue(Now);
+            QueuedItem first = FeedQueue.TakeDue(Now.AddDays(3));
             Assert.Equal("a one", first.Text);
             Assert.True(first.First);
             Assert.Single(FeedQueue.Items.Concat(new[] { first }).Where(i => i.First));
         }
 
+        /// <summary>
+        /// The 48 hours after the moment are split into one stretch per post: each post comes, in order, at a
+        /// random time in its own stretch, so the posts are spread over the two days.
+        /// </summary>
         [Fact]
-        public void LaterPosts_ComeTwoToNineHoursApart()
+        public void Posts_AreSpreadOverTheTwoDaysAfterTheMoment()
         {
+            HashSet<DateTime> seen = new();
             for (int seed = 0; seed < 50; seed++)
             {
                 FeedQueue.Clear();
                 FeedQueue.AddBatch(Batch("a"), Now, new Random(seed));
                 List<DateTime> posts = FeedQueue.Items.Where(i => !i.IsReply).Select(i => i.Due).ToList();
-                for (int i = 1; i < posts.Count; i++)
+                Assert.Equal(3, posts.Count);
+                for (int i = 0; i < posts.Count; i++)
                 {
-                    double gap = (posts[i] - posts[i - 1]).TotalHours;
-                    Assert.InRange(gap, FeedQueue.MinGapHours, FeedQueue.MaxGapHours + 1);
+                    Assert.InRange(posts[i], Now.AddHours(16 * i), Now.AddHours(16 * (i + 1)).AddTicks(-1));
+                }
+                seen.Add(posts[0]);
+            }
+            Assert.True(seen.Count > 10, "The posts' times aren't random");
+        }
+
+        [Fact]
+        public void Replies_ComeWithinSixHoursOfTheirPost_AndWithinTheTwoDays()
+        {
+            for (int seed = 0; seed < 50; seed++)
+            {
+                FeedQueue.Clear();
+                FeedQueue.AddBatch(Batch("a"), Now, new Random(seed));
+                foreach (QueuedItem reply in FeedQueue.Items.Where(i => i.IsReply))
+                {
+                    QueuedItem post = FeedQueue.Items.Single(i => !i.IsReply && i.Text == reply.ParentText);
+                    Assert.InRange(reply.Due, post.Due, post.Due.AddHours(FeedQueue.MaxReplyDelayHours));
+                    Assert.True(reply.Due <= Now.AddHours(FeedQueue.WindowHours), "A reply came after the two days");
                 }
             }
+        }
+
+        /// <summary>
+        /// A reply that arrives a day after its moment has its first day's posts due at once.
+        /// </summary>
+        [Fact]
+        public void PostsWhoseTimePassedWhileWaiting_AreDueAtOnce()
+        {
+            FeedQueue.AddBatch(Batch("a"), Now.AddDays(-1), new Random(1));
+            List<QueuedItem> due = FeedQueue.TakeAllDue(Now);
+            Assert.Contains(due, i => i.Text == "a one");
+            Assert.All(FeedQueue.Items, i => Assert.True(i.Due > Now));
         }
 
         [Fact]
@@ -97,10 +132,12 @@ namespace AIFanChatter.Tests
         public void OnlyWhatsDue_IsReleased()
         {
             FeedQueue.AddBatch(Batch("a"), Now, new Random(1));
-            List<QueuedItem> released = FeedQueue.TakeAllDue(Now);
+            DateTime later = Now.AddHours(20);
+            List<QueuedItem> released = FeedQueue.TakeAllDue(later);
             Assert.NotEmpty(released);
-            Assert.All(released, i => Assert.True(i.Due <= Now));
-            Assert.All(FeedQueue.Items, i => Assert.True(i.Due > Now));
+            Assert.All(released, i => Assert.True(i.Due <= later));
+            Assert.NotEmpty(FeedQueue.Items);
+            Assert.All(FeedQueue.Items, i => Assert.True(i.Due > later));
         }
 
         [Fact]

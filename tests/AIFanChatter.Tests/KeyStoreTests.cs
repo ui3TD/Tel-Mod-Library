@@ -22,28 +22,28 @@ namespace AIFanChatter.Tests
         public void TypedKey_IsFiledAndTheSaveGetsBlank()
         {
             Dispatcher.Instance = new Dispatcher(new FakeHost(), new FakeTransport(), new System.Random(1));
-            Assert.Equal("", ApplyKeyRow("  sk-ant-secret-9876  "));
-            Assert.Equal("sk-ant-secret-9876", KeyStore.Get(Provider.Anthropic));
-            Assert.Equal("sk-ant-secret-9876", File.ReadAllText(Path.Combine(TestEnv.KeyFolder, "anthropic.key")));
+            Assert.Equal("", ApplyKeyRow("  sk-secret-9876  "));
+            Assert.Equal("sk-secret-9876", KeyStore.Get(Provider.OpenAI));
+            Assert.Equal("sk-secret-9876", File.ReadAllText(Path.Combine(TestEnv.KeyFolder, "openai.key")));
         }
 
         [Fact]
         public void BlankField_KeepsTheKey()
         {
             Dispatcher.Instance = new Dispatcher(new FakeHost(), new FakeTransport(), new System.Random(1));
-            KeyStore.Set(Provider.Anthropic, "kept-key");
+            KeyStore.Set(Provider.OpenAI, "kept-key");
             Assert.Equal("", ApplyKeyRow(""));
-            Assert.Equal("kept-key", KeyStore.Get(Provider.Anthropic));
+            Assert.Equal("kept-key", KeyStore.Get(Provider.OpenAI));
         }
 
         [Fact]
         public void Dash_RemovesTheKey()
         {
             Dispatcher.Instance = new Dispatcher(new FakeHost(), new FakeTransport(), new System.Random(1));
-            KeyStore.Set(Provider.Anthropic, "old-key");
+            KeyStore.Set(Provider.OpenAI, "old-key");
             Assert.Equal("", ApplyKeyRow("-"));
-            Assert.Null(KeyStore.Get(Provider.Anthropic));
-            Assert.False(File.Exists(Path.Combine(TestEnv.KeyFolder, "anthropic.key")));
+            Assert.Null(KeyStore.Get(Provider.OpenAI));
+            Assert.False(File.Exists(Path.Combine(TestEnv.KeyFolder, "openai.key")));
         }
 
         [Fact]

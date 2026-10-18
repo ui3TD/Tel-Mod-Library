@@ -25,12 +25,17 @@ namespace AIFanChatter
         public const string PerWeekVar = Prefix + "PerWeek";
 
         public const bool DefaultEnabled = false;
-        public const Provider DefaultProvider = Provider.Anthropic;
+        public const Provider DefaultProvider = Provider.OpenAI;
         public const int DefaultPerWeek = 2;
         public const int MaxPerWeek = 7;
 
         /// <summary>
-        /// The model a blank Model setting uses on Anthropic. OpenAI and compatible services need one typed in.
+        /// The model a blank Model setting uses on OpenAI, the default service.
+        /// </summary>
+        public const string DefaultOpenAIModel = "gpt-6-luna";
+
+        /// <summary>
+        /// The model a blank Model setting uses on Anthropic. Other services need one typed in.
         /// </summary>
         public const string DefaultAnthropicModel = "claude-haiku-5-5";
 
@@ -88,9 +93,12 @@ namespace AIFanChatter
         public string ApiKey;
 
         /// <summary>
-        /// The model the request names: the setting, or Anthropic's default when it's blank.
+        /// The model the request names: the setting, or OpenAI's or Anthropic's default when it's blank.
         /// </summary>
-        public string ResolvedModel => Model != "" ? Model : Provider == Provider.Anthropic ? Settings.DefaultAnthropicModel : "";
+        public string ResolvedModel => Model != "" ? Model
+            : Provider == Provider.OpenAI ? Settings.DefaultOpenAIModel
+            : Provider == Provider.Anthropic ? Settings.DefaultAnthropicModel
+            : "";
 
         /// <summary>
         /// The service as the player knows it: Anthropic, OpenAI, or for any other service its address

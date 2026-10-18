@@ -83,6 +83,21 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
+        /// A reply that arrives a day after its moment has its first day's posts taken out of the queue at once,
+        /// for the feed, even with the clock paused; the rest wait.
+        /// </summary>
+        [Fact]
+        public void GameHost_ReleasesWhatsAlreadyDue_WhenTheReplyArrives()
+        {
+            List<SNS_Manager._message> posts = new() { TestEnv.Post("F_C_T", "one"), TestEnv.Post("M_C_T", "two"), TestEnv.Post("F_HC_A", "three") };
+            TestEnv.Configure();
+            new GameHost().Queue(posts, TestGame.Today.AddDays(-1));
+            Assert.DoesNotContain(FeedQueue.Items, i => i.Text == "one");
+            Assert.NotEmpty(FeedQueue.Items);
+            Assert.All(FeedQueue.Items, i => Assert.True(i.Due > TestGame.Today));
+        }
+
+        /// <summary>
         /// The game's feed and the queue, read fresh and copied, so the prompt never holds on to the game's list.
         /// </summary>
         [Fact]

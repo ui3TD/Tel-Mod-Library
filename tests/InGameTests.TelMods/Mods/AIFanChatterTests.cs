@@ -48,7 +48,7 @@ namespace InGameTests.TelMods
             }
             yield return Game.CloseAllPopups(ctx);
 
-            using (TempKeyFolder(mod, out string folder))
+            using (TempKeyFolder(mod, out _))
             using (Game.Variable(Prefix + "Enabled", "0"))
             using (RestoreVariables())
             {
@@ -68,7 +68,10 @@ namespace InGameTests.TelMods
                 field.text = typed;
                 yield return Apply(ctx, row);
                 ctx.Assert(variables.Get(KeyVar) == "", "Apply saved the key in the save: " + (variables.Get(KeyVar) ?? "null"));
-                string file = Path.Combine(folder, "anthropic.key");
+                // The key file of the service the menu has selected
+                Type settings = mod.GetType("AIFanChatter.Settings", true);
+                string file = (string)AccessTools.Method(mod.GetType("AIFanChatter.KeyStore", true), "FileFor")
+                    .Invoke(null, new[] { AccessTools.Property(settings, "Provider").GetValue(null, null) });
                 ctx.Assert(File.Exists(file) && File.ReadAllText(file) == typed, "Apply didn't write the key file");
 
                 yield return OpenMenu(ctx, _ => { });

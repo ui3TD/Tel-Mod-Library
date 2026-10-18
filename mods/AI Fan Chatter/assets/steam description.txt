@@ -1,21 +1,21 @@
 [h1]REQUIRES: IM-HarmonyIntegration[/h1]
 Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
 
-Fans react on the Social Media tab to your singles, concerts, graduations and events. An AI service you choose writes their posts and replies, which arrive over the next few in-game days. Each kind of fan is as happy or as critical as their opinion of your group in the game. The feed also keeps 100 posts instead of 20.
+Fans react on the Social Media tab to your singles, concerts, graduations and events. An AI service you choose writes their posts and replies, which arrive over the two in-game days after it happens. Each kind of fan is as happy or as critical as their opinion of your group in the game. The feed also keeps 100 posts instead of 20.
 
 [h3]Setting it up[/h3]
 You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url] and an account with an AI service. In Settings, open Mod Settings and fill in:
 [list]
-[*]AI service: Anthropic, OpenAI, or OpenAI-compatible (other) for services such as OpenRouter, or for a model on your own PC with Ollama or LM Studio.
+[*]AI service: OpenAI (the default), Anthropic, or OpenAI-compatible (other) for services such as OpenRouter, or for a model on your own PC with Ollama or LM Studio.
 [*]Base URL: only for other services, for example https://openrouter.ai/api/v1, or http://localhost:11434 for Ollama.
-[*]Model: the model's name. Left blank on Anthropic, it uses claude-haiku-5-5.
+[*]Model: the model's name. Left blank, it uses gpt-6-luna on OpenAI and claude-haiku-5-5 on Anthropic.
 [*]API key: your key from the service. ModMenus 3.0.0 or later hides it as you type.
 [*]Requests per week: the most requests in one in-game week.
 [/list]
 Then tick Turn on AI fan posts and press Apply. A notification tells you whether it worked.
 
 [h3]Cost[/h3]
-Each request is charged to your account with the AI service. A small, cheap model costs a fraction of a cent per request: with Claude Haiku 5.5, a request costs about 0.08 US cents, so a whole in-game year at 2 requests a week costs about 8 US cents, and at the most, 7 a week, about 30 cents. Bigger models can cost ten times as much or more, so check your service's prices. The mod never sends more than 20 requests in an hour, even when fast-forwarding. To be safe, set a spending limit on your key in your service's account settings.
+Each request is charged to your account with the AI service. A small, cheap model costs a fraction of a cent per request: with GPT-6 Luna, the default, a request costs about 0.04 US cents, so a whole in-game year at 2 requests a week costs about 4 US cents, and at the most, 7 a week, about 15 cents. Claude Haiku 5.5 costs about twice as much. Bigger models can cost ten times as much or more, so check your service's prices. The mod never sends more than 20 requests in an hour, even when fast-forwarding. To be safe, set a spending limit on your key in your service's account settings.
 
 [h3]Privacy[/h3]
 Each request sends that moment's details to your AI service: the names of your group and idols, results such as sales, details of the idols in it such as their age, popularity, stamina, scandal record and trivia, earlier results, and the recent posts on the feed. Your API key is kept in a file on your PC, never in your saves. To remove it, type - in the key field and press Apply.
@@ -40,3 +40,4 @@ Your saves load normally without it. The feed then keeps its newest 20 posts.
 - 1.4.0: Events name the producer; graduations list centers; other groups labelled; no self-replies
 - 1.5.0: Singles name their promotion and outcome, concerts the ticket price; self-replies dropped
 - 1.6.0: Concert attendance gives the venue's capacity; singles no longer give their new fans
+- 1.7.0: Posts arrive over the two days after the moment; OpenAI with gpt-6-luna is the default

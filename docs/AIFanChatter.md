@@ -308,6 +308,6 @@ Each placeholder was filled in as follows:
 - **Replies to themselves:** it drops a reply from the fan who wrote the post.
 - **One post:** when the prompt asks for several posts through `{min}` and the reply has only one, it sends the request once more. If that reply has only one post too, it shows it, and doesn't send one-post replies again until you change a setting.
 - **Emoji:** it takes them out, because the feed can't show them.
-- **Timing:** it releases the posts into the feed over the next in-game day or two.
+- **Timing:** it spreads the posts over the two in-game days after the moment, in order, each at a random time in its share of the two days. Each reply comes with its post or up to 6 hours after it. Posts whose time has already passed when the AI's reply arrives appear at once.
 - **Reply format:** when your AI service supports it, it asks for replies in the reply format, so the replies always come back in that shape.
 - **Reasoning:** it asks models that reason before answering to reason only a little (low effort), which makes requests cheaper. A service ignores the setting if it doesn't know it. A service or model that rejects the request gets it again without the low effort, and if it rejects that too, without the reply format. What it rejected isn't asked for again until you change a setting.

@@ -90,9 +90,11 @@ namespace AIFanChatter
             TweenSettingsExtensions.SetUpdate(TweenSettingsExtensions.AppendCallback(DOTween.Sequence(), () => action()), true);
         }
 
-        public void Queue(List<SNS_Manager._message> posts)
+        public void Queue(List<SNS_Manager._message> posts, DateTime moment)
         {
-            FeedQueue.AddBatch(posts, staticVars.dateTime, random);
+            FeedQueue.AddBatch(posts, moment, random);
+            // Posts whose time passed while the request ran appear now, even with the clock paused
+            FeedRelease.OnTimeTick();
         }
     }
 

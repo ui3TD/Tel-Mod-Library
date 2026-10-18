@@ -39,6 +39,19 @@ namespace AIFanChatter.Tests
             Assert.Contains("Title: Song", transport.Sent.Single().Body);
         }
 
+        /// <summary>
+        /// The posts are timed from the moment, when the request went out, not from when the reply came back.
+        /// </summary>
+        [Fact]
+        public void Posts_AreTimedFromTheMoment_NotTheReply()
+        {
+            DateTime moment = host.GameTime;
+            Assert.True(dispatcher.Request(Moment()));
+            host.GameTime = moment.AddHours(9);
+            transport.Reply(200, Replies.Anthropic(Replies.Posts));
+            Assert.Equal(moment, host.QueuedFor.Single());
+        }
+
         [Fact]
         public void Off_SendsNothing()
         {

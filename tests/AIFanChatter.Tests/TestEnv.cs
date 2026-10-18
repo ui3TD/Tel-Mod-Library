@@ -119,11 +119,16 @@ namespace AIFanChatter.Tests
         public readonly List<(string Text, bool Error)> Notices = new();
         public readonly List<Action> Frames = new();
         public readonly List<List<SNS_Manager._message>> Queued = new();
+        public readonly List<DateTime> QueuedFor = new();
 
         public Connection ReadConnection() => Settings.Current();
         public void Notify(string text, bool error) => Notices.Add((text, error));
         public void NextFrame(Action action) => Frames.Add(action);
-        public void Queue(List<SNS_Manager._message> posts) => Queued.Add(posts);
+        public void Queue(List<SNS_Manager._message> posts, DateTime moment)
+        {
+            Queued.Add(posts);
+            QueuedFor.Add(moment);
+        }
 
         public void RunFrames()
         {

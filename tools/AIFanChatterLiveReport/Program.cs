@@ -348,7 +348,8 @@ namespace AIFanChatter.LiveReport
         public IList<SNS_Manager._message> RecentPosts => game.RecentPosts;
         public void Notify(string text, bool error) => Console.Error.WriteLine((error ? "Notice (error): " : "Notice: ") + text);
         public void NextFrame(Action action) => action();
-        public void Queue(List<SNS_Manager._message> posts) => game.Queue(posts);
+        // Straight into the queue: the game's feed isn't there to release posts into, and the report lists them all
+        public void Queue(List<SNS_Manager._message> posts, DateTime moment) => FeedQueue.AddBatch(posts, moment, new Random());
     }
 
     /// <summary>

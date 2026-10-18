@@ -274,7 +274,7 @@ def render(data: dict, args) -> str:
                 out += [m["error"], ""]
                 continue
             if i["retried"]:
-                out += [f"The first reply had only one post, so the mod sent the request again; these are the posts from the last reply.", ""]
+                out += ["The first reply had only one post, so the mod sent the request again; these are the posts from the last reply.", ""]
             out += [posts_markdown(m.get("queued", []), fans, raw_texts_of(i["replies"])), "",
                     f"<details><summary>{name}'s raw repl{'ies' if len(i['replies']) > 1 else 'y'} and usage</summary>", ""]
             for k, (reply, usage) in enumerate(zip(i["replies"], i["usages"]), 1):

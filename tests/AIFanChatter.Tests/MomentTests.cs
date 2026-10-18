@@ -99,6 +99,29 @@ namespace AIFanChatter.Tests
             Assert.Equal(expected, MomentContext.WithNickname(nickname, fullName));
         }
 
+        /// <summary>
+        /// The full name after a nickname is the one the game's own GetName gives without the nickname, in the
+        /// name order the language's "default" variable sets.
+        /// </summary>
+        [Fact]
+        public void NicknamedIdol_KeepsTheNameTheGameShowsWithoutIt()
+        {
+            Language.Variables.Add(new Language._variable { Variable = "default", Male = "firstName lastName", Female = "lastName firstName" });
+            data_girls.girls center = TestGame.Idol("");
+            center.firstName = "Momone";
+            center.lastName = "Yasuda";
+            data_girls.girls other = TestGame.Idol("Aya");
+            singles._single single = TestGame.Single("Song", TestGame.Today, 1, center, other);
+            string fullName = center.GetName(true);
+            Assert.Equal("Yasuda Momone", fullName);
+
+            center.nickname = "TestNick";
+            string text = MomentContext.Single(single).Describe();
+            Assert.Contains("Center: TestNick (" + fullName + ")", text);
+            string members = text.Split('\n').FirstOrDefault(l => l.StartsWith("Members: ")) ?? "";
+            Assert.Contains("TestNick (" + fullName + ")", members);
+        }
+
         [Fact]
         public void GameText_LosesTagsAndLineBreaks()
         {
@@ -217,6 +240,40 @@ namespace AIFanChatter.Tests
             Assert.Contains("- M_C_T: casual teen boy, opinion of the group: 12/100", prompt);
             Assert.Contains("- F_HC_A: devoted adult woman, opinion of the group: 88/100", prompt);
             Assert.Contains("- M_C_YA: casual young adult man\n", prompt);
+        }
+
+        /// <summary>
+        /// Each of the game's fan groups gets the opinion the game works out from its gender, devotion and age
+        /// (resources.GetFanOpinion), out of 100. A fan type the game has no opinion list for is left out.
+        /// </summary>
+        [Fact]
+        public void GameHost_GivesEachFanGroupTheGamesOpinion()
+        {
+            resources.fanType[] genders = { resources.fanType.male, resources.fanType.female };
+            resources.fanType[] devotions = { resources.fanType.casual, resources.fanType.hardcore };
+            resources.fanType[] ages = { resources.fanType.teen, resources.fanType.youngAdult, resources.fanType.adult };
+            foreach (resources.fanType gender in genders)
+                foreach (resources.fanType devotion in devotions)
+                    foreach (resources.fanType age in ages)
+                        resources.Fans.Add(new resources._fan { gender = gender, hardcoreness = devotion, age = age, people = 100 });
+            foreach (resources.fanType type in genders.Concat(devotions).Concat(ages))
+            {
+                resources.fanOpinions.Add(new resources._fanOpinion { type = type });
+            }
+            resources.GetFanOpinion(resources.fanType.male).Vals.AddRange(new[] { 1, 1, 1 });
+            resources.GetFanOpinion(resources.fanType.teen).Vals.Add(-1);
+
+            IDictionary<string, int> opinions = new GameHost().FanOpinions;
+            Assert.Equal(12, opinions.Count);
+            Assert.Equal(75, opinions["M_C_T"]);
+            Assert.Equal(100, opinions["M_HC_A"]);
+            Assert.Equal(0, opinions["F_C_T"]);
+            Assert.Equal(50, opinions["F_HC_YA"]);
+
+            resources.fanOpinions.RemoveAll(o => o.type == resources.fanType.adult);
+            opinions = new GameHost().FanOpinions;
+            Assert.Equal(8, opinions.Count);
+            Assert.False(opinions.ContainsKey("M_C_A"));
         }
 
         [Theory]

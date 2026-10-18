@@ -77,8 +77,7 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// Text the feed's font can show, on one line and cut to the length limit. An in-game test checks
-        /// which symbols the font has.
+        /// Text the feed's font can show, on one line and cut to the length limit.
         /// </summary>
         public static string Clean(string text)
         {

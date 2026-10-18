@@ -21,6 +21,9 @@ namespace AIFanChatter.Tests
             SEvent_SSK.Elections.Clear();
             traits.Traits.Clear();
             resources.resource.Clear();
+            resources.Fans.Clear();
+            resources.fanOpinions.Clear();
+            Language.Variables.Clear();
             policies.Values.Clear();
             staticVars.dateTime = Today;
         }

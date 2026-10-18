@@ -118,12 +118,6 @@ namespace InGameTests.TelMods
                 ctx.Assert(prompt.StartsWith("You write fan posts") && prompt.Contains("\n- Write 3 to 6 posts") && !prompt.Contains("{language}"),
                     "The prompt didn't come from constants.json: " + prompt.Substring(0, Math.Min(200, prompt.Length)));
 
-                // Every fan type's opinion comes from the game's real fans, as the prompt's fan accounts show it
-                object host = Activator.CreateInstance(mod.GetType("AIFanChatter.GameHost", true), true);
-                var opinions = (IDictionary<string, int>)AccessTools.Property(host.GetType(), "FanOpinions").GetValue(host, null);
-                ctx.Record("opinions", string.Join(", ", opinions.Select(o => o.Key + "=" + o.Value).ToArray()));
-                ctx.Assert(opinions.Count == 12 && opinions.Values.All(v => v >= 0 && v <= 100), "Fan opinions: " + opinions.Count + " of 12, values " + string.Join(", ", opinions.Values.Select(v => v.ToString()).ToArray()));
-
                 object dispatcher = AccessTools.Property(mod.GetType("AIFanChatter.Dispatcher", true), "Instance").GetValue(null, null);
                 object moment = Activator.CreateInstance(mod.GetType("AIFanChatter.Moment", true), "an in-game test");
                 bool sent = (bool)AccessTools.Method(dispatcher.GetType(), "Request").Invoke(dispatcher, new[] { moment });
@@ -142,14 +136,6 @@ namespace InGameTests.TelMods
                 ctx.Assert(one != null && one.Replies.Any(r => r.Message == "<noparse>ingame reply</noparse>"), "The reply isn't under its post");
                 ctx.Assert(one == null || SNS_Manager.Messages.IndexOf(one) < SNS_Manager.Messages.IndexOf(two), "The posts are out of order");
                 ctx.Assert(one == null || one.GetSprite() != null, "The post has no avatar");
-                // Which symbols the feed's font draws, for the emoji filter in PostParser.Clean
-                TMP_Text feedText = Game.Main.Data.GetComponent<SNS_Manager>().prefab_message.GetComponentInChildren<TMP_Text>(true);
-                if (feedText != null && feedText.font != null)
-                {
-                    foreach (char symbol in "❤♪★…")
-                        ctx.Record("fontHas U+" + ((int)symbol).ToString("X4"), feedText.font.HasCharacter(symbol, true));
-                    ctx.Record("fontHas emoji", feedText.font.HasCharacters("🎤", out _, true));
-                }
                 ctx.Assert(queue.Count == 0, "Items are still queued after 3 days: " + queue.Count);
                 ctx.Record("requests", server.Requests);
             }
@@ -190,39 +176,6 @@ namespace InGameTests.TelMods
                 ctx.Assert(feedAfter.SequenceEqual(feedBefore), "The loaded feed differs: " + feedBefore.Count + " posts saved, " + feedAfter.Count + " loaded");
                 ctx.Assert(queue.Count == queuedBefore, "The loaded queue holds " + queue.Count + " items, not " + queuedBefore);
             }
-        }
-
-        /// <summary>
-        /// A nicknamed idol goes to the model as her nickname with the full name the game would show without it.
-        /// The unit tests check the joining; this checks the game's real names.
-        /// </summary>
-        [InGameTest(Suite = ModTest.Suite)]
-        private static IEnumerator NicknamedIdolKeepsHerFullName(TestContext ctx)
-        {
-            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
-                yield break;
-
-            singles._single single = singles.Singles.LastOrDefault(s => s.status == singles._single._status.released && s.GetCenter() != null);
-            if (single == null)
-            {
-                ctx.Note("The fixture save has no released single with a center; skipped");
-                yield break;
-            }
-            data_girls.girls center = single.GetCenter();
-            string before = center.nickname;
-            using (TestTools.Restore(() => center.nickname = before))
-            {
-                center.nickname = "";
-                string fullName = center.GetName(true);
-                center.nickname = "TestNick";
-                object moment = AccessTools.Method(mod.GetType("AIFanChatter.MomentContext", true), "Single").Invoke(null, new object[] { single });
-                string text = (string)AccessTools.Method(moment.GetType(), "Describe").Invoke(moment, null);
-                ctx.Record("center", fullName);
-                ctx.Assert(text.Contains("Center: TestNick (" + fullName + ")"), "The center line isn't 'TestNick (" + fullName + ")': " + text.Split('\n').FirstOrDefault(l => l.StartsWith("Center")));
-                string members = text.Split('\n').FirstOrDefault(l => l.StartsWith("Members: ")) ?? "";
-                ctx.Assert(members.Contains("TestNick (" + fullName + ")"), "The members line doesn't name her as 'TestNick (" + fullName + ")': " + members);
-            }
-            yield break;
         }
 
         private static IEnumerator OpenMenu(TestContext ctx, Action<GameObject> found)

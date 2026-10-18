@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<RootNamespace>AIFanChatter.LiveReport</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so the report runs the current code and building never deploys the mod-->
+		<Compile Include="..\..\mods\AI Fan Chatter\**\*.cs" Exclude="..\..\mods\AI Fan Chatter\obj\**;..\..\mods\AI Fan Chatter\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--Type-forwarding facade; Harmony needs it to compile patched methods that reference it-->
+		<Reference Include="UnityEngine">
+			<HintPath>$(dllDir)\UnityEngine.dll</HintPath>
+		</Reference>
+		<!--mainScript's static fields need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+		<!--staticVars' initializer loads Steamworks types-->
+		<Reference Include="Steamworks.NET">
+			<HintPath>$(dllDir)\Steamworks.NET.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

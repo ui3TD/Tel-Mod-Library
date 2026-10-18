@@ -1,61 +1,82 @@
 """Record what AI Fan Chatter sends to a real AI service and what comes back, as a Markdown report.
 
-Not a test. It boots the game with the in-game tests' fixture save and runs the `live-report` suite
-(tests/InGameTests.TelMods/Reports/AIFanChatterLiveReport.cs). That sends three moments from the save,
-a single release, a concert and a graduation, through the mod's own dispatcher, once per model, about
-32 seconds apart, so each model's later prompts carry its own earlier posts. Every request costs money
-on the key saved in the mod's key file for the chosen service (OpenAI-compatible by default).
+Not a test, and it doesn't start the game. It builds and runs tools/AIFanChatterLiveReport, which
+fills the game's lists with a made-up agency (Agency.cs there) and sends three of its moments, a single
+release, a concert and a graduation, through the mod's own prompt, dispatcher and reply code, once per
+model, one after another, so each model's later prompts carry its own earlier posts. It reads the
+game's English text from the install folder. Every request costs money on the key saved in the mod's
+key file for the chosen service (OpenAI-compatible by default).
 
     python tools/ai_fan_chatter_live_report.py
     python tools/ai_fan_chatter_live_report.py --models anthropic/claude-haiku-5.5
+    python tools/ai_fan_chatter_live_report.py --dry-run                 # print the prompts; sends nothing
+    python tools/ai_fan_chatter_live_report.py --moments concert --setlist "Signal Fire/Rin; talk: Mao, Kaede"
     python tools/ai_fan_chatter_live_report.py --from-json report.json   # only rewrite the Markdown
 
-Build the mod in Release first. The report goes to ../reports/ai-fan-chatter-live-report.md (outside
-the repo), with the raw recording next to it as .json. Its findings section is left for you to write.
+The report goes to ../reports/ai-fan-chatter-live-report.md (outside the repo), with the raw recording
+next to it as .json. Its findings section is left for you to write.
 """
 
 import argparse
 import datetime
+import importlib.util
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 RUN = REPO / "tests" / "InGameTests.TelMods" / "run.py"
-LOCALLOW = Path(os.environ["USERPROFILE"]) / "AppData" / "LocalLow" / "Glitch Pitch" / "Idol Manager"
-REQUEST_FILE = LOCALLOW / "InGameTests" / "aifanchatter-live-report.json"
+TOOL = REPO / "tools" / "AIFanChatterLiveReport" / "AIFanChatterLiveReport.csproj"
 CSPROJ = REPO / "mods" / "AI Fan Chatter" / "AI Fan Chatter.csproj"
 DEFAULT_OUT = REPO.parent / "reports" / "ai-fan-chatter-live-report.md"
 MAX_SHOWN = 200
 PROVIDERS = {"anthropic": 0, "openai": 1, "compatible": 2}
 
 
+def find_game_dir() -> Path:
+    """The game's install folder, found as the in-game tests find it."""
+    spec = importlib.util.spec_from_file_location("telmods_run", RUN)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    game_dir = module.load_runner().find_game_dir()
+    if game_dir is None:
+        sys.exit("Idol Manager not found; pass --game-dir.")
+    return game_dir
+
+
+def run_tool(args, *options: str) -> None:
+    """Builds and runs tools/AIFanChatterLiveReport with these options."""
+    game_dir = args.game_dir or find_game_dir()
+    cmd = ["dotnet", "run", "--project", str(TOOL), "--", "--game-dir", str(game_dir), *options]
+    code = subprocess.call(cmd)
+    if code != 0:
+        sys.exit(f"tools/AIFanChatterLiveReport failed (exit code {code}).")
+
+
+def scenario(args) -> list:
+    """The tool's options for which moments to send and the concert's set list."""
+    options = []
+    for moment in args.moments or []:
+        options += ["--moment", moment]
+    if args.setlist:
+        options += ["--setlist", args.setlist]
+    return options
+
+
 def record(args) -> Path:
-    """Runs the live-report suite and returns the JSON it wrote."""
+    """Runs the report tool and returns the JSON it wrote."""
     raw = args.out.with_suffix(".json")
     raw.parent.mkdir(parents=True, exist_ok=True)
     if raw.exists():
         raw.unlink()
-    REQUEST_FILE.parent.mkdir(parents=True, exist_ok=True)
-    REQUEST_FILE.write_text(json.dumps({
-        "provider": str(PROVIDERS[args.provider]),
-        "baseUrl": args.base_url,
-        "models": args.models,
-        "gapSeconds": str(args.gap),
-        "out": str(raw),
-    }), encoding="utf-8")
-    try:
-        cmd = [sys.executable, str(RUN), "--suite", "live-report", "--timeout", str(args.timeout)]
-        if args.game_dir:
-            cmd += ["--game-dir", str(args.game_dir)]
-        code = subprocess.call(cmd)
-    finally:
-        # Without the request file the suite sends nothing, so no later run can spend money
-        REQUEST_FILE.unlink(missing_ok=True)
+    options = ["--provider", str(PROVIDERS[args.provider]), "--base-url", args.base_url, "--out", str(raw)]
+    for model in args.models:
+        options += ["--model", model]
+    run_tool(args, *options, *scenario(args))
     if not raw.exists():
-        sys.exit(f"The game run (exit code {code}) wrote no recording.")
+        sys.exit("The report tool wrote no recording.")
     return raw
 
 
@@ -226,10 +247,10 @@ def render(data: dict, args) -> str:
            f"{'each of ' if len(runs) > 2 else ''}{len(runs)} model{'s' if len(runs) != 1 else ''}. Each section below shows the exact prompt the mod sent and the posts that came back, as the game would show them.",
            "", "## Setup", "",
            f"- **Service and models:** {args.base_url} with {', '.join('`' + r['model'] + '`' for r in runs)}, using the player's saved key. The mod's settings were otherwise its defaults.",
-           f"- **Save:** the in-game tests' fixture save, loaded on {data.get('saveDate', '?')}. Game language: {data.get('language') or 'en'}.",
-           f"- **Order:** for each model, the moments were sent one after another, about {args.gap} seconds apart (the mod's minimum gap is 30 seconds). Each later prompt therefore carries that model's own earlier posts as feed history, still queued and not yet shown in the feed.",
-           "- **Same starting point:** each model started from the save's own feed, so every model got the same first prompt. Their later prompts differ only in the feed history.",
-           f"- **Moments:** {', '.join(moments)}, taken from the save.",
+           f"- **Game state:** the made-up agency in tools/AIFanChatterLiveReport/Agency.cs, on {data.get('gameDate', '?')}, with the game's {data.get('language') or 'en'} text. The game wasn't running.",
+           "- **Order:** for each model, the moments were sent one after another, with the mod's 30 seconds between requests skipped. Each later prompt therefore carries that model's own earlier posts as feed history, still queued and not yet shown in the feed.",
+           "- **Same starting point:** each model started from the same agency and feed, so every model got the same first prompt. Their later prompts differ only in the feed history.",
+           f"- **Moments:** {', '.join(moments)}, taken from the agency.",
            "", "## Summary", "",
            f"| Model | Moment | Input tokens | Output tokens | Cost | Seconds | HTTP | Reply schema | Posts | Texts cut at {MAX_SHOWN} characters |",
            "|---|---|---|---|---|---|---|---|---|---|"]
@@ -290,12 +311,17 @@ def main() -> int:
     ap.add_argument("--models", nargs="+", default=["anthropic/claude-haiku-5.5", "anthropic/claude-opus-5.5"])
     ap.add_argument("--provider", choices=PROVIDERS, default="compatible")
     ap.add_argument("--base-url", default="https://openrouter.ai/api/v1")
-    ap.add_argument("--gap", type=int, default=32, help="seconds between one model's requests (the mod needs 30)")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    ap.add_argument("--timeout", type=int, default=1500, help="seconds before the game run is stopped")
-    ap.add_argument("--game-dir", type=Path)
-    ap.add_argument("--from-json", type=Path, help="render this recording instead of running the game")
+    ap.add_argument("--game-dir", type=Path, help="the game's install folder, for its text (found through Steam if left out)")
+    ap.add_argument("--dry-run", action="store_true", help="print the prompts the first model would get; sends nothing")
+    ap.add_argument("--moments", nargs="+", choices=["single", "concert", "graduation"], help="the moments to send, in their usual order (all three if left out)")
+    ap.add_argument("--setlist", help='the concert\'s set list, items split by ";": "Single title/center" or "talk: idol, idol", idols by first name')
+    ap.add_argument("--from-json", type=Path, help="render this recording instead of sending requests")
     args = ap.parse_args()
+
+    if args.dry_run:
+        run_tool(args, "--dry-run", "1", *scenario(args))
+        return 0
 
     raw = args.from_json or record(args)
     data = json.loads(raw.read_text(encoding="utf-8"), strict=False)

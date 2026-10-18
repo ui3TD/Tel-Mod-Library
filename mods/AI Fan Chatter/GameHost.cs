@@ -61,6 +61,23 @@ namespace AIFanChatter
             }
         }
 
+        /// <summary>
+        /// Read fresh for every request: loading a save replaces the feed's list.
+        /// </summary>
+        public IList<SNS_Manager._message> RecentPosts
+        {
+            get
+            {
+                List<SNS_Manager._message> posts = new();
+                if (SNS_Manager.Messages != null)
+                {
+                    posts.AddRange(SNS_Manager.Messages);
+                }
+                posts.AddRange(FeedHistory.Pending(FeedQueue.Items));
+                return posts;
+            }
+        }
+
         public void Notify(string text, bool error)
         {
             NotificationManager.AddNotification(text, error ? mainScript.red32 : mainScript.green32);

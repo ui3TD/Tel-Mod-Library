@@ -40,11 +40,23 @@
 		text: "Requests per week"
 	},
 	{
-		id: "AIFANCHATTER__PROMPT__INTRO",
-		text: "You write fan posts for the social media feed of an idol management game. The agency, its idols and its fans are fictional."
+		id: "AIFANCHATTER__PROMPT__SYSTEM",
+		text: "You write fan posts for the social media feed of an idol management game. The agency, its idols and its fans are fictional.\n\nFan accounts. Use these exact codes as \"user\":\n{fan_types}\n\nRules:\n- Write {min} to {max} posts reacting to the event the user describes. Each post can have 0 to {replies} replies from other fans.\n- Keep every post and reply under {length} characters, in the voice of a fan online.\n- Mix the kinds of fans, and let them react to each other in the replies.\n- Every post reacts to the new event. The background and the earlier posts are history, given only for context: fans can refer back to them or compare with them, but they are never the subject of a post, and earlier posts are never repeated.\n- Use plain text without emoji: the game can't show them.\n- Write in {language}.\n- Match each fan's tone to their opinion of the group: low is critical or disappointed, around 50 is mixed, high is enthusiastic.\n- Stamina and mental stamina aren't public: fans only notice signs, such as an idol looking tired. Scandals are public, and fans know about them.\n\nReply with only this JSON and nothing else:\n{format}"
 	},
 	{
-		id: "AIFANCHATTER__PROMPT__RULES",
-		text: "Rules:\n- Write {min} to {max} posts reacting to the event the user describes. Each post can have 0 to {replies} replies from other fans.\n- Keep every post and reply under {length} characters, in the voice of a fan online.\n- Mix the kinds of fans, and let them react to each other in the replies.\n- Stay consistent with the facts given and don't invent numbers.\n- Use plain text without emoji: the game can't show them.\n- Write in {language}.\n- Match each fan's tone to their opinion of the group: low is critical or disappointed, around 50 is mixed, high is enthusiastic."
+		id: "AIFANCHATTER__PROMPT__USER",
+		text: "The new event, which every post reacts to:\n{event}\n{facts}\n{agency}\n\n{members}\n\n{history}\n\n{feed}"
+	},
+	{
+		id: "AIFANCHATTER__PROMPT__MEMBERS",
+		text: "The idols in the new event:\n{lines}"
+	},
+	{
+		id: "AIFANCHATTER__PROMPT__HISTORY",
+		text: "History, for context only (not what the posts are about):\n{lines}"
+	},
+	{
+		id: "AIFANCHATTER__PROMPT__FEED",
+		text: "History: earlier posts on the feed, oldest first, for context only. Don't reply to them or repeat them:\n{lines}"
 	}
 ]

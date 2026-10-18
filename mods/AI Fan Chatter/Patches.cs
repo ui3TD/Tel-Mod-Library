@@ -148,22 +148,22 @@ namespace AIFanChatter
     public class data_girls_girls_Graduate
     {
         /// <summary>
-        /// Her fans before graduating: the game moves them to other idols as she leaves.
+        /// Her place by fans in her group before graduating: the game moves her fans to other idols as she leaves.
         /// </summary>
-        public static void Prefix(data_girls.girls __instance, out long __state)
+        public static void Prefix(data_girls.girls __instance, out Members.Rank __state)
         {
-            __state = 0;
+            __state = null;
             try
             {
-                __state = __instance.GetFans_Total();
+                __state = Members.RankOf(__instance);
             }
             catch (Exception)
             {
-                // The fan count is left out
+                // Her rank is left out
             }
         }
 
-        public static void Postfix(data_girls.girls __instance, long __state, bool __runOriginal)
+        public static void Postfix(data_girls.girls __instance, Members.Rank __state, bool __runOriginal)
         {
             if (__runOriginal && __instance != null && __instance.status == data_girls._status.graduated
                 && Moments.FirstGraduationToday(staticVars.dateTime))
@@ -196,11 +196,11 @@ namespace AIFanChatter
             }
         }
 
-        public static void Postfix(Event_Manager._randomEvent._reply reply, Event_Manager._activeEvent __state, bool __runOriginal)
+        public static void Postfix(Event_Manager __instance, Event_Manager._randomEvent._reply reply, Event_Manager._activeEvent __state, bool __runOriginal)
         {
             if (ShouldPost(reply, __state, __runOriginal))
             {
-                Moments.Trigger(() => MomentContext.Event(__state, reply));
+                Moments.Trigger(() => MomentContext.Event(__state, reply, __instance?.activeEvents));
             }
         }
 

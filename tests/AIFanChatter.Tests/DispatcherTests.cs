@@ -245,6 +245,95 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
+        public void Prompt_CarriesTheRecentPosts()
+        {
+            host.Posts.Add(TestEnv.Post("F_C_T", "<noparse>earlier post</noparse>"));
+            dispatcher.Request(Moment());
+            string user = SimpleJSON.JSON.Parse(transport.Sent.Single().Body)["messages"][0]["content"].Value;
+            Assert.EndsWith("History: earlier posts on the feed, oldest first, for context only. Don't reply to them or repeat them:\n- F_C_T: earlier post", user);
+        }
+
+        [Fact]
+        public void EmptyFeed_GivesNoFeedSection()
+        {
+            dispatcher.Request(Moment());
+            Assert.DoesNotContain("earlier posts on the feed", transport.Sent.Single().Body);
+        }
+
+        [Fact]
+        public void UnreadableFeed_StillSendsTheRequest()
+        {
+            host.ReadPosts = () => throw new InvalidOperationException("no feed");
+            Assert.True(SendAndReply());
+            Assert.Single(host.Queued);
+            Assert.Contains(TestEnv.Logs, l => l.Contains("Couldn't read the feed"));
+        }
+
+        [Fact]
+        public void Requests_AskForTheReplySchema()
+        {
+            dispatcher.Request(Moment());
+            Assert.Contains("\"output_config\":{\"format\":{\"type\":\"json_schema\"", transport.Sent.Single().Body);
+        }
+
+        /// <summary>
+        /// A service that rejects the schema gets the same request again without it. That counts as one
+        /// request, and no schema is sent again until the settings change.
+        /// </summary>
+        [Theory]
+        [InlineData(400)]
+        [InlineData(422)]
+        public void RejectedSchema_SendsTheRequestAgainWithoutIt(long status)
+        {
+            TestEnv.Vars[Settings.PerWeekVar] = "2";
+            Assert.True(dispatcher.Request(Moment()));
+            transport.Reply(status, "{\"error\":{\"message\":\"output_config is not supported\"}}");
+            Assert.Equal(2, transport.Sent.Count);
+            Assert.Contains("output_config", transport.Sent[0].Body);
+            Assert.DoesNotContain("output_config", transport.Sent[1].Body);
+            Assert.False(dispatcher.Request(Moment()));
+            transport.Reply(200, Replies.Anthropic(Replies.Posts));
+            Assert.Single(host.Queued);
+            Assert.False(dispatcher.Suspended);
+            Assert.Empty(host.Notices);
+            Assert.Contains(TestEnv.Logs, l => l.Contains("doesn't accept a reply schema"));
+
+            // The second try wasn't another request: the week still has room for one more
+            host.RealTime += 31;
+            Assert.True(dispatcher.Request(Moment()));
+            Assert.DoesNotContain("output_config", transport.Sent[2].Body);
+            transport.Reply(200, Replies.Anthropic(Replies.Posts));
+
+            dispatcher.OnSettingsChanged();
+            host.GameTime = host.GameTime.AddDays(7);
+            host.RealTime += 31;
+            Assert.True(dispatcher.Request(Moment()));
+            Assert.Contains("output_config", transport.Sent[3].Body);
+        }
+
+        [Fact]
+        public void RejectedAgainWithoutTheSchema_StopsRequests()
+        {
+            Assert.True(dispatcher.Request(Moment()));
+            transport.Reply(400, "{\"error\":{\"message\":\"bad request\"}}");
+            transport.Reply(400, "{\"error\":{\"message\":\"still bad\"}}");
+            Assert.Equal(2, transport.Sent.Count);
+            Assert.True(dispatcher.Suspended);
+            Assert.Contains("still bad", host.Notices.Single().Text);
+        }
+
+        [Theory]
+        [InlineData(401)]
+        [InlineData(429)]
+        [InlineData(500)]
+        public void OtherErrors_AreNotRetriedWithoutTheSchema(long status)
+        {
+            Assert.True(dispatcher.Request(Moment()));
+            transport.Reply(status, "{\"error\":{\"message\":\"nope\"}}");
+            Assert.Single(transport.Sent);
+        }
+
+        [Fact]
         public void WeekOf_IsTheMonday()
         {
             Assert.Equal(new DateTime(2020, 6, 1), Dispatcher.WeekOf(new DateTime(2020, 6, 7, 23, 0, 0)));

@@ -32,6 +32,7 @@ namespace AIFanChatter.Tests
             Moments.ResetGraduations();
             FeedRelease.Quiet = false;
             variables.variable.Clear();
+            TestGame.Clear();
             LoadConstants();
         }
 
@@ -110,6 +111,10 @@ namespace AIFanChatter.Tests
         public string LanguageName { get; set; } = "English";
         public IDictionary<string, string> FanHandles { get; } = new Dictionary<string, string>();
         public IDictionary<string, int> FanOpinions { get; } = new Dictionary<string, int>();
+        public List<SNS_Manager._message> Posts { get; } = new();
+        /// <summary>Replaces reading Posts, for a feed that can't be read.</summary>
+        public Func<IList<SNS_Manager._message>> ReadPosts;
+        public IList<SNS_Manager._message> RecentPosts => ReadPosts != null ? ReadPosts() : Posts;
 
         public readonly List<(string Text, bool Error)> Notices = new();
         public readonly List<Action> Frames = new();

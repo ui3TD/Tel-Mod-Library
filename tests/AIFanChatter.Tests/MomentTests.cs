@@ -15,7 +15,7 @@ namespace AIFanChatter.Tests
             single.ReleaseData.Sales = 123456;
             single.ReleaseData.NewFans = 789;
             string text = MomentContext.Single(single).Describe();
-            Assert.StartsWith("Event: the group released a new single", text);
+            Assert.StartsWith("The new event, which every post reacts to:\nEvent: the group released a new single", text);
             Assert.Contains("Title: Summer Love", text);
             Assert.Contains("Sales: 123456", text);
             Assert.Contains("New fans: 789", text);
@@ -117,36 +117,38 @@ namespace AIFanChatter.Tests
         [Fact]
         public void EveryPromptText_IsInConstants()
         {
-            foreach (string key in new[] { Prompt.IntroKey, Prompt.RulesKey })
+            foreach (string key in new[] { Prompt.SystemKey, Prompt.UserKey, "AIFANCHATTER__PROMPT__MEMBERS", "AIFANCHATTER__PROMPT__HISTORY", "AIFANCHATTER__PROMPT__FEED" })
             {
                 Assert.True(Language.Data.ContainsKey(key), key);
             }
         }
 
         /// <summary>
-        /// Changed wording, as from an edited constants.json or another mod's, is what's sent.
+        /// Changed wording, as from an edited constants.json or another mod's, is what's sent. The reply
+        /// format is kept even when the new wording leaves it out.
         /// </summary>
         [Fact]
         public void ChangedWording_IsUsed()
         {
-            Language.Data[Prompt.RulesKey] = "Only {max} posts, in {language}. Fans argue about everything.";
+            Language.Data[Prompt.SystemKey] = "Only {max} posts, in {language}. Fans argue about everything.";
             string prompt = Prompt.System("Russian", null, null);
-            Assert.Contains("Only 6 posts, in Russian. Fans argue about everything.", prompt);
+            Assert.StartsWith("Only 6 posts, in Russian. Fans argue about everything.", prompt);
+            Assert.EndsWith(Prompt.FormatLead + "\n" + Prompt.FormatExample, prompt);
+            Assert.Single(TestEnv.Logs);
         }
 
         /// <summary>
-        /// A missing text leaves out only its part: the fan codes and the reply format are still there.
+        /// A missing template falls back to the parts the reply depends on: the fan codes and the reply format.
         /// </summary>
         [Fact]
-        public void MissingText_LeavesOutOnlyItsPart()
+        public void MissingText_FallsBackToTheEssentials()
         {
-            Language.Data.Remove(Prompt.IntroKey);
-            Language.Data.Remove(Prompt.RulesKey);
+            Language.Data.Remove(Prompt.SystemKey);
             string prompt = Prompt.System("English", null, null);
             Assert.StartsWith("Fan accounts.", prompt);
             Assert.Contains("- F_HC_A:", prompt);
-            Assert.Contains("Reply with only this JSON", prompt);
-            Assert.Equal(2, TestEnv.Logs.Count);
+            Assert.EndsWith(Prompt.FormatExample, prompt);
+            Assert.Single(TestEnv.Logs);
         }
 
         /// <summary>
@@ -159,7 +161,7 @@ namespace AIFanChatter.Tests
             string prompt = Prompt.System("English", null, opinions);
             Assert.Contains("- M_C_T: casual teen boy, opinion of the group: 12/100", prompt);
             Assert.Contains("- F_HC_A: devoted adult woman, opinion of the group: 88/100", prompt);
-            Assert.Contains("- M_C_YA: casual young adult man" + System.Environment.NewLine, prompt);
+            Assert.Contains("- M_C_YA: casual young adult man\n", prompt);
         }
 
         [Theory]

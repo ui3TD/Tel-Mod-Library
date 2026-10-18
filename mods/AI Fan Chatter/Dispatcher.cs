@@ -26,6 +26,8 @@ namespace AIFanChatter
         IDictionary<string, string> FanHandles { get; }
         /// <summary>Each fan code's opinion of the group, 0 to 100, where the game has one.</summary>
         IDictionary<string, int> FanOpinions { get; }
+        /// <summary>The feed's posts, oldest first, then the queued ones that haven't appeared yet.</summary>
+        IList<SNS_Manager._message> RecentPosts { get; }
         void Notify(string text, bool error);
         void NextFrame(Action action);
         void Queue(List<SNS_Manager._message> posts);
@@ -35,7 +37,8 @@ namespace AIFanChatter
     /// Sends the requests and keeps them within the player's limits: the weekly setting, one at a time,
     /// 30 seconds apart and 20 an hour in real time, so fast-forwarding can't run up a bill. A rejected
     /// key, model or address stops requests until the settings change; a busy or unreachable service
-    /// pauses them for 10 minutes.
+    /// pauses them for 10 minutes. Requests ask for the reply schema; a service that rejects it gets the
+    /// same request again without one, and no schema until the settings change.
     /// </summary>
     public sealed class Dispatcher
     {
@@ -68,6 +71,7 @@ namespace AIFanChatter
         private double lastErrorNotice = double.NegativeInfinity;
         private bool showNextError = true;
         private bool testPending;
+        private bool noSchema;
 
         public Dispatcher(IGameHost host, IHttpTransport transport, Random random)
         {
@@ -121,7 +125,18 @@ namespace AIFanChatter
             }
             Connection connection = host.ReadConnection();
             string system = Prompt.System(host.LanguageName, host.FanHandles, host.FanOpinions);
-            HttpRequestSpec request = Providers.BuildRequest(connection, system, moment.Describe(), Providers.MaxOutputTokens, out string error);
+            IList<SNS_Manager._message> feed = null;
+            try
+            {
+                feed = host.RecentPosts;
+            }
+            catch (Exception e)
+            {
+                Log.Warn("Couldn't read the feed for the prompt; it's sent without it: " + e.Message);
+            }
+            string user = Prompt.User(moment, feed);
+            bool withSchema = !noSchema;
+            HttpRequestSpec request = Providers.BuildRequest(connection, system, user, Providers.MaxOutputTokens, out string error, withSchema ? Prompt.ReplySchema : null);
             if (request == null)
             {
                 suspended = true;
@@ -142,9 +157,24 @@ namespace AIFanChatter
             inFlight = true;
             object session = host.Session;
 
-            Send(request, result =>
+            void Handle(HttpResult result, bool schemaSent)
             {
+                if (schemaSent && (result.Status == 400 || result.Status == 422))
+                {
+                    // The service won't take the schema: the same request again without it, which counts as the same request
+                    HttpRequestSpec plain = Providers.BuildRequest(connection, system, user, Providers.MaxOutputTokens, out _);
+                    if (plain != null)
+                    {
+                        Log.Warn("The service doesn't accept a reply schema (HTTP " + result.Status + "); sending the request without one.");
+                        Send(plain, retry => Handle(retry, false));
+                        return;
+                    }
+                }
                 inFlight = false;
+                if (!schemaSent && withSchema && result.Status >= 200 && result.Status < 300)
+                {
+                    noSchema = true;
+                }
                 ProviderReply reply = Providers.ParseResponse(connection.Provider, result);
                 if (!reply.Ok)
                 {
@@ -163,17 +193,21 @@ namespace AIFanChatter
                     return;
                 }
                 host.Queue(posts);
-            });
+            }
+
+            Send(request, result => Handle(result, withSchema));
             return true;
         }
 
         /// <summary>
-        /// Called when Apply changes one of the mod's settings: requests may run again, the next error shows
-        /// at once, and a connection test runs on the next frame, after every setting is saved.
+        /// Called when Apply changes one of the mod's settings: requests may run again, ask for the reply
+        /// schema again, the next error shows at once, and a connection test runs on the next frame, after
+        /// every setting is saved.
         /// </summary>
         public void OnSettingsChanged()
         {
             suspended = false;
+            noSchema = false;
             backoffUntil = double.NegativeInfinity;
             showNextError = true;
             if (testPending)

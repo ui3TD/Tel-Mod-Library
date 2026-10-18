@@ -71,51 +71,64 @@ namespace AIFanChatter
             }
         }
 
-        // The prompt's wording is in constants.json, so players can change it (or a mod can replace it) without
-        // rebuilding. The fan codes and the reply format stay here: the feed and PostParser depend on them.
-        public const string IntroKey = "AIFANCHATTER__PROMPT__INTRO";
-        public const string RulesKey = "AIFANCHATTER__PROMPT__RULES";
+        // The whole prompt is two templates in constants.json, so players can change it (or a mod can replace
+        // it) without rebuilding. Each {name} in them is a module below. The fan codes and the reply format
+        // are written here: the feed and PostParser depend on them.
+        public const string SystemKey = PromptTemplate.WrapperPrefix + "SYSTEM";
+        public const string UserKey = PromptTemplate.WrapperPrefix + "USER";
+
+        public const string FormatLead = "Reply with only this JSON and nothing else:";
+        public const string FormatExample = "{\"posts\":[{\"user\":\"F_HC_T\",\"text\":\"...\",\"replies\":[{\"user\":\"M_C_A\",\"text\":\"...\"}]}]}";
 
         /// <summary>
-        /// A text of the prompt from the game's loaded constants; "" with a log line when it's missing.
+        /// What's sent when constants.json has no system template: the parts the reply depends on.
         /// </summary>
-        internal static string Text(string key)
+        public const string FallbackSystem = "Fan accounts. Use these exact codes as \"user\":\n{fan_types}\n\n" + FormatLead + "\n{format}";
+
+        /// <summary>
+        /// What's sent when constants.json has no user template.
+        /// </summary>
+        public const string FallbackUser = "{event}\n{facts}\n{agency}\n\n{members}\n\n{history}\n\n{feed}";
+
+        /// <summary>
+        /// A text from the game's loaded constants; false when it's missing.
+        /// </summary>
+        internal static bool TryText(string key, out string text)
         {
-            if (Language.Data != null && Language.Data.TryGetValue(key, out string text) && text != null)
+            text = null;
+            if (Language.Data != null && Language.Data.TryGetValue(key, out string found) && found != null && found.Trim() != "")
             {
-                return text.Trim();
+                text = found.Trim();
+                return true;
             }
-            Log.Warn("No text " + key + " in constants.json; that part of the prompt is left out.");
-            return "";
+            return false;
         }
 
         /// <summary>
-        /// The rules text with its placeholders filled in: {min}, {max}, {replies}, {length}, {language}.
+        /// A template from the game's loaded constants, or the fallback with a log line when it's missing.
         /// </summary>
-        public static string Rules(string language)
+        internal static string Template(string key, string fallback)
         {
-            return Text(RulesKey)
-                .Replace("{min}", MinPosts.ToString())
-                .Replace("{max}", MaxPosts.ToString())
-                .Replace("{replies}", MaxReplies.ToString())
-                .Replace("{length}", MaxLength.ToString())
-                .Replace("{language}", language);
+            if (TryText(key, out string text))
+            {
+                return text;
+            }
+            Log.Warn("No text " + key + " in constants.json; the prompt uses a plain one instead.");
+            return fallback;
         }
 
-        /// <param name="handles">The game's display name for each fan code, where it has one.</param>
-        /// <param name="opinions">Each fan code's opinion of the group in the game, 0 to 100, where the game has one.</param>
-        public static string System(string language, IDictionary<string, string> handles, IDictionary<string, int> opinions)
+        /// <summary>
+        /// One line per fan code: who the fans are, the game's name for the account, and their opinion.
+        /// </summary>
+        public static string FanTypes(IDictionary<string, string> handles, IDictionary<string, int> opinions)
         {
             StringBuilder sb = new();
-            string intro = Text(IntroKey);
-            if (intro != "")
-            {
-                sb.AppendLine(intro);
-                sb.AppendLine();
-            }
-            sb.AppendLine("Fan accounts. Use these exact codes as \"user\":");
             foreach (string code in FanCodes)
             {
+                if (sb.Length > 0)
+                {
+                    sb.Append('\n');
+                }
                 sb.Append("- ").Append(code).Append(": ").Append(Describe(code));
                 if (handles != null && handles.TryGetValue(code, out string handle) && !string.IsNullOrEmpty(handle))
                 {
@@ -125,18 +138,69 @@ namespace AIFanChatter
                 {
                     sb.Append(", opinion of the group: ").Append(opinion).Append("/100");
                 }
-                sb.AppendLine();
             }
-            string rules = Rules(language);
-            if (rules != "")
-            {
-                sb.AppendLine();
-                sb.AppendLine(rules);
-            }
-            sb.AppendLine();
-            sb.AppendLine("Reply with only this JSON and nothing else:");
-            sb.Append("{\"posts\":[{\"user\":\"F_HC_T\",\"text\":\"...\",\"replies\":[{\"user\":\"M_C_A\",\"text\":\"...\"}]}]}");
             return sb.ToString();
+        }
+
+        /// <param name="handles">The game's display name for each fan code, where it has one.</param>
+        /// <param name="opinions">Each fan code's opinion of the group in the game, 0 to 100, where the game has one.</param>
+        public static string System(string language, IDictionary<string, string> handles, IDictionary<string, int> opinions)
+        {
+            string template = Template(SystemKey, FallbackSystem);
+            if (!template.Contains("{format}"))
+            {
+                // PostParser needs the reply in this format, whatever the template says
+                Log.Warn(SystemKey + " has no {format}; the reply format is added at the end.");
+                template += "\n\n" + FormatLead + "\n{format}";
+            }
+            return PromptTemplate.Fill(template, new Dictionary<string, Func<string>>
+            {
+                ["fan_types"] = () => FanTypes(handles, opinions),
+                ["format"] = () => FormatExample,
+                ["min"] = () => MinPosts.ToString(),
+                ["max"] = () => MaxPosts.ToString(),
+                ["replies"] = () => MaxReplies.ToString(),
+                ["length"] = () => MaxLength.ToString(),
+                ["language"] = () => language
+            });
+        }
+
+        /// <summary>
+        /// The user message: the moment's sections, each in its wrapper where constants.json has one, and
+        /// the recent posts on the feed.
+        /// </summary>
+        public static string User(Moment moment, IList<SNS_Manager._message> posts)
+        {
+            Dictionary<string, Func<string>> modules = new()
+            {
+                ["event"] = () => "Event: " + moment.Kind,
+                ["feed"] = () => PromptTemplate.Wrap("feed", FeedHistory.Describe(posts))
+            };
+            foreach (string section in moment.SectionNames)
+            {
+                string name = section;
+                modules[name] = () => PromptTemplate.Wrap(name, moment.Lines(name));
+            }
+            return PromptTemplate.Fill(Template(UserKey, FallbackUser), modules);
+        }
+
+        /// <summary>
+        /// The reply's JSON schema, for services that hold the model to one. Every object lists all of its
+        /// properties as required and allows no others, as OpenAI's strict mode and Anthropic both need; the
+        /// replies are written out rather than referenced, for services that copy OpenAI's format. Lengths
+        /// and counts can't be set in a schema, so PostParser still enforces them.
+        /// </summary>
+        public static readonly string ReplySchema = BuildReplySchema();
+
+        private static string BuildReplySchema()
+        {
+            string codes = string.Join(",", Array.ConvertAll(FanCodes, Json.Quote));
+            string user = "\"user\":{\"type\":\"string\",\"enum\":[" + codes + "]}";
+            string text = "\"text\":{\"type\":\"string\"}";
+            string reply = "{\"type\":\"object\",\"properties\":{" + user + "," + text + "},\"required\":[\"user\",\"text\"],\"additionalProperties\":false}";
+            string post = "{\"type\":\"object\",\"properties\":{" + user + "," + text + ",\"replies\":{\"type\":\"array\",\"items\":" + reply + "}},"
+                + "\"required\":[\"user\",\"text\",\"replies\"],\"additionalProperties\":false}";
+            return "{\"type\":\"object\",\"properties\":{\"posts\":{\"type\":\"array\",\"items\":" + post + "}},\"required\":[\"posts\"],\"additionalProperties\":false}";
         }
 
         public const string TestSystem = "Reply with the single word OK.";

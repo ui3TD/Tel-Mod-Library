@@ -15,13 +15,13 @@ You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314
 Then tick Turn on AI fan posts and press Apply. A notification tells you whether it worked.
 
 [h3]Cost[/h3]
-Each request is charged to your account with the AI service. A small, cheap model costs a fraction of a cent per request: with Claude Haiku 5.5, a whole in-game year at 2 requests a week costs under 10 US cents. Bigger models can cost ten times as much or more, so check your service's prices. The mod never sends more than 20 requests in an hour, even when fast-forwarding. To be safe, set a spending limit on your key in your service's account settings.
+Each request is charged to your account with the AI service. A small, cheap model costs a fraction of a cent per request: with Claude Haiku 5.5, a request costs about 0.12 US cents, so a whole in-game year at 2 requests a week costs about 15 US cents, and at the most, 7 a week, about 45 cents. Bigger models can cost ten times as much or more, so check your service's prices. The mod never sends more than 20 requests in an hour, even when fast-forwarding. To be safe, set a spending limit on your key in your service's account settings.
 
 [h3]Privacy[/h3]
-Each request sends that moment's details to your AI service, such as the names of your group and idols and their sales. Your API key is kept in a file on your PC, never in your saves. To remove it, type - in the key field and press Apply.
+Each request sends that moment's details to your AI service: the names of your group and idols, results such as sales, details of the idols in it such as their age, popularity, stamina, scandal record and trivia, earlier results, and the recent posts on the feed. Your API key is kept in a file on your PC, never in your saves. To remove it, type - in the key field and press Apply.
 
-[h3]Changing what fans are told[/h3]
-The instructions for the AI are in the mod's JSON/Constants/constants.json, in the texts whose id starts with AIFANCHATTER__PROMPT__.
+[h3]Changing the AI's instructions (advanced)[/h3]
+You don't need to change anything to play. To reword the instructions the AI gets or change its rules, see the [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/AIFanChatter.md]AI Fan Chatter prompt guide[/url].
 
 [h3]Removing the mod[/h3]
 Your saves load normally without it. The feed then keeps its newest 20 posts.
@@ -29,4 +29,5 @@ Your saves load normally without it. The feed then keeps its newest 20 posts.
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.0.0: First release
+- 0.1.0: First test version
+- 0.2.0: Fans see recent posts, earlier results and the idols in each event

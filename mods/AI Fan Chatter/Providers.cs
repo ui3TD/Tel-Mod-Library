@@ -113,7 +113,8 @@ namespace AIFanChatter
         /// <summary>
         /// The request for a system prompt and one user message; null with an error when the settings are incomplete.
         /// </summary>
-        public static HttpRequestSpec BuildRequest(Connection connection, string system, string user, int maxTokens, out string error)
+        /// <param name="schema">A JSON schema the reply must follow, for services that support one; null for none.</param>
+        public static HttpRequestSpec BuildRequest(Connection connection, string system, string user, int maxTokens, out string error, string schema = null)
         {
             string url = ResolveUrl(connection, out error);
             if (url == null)
@@ -141,8 +142,12 @@ namespace AIFanChatter
                 request.Headers.Add(new KeyValuePair<string, string>("x-api-key", connection.ApiKey));
                 request.Headers.Add(new KeyValuePair<string, string>("anthropic-version", AnthropicVersion));
                 body.Append("{\"model\":").Append(Json.Quote(model))
-                    .Append(",\"max_tokens\":").Append(Json.Number(maxTokens))
-                    .Append(",\"system\":").Append(Json.Quote(system))
+                    .Append(",\"max_tokens\":").Append(Json.Number(maxTokens));
+                if (schema != null)
+                {
+                    body.Append(",\"output_config\":{\"format\":{\"type\":\"json_schema\",\"schema\":").Append(schema).Append("}}");
+                }
+                body.Append(",\"system\":").Append(Json.Quote(system))
                     .Append(",\"messages\":[{\"role\":\"user\",\"content\":").Append(Json.Quote(user)).Append("}]}");
             }
             else
@@ -154,8 +159,13 @@ namespace AIFanChatter
                 // OpenAI's newer models reject max_tokens; services that copy the API mostly only know max_tokens
                 string limit = connection.Provider == Provider.OpenAI ? "max_completion_tokens" : "max_tokens";
                 body.Append("{\"model\":").Append(Json.Quote(model))
-                    .Append(",\"").Append(limit).Append("\":").Append(Json.Number(maxTokens))
-                    .Append(",\"messages\":[{\"role\":\"system\",\"content\":").Append(Json.Quote(system))
+                    .Append(",\"").Append(limit).Append("\":").Append(Json.Number(maxTokens));
+                if (schema != null)
+                {
+                    body.Append(",\"response_format\":{\"type\":\"json_schema\",\"json_schema\":{\"name\":\"fan_posts\",\"strict\":true,\"schema\":")
+                        .Append(schema).Append("}}");
+                }
+                body.Append(",\"messages\":[{\"role\":\"system\",\"content\":").Append(Json.Quote(system))
                     .Append("},{\"role\":\"user\",\"content\":").Append(Json.Quote(user)).Append("}]}");
             }
             request.Body = body.ToString();
@@ -228,7 +238,14 @@ namespace AIFanChatter
             {
                 return ProviderReply.Fail(Failure.BadReply, "The service's content filter stopped the reply.");
             }
-            string reply = Json.Str(Json.Obj(choices[0], "message"), "content");
+            JSONClass choice = Json.Obj(choices[0], "message");
+            // A refusal comes in a field of its own, with no content to read
+            string refusal = Json.Str(choice, "refusal");
+            if (refusal != "" && refusal != "null")
+            {
+                return ProviderReply.Fail(Failure.BadReply, "The model declined to write the posts.");
+            }
+            string reply = Json.Str(choice, "content");
             // SimpleJSON reads a JSON null as the text "null"
             return new ProviderReply { Text = reply == "null" ? "" : reply };
         }

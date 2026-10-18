@@ -98,6 +98,84 @@ namespace AIFanChatter.Tests
             // SimpleJSON drops raw line breaks but reads escaped ones; the round trip proves the escaping
             Assert.Equal(tricky, JSON.Parse(request.Body)["system"].Value);
         }
+
+        private static string[] Values(JSONNode node)
+        {
+            JSONArray array = node.AsArray;
+            return Enumerable.Range(0, array.Count).Select(i => array[i].Value).ToArray();
+        }
+
+        [Fact]
+        public void ReplySchema_AllowsOnlyTheFeedsFanCodes()
+        {
+            JSONNode schema = JSON.Parse(Prompt.ReplySchema);
+            JSONNode post = schema["properties"]["posts"]["items"];
+            JSONNode reply = post["properties"]["replies"]["items"];
+            foreach (JSONNode user in new[] { post["properties"]["user"], reply["properties"]["user"] })
+            {
+                Assert.Equal(Prompt.FanCodes, Values(user["enum"]));
+            }
+        }
+
+        /// <summary>
+        /// OpenAI's strict mode and Anthropic both need every object closed and every property required.
+        /// </summary>
+        [Fact]
+        public void ReplySchema_ClosesEveryObject_AndRequiresEveryProperty()
+        {
+            int objects = 0;
+            void Check(JSONNode node)
+            {
+                if (node is JSONClass obj)
+                {
+                    if (obj["type"].Value == "object")
+                    {
+                        objects++;
+                        Assert.Equal("false", obj["additionalProperties"].Value);
+                        string[] properties = ((JSONClass)obj["properties"]).Cast<System.Collections.Generic.KeyValuePair<string, JSONNode>>().Select(p => p.Key).ToArray();
+                        Assert.Equal(properties, Values(obj["required"]));
+                    }
+                    foreach (System.Collections.Generic.KeyValuePair<string, JSONNode> member in obj)
+                    {
+                        Check(member.Value);
+                    }
+                }
+            }
+            Check(JSON.Parse(Prompt.ReplySchema));
+            Assert.Equal(3, objects);
+        }
+
+        [Fact]
+        public void Schema_GoesWhereEachServiceReadsIt()
+        {
+            HttpRequestSpec anthropic = Providers.BuildRequest(new Connection { Provider = Provider.Anthropic, ApiKey = "k" }, "s", "u", 1, out _, Prompt.ReplySchema);
+            JSONNode format = JSON.Parse(anthropic.Body)["output_config"]["format"];
+            Assert.Equal("json_schema", format["type"].Value);
+            Assert.Equal("object", format["schema"]["type"].Value);
+            Assert.Equal("u", JSON.Parse(anthropic.Body)["messages"][0]["content"].Value);
+
+            foreach (Provider provider in new[] { Provider.OpenAI, Provider.Compatible })
+            {
+                HttpRequestSpec request = Providers.BuildRequest(new Connection { Provider = provider, ApiKey = "k", Model = "m", BaseUrl = "http://localhost:1" }, "s", "u", 1, out _, Prompt.ReplySchema);
+                JSONNode responseFormat = JSON.Parse(request.Body)["response_format"];
+                Assert.Equal("json_schema", responseFormat["type"].Value);
+                Assert.Equal("fan_posts", responseFormat["json_schema"]["name"].Value);
+                Assert.Contains("\"strict\":true", request.Body);
+                Assert.Equal("object", responseFormat["json_schema"]["schema"]["type"].Value);
+                Assert.Equal("u", JSON.Parse(request.Body)["messages"][1]["content"].Value);
+            }
+        }
+
+        [Fact]
+        public void NoSchema_LeavesTheBodyAsBefore()
+        {
+            foreach (Provider provider in new[] { Provider.Anthropic, Provider.OpenAI, Provider.Compatible })
+            {
+                string body = Providers.BuildRequest(new Connection { Provider = provider, ApiKey = "k", Model = "m", BaseUrl = "http://localhost:1" }, "s", "u", 1, out _).Body;
+                Assert.DoesNotContain("output_config", body);
+                Assert.DoesNotContain("response_format", body);
+            }
+        }
     }
 
     public class ResponseTests
@@ -137,6 +215,17 @@ namespace AIFanChatter.Tests
         {
             Assert.Equal(Failure.BadReply, Parse(Provider.OpenAI, 200, Replies.OpenAI("x", "length")).Failure);
             Assert.Equal(Failure.BadReply, Parse(Provider.Compatible, 200, Replies.OpenAI("x", "content_filter")).Failure);
+        }
+
+        [Fact]
+        public void OpenAI_RefusalIsAFailure()
+        {
+            ProviderReply reply = Parse(Provider.OpenAI, 200, "{\"choices\":[{\"message\":{\"content\":null,\"refusal\":\"I can't help with that.\"},\"finish_reason\":\"stop\"}]}");
+            Assert.Equal(Failure.BadReply, reply.Failure);
+            Assert.Contains("declined", reply.Error);
+
+            ProviderReply normal = Parse(Provider.Compatible, 200, "{\"choices\":[{\"message\":{\"content\":\"{}\",\"refusal\":null},\"finish_reason\":\"stop\"}]}");
+            Assert.True(normal.Ok);
         }
 
         [Fact]

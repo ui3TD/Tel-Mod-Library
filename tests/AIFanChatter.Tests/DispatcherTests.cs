@@ -232,16 +232,16 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void Prompt_UsesTheLanguageStyleAndHandles()
+        public void Prompt_UsesTheLanguageHandlesAndOpinions()
         {
             host.LanguageName = "Japanese";
             host.FanHandles["F_HC_T"] = "IdolLover";
-            TestEnv.Vars[Settings.StyleVar] = "2";
+            host.FanOpinions["F_HC_T"] = 23;
             dispatcher.Request(Moment());
             string body = transport.Sent.Single().Body;
             Assert.Contains("Write in Japanese.", body);
             Assert.Contains("@IdolLover", body);
-            Assert.Contains("hot takes", body);
+            Assert.Contains("opinion of the group: 23/100", body);
         }
 
         [Fact]

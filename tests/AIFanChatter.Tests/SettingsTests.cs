@@ -37,7 +37,6 @@ namespace AIFanChatter.Tests
             Assert.Equal(Settings.DefaultPerWeek, Item(Settings.PerWeekVar)["defaultValue"].AsInt);
             Assert.Equal(0, Item(Settings.PerWeekVar)["minValue"].AsInt);
             Assert.Equal(Settings.MaxPerWeek, Item(Settings.PerWeekVar)["maxValue"].AsInt);
-            Assert.Equal((int)Settings.DefaultStyle, Item(Settings.StyleVar)["defaultValue"].AsInt);
         }
 
         [Fact]
@@ -47,8 +46,6 @@ namespace AIFanChatter.Tests
             Assert.EndsWith("ANTHROPIC", Item(Settings.ProviderVar)["itemIDList"][(int)Provider.Anthropic].Value);
             Assert.EndsWith("OPENAI", Item(Settings.ProviderVar)["itemIDList"][(int)Provider.OpenAI].Value);
             Assert.EndsWith("COMPATIBLE", Item(Settings.ProviderVar)["itemIDList"][(int)Provider.Compatible].Value);
-            Assert.Equal(3, Item(Settings.StyleVar)["itemIDList"].AsArray.Count);
-            Assert.EndsWith("SPICY", Item(Settings.StyleVar)["itemIDList"][(int)Style.Spicy].Value);
         }
 
         /// <summary>
@@ -108,7 +105,6 @@ namespace AIFanChatter.Tests
             Assert.False(Settings.Enabled);
             Assert.Equal(Provider.Anthropic, Settings.Provider);
             Assert.Equal(2, Settings.PerWeek);
-            Assert.Equal(Style.Balanced, Settings.Style);
             Assert.Equal("", Settings.Model);
             Assert.Equal("", Settings.BaseUrl);
         }
@@ -180,6 +176,37 @@ namespace AIFanChatter.Tests
             Assert.Equal("", new Connection { Provider = Provider.OpenAI }.ResolvedModel);
             Assert.Equal("", new Connection { Provider = Provider.Compatible }.ResolvedModel);
             Assert.Equal("mine", new Connection { Provider = Provider.Anthropic, Model = "mine" }.ResolvedModel);
+        }
+
+        /// <summary>
+        /// Messages name the service as the player knows it, never the internal name "Compatible".
+        /// </summary>
+        [Theory]
+        [InlineData(Provider.Anthropic, "", "Anthropic")]
+        [InlineData(Provider.OpenAI, "", "OpenAI")]
+        [InlineData(Provider.Compatible, "https://openrouter.ai/api/v1", "openrouter.ai")]
+        [InlineData(Provider.Compatible, " http://localhost:11434 ", "localhost:11434")]
+        [InlineData(Provider.Compatible, "", "your OpenAI-compatible service")]
+        [InlineData(Provider.Compatible, "not a url", "your OpenAI-compatible service")]
+        public void ServiceName_IsWhatThePlayerKnows(Provider provider, string baseUrl, string expected)
+        {
+            Assert.Equal(expected, new Connection { Provider = provider, BaseUrl = baseUrl }.ServiceName);
+        }
+
+        [Fact]
+        public void Describe_NamesServiceAndModel()
+        {
+            Connection connection = new() { Provider = Provider.Compatible, BaseUrl = "https://openrouter.ai/api/v1", Model = "anthropic/claude-haiku-5.5" };
+            Assert.Equal("openrouter.ai with anthropic/claude-haiku-5.5", connection.Describe());
+            Assert.Equal("Anthropic with claude-haiku-5-5", new Connection { Provider = Provider.Anthropic }.Describe());
+        }
+
+        [Fact]
+        public void MissingModel_NamesTheServiceByAddress()
+        {
+            Providers.BuildRequest(new Connection { Provider = Provider.Compatible, BaseUrl = "http://localhost:1234" }, "s", "u", 1, out string error);
+            Assert.Equal("Set a model name for localhost:1234.", error);
+            Assert.DoesNotContain("Compatible", error);
         }
 
         [Fact]

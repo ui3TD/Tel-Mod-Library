@@ -123,13 +123,13 @@ namespace AIFanChatter
             string model = connection.ResolvedModel;
             if (model == "")
             {
-                error = "Set a model name for " + connection.Provider + ".";
+                error = "Set a model name for " + connection.ServiceName + ".";
                 return null;
             }
             bool hasKey = !string.IsNullOrEmpty(connection.ApiKey);
             if (!hasKey && connection.Provider != Provider.Compatible)
             {
-                error = "Save an API key for " + connection.Provider + " in Mod Settings.";
+                error = "Save an API key for " + connection.ServiceName + " in Mod Settings.";
                 return null;
             }
 

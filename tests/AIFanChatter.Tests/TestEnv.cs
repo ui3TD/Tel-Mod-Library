@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 // Every test shares the mod's static state (settings, key store, queue, dispatcher)
@@ -31,6 +32,21 @@ namespace AIFanChatter.Tests
             Moments.ResetGraduations();
             FeedRelease.Quiet = false;
             variables.variable.Clear();
+            LoadConstants();
+        }
+
+        /// <summary>
+        /// The mod's constants.json in Language.Data, read the way the game reads it (Language._Load, whose
+        /// ProcessInboundData is JSON.Parse).
+        /// </summary>
+        public static void LoadConstants([CallerFilePath] string testFile = "")
+        {
+            string file = Path.Combine(Path.GetDirectoryName(testFile), "..", "..", "mods", "AI Fan Chatter", "assets", "JSON", "Constants", "constants.json");
+            Language.Data.Clear();
+            foreach (SimpleJSON.JSONNode item in SimpleJSON.JSON.Parse(File.ReadAllText(file)).AsArray)
+            {
+                Language.Data[item["id"]] = item["text"];
+            }
         }
 
         /// <summary>
@@ -93,6 +109,7 @@ namespace AIFanChatter.Tests
         public int PerWeek => Settings.PerWeek;
         public string LanguageName { get; set; } = "English";
         public IDictionary<string, string> FanHandles { get; } = new Dictionary<string, string>();
+        public IDictionary<string, int> FanOpinions { get; } = new Dictionary<string, int>();
 
         public readonly List<(string Text, bool Error)> Notices = new();
         public readonly List<Action> Frames = new();

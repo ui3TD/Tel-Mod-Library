@@ -29,7 +29,7 @@
 	},
 	{
 		id: "AIFANCHATTER__MODMENU__MODEL",
-		text: "Model (blank uses claude-haiku-4-5 on Anthropic)"
+		text: "Model (blank uses claude-haiku-5-5 on Anthropic)"
 	},
 	{
 		id: "AIFANCHATTER__MODMENU__APIKEY",
@@ -40,19 +40,11 @@
 		text: "Requests per week"
 	},
 	{
-		id: "AIFANCHATTER__MODMENU__STYLE",
-		text: "Fan mood"
+		id: "AIFANCHATTER__PROMPT__INTRO",
+		text: "You write fan posts for the social media feed of an idol management game. The agency, its idols and its fans are fictional."
 	},
 	{
-		id: "AIFANCHATTER__MODMENU__BALANCED",
-		text: "Balanced"
-	},
-	{
-		id: "AIFANCHATTER__MODMENU__SUPPORTIVE",
-		text: "Supportive"
-	},
-	{
-		id: "AIFANCHATTER__MODMENU__SPICY",
-		text: "Spicy"
+		id: "AIFANCHATTER__PROMPT__RULES",
+		text: "Rules:\n- Write {min} to {max} posts reacting to the event the user describes. Each post can have 0 to {replies} replies from other fans.\n- Keep every post and reply under {length} characters, in the voice of a fan online.\n- Mix the kinds of fans, and let them react to each other in the replies.\n- Stay consistent with the facts given and don't invent numbers.\n- Use plain text without emoji: the game can't show them.\n- Write in {language}.\n- Match each fan's tone to their opinion of the group: low is critical or disappointed, around 50 is mixed, high is enthusiastic."
 	}
 ]

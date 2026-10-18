@@ -24,6 +24,8 @@ namespace AIFanChatter
         int PerWeek { get; }
         string LanguageName { get; }
         IDictionary<string, string> FanHandles { get; }
+        /// <summary>Each fan code's opinion of the group, 0 to 100, where the game has one.</summary>
+        IDictionary<string, int> FanOpinions { get; }
         void Notify(string text, bool error);
         void NextFrame(Action action);
         void Queue(List<SNS_Manager._message> posts);
@@ -118,7 +120,7 @@ namespace AIFanChatter
                 return false;
             }
             Connection connection = host.ReadConnection();
-            string system = Prompt.System(host.LanguageName, connection.Style, host.FanHandles);
+            string system = Prompt.System(host.LanguageName, host.FanHandles, host.FanOpinions);
             HttpRequestSpec request = Providers.BuildRequest(connection, system, moment.Describe(), Providers.MaxOutputTokens, out string error);
             if (request == null)
             {

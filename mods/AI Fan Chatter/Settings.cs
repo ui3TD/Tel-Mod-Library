@@ -10,13 +10,6 @@ namespace AIFanChatter
         Compatible = 2
     }
 
-    public enum Style
-    {
-        Balanced = 0,
-        Supportive = 1,
-        Spicy = 2
-    }
-
     /// <summary>
     /// The mod's settings, saved by ModMenus in each save's variables. Without ModMenus nothing is saved
     /// and the defaults apply, which leave the mod off. Every default matches modmenu.json.
@@ -30,18 +23,16 @@ namespace AIFanChatter
         public const string ModelVar = Prefix + "Model";
         public const string ApiKeyVar = Prefix + "APIKey";
         public const string PerWeekVar = Prefix + "PerWeek";
-        public const string StyleVar = Prefix + "Style";
 
         public const bool DefaultEnabled = false;
         public const Provider DefaultProvider = Provider.Anthropic;
         public const int DefaultPerWeek = 2;
         public const int MaxPerWeek = 7;
-        public const Style DefaultStyle = Style.Balanced;
 
         /// <summary>
         /// The model a blank Model setting uses on Anthropic. OpenAI and compatible services need one typed in.
         /// </summary>
-        public const string DefaultAnthropicModel = "claude-haiku-4-5";
+        public const string DefaultAnthropicModel = "claude-haiku-5-5";
 
         /// <summary>
         /// Reads a saved setting; null when there is none. Tests replace it.
@@ -53,8 +44,6 @@ namespace AIFanChatter
         public static Provider Provider => (Provider)ReadInt(ProviderVar, (int)DefaultProvider, 0, 2);
 
         public static int PerWeek => ReadInt(PerWeekVar, DefaultPerWeek, 0, MaxPerWeek);
-
-        public static Style Style => (Style)ReadInt(StyleVar, (int)DefaultStyle, 0, 2);
 
         public static string BaseUrl => (Read(BaseUrlVar) ?? "").Trim();
 
@@ -86,8 +75,7 @@ namespace AIFanChatter
                 Provider = provider,
                 BaseUrl = BaseUrl,
                 Model = Model,
-                ApiKey = KeyStore.Get(provider),
-                Style = Style
+                ApiKey = KeyStore.Get(provider)
             };
         }
     }
@@ -98,13 +86,34 @@ namespace AIFanChatter
         public string BaseUrl = "";
         public string Model = "";
         public string ApiKey;
-        public Style Style;
 
         /// <summary>
         /// The model the request names: the setting, or Anthropic's default when it's blank.
         /// </summary>
         public string ResolvedModel => Model != "" ? Model : Provider == Provider.Anthropic ? Settings.DefaultAnthropicModel : "";
 
-        public string Describe() => Provider + " / " + (ResolvedModel != "" ? ResolvedModel : "no model");
+        /// <summary>
+        /// The service as the player knows it: Anthropic, OpenAI, or for any other service its address
+        /// (openrouter.ai, localhost:11434), never the internal name.
+        /// </summary>
+        public string ServiceName
+        {
+            get
+            {
+                switch (Provider)
+                {
+                    case Provider.Anthropic:
+                        return "Anthropic";
+                    case Provider.OpenAI:
+                        return "OpenAI";
+                    default:
+                        return Uri.TryCreate((BaseUrl ?? "").Trim(), UriKind.Absolute, out Uri uri) && uri.Authority != ""
+                            ? uri.Authority
+                            : "your OpenAI-compatible service";
+                }
+            }
+        }
+
+        public string Describe() => ServiceName + " with " + (ResolvedModel != "" ? ResolvedModel : "no model");
     }
 }

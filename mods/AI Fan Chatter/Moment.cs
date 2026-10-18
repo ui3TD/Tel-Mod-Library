@@ -83,7 +83,40 @@ namespace AIFanChatter
 
         public static string Names(IEnumerable<data_girls.girls> girls, int max)
         {
-            return string.Join(", ", girls.Where(g => g != null).Take(max).Select(g => g.GetName(true)).ToArray());
+            return string.Join(", ", girls.Where(g => g != null).Take(max).Select(Name).ToArray());
+        }
+
+        /// <summary>
+        /// An idol's name for the model: the name the game shows, and her full name after a nickname, so fans
+        /// can use either. The game's GetName gives only the nickname once one is set.
+        /// </summary>
+        public static string Name(data_girls.girls girl)
+        {
+            if (string.IsNullOrEmpty(girl.nickname))
+            {
+                return girl.GetName(true);
+            }
+            // The full name as the game builds it when there's no nickname (girls.girlName). Its IsFemale is
+            // private and always true for idols.
+            return WithNickname(girl.nickname, Language.GetVariableName(girl.firstName, girl.lastName, true, "default", IgnoreColor: true));
+        }
+
+        /// <summary>
+        /// "Momo (Yasuda Momone)"; just the nickname when the full name is missing or the same.
+        /// </summary>
+        public static string WithNickname(string nickname, string fullName)
+        {
+            fullName = Moment.Clean(fullName);
+            return fullName == "" || fullName == nickname ? nickname : nickname + " (" + fullName + ")";
+        }
+
+        /// <summary>
+        /// A person in an event as the game names them (Event_Manager._activeEvent._actor.GetName), with an
+        /// idol's full name after her nickname.
+        /// </summary>
+        public static string ActorName(Event_Manager._activeEvent._actor actor)
+        {
+            return actor.name == "" && actor.girl != null ? Name(actor.girl) : actor.GetName(true);
         }
 
         private static Moment Agency(Moment moment)
@@ -99,7 +132,7 @@ namespace AIFanChatter
         {
             Moment moment = new Moment("the group released a new single")
                 .Add("Title", () => single.title)
-                .Add("Center", () => single.GetCenter()?.GetName(true))
+                .Add("Center", () => single.GetCenter() is data_girls.girls center ? Name(center) : "")
                 .Add("Members", () => Names(single.girls, 7))
                 .Add("Genre", () => single.genre?.GetTitle())
                 .Add("Lyrics", () => single.lyrics?.GetTitle())
@@ -128,7 +161,7 @@ namespace AIFanChatter
         public static Moment Graduation(data_girls.girls girl, long fansBefore)
         {
             Moment moment = new Moment("an idol graduated (left the group)")
-                .Add("Idol", () => girl.GetName(true))
+                .Add("Idol", () => Name(girl))
                 .Add("Her fame level", () => girl.GetFameLevel())
                 .Add("Her fans", () => fansBefore)
                 .Add("Years in the group", () => Math.Max(0, (staticVars.dateTime - girl.Hiring_Date).Days / 365));
@@ -142,7 +175,7 @@ namespace AIFanChatter
                 .Add("Details", () => active.GetDescription())
                 .Add("The agency's response", () => active.SwitchVariables(Translate(reply.text)))
                 .Add("Outcome", () => reply.description == "-" ? "" : active.SwitchVariables(Translate(reply.description)))
-                .Add("People involved", () => string.Join(", ", active.actors.Select(a => a.GetName(true)).Where(n => n != "").ToArray()));
+                .Add("People involved", () => string.Join(", ", active.actors.Select(ActorName).Where(n => n != "").ToArray()));
             return Agency(moment);
         }
     }

@@ -87,8 +87,22 @@ namespace AIFanChatter
         }
 
         /// <summary>
+        /// Takes every item that's due, in release order, so fast-forward doesn't leave posts trailing behind
+        /// the clock.
+        /// </summary>
+        public static List<QueuedItem> TakeAllDue(DateTime now)
+        {
+            List<QueuedItem> due = new();
+            QueuedItem item;
+            while ((item = TakeDue(now)) != null)
+            {
+                due.Add(item);
+            }
+            return due;
+        }
+
+        /// <summary>
         /// Takes the item that is due first, if it's due: a post before its replies due at the same time.
-        /// One at a time, so a jump in time doesn't release everything at once.
         /// </summary>
         public static QueuedItem TakeDue(DateTime now)
         {

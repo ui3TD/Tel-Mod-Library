@@ -32,6 +32,20 @@ namespace AIFanChatter.Tests
             Assert.Equal(new[] { "Works" }, moment.Facts.Select(f => f.Key));
         }
 
+        /// <summary>
+        /// A nicknamed idol goes as her nickname with her full name after it, so fans can use either.
+        /// </summary>
+        [Theory]
+        [InlineData("Momo", "Yasuda Momone", "Momo (Yasuda Momone)")]
+        [InlineData("Momo", "<color=#4a7ccf>Yasuda Momone</color>", "Momo (Yasuda Momone)")]
+        [InlineData("Momo", "", "Momo")]
+        [InlineData("Momo", null, "Momo")]
+        [InlineData("Yasuda Momone", "Yasuda Momone", "Yasuda Momone")]
+        public void Nickname_KeepsTheFullName(string nickname, string fullName, string expected)
+        {
+            Assert.Equal(expected, MomentContext.WithNickname(nickname, fullName));
+        }
+
         [Fact]
         public void GameText_LosesTagsAndLineBreaks()
         {
@@ -70,12 +84,110 @@ namespace AIFanChatter.Tests
         [Fact]
         public void SystemPrompt_ListsEveryFanCodeTheFeedDraws()
         {
-            string prompt = Prompt.System("English", Style.Balanced, new Dictionary<string, string>());
+            string prompt = Prompt.System("English", new Dictionary<string, string>(), null);
             foreach (string code in Prompt.FanCodes)
             {
                 Assert.Contains("- " + code + ":", prompt);
             }
             Assert.Equal(12, Prompt.FanCodes.Distinct().Count());
+        }
+
+        /// <summary>
+        /// The prompt's wording comes from constants.json, with every placeholder filled in and its line breaks kept.
+        /// </summary>
+        [Fact]
+        public void SystemPrompt_UsesTheConstantsText()
+        {
+            string prompt = Prompt.System("Japanese", new Dictionary<string, string>(), null);
+            Assert.StartsWith("You write fan posts for the social media feed of an idol management game.", prompt);
+            Assert.Contains("\n- Write 3 to 6 posts reacting to the event", prompt);
+            Assert.Contains("0 to 3 replies", prompt);
+            Assert.Contains("under 100 characters", prompt);
+            Assert.Contains("- Write in Japanese.", prompt);
+            Assert.Contains("- Match each fan's tone to their opinion of the group", prompt);
+            Assert.DoesNotContain("real people", prompt);
+            foreach (string placeholder in new[] { "{min}", "{max}", "{replies}", "{length}", "{language}" })
+            {
+                Assert.DoesNotContain(placeholder, prompt);
+            }
+            Assert.EndsWith("{\"posts\":[{\"user\":\"F_HC_T\",\"text\":\"...\",\"replies\":[{\"user\":\"M_C_A\",\"text\":\"...\"}]}]}", prompt);
+            Assert.Empty(TestEnv.Logs);
+        }
+
+        [Fact]
+        public void EveryPromptText_IsInConstants()
+        {
+            foreach (string key in new[] { Prompt.IntroKey, Prompt.RulesKey })
+            {
+                Assert.True(Language.Data.ContainsKey(key), key);
+            }
+        }
+
+        /// <summary>
+        /// Changed wording, as from an edited constants.json or another mod's, is what's sent.
+        /// </summary>
+        [Fact]
+        public void ChangedWording_IsUsed()
+        {
+            Language.Data[Prompt.RulesKey] = "Only {max} posts, in {language}. Fans argue about everything.";
+            string prompt = Prompt.System("Russian", null, null);
+            Assert.Contains("Only 6 posts, in Russian. Fans argue about everything.", prompt);
+        }
+
+        /// <summary>
+        /// A missing text leaves out only its part: the fan codes and the reply format are still there.
+        /// </summary>
+        [Fact]
+        public void MissingText_LeavesOutOnlyItsPart()
+        {
+            Language.Data.Remove(Prompt.IntroKey);
+            Language.Data.Remove(Prompt.RulesKey);
+            string prompt = Prompt.System("English", null, null);
+            Assert.StartsWith("Fan accounts.", prompt);
+            Assert.Contains("- F_HC_A:", prompt);
+            Assert.Contains("Reply with only this JSON", prompt);
+            Assert.Equal(2, TestEnv.Logs.Count);
+        }
+
+        /// <summary>
+        /// Each fan account carries its fan type's opinion of the group, when the game has one.
+        /// </summary>
+        [Fact]
+        public void FanAccounts_CarryTheirOpinion()
+        {
+            Dictionary<string, int> opinions = new() { ["M_C_T"] = 12, ["F_HC_A"] = 88 };
+            string prompt = Prompt.System("English", null, opinions);
+            Assert.Contains("- M_C_T: casual teen boy, opinion of the group: 12/100", prompt);
+            Assert.Contains("- F_HC_A: devoted adult woman, opinion of the group: 88/100", prompt);
+            Assert.Contains("- M_C_YA: casual young adult man" + System.Environment.NewLine, prompt);
+        }
+
+        [Theory]
+        [InlineData(0f, 0)]
+        [InlineData(0.5f, 50)]
+        [InlineData(0.736f, 74)]
+        [InlineData(1f, 100)]
+        [InlineData(1.5f, 100)]
+        [InlineData(-0.2f, 0)]
+        [InlineData(float.NaN, 50)]
+        public void Opinion_IsOutOf100(float opinion, int expected)
+        {
+            Assert.Equal(expected, Prompt.OpinionOutOf100(opinion));
+        }
+
+        /// <summary>
+        /// The game's 12 fan types map onto the 12 codes the feed draws, one each.
+        /// </summary>
+        [Fact]
+        public void EveryGameFanType_HasItsOwnFeedCode()
+        {
+            resources.fanType[] genders = { resources.fanType.male, resources.fanType.female };
+            resources.fanType[] kinds = { resources.fanType.casual, resources.fanType.hardcore };
+            resources.fanType[] ages = { resources.fanType.teen, resources.fanType.youngAdult, resources.fanType.adult };
+            List<string> codes = genders.SelectMany(g => kinds.SelectMany(k => ages.Select(a => Prompt.CodeFor(g, k, a)))).ToList();
+            Assert.Equal(12, codes.Distinct().Count());
+            Assert.All(codes, c => Assert.Contains(c, Prompt.FanCodes));
+            Assert.Equal("M_HC_YA", Prompt.CodeFor(resources.fanType.male, resources.fanType.hardcore, resources.fanType.youngAdult));
         }
 
         [Theory]

@@ -76,12 +76,31 @@ namespace AIFanChatter.Tests
             }
         }
 
+        /// <summary>
+        /// A jump in time (fast-forward) releases everything due at once, in release order, posts before their replies.
+        /// </summary>
         [Fact]
-        public void AJumpInTime_ReleasesOneItemAtATime()
+        public void AJumpInTime_ReleasesEverythingDueInOrder()
         {
             FeedQueue.AddBatch(Batch("a"), Now, new Random(1));
-            Assert.NotNull(FeedQueue.TakeDue(Now.AddDays(5)));
-            Assert.Equal(5, FeedQueue.Items.Count);
+            List<QueuedItem> released = FeedQueue.TakeAllDue(Now.AddDays(5));
+            Assert.Equal(6, released.Count);
+            Assert.Empty(FeedQueue.Items);
+            Assert.True(released.Zip(released.Skip(1), (a, b) => a.Due <= b.Due).All(inOrder => inOrder), "Out of release order");
+            foreach (QueuedItem reply in released.Where(i => i.IsReply))
+            {
+                Assert.True(released.FindIndex(i => !i.IsReply && i.Text == reply.ParentText) < released.IndexOf(reply), "A reply came before its post");
+            }
+        }
+
+        [Fact]
+        public void OnlyWhatsDue_IsReleased()
+        {
+            FeedQueue.AddBatch(Batch("a"), Now, new Random(1));
+            List<QueuedItem> released = FeedQueue.TakeAllDue(Now);
+            Assert.NotEmpty(released);
+            Assert.All(released, i => Assert.True(i.Due <= Now));
+            Assert.All(FeedQueue.Items, i => Assert.True(i.Due > Now));
         }
 
         [Fact]

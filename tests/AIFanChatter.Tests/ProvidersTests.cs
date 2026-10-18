@@ -44,7 +44,7 @@ namespace AIFanChatter.Tests
             Assert.Null(request.Header("Authorization"));
 
             JSONNode body = JSON.Parse(request.Body);
-            Assert.Equal("claude-haiku-4-5", body["model"].Value);
+            Assert.Equal("claude-haiku-5-5", body["model"].Value);
             Assert.Equal("sys", body["system"].Value);
             Assert.Equal("user", body["messages"][0]["role"].Value);
             Assert.Equal("user", body["messages"][0]["content"].Value);

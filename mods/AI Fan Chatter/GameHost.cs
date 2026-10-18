@@ -41,6 +41,26 @@ namespace AIFanChatter
             }
         }
 
+        public IDictionary<string, int> FanOpinions
+        {
+            get
+            {
+                Dictionary<string, int> opinions = new();
+                foreach (resources._fan fan in resources.Fans)
+                {
+                    try
+                    {
+                        opinions[Prompt.CodeFor(fan.gender, fan.hardcoreness, fan.age)] = Prompt.OpinionOutOf100(resources.GetFanOpinion(fan));
+                    }
+                    catch (Exception)
+                    {
+                        // That fan type goes without an opinion
+                    }
+                }
+                return opinions;
+            }
+        }
+
         public void Notify(string text, bool error)
         {
             NotificationManager.AddNotification(text, error ? mainScript.red32 : mainScript.green32);
@@ -223,25 +243,41 @@ namespace AIFanChatter
 
         public static void OnTimeTick()
         {
+            // Nothing may escape into the game's clock tick, so every step catches its own errors
+            List<QueuedItem> due;
             try
             {
                 if (FeedQueue.Items.Count == 0 || !Settings.Enabled)
                 {
                     return;
                 }
-                QueuedItem item = FeedQueue.TakeDue(staticVars.dateTime);
-                if (item != null)
-                {
-                    Release(item);
-                }
+                // A post comes before a reply due at the same time, so a reply can follow its post in the same tick
+                due = FeedQueue.TakeAllDue(staticVars.dateTime);
             }
             catch (Exception e)
             {
-                if (!tickErrorLogged)
+                ReportTickError(e);
+                return;
+            }
+            foreach (QueuedItem item in due)
+            {
+                try
                 {
-                    tickErrorLogged = true;
-                    Log.Warn("Couldn't add a queued post: " + e);
+                    Release(item);
                 }
+                catch (Exception e)
+                {
+                    ReportTickError(e);
+                }
+            }
+        }
+
+        private static void ReportTickError(Exception e)
+        {
+            if (!tickErrorLogged)
+            {
+                tickErrorLogged = true;
+                Log.Warn("Couldn't add a queued post: " + e);
             }
         }
 

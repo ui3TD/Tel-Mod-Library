@@ -45,12 +45,5 @@
 		"minValue": 0,
 		"maxValue": 7,
 		"defaultValue": 2
-	},
-	{
-		"type": "dropdown",
-		"varID": "AIFanChatter_Style",
-		"labelID": "AIFANCHATTER__MODMENU__STYLE",
-		"itemIDList": ["AIFANCHATTER__MODMENU__BALANCED", "AIFANCHATTER__MODMENU__SUPPORTIVE", "AIFANCHATTER__MODMENU__SPICY"],
-		"defaultValue": 0
 	}
 ]

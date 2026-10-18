@@ -5,8 +5,8 @@ namespace AIFanChatter
     /// <summary>
     /// The agency's policies that fans would notice, in plain words. The game's policies cover every group.
     /// A policy left at the game's default gives "", so its line is left out, except the dating rule, which
-    /// fans talk about even when the agency leaves it unclear. A value the game doesn't have (another
-    /// mod's) also gives "".
+    /// fans talk about even when the agency leaves it unclear, and the stage costumes, which fans always see.
+    /// A value the game doesn't have (another mod's) also gives "".
     /// </summary>
     public static class AgencyRules
     {
@@ -43,6 +43,7 @@ namespace AIFanChatter
         public static string Costumes() => Selected(policies._type.skirts) switch
         {
             policies._value.skirts_short => "short skirts without safety shorts",
+            policies._value.skirts_safety_shorts => "short skirts with safety shorts",
             policies._value.skirts_long_skirts => "long skirts",
             policies._value.skirts_pants => "pants",
             _ => "",

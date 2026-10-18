@@ -35,16 +35,16 @@ namespace AIFanChatter.Tests
             MomentContext.Event(Event("scandal", Today, Idol("B")), new Event_Manager._randomEvent._reply());
 
         [Fact]
-        public void GameDefaults_LeaveOutEveryRule_ButTheDatingRule()
+        public void GameDefaults_LeaveOutEveryRule_ButTheDatingRuleAndCostumes()
         {
             GameDefaults();
             foreach (Moment moment in new[] { SingleMoment(handshake: true), ConcertMoment(), EventMoment() })
             {
                 Assert.Null(moment.Fact(A, "Agency concept"));
-                Assert.Null(moment.Fact(A, "Agency stage costumes"));
                 Assert.Null(moment.Fact(A, "Agency performance style"));
                 Assert.Null(moment.Fact(A, "Agency handshake event security"));
             }
+            Assert.Equal("short skirts with safety shorts", ConcertMoment().Fact(A, "Agency stage costumes"));
             Assert.Equal("unclear: dating is neither allowed nor forbidden", EventMoment().Fact(A, "Agency dating rule"));
         }
 
@@ -65,6 +65,7 @@ namespace AIFanChatter.Tests
 
         [Theory]
         [InlineData(policies._value.skirts_short, "short skirts without safety shorts")]
+        [InlineData(policies._value.skirts_safety_shorts, "short skirts with safety shorts")]
         [InlineData(policies._value.skirts_long_skirts, "long skirts")]
         [InlineData(policies._value.skirts_pants, "pants")]
         public void Costumes_OnlyAtConcerts(policies._value skirts, string expected)

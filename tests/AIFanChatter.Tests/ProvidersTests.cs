@@ -323,6 +323,19 @@ namespace AIFanChatter.Tests
             Assert.Empty(posts[1].Replies);
         }
 
+        /// <summary>
+        /// A reply from the post's own fan is dropped, and doesn't count towards the replies a post can have.
+        /// </summary>
+        [Fact]
+        public void SelfReplies_AreDropped()
+        {
+            var posts = PostParser.Parse("{\"posts\":[{\"user\":\"F_HC_T\",\"text\":\"Best single yet!\",\"replies\":["
+                + "{\"user\":\"F_HC_T\",\"text\":\"me again\"},{\"user\":\"M_C_A\",\"text\":\"one\"},{\"user\":\"f_hc_t\",\"text\":\"and again\"},"
+                + "{\"user\":\"M_C_T\",\"text\":\"two\"},{\"user\":\"F_C_A\",\"text\":\"three\"}]}]}", Random);
+            Assert.Equal(new[] { "<noparse>one</noparse>", "<noparse>two</noparse>", "<noparse>three</noparse>" },
+                posts.Single().Replies.Select(r => r.Message));
+        }
+
         [Fact]
         public void FindsTheJsonInsideProseAndCodeFences()
         {

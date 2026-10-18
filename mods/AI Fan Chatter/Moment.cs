@@ -343,10 +343,10 @@ namespace AIFanChatter
                 .Add("Choreography", () => single.choreography?.GetTitle())
                 .Add("Sales", () => single.ReleaseData.Sales)
                 // The game rounds quality to 0 to 10 and shows it as stars out of 10 (Single_Released_Button)
-                .Add("Quality (0 to 10)", () => single.ReleaseData.Quality)
-                .Add("Fan satisfaction (0 to 100)", () => single.ReleaseData.Fan_Satisfaction)
+                .Add("Quality", () => single.ReleaseData.Quality * 10 + "%")
+                .Add("Fan satisfaction", () => single.ReleaseData.Fan_Satisfaction + "%")
                 .Add("New fans", () => single.ReleaseData.NewFans)
-                .Add("Marketing", () => single.marketing.Count > 0 ? single.Marketing_Result_Status.ToString() : "");
+                .Add("Marketing", () => Marketing(single));
             Groups._group group = History.GroupOf(single);
             Members.Add(moment, Members.ForSingle(single), Now, group);
             History.Single(moment, single, singles.Singles, Now);
@@ -361,7 +361,8 @@ namespace AIFanChatter
                 // The share of seats filled, with the people who came
                 .Add("Attendance", () => Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "% (" + concert.ProjectedValues.Actual_Audience + ")")
                 // The game's hype runs from 0 to 200 (Concert_Popup.AddHype) and shows as a percentage
-                .Add("Hype", () => concert.ProjectedValues.Actual_Hype + "%");
+                .Add("Hype", () => concert.ProjectedValues.Actual_Hype + "%")
+                .Add("Ticket price", () => concert.ProjectedValues.TicketPrice + " yen");
             // The set list names who performed. Unnumbered, so the songs are named by title rather than by their place in the list
             moment.AddList(Moment.FactsSection, "Set list, in order",
                 (concert.SetListItems ?? new List<SEvent_Concerts._concert.ISetlistItem>())
@@ -407,6 +408,35 @@ namespace AIFanChatter
         {
             return texts.Any(t => t != null && Regex.IsMatch(t, @"\byou(r|rs|rself|'re|'ll|'ve|'d)?\b", RegexOptions.IgnoreCase));
         }
+
+        /// <summary>
+        /// A single's promotion as the game titles it: "Group Handshake Event, Ad Campaign (success)". Only
+        /// the risky kind (campaigns, a fake scandal, a daring PV) is rolled, so only it has an outcome.
+        /// </summary>
+        public static string Marketing(singles._single single)
+        {
+            List<string> parts = new();
+            foreach (singles._param item in single.marketing ?? new List<singles._param>())
+            {
+                string title = item == null ? "" : Moment.Clean(Part(() => item.GetTitle()));
+                if (title == "")
+                {
+                    continue;
+                }
+                string outcome = Part(() => item.IsRiskyMarketing() ? Outcome(single.Marketing_Result_Status) : "");
+                parts.Add(outcome == "" ? title : title + " (" + outcome + ")");
+            }
+            return string.Join(", ", parts.ToArray());
+        }
+
+        private static string Outcome(Single_Marketing_Roll._result result) => result switch
+        {
+            Single_Marketing_Roll._result.success => "success",
+            Single_Marketing_Roll._result.success_crit => "great success",
+            Single_Marketing_Roll._result.fail => "failure",
+            Single_Marketing_Roll._result.fail_crit => "major failure",
+            _ => "",
+        };
 
         /// <summary>The most singles a graduate's list of center singles holds.</summary>
         public const int CenterSingles = 5;

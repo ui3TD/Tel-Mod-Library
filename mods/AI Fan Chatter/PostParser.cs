@@ -51,7 +51,8 @@ namespace AIFanChatter
                 for (int j = 0; replies != null && j < replies.Count && post.Replies.Count < Prompt.MaxReplies; j++)
                 {
                     SNS_Manager._message reply = Message(replies[j], random);
-                    if (reply != null)
+                    // A fan replying to her own post is dropped: the prompt asks for other fans' replies
+                    if (reply != null && reply.User != post.User)
                     {
                         post.Replies.Add(reply);
                     }

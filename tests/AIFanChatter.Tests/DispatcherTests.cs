@@ -241,7 +241,7 @@ namespace AIFanChatter.Tests
             string body = transport.Sent.Single().Body;
             Assert.Contains("Write in Japanese.", body);
             Assert.Contains("@IdolLover", body);
-            Assert.Contains("opinion of the group: 23/100", body);
+            Assert.Contains("opinion of the group: 23%", body);
         }
 
         [Fact]

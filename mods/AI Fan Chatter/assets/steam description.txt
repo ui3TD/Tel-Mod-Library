@@ -38,3 +38,4 @@ Your saves load normally without it. The feed then keeps its newest 20 posts.
 - 1.2.0: Fans know which idols have the top or poorest skills in their group
 - 1.3.0: Shorter prompts: ranks only for the top and bottom two, concerts without names or performers
 - 1.4.0: Events name the producer; graduations list centers; other groups labelled; no self-replies
+- 1.5.0: Singles name their promotion and outcome, concerts the ticket price; self-replies dropped

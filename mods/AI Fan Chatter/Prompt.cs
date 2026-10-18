@@ -145,7 +145,7 @@ namespace AIFanChatter
                 }
                 if (opinions != null && opinions.TryGetValue(code, out int opinion))
                 {
-                    sb.Append(", opinion of the group: ").Append(opinion).Append("/100");
+                    sb.Append(", opinion of the group: ").Append(opinion).Append("%");
                 }
             }
             return sb.ToString();

@@ -49,6 +49,7 @@ namespace AIFanChatter.Tests
             Assert.Equal("199%", moment.Fact(Moment.FactsSection, "Hype"));
             // The share of seats filled and the people who came, in one line
             Assert.Equal("92% (15000)", moment.Fact(Moment.FactsSection, "Attendance"));
+            Assert.Equal("3000 yen", moment.Fact(Moment.FactsSection, "Ticket price"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Audience"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Made a profit"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Title"));
@@ -133,6 +134,32 @@ namespace AIFanChatter.Tests
         public void GameText_LosesTagsAndLineBreaks()
         {
             Assert.Equal("Aya and Mei", Moment.Clean("<color=#123456>Aya</color> and\n<b>Mei</b>"));
+        }
+
+        /// <summary>
+        /// Each promotion by the game's title; only the risky one, which the game rolls, has an outcome.
+        /// </summary>
+        [Theory]
+        [InlineData(Single_Marketing_Roll._result.success, "Group Handshake Event, Ad Campaign (success)")]
+        [InlineData(Single_Marketing_Roll._result.success_crit, "Group Handshake Event, Ad Campaign (great success)")]
+        [InlineData(Single_Marketing_Roll._result.fail, "Group Handshake Event, Ad Campaign (failure)")]
+        [InlineData(Single_Marketing_Roll._result.fail_crit, "Group Handshake Event, Ad Campaign (major failure)")]
+        public void Marketing_NamesEachPromotion_AndTheRolledOnesOutcome(Single_Marketing_Roll._result result, string expected)
+        {
+            Language.Data["MARKETING__TEST_AD"] = "Ad Campaign";
+            singles._single single = new() { Marketing_Result_Status = result };
+            single.marketing.Add(new singles._param { type = singles._param._type.marketing, id = 2, title = "Group Handshake Event", Group_Handshake = true });
+            single.marketing.Add(new singles._param { type = singles._param._type.marketing, id = 3, title = "MARKETING__TEST_AD" });
+            Assert.Equal(expected, MomentContext.Marketing(single));
+        }
+
+        [Fact]
+        public void Marketing_WithoutPromotion_IsLeftOut()
+        {
+            singles._single single = new() { title = "Song" };
+            Assert.Null(MomentContext.Single(single).Fact(Moment.FactsSection, "Marketing"));
+            single.marketing.Add(new singles._param { type = singles._param._type.marketing, id = 1, title = "Individual Handshake Event", Individual_Handshake = true });
+            Assert.Equal("Individual Handshake Event", MomentContext.Single(single).Fact(Moment.FactsSection, "Marketing"));
         }
 
         [Fact]
@@ -231,7 +258,7 @@ namespace AIFanChatter.Tests
             Assert.Contains("under 100 characters", prompt);
             Assert.Contains("- Write in Japanese.", prompt);
             Assert.Contains("- Match each fan's tone to their opinion of the group", prompt);
-            Assert.Contains("\n- Don't repeat game stats. Exact sales and attendance can be quoted where it fits.\n", prompt);
+            Assert.Contains("\n- Don't quote stats, but approximate sales and attendance numbers can be mentioned where it fits.\n", prompt);
             Assert.True(Prompt.AsksForSeveralPosts());
             Assert.DoesNotContain("real people", prompt);
             foreach (string placeholder in new[] { "{min}", "{max}", "{replies}", "{length}", "{language}" })
@@ -287,8 +314,8 @@ namespace AIFanChatter.Tests
         {
             Dictionary<string, int> opinions = new() { ["M_C_T"] = 12, ["F_HC_A"] = 88 };
             string prompt = Prompt.System("English", null, opinions);
-            Assert.Contains("- M_C_T: casual teen boy, opinion of the group: 12/100", prompt);
-            Assert.Contains("- F_HC_A: devoted adult woman, opinion of the group: 88/100", prompt);
+            Assert.Contains("- M_C_T: casual teen boy, opinion of the group: 12%", prompt);
+            Assert.Contains("- F_HC_A: devoted adult woman, opinion of the group: 88%", prompt);
             Assert.Contains("- M_C_YA: casual young adult man\n", prompt);
         }
 

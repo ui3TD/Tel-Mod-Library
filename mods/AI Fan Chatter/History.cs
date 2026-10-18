@@ -139,15 +139,15 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// "\"Title\" (Pop, Love lyrics, Cool choreography): 200000 sales, quality 4 of 10, fan satisfaction
-        /// 100 of 100, released 7 months ago". The game shows quality as stars out of 10 (Single_Released_Button).
+        /// "\"Title\" (Pop, Love lyrics, Cool choreography): 200000 sales, quality 40%, fan satisfaction 100%,
+        /// released 7 months ago". The game's quality runs from 0 to 10 (stars, Single_Released_Button).
         /// </summary>
         public static string Summary(singles._single single, DateTime now)
         {
             singles._single._releaseData data = single.ReleaseData;
             string ago = Ago(data.ReleaseDate, now);
-            return MomentContext.TitleWithStyle(single) + ": " + data.Sales + " sales, quality " + data.Quality + " of 10, fan satisfaction "
-                + data.Fan_Satisfaction + " of 100" + (ago == "" ? "" : ", released " + ago);
+            return MomentContext.TitleWithStyle(single) + ": " + data.Sales + " sales, quality " + data.Quality * 10 + "%, fan satisfaction "
+                + data.Fan_Satisfaction + "%" + (ago == "" ? "" : ", released " + ago);
         }
 
         /// <summary>

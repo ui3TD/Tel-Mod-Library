@@ -48,9 +48,9 @@ namespace AIFanChatter.Tests
 
             Moment moment = new("x");
             History.Single(moment, current, singles.Singles, Today);
-            Assert.Equal("\"Third\" (Metal, Regret lyrics, Cute choreography): 20000 sales, quality 6 of 10, fan satisfaction 80 of 100, released 40 days ago",
+            Assert.Equal("\"Third\" (Metal, Regret lyrics, Cute choreography): 20000 sales, quality 60%, fan satisfaction 80%, released 40 days ago",
                 moment.Fact(H, "Previous single"));
-            Assert.Equal("\"Second\": 40000 sales, quality 0 of 10, fan satisfaction 0 of 100, released 3 months ago", moment.Fact(H, "2nd previous single"));
+            Assert.Equal("\"Second\": 40000 sales, quality 0%, fan satisfaction 0%, released 3 months ago", moment.Fact(H, "2nd previous single"));
             Assert.StartsWith("\"First\" (Pop, Love lyrics, Cool choreography): 50000 sales", moment.Fact(H, "3rd previous single"));
             Assert.DoesNotContain(moment.Facts(H), f => f.Value.Contains("Oldest"));
             Assert.Equal("4", moment.Fact(H, "Singles released before this one"));
@@ -131,12 +131,14 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void Single_QualityIsOutOf10()
+        public void Single_QualityAndSatisfactionArePercentages()
         {
             singles._single single = Single("Song", Today, 1);
             single.ReleaseData.Quality = 7;
+            single.ReleaseData.Fan_Satisfaction = 82;
             Moment moment = MomentContext.Single(single);
-            Assert.Equal("7", moment.Fact(Moment.FactsSection, "Quality (0 to 10)"));
+            Assert.Equal("70%", moment.Fact(Moment.FactsSection, "Quality"));
+            Assert.Equal("82%", moment.Fact(Moment.FactsSection, "Fan satisfaction"));
         }
 
         /// <summary>

@@ -21,13 +21,17 @@ The Workshop item is the csproj's <WorkshopID>. Tags and visibility are left as
 they are on Steam. After uploading, the item is read back from the public Steam
 Web API and its description compared with the local one.
 
+With --new, a mod with no <WorkshopID> yet is published as a new item, unlisted,
+and the new item's id is written into its csproj (commit that change). SteamCMD
+can't set tags, so add the mod's tags on the item's page.
+
 One-time setup: install SteamCMD (default C:\\steamcmd\\steamcmd.exe, or set
 STEAMCMD) and log in once with `steamcmd +login <user> +quit` to cache the
 Steam Guard approval. Without --user or STEAM_USER, the one account SteamCMD
 has cached is used.
 
 Usage:
-    python tools/publish_workshop.py "<Mod Name>" [--user USER] [--description-only] [--dry-run]
+    python tools/publish_workshop.py "<Mod Name>" [--user USER] [--description-only] [--new] [--dry-run]
 """
 
 import argparse
@@ -51,11 +55,34 @@ MAX_TITLE = 128
 MAX_DESCRIPTION = 8000
 
 
-def read_props(mod_dir):
+# SteamCMD's visibility values: 0 public, 1 friends only, 2 private, 3 unlisted.
+UNLISTED = "3"
+
+
+def read_props(mod_dir, new=False):
     csproj, props = read_csproj(mod_dir, optional=("WorkshopID",))
-    if not props["WorkshopID"]:
-        sys.exit("No <WorkshopID> in {}; add the item's id from its Workshop URL.".format(csproj))
+    if new and props["WorkshopID"]:
+        sys.exit("{} already has <WorkshopID> {}; publish without --new.".format(csproj, props["WorkshopID"]))
+    if not new and not props["WorkshopID"]:
+        sys.exit("No <WorkshopID> in {}; add the item's id from its Workshop URL, or use --new.".format(csproj))
     return csproj, props
+
+
+def created_id(vdf_path):
+    """The id SteamCMD writes back into the VDF after creating an item; None if it didn't."""
+    with open(vdf_path, encoding="utf-8", errors="replace") as f:
+        match = re.search(r'"publishedfileid"\s+"(\d+)"', f.read())
+    return match.group(1) if match and match.group(1) != "0" else None
+
+
+def write_workshop_id(csproj, workshop_id):
+    with open(csproj, encoding="utf-8-sig") as f:
+        text = f.read()
+    updated, count = re.subn(r"<WorkshopID>\s*</WorkshopID>|<WorkshopID\s*/>", "<WorkshopID>{}</WorkshopID>".format(workshop_id), text)
+    if count != 1:
+        sys.exit("Couldn't write <WorkshopID>{}</WorkshopID> into {}; add it by hand.".format(workshop_id, csproj))
+    with open(csproj, "w", encoding="utf-8", newline="") as f:
+        f.write(updated)
 
 
 def read_description(mod_dir):
@@ -154,12 +181,16 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="print the upload instead of running it")
     parser.add_argument("--description-only", action="store_true",
                         help="update only the title and description; no build, content, preview or change note")
+    parser.add_argument("--new", action="store_true",
+                        help="publish a mod with no <WorkshopID> as a new, unlisted item and write its id into the csproj")
     args = parser.parse_args()
+    if args.new and args.description_only:
+        sys.exit("--new publishes everything; it can't be combined with --description-only.")
 
     mod_dir = os.path.join(MODS, args.mod)
     if not os.path.isdir(mod_dir):
         sys.exit("No mod folder " + mod_dir)
-    csproj, props = read_props(mod_dir)
+    csproj, props = read_props(mod_dir, args.new)
     description = read_description(mod_dir)
     note = None if args.description_only else change_note(description, props["Version"])
     if len(props["ModName"]) > MAX_TITLE:
@@ -176,10 +207,12 @@ def main():
         print("WARNING: " + str(e))
     fields = {
         "appid": APP_ID,
-        "publishedfileid": props["WorkshopID"],
+        "publishedfileid": "0" if args.new else props["WorkshopID"],
         "title": props["ModName"],
         "description": description,
     }
+    if args.new:
+        fields["visibility"] = UNLISTED
     if not args.description_only:
         # Start clean so files removed from the mod's assets don't linger.
         clean_dir(STAGING)
@@ -193,8 +226,11 @@ def main():
     vdf_path, vdf_text = write_vdf(fields)
     try:
         what = "the description of" if args.description_only else props["Version"] + " of"
-        print("Publishing {} {} to https://steamcommunity.com/sharedfiles/filedetails/?id={}".format(
-            what, props["ModName"], props["WorkshopID"]))
+        if args.new:
+            print("Publishing {} {} as a new, unlisted Workshop item".format(what, props["ModName"]))
+        else:
+            print("Publishing {} {} to https://steamcommunity.com/sharedfiles/filedetails/?id={}".format(
+                what, props["ModName"], props["WorkshopID"]))
         if args.dry_run:
             print(vdf_text)
             return
@@ -202,6 +238,14 @@ def main():
         if not user:
             sys.exit("No Steam login; pass --user or set STEAM_USER.")
         upload(args.steamcmd, user, vdf_path)
+        if args.new:
+            workshop_id = created_id(vdf_path)
+            if not workshop_id:
+                sys.exit("SteamCMD didn't report the new item's id; find it under your Workshop items and add it to the csproj.")
+            write_workshop_id(csproj, workshop_id)
+            props["WorkshopID"] = workshop_id
+            print("Created https://steamcommunity.com/sharedfiles/filedetails/?id={} (unlisted); "
+                  "wrote <WorkshopID> into {}. Commit it, and add the tags on the item's page.".format(workshop_id, csproj))
     finally:
         os.remove(vdf_path)
     verify(props["WorkshopID"], props["ModName"], description)

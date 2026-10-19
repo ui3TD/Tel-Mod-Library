@@ -10,78 +10,36 @@ Also recommended, for bugs this mod doesn't fully fix:
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750618658]Show Cast Assignment Fix[/url] by Cosmo
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864574]Clinic Recovery Priority Fix[/url] by Cosmo
 
-[h3]Bug Fixes:[/h3]
-[b]Theater[/b]
-- Fixed Theater so that it uses stamina. (major gameplay change)
-- Fixed Theater money tooltip: adds subscriptions, skips days off, covers 7 days instead of 6.
-- Fixed Theater so that revenue stats are not offset by one day.
-- Fixed Theater so that average stats ignore days off.
-- Fixed Theater so that revenue gets added to girls earnings.
+[h3]Main changes[/h3]
+These fixes change how the game plays:
+- Theater shows use stamina.
+- World tour attendance depends on your fame, so big venues need high fame.
+- The Best Employer award can be lost, and expected salaries follow recent pay.
+- Senbatsu stats use the stat asked for, and don't punish rows you can't fill.
+- Edgy and Artsy PVs change sales and new fans, as their tooltips say.
+- Concerts, cancellations and events change your idols' fan opinion.
+- Fans of one type (business deals, cafes, fans switching idols) land in that type and are never lost.
+- A scandal can no longer raise your agency's fans by moving the same switching fans twice.
+- Dating scandal responses cost mental stamina, except for Thick Skin and Shameless idols.
+- Shows cast with the entire group give every idol the same opinion vote, not just the first idol.
+- Song quality and the first single's own fan appeal now shape fan opinion votes.
 
-[b]Cafe[/b]
-- Fixed Cafe weekly revenue so that it includes 7 days instead of 6.
-- Fixed Cafe novelty always starting a new dish at 100%, even when the idol's other dishes are stale.
-- Fixed Cafe shifts curing depressed waitstaff.
-
-[b]Concerts, shows and world tours[/b]
-- Fixed Concert revenue formula so that it shows accurate estimated values, including the FUJI ticket bonus.
-- Fixed concert attendance and hype rounding up, so 99.5% attendance no longer shows as a sell-out.
-- Fixed picking an idol already in a show or concert cast for a second slot right after opening the editor.
-- Fixed Cancel in the concert editor keeping your changes.
-- Fixed the show tooltip showing today as the next episode on the show's weekday.
-- Fixed an idol who leaves a show being replaced by an idol already in the cast.
-- Fixed world tour revenue text color to consider savings, and to show red when the tour would lose money.
-- Fixed world tour savings: the Most Prolific Group award and cheaper events no longer make extra stops free.
-- Fixed world tour attendance ignoring your fame level. (major gameplay change: big venues need high fame)
-
-[b]Singles[/b]
-- Fixed senbatsu stats punishing you for empty rows and always using Cute instead of the requested stat.
-- Fixed Edgy and Artsy PVs doing nothing: they now change sales and new fans as their tooltips say.
-
-[b]Idols[/b]
-- Fixed Best Employer always being won: months with injured, depressed, exhausted or underpaid idols count against it. Expected salaries follow recent pay. (major gameplay change)
-- Fixed a promoted male producer's blank small portrait.
-- Fixed the English birthday title (21th birthday). It now reads: Mio turns 21!
-- Fixed so that when girls dating each other break up, their relationship status is no longer known.
-- Fixed dating status to show status of underage girls, so you can actually track scandals.
-- Fixed gossip so that idol will not gossip about themselves.
-- Fixed display for Stamina cost of Performances to be correct for 'Energetic' performance policy.
-
-[b]Clinics and Break Room[/b]
-- Fixed clinics taking idols who are busy in another room.
-- Fixed idols getting stuck after the Break Room, and Break Room chats curing injuries or reviving graduated idols.
-
-[b]Fans[/b]
-- Fixed fan age pie charts to show correct proportions.
-- Fixed fan opinion to be impacted by concerts, SSK/show cancellation and random events.
-
-[b]Events and dialogues[/b]
-- Fixed event and dialogue checks for Influence to check for Influence instead of Friendship.
-- Fixed event and dialogue checks for 'not' conditions on variables, which always passed.
-- Fixed event and dialogue checks for having a staffer of a specific type.
-
-[b]Auditions and new idols[/b]
-- Fixed a freeze when generating some platinum and gold idols (auditions, Aya, hiring a rival).
-- Fixed auditions waiting forever for portraits: cards unlock after 2 seconds, and slow portraits no longer hold up others.
-
-[b]Saving and loading[/b]
-- Fixed saving and loading pushing back the bankruptcy deadline.
-- Fixed concerts in production losing their place in the Special Events list after loading.
-- Fixed failed loads of a missing or corrupt save breaking autosave or letting it overwrite your saves.
+Plus 34 smaller fixes to tooltips, text, saving and loading, and rare freezes: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/UnofficialPatch.md]full list of fixes[/url]
 
 [h3]Inspired by[/h3]
-These mods found these bugs first. Unofficial Patch includes these fixes, so you don't need these mods for them.
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3158389459]BestEmployerFix[/url] by magier: the Best Employer award. Unofficial Patch uses the game's own monthly check, which also fixes expected salaries.
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3781484403]Male Player Thumbnail Fix[/url] by madxis: the blank small portrait of a promoted male producer. Unofficial Patch lets mods that change the producer's portrait show theirs.
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3810566069]Save n Load Fixes[/url] by Cosmo: expected salaries, concerts' place in the Special Events list, the bankruptcy deadline after loading, and a show's next episode date. Unofficial Patch doesn't change how your game is saved.
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864808]Unavailable Idols Fix[/url] by Cosmo: Cancel in the concert editor. Unofficial Patch works better with other mods that change concerts.
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3807347510]Birthday Text Fix[/url] by Cosmo: the birthday popup title (21th birthday). Unofficial Patch's text can be changed by other mods.
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864574]Clinic Recovery Priority Fix[/url] by Cosmo: idols left stuck after hanging out in the Break Room. Unofficial Patch stops idols getting stuck instead of freeing them later, and a Break Room chat can no longer cure an injury or bring back a graduated idol.
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750618476]Room Assignment Fix[/url] by Cosmo: clinics taking idols who are busy in another room. Unofficial Patch leaves every other room as in the base game.
-- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750618658]Show Cast Assignment Fix[/url] by Cosmo: an idol in two spots of the same show. Unofficial Patch gives the empty spot a new idol instead of leaving it empty, and greys out idols already in a show or concert cast.
+These mods found some of these bugs first. Unofficial Patch includes their fixes, so you don't need these mods for them. The full list of fixes says what Unofficial Patch does differently.
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3158389459]BestEmployerFix[/url] by magier: the Best Employer award.
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3781484403]Male Player Thumbnail Fix[/url] by madxis: a promoted male producer's blank small portrait.
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3810566069]Save n Load Fixes[/url] by Cosmo: expected salaries, concerts in the Special Events list, the bankruptcy deadline, and a show's next episode date.
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864808]Unavailable Idols Fix[/url] by Cosmo: Cancel in the concert editor.
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3807347510]Birthday Text Fix[/url] by Cosmo: the birthday popup title.
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864574]Clinic Recovery Priority Fix[/url] by Cosmo: idols stuck after the Break Room.
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750618476]Room Assignment Fix[/url] by Cosmo: clinics taking busy idols.
+- [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3750618658]Show Cast Assignment Fix[/url] by Cosmo: an idol in two spots of the same show.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
 - 1.11.0: Best Employer can be lost, salaries follow recent pay, plus 10 fixes found by other mods.
 - 1.12.0: Clinics follow the game's Auto Practice rule again; see Clinic Recovery Priority Fix.
+- 1.12.1: Fans no longer vanish or double up, scandals cost mental stamina, plus 5 opinion fixes.

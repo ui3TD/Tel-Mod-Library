@@ -294,6 +294,8 @@ namespace UnofficialPatch.Tests
             (AccessTools.Method(typeof(Room_Cafe), nameof(Room_Cafe.RenderGirls)), nameof(StubRenderGirls)),
             (AccessTools.Method(typeof(Cafes._cafe), nameof(Cafes._cafe.GetFansToAdd)), nameof(StubCafeFans)),
             (AccessTools.Method(typeof(agency._room), nameof(agency._room.CancelJob)), nameof(StubCancelJob)),
+            (AccessTools.Method(typeof(resources), nameof(resources._OnFansChange)), nameof(StubFansDisplay)),
+            (AccessTools.Method(typeof(data_girls), "UpdateFansDisplay"), nameof(StubFansDisplay)),
         };
 
         private static readonly MethodBase[] Patched =
@@ -312,6 +314,10 @@ namespace UnofficialPatch.Tests
             AccessTools.Method(typeof(Popup_Audition_PortraitsLoaded), nameof(Popup_Audition_PortraitsLoaded.Postfix)),
             AccessTools.Method(typeof(Popup_Audition_OpenCard), nameof(Popup_Audition_OpenCard.Postfix)),
             AccessTools.Method(typeof(Cafes), nameof(Cafes.RenderCafe)),
+            AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.AddFans), new[] { typeof(long), typeof(resources.fanType?) }),
+            AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.AddFans), new[] { typeof(resources.fanType?), typeof(float), typeof(bool) }),
+            AccessTools.Method(typeof(data_girls), nameof(data_girls.AddFans), new[] { typeof(long), typeof(resources.fanType?), typeof(List<data_girls.girls>), typeof(data_girls.girls) }),
+            AccessTools.Method(typeof(Event_Templates._active_template), "AddMentalStamina"),
         };
 
         /// <summary>
@@ -486,6 +492,9 @@ namespace UnofficialPatch.Tests
 
         // Cancelling a job reads the scene's agency.
         private static void StubCancelJob(agency._room room) { }
+
+        // The fan count display is read through Camera.main.
+        private static void StubFansDisplay() { }
 
         /// <summary>
         /// A GameObject holding a stub Image with this fill.

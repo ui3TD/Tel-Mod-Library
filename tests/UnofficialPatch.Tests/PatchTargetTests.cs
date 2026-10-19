@@ -52,6 +52,7 @@ namespace UnofficialPatch.Tests
                     nameof(SEvent_Concerts_LoadFunction),
                     nameof(staff_GetPortrait),
                     nameof(staff_LoadPortrait_Small_AtlasLoaded),
+                    nameof(tooltip_fans_line_Set),
                     nameof(vn_requirements_CheckGirl),
                     nameof(vn_requirements_CheckGirl_Variable),
                 },

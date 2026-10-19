@@ -5,10 +5,6 @@ Completely revamps the game balance of fans and makes the game way more challeng
 
 You lose fans every day! You have to keep your groups active to grow. At 100k fans, you can expect a fan churn rate of 2% per month in Normal mode and 5% per month in Unfair mode unless you take measures to grow.
 
-Each idol loses fans in proportion to how many fans she has of each type. Fan types with a low opinion of her, or that her stats appeal to less, are a little more likely to leave: up to 1.25 times as fast at the worst, and 0.75 times as fast at the best.
-
-Every idol also has a natural fan mix, set by each fan type's opinion of her and how well her stats suit them. Hardcore fans are rarer: a neutral idol's natural mix is 40% hardcore. New fans of a type she already has more than her natural share of partly go to her other fan types instead, and while she has more hardcore fans than her natural share, 1 in 5 new hardcore fans arrives as a casual fan. Targeting still pays (a pure hardcore build settles at about three quarters hardcore), but no fan type dies out.
-
 Also comes with a makeover to the fan tooltip.
 
 Here are the rebalancing tweaks to give you more viable ways of attracting fans in the end-game:
@@ -37,4 +33,4 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 - 1.5.0: Daily fan churn is split across idols by fame instead of hitting one random idol.
 - 1.6.0: Every show relaunch now wears out at the same rate as the first, not faster each time.
 - 2.0.0: Fans are lost by fan type size, opinion and appeal; empty types no longer skip the loss.
-- 3.0.0: New fans drift toward each idol's natural fan mix; hardcore fans are rarer.
+- 3.0.0: Daily fan loss works as in 1.6.0 again; 2.0.0's change is undone.

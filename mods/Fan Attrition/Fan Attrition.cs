@@ -315,12 +315,6 @@ namespace FanAttrition
         public const float SHOW_FATIGUE_COEFF_HARD = 12500f;
         public const float SHOW_FATIGUE_COEFF_NORMAL = 20000f;
         public const int FATIGUE_RELAUNCH_CAP = 1;
-        // How much more a segment with the lowest opinion + appeal loses than a neutral one (and how much less
-        // one with the highest does)
-        public const double APPEAL_LOSS_PULL = 0.25;
-        // The game's opinion + appeal of a neutral segment (opinion 0, stats about 50), and its range
-        public const double NEUTRAL_TOTAL_APPEAL = 1.0;
-        public const float MAX_TOTAL_APPEAL = 2f;
         public const float MARK_SUCCESSCRIT_COEFF = 0.1f;
         public const float MARK_FAIL_CRIT_COEFF = 0.1f;
         public const float FAKESCANDAL_MOD_BASE = 100f;
@@ -355,8 +349,8 @@ namespace FanAttrition
         /// </summary>
         /// <remarks>
         /// Not through resources.Add: the game's data_girls.AddFans checks for overshooting the total only the
-        /// way a gain can overshoot, so a loss lands entirely on one random idol. Each idol's share is then
-        /// taken from her fan segments by TakeFromSegments.
+        /// way a gain can overshoot, so a loss lands entirely on one random idol. Each idol's own AddFans is
+        /// correct for any sign, with or without a fix to the game's method.
         /// </remarks>
         /// <param name="loss">The number of fans lost, above 0.</param>
         public static void TakeFansByFame(long loss)
@@ -381,77 +375,9 @@ namespace FanAttrition
             {
                 float weight = equally ? 1f / idols.Count : idols[i].GetFamePoints() / fame;
                 long share = i == idols.Count - 1 ? loss - taken : Math.Min((long)Mathf.Round(loss * weight), loss - taken);
-                TakeFromSegments(idols[i], share);
+                idols[i].AddFans(-share);
                 taken += share;
             }
-            resources._OnFansChange();
-        }
-
-        /// <summary>
-        /// Takes fans from an idol's fan segments in proportion to their size, with low opinion and appeal pulling
-        /// a little more of the loss: a segment at the game's lowest opinion + appeal loses 1.25x its share, a
-        /// neutral one 1x and one at the highest 0.75x.
-        /// </summary>
-        /// <remarks>
-        /// Not through the idol's own AddFans: it splits a loss by opinion + stat appeal whatever a segment
-        /// holds, and the part that lands on an empty segment is never taken. Here what a segment can't pay
-        /// goes to the segments that still have fans, so the whole loss is taken unless the idol runs out.
-        /// </remarks>
-        /// <param name="girl">The idol losing fans.</param>
-        /// <param name="loss">The number of fans lost, 0 or more.</param>
-        /// <returns>The number of fans taken.</returns>
-        public static long TakeFromSegments(data_girls.girls girl, long loss)
-        {
-            long taken = 0;
-            if (girl?.Fans == null)
-                return taken;
-
-            while (taken < loss)
-            {
-                List<resources._fan> paying = girl.Fans.Where(fan => fan != null && fan.people > 0).ToList();
-                if (paying.Count == 0)
-                    break;
-
-                long remaining = loss - taken;
-                // Weighed before any segment loses fans, so the split doesn't depend on their order
-                Dictionary<resources._fan, double> weights = paying.ToDictionary(fan => fan, LossWeight);
-                double total = weights.Values.Sum();
-                long round = 0;
-                foreach (resources._fan fan in paying)
-                {
-                    long share = Math.Min(fan.people, (long)Math.Floor(remaining * weights[fan] / total));
-                    fan.AddPeople(-share);
-                    round += share;
-                }
-
-                // Rounding left a few fans: one each from the heaviest segments
-                if (round == 0)
-                {
-                    foreach (resources._fan fan in paying.OrderByDescending(fan => weights[fan]))
-                    {
-                        if (round == remaining)
-                            break;
-                        fan.AddPeople(-1);
-                        round++;
-                    }
-                }
-                taken += round;
-            }
-            return taken;
-        }
-
-        /// <summary>
-        /// A segment's pull on the loss: its fans, times 1.25 at the lowest opinion + appeal (0), 1 at a neutral
-        /// 1 and 0.75 at the highest (2). Opinion + appeal is the weight the game splits an idol's fan gains by.
-        /// </summary>
-        private static double LossWeight(resources._fan fan)
-        {
-            float ratio = fan.GetOpinion();
-            // A segment with no votes reads as neutral opinion
-            if (float.IsNaN(ratio))
-                ratio = 0.5f;
-            float totalAppeal = Mathf.Clamp(ratio + fan.appeal, 0f, MAX_TOTAL_APPEAL);
-            return fan.people * (1.0 + APPEAL_LOSS_PULL * (NEUTRAL_TOTAL_APPEAL - totalAppeal));
         }
 
         /// <summary>

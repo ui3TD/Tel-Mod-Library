@@ -405,7 +405,7 @@ namespace ModMenus.Tests
         public void ReopeningScrollsBackToTheTop()
         {
             Menu menu = OpenMenu();
-            ScrollRect scroll = Seams.GetComponentInChildren<ScrollRect>(menu.Panel);
+            ScrollRect scroll = menu.Scroll;
             Seams.ScrollPositions[scroll] = 0.2f;
             menu.Cancel();
 

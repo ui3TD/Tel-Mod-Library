@@ -67,11 +67,14 @@ namespace ModMenus.Tests
             Assert.Contains(Log.Messages, m => m.StartsWith("[ModMenus] Mod A's modmenu.json"));
         }
 
+        /// <summary>
+        /// Changed in 4.0.0: mods were listed in load order. Each now has a tab, and tabs are in order of their names.
+        /// </summary>
         [Fact]
-        public void ModsAreListedInLoadOrder()
+        public void ModsAreListedByName()
         {
-            TestGame.AddMod("Mod A", """[ { "type": "text", "labelID": "TEST__INTRO" } ]""");
             TestGame.AddMod("Mod B", """[ { "type": "checkbox", "varID": "B_Loud", "labelID": "TEST__LOUD" } ]""");
+            TestGame.AddMod("Mod A", """[ { "type": "text", "labelID": "TEST__INTRO" } ]""");
 
             Assert.Equal(
                 new[] { "ModMenuText_Mod A", "ModMenuText_TEST__INTRO", "ModMenuText_Mod B", "ModMenuCheckbox_B_Loud" },
@@ -146,17 +149,20 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
-        /// A text row is as tall as its lines, so long text doesn't run into the next row. Mod titles keep their height.
+        /// A text row is as tall as its lines, so long text doesn't run into the next row. Since 4.0.0 the mod's title
+        /// fits its lines too, as a tab may cut a long name short and the title shows it whole.
         /// </summary>
         [Fact]
         public void TextRowsFitTheirLines()
         {
             Menu menu = Build("""[ { "type": "text", "labelID": "TEST__INTRO" } ]""");
 
-            UnityEngine.UI.ContentSizeFitter fitter = Seams.GetComponent<UnityEngine.UI.ContentSizeFitter>(menu.Rows[1]);
-            Assert.NotNull(fitter);
-            Assert.Equal(UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize, fitter.verticalFit);
-            Assert.Null(Seams.GetComponent<UnityEngine.UI.ContentSizeFitter>(menu.Rows[0]));
+            foreach (GameObject row in menu.Rows)
+            {
+                UnityEngine.UI.ContentSizeFitter fitter = Seams.GetComponent<UnityEngine.UI.ContentSizeFitter>(row);
+                Assert.NotNull(fitter);
+                Assert.Equal(UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize, fitter.verticalFit);
+            }
         }
 
         [Fact]

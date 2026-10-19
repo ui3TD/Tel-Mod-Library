@@ -69,7 +69,8 @@ namespace InGameTests.TelMods
             int rows = 0;
             if (menu != null)
             {
-                var names = new HashSet<string>(menu.Cast<Transform>().Select(t => t.name), StringComparer.Ordinal);
+                // Each mod's rows are on its page, shown or not
+                var names = new HashSet<string>(menu.Cast<Transform>().SelectMany(page => page.Cast<Transform>()).Select(t => t.name), StringComparer.Ordinal);
                 foreach (var expected in ExpectedRows())
                 {
                     rows++;
@@ -180,10 +181,19 @@ namespace InGameTests.TelMods
             { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider2"", ""labelID"": ""Slider 2"" },
             { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check3"", ""labelID"": ""Checkbox 3"" },
             { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider3"", ""labelID"": ""Slider 3"" },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check4"", ""labelID"": ""Checkbox 4"" },
+            { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider4"", ""labelID"": ""Slider 4"" },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check5"", ""labelID"": ""Checkbox 5"" },
+            { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider5"", ""labelID"": ""Slider 5"" },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check6"", ""labelID"": ""Checkbox 6"" },
+            { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider6"", ""labelID"": ""Slider 6"" },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check7"", ""labelID"": ""Checkbox 7"" },
+            { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider7"", ""labelID"": ""Slider 7"" },
             { ""type"": ""dropdown"", ""varID"": ""ModMenusTest_Bottom"", ""labelID"": ""Bottom dropdown"", ""itemIDList"": [""North"", ""East"", ""South"", ""West""] }
         ]";
 
         private const string TestModTitle = "ModMenus Test Menu";
+        private const string TestModName = "com.test.modmenustestmenu";
         private const string TestVarPrefix = "ModMenusTest_";
 
         /// <summary>
@@ -192,20 +202,71 @@ namespace InGameTests.TelMods
         /// </summary>
         private static IDisposable AddTestMod(string menuJson = TestMenu)
         {
-            string dir = Path.Combine(Path.GetTempPath(), "ModMenusInGameTest");
-            string menuDir = Path.Combine(Path.Combine(dir, "JSON"), "Mod Menu");
-            Directory.CreateDirectory(menuDir);
-            File.WriteAllText(Path.Combine(menuDir, "modmenu.json"), menuJson);
-            var mod = new Mods._mod { ModName = "com.test.modmenustestmenu", Title = TestModTitle, Path = dir };
+            return AddTestMods(new[] { TestModTitle }, new[] { TestModName }, new[] { menuJson });
+        }
+
+        /// <summary>
+        /// Installs temporary mods, each with its title, mod name and menu, as <see cref="AddTestMod"/> does.
+        /// </summary>
+        private static IDisposable AddTestMods(string[] titles, string[] modNames, string[] menus)
+        {
+            string root = Path.Combine(Path.GetTempPath(), "ModMenusInGameTest");
+            var added = new List<Mods._mod>();
+            for (int i = 0; i < titles.Length; i++)
+            {
+                string dir = Path.Combine(root, i.ToString());
+                string menuDir = Path.Combine(Path.Combine(dir, "JSON"), "Mod Menu");
+                Directory.CreateDirectory(menuDir);
+                File.WriteAllText(Path.Combine(menuDir, "modmenu.json"), menus[i]);
+                added.Add(new Mods._mod { ModName = modNames[i], Title = titles[i], Path = dir });
+            }
             ForgetMenuPopup();
-            Mods._Mods.Add(mod);
+            Mods._Mods.AddRange(added);
             return TestTools.Restore(() =>
             {
-                Mods._Mods.Remove(mod);
+                foreach (Mods._mod mod in added)
+                    Mods._Mods.Remove(mod);
                 variables.variable.RemoveAll(v => v.name.StartsWith(TestVarPrefix, StringComparison.Ordinal));
                 ForgetMenuPopup();
-                Directory.Delete(dir, true);
+                Directory.Delete(root, true);
             });
+        }
+
+        /// <summary>
+        /// A mod's page of settings, shown or not.
+        /// </summary>
+        private static Transform PageOf(GameObject popup, string modName) => Find(popup.transform, "ModMenuPage_" + modName).FirstOrDefault();
+
+        /// <summary>
+        /// The settings' scroll area (the tabs have their own).
+        /// </summary>
+        private static ScrollRect SettingsScroll(GameObject popup) => Find(popup.transform, "ScrollContainer").First().GetComponent<ScrollRect>();
+
+        /// <summary>
+        /// Shows a mod's settings as a player does: scrolls the tab column to its tab, checks a click there
+        /// reaches the tab, and clicks it.
+        /// </summary>
+        private static IEnumerator ShowTab(TestContext ctx, GameObject popup, string modName)
+        {
+            RectTransform tab = (RectTransform)Find(popup.transform, "ModMenuTab_" + modName).FirstOrDefault();
+            if (tab == null)
+            {
+                ctx.Fail("No tab for " + modName);
+                yield break;
+            }
+            if (!tab.gameObject.activeInHierarchy || tab.GetComponentInParent<ScrollRect>() == null)
+            {
+                ctx.Fail(modName + "'s tab isn't shown in a scroll area: " + PathOf(tab));
+                yield break;
+            }
+            ScrollIntoView(ctx, tab);
+            yield return null;
+            GameObject hit = TopHit(ScreenRect(tab).center);
+            ctx.Assert(hit != null && hit.transform.IsChildOf(tab), modName + "'s tab: a click on it would hit " + (hit != null ? hit.name : "nothing"));
+            Click(tab.gameObject);
+            yield return null;
+            Transform page = PageOf(popup, modName);
+            ctx.Assert(page != null && page.gameObject.activeInHierarchy, "Clicking " + modName + "'s tab didn't show its page");
         }
 
         /// <summary>
@@ -264,9 +325,11 @@ namespace InGameTests.TelMods
                     yield break;
                 }
                 GameObject popup = opened[0];
+                yield return new WaitForSecondsRealtime(0.5f);
+                yield return ShowTab(ctx, popup, TestModName);
                 Canvas.ForceUpdateCanvases();
 
-                Transform menu = Find(popup.transform, "MenuContainer").First();
+                Transform menu = PageOf(popup, TestModName);
                 List<RectTransform> rows = menu.Cast<Transform>().Select(t => (RectTransform)t).ToList();
                 int title = rows.FindIndex(r => r.name == "ModMenuText_" + TestModTitle);
                 ctx.Assert(title >= 0, "No title row for the test mod");
@@ -275,7 +338,9 @@ namespace InGameTests.TelMods
                     string[] expected = { "ModMenuText_" + TestModTitle, "ModMenuText_Dropdowns at the top, middle and bottom; the menu scrolls.",
                         "ModMenuDropdown_ModMenusTest_Top", "ModMenuSlider_ModMenusTest_Slider1", "ModMenuCheckbox_ModMenusTest_Check1",
                         "ModMenuDropdown_ModMenusTest_Long", "ModMenuCheckbox_ModMenusTest_Check2", "ModMenuSlider_ModMenusTest_Slider2",
-                        "ModMenuCheckbox_ModMenusTest_Check3", "ModMenuSlider_ModMenusTest_Slider3", "ModMenuDropdown_ModMenusTest_Bottom" };
+                        "ModMenuCheckbox_ModMenusTest_Check3", "ModMenuSlider_ModMenusTest_Slider3", "ModMenuCheckbox_ModMenusTest_Check4", "ModMenuSlider_ModMenusTest_Slider4",
+                        "ModMenuCheckbox_ModMenusTest_Check5", "ModMenuSlider_ModMenusTest_Slider5", "ModMenuCheckbox_ModMenusTest_Check6", "ModMenuSlider_ModMenusTest_Slider6",
+                        "ModMenuCheckbox_ModMenusTest_Check7", "ModMenuSlider_ModMenusTest_Slider7", "ModMenuDropdown_ModMenusTest_Bottom" };
                     string[] actual = rows.Skip(title).Take(expected.Length).Select(r => r.name).ToArray();
                     ctx.Assert(actual.SequenceEqual(expected), "The test mod's rows are " + string.Join(", ", actual));
                 }
@@ -316,7 +381,7 @@ namespace InGameTests.TelMods
                 yield return OpenPickAndCheck(ctx, rows, layer, "ModMenusTest_Long", 11, "12", Path.Combine(shots, "3-long-open.png"));
 
                 // Scroll to the bottom; the last row is then inside the visible area
-                ScrollRect scroll = popup.GetComponentInChildren<ScrollRect>(true);
+                ScrollRect scroll = SettingsScroll(popup);
                 scroll.verticalNormalizedPosition = 0f;
                 yield return null;
                 Canvas.ForceUpdateCanvases();
@@ -330,6 +395,7 @@ namespace InGameTests.TelMods
                 yield return OpenPickAndCheck(ctx, rows, layer, "ModMenusTest_Bottom", 3, "West", Path.Combine(shots, "4-bottom-open.png"));
 
                 // Scroll the menu while a list is open: the list closes and its box stays in its row
+                ctx.Assert(scroll.content.rect.height > scroll.viewport.rect.height + 100, "The test menu is too short to scroll, so scrolling with a list open isn't checked");
                 RectTransform longRow = rows.First(r => r.name == "ModMenuDropdown_ModMenusTest_Long");
                 CustomDropdown longDropdown = longRow.GetComponentInChildren<CustomDropdown>(true);
                 longDropdown.Animate();
@@ -407,9 +473,10 @@ namespace InGameTests.TelMods
                 }
                 GameObject popup = opened[0];
                 yield return new WaitForSecondsRealtime(0.5f);
+                yield return ShowTab(ctx, popup, TestModName);
                 Canvas.ForceUpdateCanvases();
 
-                Transform menu = Find(popup.transform, "MenuContainer").First();
+                Transform menu = PageOf(popup, TestModName);
                 RectTransform nameRow = (RectTransform)menu.Find("ModMenuInput_ModMenusTest_Name");
                 RectTransform shortRow = (RectTransform)menu.Find("ModMenuInput_ModMenusTest_Short");
                 if (nameRow == null || shortRow == null)
@@ -531,10 +598,10 @@ namespace InGameTests.TelMods
             { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check1"", ""labelID"": ""Checkbox"" },
             { ""type"": ""dropdown"", ""varID"": ""ModMenusTest_Top"", ""labelID"": ""Dropdown"", ""itemIDList"": [""One"", ""Two""] },
             { ""type"": ""input"", ""varID"": ""ModMenusTest_Name"", ""labelID"": ""Text field"", ""defaultValue"": ""Typed text"" },
-            { ""type"": ""slider"", ""varID"": ""ModMenusTest_LongSlider"", ""labelID"": ""A slider whose label is too long for one line of the menu, so it wraps"", ""minValue"": 1, ""maxValue"": 20, ""defaultValue"": 1 },
-            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_LongCheck"", ""labelID"": ""A checkbox whose label is too long for one line of the menu, so it wraps"" },
-            { ""type"": ""dropdown"", ""varID"": ""ModMenusTest_LongDropdown"", ""labelID"": ""A dropdown whose label is too long for one line of the menu, so it wraps"", ""itemIDList"": [""One"", ""Two""] },
-            { ""type"": ""input"", ""varID"": ""ModMenusTest_LongName"", ""labelID"": ""A text field whose label is too long for one line of the menu, so it wraps"" },
+            { ""type"": ""slider"", ""varID"": ""ModMenusTest_LongSlider"", ""labelID"": ""A slider whose label is too long for one line of the menu, so it wraps onto a second line under the first one"", ""minValue"": 1, ""maxValue"": 20, ""defaultValue"": 1 },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_LongCheck"", ""labelID"": ""A checkbox whose label is too long for one line of the menu, so it wraps onto a second line under the first one"" },
+            { ""type"": ""dropdown"", ""varID"": ""ModMenusTest_LongDropdown"", ""labelID"": ""A dropdown whose label is too long for one line of the menu, so it wraps onto a second line under the first one"", ""itemIDList"": [""One"", ""Two""] },
+            { ""type"": ""input"", ""varID"": ""ModMenusTest_LongName"", ""labelID"": ""A text field whose label is too long for one line of the menu, so it wraps onto a second line under the first one"" },
             { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check2"", ""labelID"": ""Checkbox 2"" },
             { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider2"", ""labelID"": ""Slider at the end"", ""minValue"": 1, ""maxValue"": 20, ""defaultValue"": 20 }
         ]";
@@ -543,8 +610,9 @@ namespace InGameTests.TelMods
         /// Rows are spaced evenly: each draws only inside itself and fills it, top to bottom, so the gaps between
         /// what's drawn are the same between any two rows (a title keeps room around it, and a blank text row
         /// draws nothing). A slider's track starts at the left edge, like the labels and boxes. The menu keeps the
-        /// same margin on every side of the panel. A label too long for one line wraps inside its row, above its
-        /// control, and a dropdown's box goes back under its wrapped label when its list closes.
+        /// same margin on every side of the panel, and either side of the line between the tabs and the settings.
+        /// A label too long for one line wraps inside its row, above its control, and a dropdown's box goes back
+        /// under its wrapped label when its list closes.
         /// </summary>
         [InGameTest(Suite = ModTest.Suite)]
         private static IEnumerator RowsAreEvenlySpacedAndAligned(TestContext ctx)
@@ -563,23 +631,30 @@ namespace InGameTests.TelMods
                 }
                 GameObject popup = opened[0];
                 yield return new WaitForSecondsRealtime(0.5f);
+                yield return ShowTab(ctx, popup, TestModName);
+                yield return new WaitForSecondsRealtime(0.5f);
                 Canvas.ForceUpdateCanvases();
                 float unit = popup.GetComponentInParent<Canvas>().rootCanvas.scaleFactor;
-                float halfGap = Find(popup.transform, "MenuContainer").First().GetComponent<VerticalLayoutGroup>().spacing / 2;
+                Transform menu = PageOf(popup, TestModName);
+                float halfGap = menu.GetComponent<VerticalLayoutGroup>().spacing / 2;
 
-                // The same margin on every side of the panel
+                // The same margin on every side of the panel, and either side of the line between the two columns
                 Rect panel = ScreenRect((RectTransform)popup.transform.Find("Panel"));
-                ScrollRect scroll = popup.GetComponentInChildren<ScrollRect>(true);
+                ScrollRect scroll = SettingsScroll(popup);
+                ScrollRect tabScroll = Find(popup.transform, "ModMenuTabs").First().GetComponent<ScrollRect>();
                 Rect view = ScreenRect(scroll.viewport);
                 Rect scrollbar = ScreenRect((RectTransform)scroll.verticalScrollbar.transform);
-                float[] margins = { view.xMin - panel.xMin, panel.xMax - scrollbar.xMax, panel.yMax - view.yMax, view.yMin - panel.yMin };
-                ctx.Record("margins", string.Join(", ", margins.Select(m => m.ToString("0.0"))));
-                ctx.Assert(margins.Max() - margins.Min() <= 1f, "The menu's margins inside the panel differ: left, right, top, bottom = " + string.Join(", ", margins.Select(m => m.ToString("0.0"))));
+                Rect tabs = ScreenRect((RectTransform)tabScroll.transform);
+                Rect line = ScreenRect((RectTransform)Find(popup.transform, "ModMenuDivider").First());
+                float[] margins = { tabs.xMin - panel.xMin, panel.xMax - scrollbar.xMax, panel.yMax - view.yMax, view.yMin - panel.yMin,
+                    panel.yMax - tabs.yMax, tabs.yMin - panel.yMin, line.xMin - tabs.xMax, view.xMin - line.xMax };
+                string marginText = string.Join(", ", margins.Select(m => m.ToString("0.0")));
+                ctx.Record("margins", marginText);
+                ctx.Assert(margins.Max() - margins.Min() <= 1f, "The menu's margins differ: left, right, top, bottom, tabs' top and bottom, either side of the line = " + marginText);
                 ctx.Assert(scrollbar.xMin >= view.xMax, "The scroll bar overlaps the rows");
+                ctx.Assert(ScreenRect((RectTransform)tabScroll.verticalScrollbar.transform).xMin >= ScreenRect(tabScroll.viewport).xMax, "The tabs' scroll bar overlaps the tabs");
 
-                Transform menu = Find(popup.transform, "MenuContainer").First();
-                List<RectTransform> rows = menu.Cast<Transform>().Cast<RectTransform>()
-                    .SkipWhile(r => r.name != "ModMenuText_" + TestModTitle).ToList();
+                List<RectTransform> rows = menu.Cast<Transform>().Cast<RectTransform>().ToList();
                 foreach (RectTransform row in rows)
                 {
                     ScrollToMiddle(row);
@@ -607,9 +682,9 @@ namespace InGameTests.TelMods
                         float below = (drawnBottom - rect.yMin) / unit;
                         ctx.Record(row.name.Length > 40 ? row.name.Substring(0, 40) : row.name, "empty above " + above.ToString("0.0") + ", below " + below.ToString("0.0") + " (row " + (rect.height / unit).ToString("0") + ")");
                         ctx.Assert(above >= -1 && below >= -1, row.name + " draws outside itself: " + (-above).ToString("0.0") + " above, " + (-below).ToString("0.0") + " below");
-                        // A title sits close to its own settings, set apart from the mod above
+                        // The title is the page's first row, and sits close to its settings
                         if (row.name == "ModMenuText_" + TestModTitle)
-                            ctx.Assert(below <= 6 && (row.GetSiblingIndex() == 0 || above >= below + 20), "The title isn't closer to its settings than to the mod above: " + above.ToString("0.0") + " empty above, " + below.ToString("0.0") + " below");
+                            ctx.Assert(below <= 6, "The title isn't close to its settings: " + below.ToString("0.0") + " empty below");
                         else
                             ctx.Assert(above <= 6 && below <= 6, row.name + " doesn't fill its row: " + above.ToString("0.0") + " empty above, " + below.ToString("0.0") + " below");
                     }
@@ -662,6 +737,303 @@ namespace InGameTests.TelMods
                 yield return Game.CloseAllPopups(ctx);
                 Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
             }
+        }
+
+        private const string HiddenModName = "com.test.modmenustesthidden";
+        private const string OtherModName = "com.test.modmenustestother";
+
+        private const string HiddenMenu = @"[
+            { ""type"": ""slider"", ""varID"": ""ModMenusTest_HiddenSlider"", ""labelID"": ""Hidden slider"", ""minValue"": 1, ""maxValue"": 20, ""defaultValue"": 5 },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_HiddenCheck"", ""labelID"": ""Hidden checkbox"" },
+            { ""type"": ""dropdown"", ""varID"": ""ModMenusTest_HiddenPick"", ""labelID"": ""Hidden dropdown"", ""itemIDList"": [""One"", ""Two"", ""Three""] },
+            { ""type"": ""input"", ""varID"": ""ModMenusTest_HiddenName"", ""labelID"": ""Hidden text field"", ""defaultValue"": ""Default"" }
+        ]";
+
+        private const string OtherMenu = @"[ { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_OtherCheck"", ""labelID"": ""Other checkbox"" } ]";
+
+        /// <summary>
+        /// A page shown for the first time long after the menu opened still shows the saved settings: the game's
+        /// dropdown sets itself up and the game's labels load their text only when they're first shown, which the
+        /// unit tests can't run. Hiding a page and showing it again (Unity disables and enables its controls)
+        /// keeps what the player changed and hasn't applied.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator HiddenPagesShowTheirValues(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+
+            using (AddTestMods(new[] { "ModMenus Test Hidden", "ModMenus Test Other" }, new[] { HiddenModName, OtherModName }, new[] { HiddenMenu, OtherMenu }))
+            {
+                variables.Set("ModMenusTest_HiddenSlider", "15");
+                variables.Set("ModMenusTest_HiddenCheck", "1");
+                variables.Set("ModMenusTest_HiddenPick", "2");
+                variables.Set("ModMenusTest_HiddenName", "Saved text");
+
+                // The menu opens on the other mod's tab, so the hidden page has never been shown
+                AccessTools.Field(mod.GetType("ModMenus.ModMenusUtils+ModMenuManager", true), "lastModName").SetValue(null, OtherModName);
+                var opened = new List<GameObject>();
+                yield return OpenModSettings(ctx, opened);
+                if (opened.Count == 0)
+                {
+                    Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                    yield break;
+                }
+                GameObject popup = opened[0];
+                yield return new WaitForSecondsRealtime(0.5f);
+                Transform page = PageOf(popup, HiddenModName);
+                ctx.Assert(page != null && !page.gameObject.activeInHierarchy, "The hidden mod's page is shown when the menu opens");
+
+                Settings_Slider slider = page.Find("ModMenuSlider_ModMenusTest_HiddenSlider").GetComponent<Settings_Slider>();
+                Checkbox_Text check = page.Find("ModMenuCheckbox_ModMenusTest_HiddenCheck").GetComponent<Checkbox_Text>();
+                CustomDropdown pick = page.Find("ModMenuDropdown_ModMenusTest_HiddenPick").GetComponentInChildren<CustomDropdown>(true);
+                TMP_InputField field = page.Find("ModMenuInput_ModMenusTest_HiddenName").GetComponentInChildren<TMP_InputField>(true);
+
+                // First shown: the game's controls start up and keep the saved settings
+                yield return ShowTab(ctx, popup, HiddenModName);
+                yield return new WaitForSecondsRealtime(0.3f);
+                AssertShows(ctx, "first shown", slider, 15, check, true, pick, 2, "Three", field, "Saved text");
+
+                // Change each one as a player does
+                slider.Slider_Obj.GetComponent<Slider>().value = 2f / 19f;
+                check.GetComponentInChildren<Button>().onClick.Invoke();
+                pick.Animate();
+                yield return new WaitForSecondsRealtime(0.5f);
+                pick.GetButton(0).GetComponent<Button>().onClick.Invoke();
+                yield return new WaitForSecondsRealtime(0.5f);
+                yield return TypeInto(field, "Changed", "");
+
+                // Hidden and shown again: the changes are still there
+                yield return ShowTab(ctx, popup, OtherModName);
+                yield return new WaitForSecondsRealtime(0.3f);
+                yield return ShowTab(ctx, popup, HiddenModName);
+                yield return new WaitForSecondsRealtime(0.3f);
+                AssertShows(ctx, "shown again", slider, 3, check, false, pick, 0, "One", field, "Changed");
+                ctx.Assert(variables.Get("ModMenusTest_HiddenSlider") == "15", "Switching tabs saved the slider");
+
+                yield return Game.CloseAllPopups(ctx);
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+            }
+        }
+
+        /// <summary>
+        /// The controls show these values, and Apply would save them.
+        /// </summary>
+        private static void AssertShows(TestContext ctx, string when, Settings_Slider slider, float sliderValue, Checkbox_Text check, bool ticked,
+            CustomDropdown pick, int picked, string pickedName, TMP_InputField field, string text)
+        {
+            string label = slider.Title.GetComponent<TextMeshProUGUI>().text;
+            float position = slider.Slider_Obj.GetComponent<Slider>().value;
+            ctx.Assert(label == "Hidden slider: " + sliderValue && Mathf.Abs(position - (sliderValue - 1) / 19f) < 0.001f,
+                when + ": the slider shows '" + label + "' at " + position.ToString("0.000") + ", expected " + sliderValue);
+            ctx.Assert(check.Checkbox.GetComponent<Image>().sprite == (ticked ? check.Checked : check.Empty), when + ": the checkbox isn't " + (ticked ? "ticked" : "empty"));
+            ctx.Assert(pick.selectedText.text == pickedName && pick.selectedItemIndex == picked, when + ": the dropdown shows " + pick.selectedText.text + ", expected " + pickedName);
+            ctx.Assert(field.text == text, when + ": the text field shows '" + field.text + "', expected '" + text + "'");
+
+            Type itemType = AccessTools.TypeByName("ModMenus.ModMenusUtils+ModMenuItem");
+            float Saves(Component row) => Traverse.Create(row.GetComponentInParent(itemType)).Field("tempValue").GetValue<float>();
+            ctx.Assert(Saves(slider) == sliderValue && Saves(check) == (ticked ? 1 : 0) && Saves(pick) == picked,
+                when + ": Apply would save " + Saves(slider) + ", " + Saves(check) + ", " + Saves(pick));
+            ctx.Assert(Traverse.Create(field.GetComponentInParent(itemType)).Field("tempText").GetValue<string>() == text, when + ": Apply wouldn't save the text shown");
+        }
+
+        private const string LongModTitle = "ModMenus Test with a name far too long for its tab, which goes on and on so that it would take four or five lines if the tab let it wrap that far";
+        private const string LongModName = "com.test.modmenustestlong";
+
+        /// <summary>
+        /// With many mods, the tab column scrolls on its own and its last tab can be reached and clicked. Tabs are
+        /// drawn inside the column without overlapping. A name too long for its tab is drawn on two lines at most,
+        /// cut short with "…", and the mod's page shows the whole name.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator LongTabListAndLongNamesDrawInside(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out _))
+                yield break;
+
+            var titles = new List<string> { LongModTitle };
+            var modNames = new List<string> { LongModName };
+            var menus = new List<string> { @"[ { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Long"", ""labelID"": ""Checkbox"" } ]" };
+            for (int i = 1; i <= 30; i++)
+            {
+                titles.Add("ModMenus Test " + i.ToString("00"));
+                modNames.Add("com.test.modmenustest" + i);
+                menus.Add(@"[ { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Many" + i + @""", ""labelID"": ""Checkbox"" } ]");
+            }
+            using (AddTestMods(titles.ToArray(), modNames.ToArray(), menus.ToArray()))
+            {
+                var opened = new List<GameObject>();
+                yield return OpenModSettings(ctx, opened);
+                if (opened.Count == 0)
+                {
+                    Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                    yield break;
+                }
+                GameObject popup = opened[0];
+                yield return new WaitForSecondsRealtime(0.5f);
+                Canvas.ForceUpdateCanvases();
+
+                ScrollRect tabScroll = Find(popup.transform, "ModMenuTabs").First().GetComponent<ScrollRect>();
+                Rect column = ScreenRect(tabScroll.viewport);
+                List<RectTransform> tabs = tabScroll.content.Cast<Transform>().Cast<RectTransform>().ToList();
+                ctx.Record("tabs", tabs.Count);
+                ctx.Assert(tabScroll.content.rect.height > tabScroll.viewport.rect.height, "The tabs fit without scrolling, so this checks nothing");
+
+                // Inside the column, left of its scroll bar, and not overlapping
+                for (int i = 0; i < tabs.Count; i++)
+                {
+                    Rect tab = ScreenRect(tabs[i]);
+                    ctx.Assert(tab.xMin >= column.xMin - 1 && tab.xMax <= column.xMax + 1, tabs[i].name + " is wider than the tab column: " + tab + ", the column is " + column);
+                    if (i > 0)
+                        ctx.Assert(tab.yMax <= ScreenRect(tabs[i - 1]).yMin + 0.5f, tabs[i].name + " overlaps the tab above it");
+                }
+
+                // Anywhere down the column, from the first tab's top to the last tab in view, a click reaches a tab
+                List<RectTransform> inView = tabs.Where(t => Inside(ScreenRect(t), column)).ToList();
+                var dead = new List<string>();
+                foreach (float x in new[] { column.xMin + 3, column.center.x, column.xMax - 3 })
+                {
+                    for (float y = ScreenRect(inView[0]).yMax - 1; y > ScreenRect(inView[inView.Count - 1]).yMin + 1; y--)
+                    {
+                        GameObject under = TopHit(new Vector2(x, y));
+                        if (under == null || !tabs.Any(t => under.transform.IsChildOf(t)))
+                            dead.Add(x.ToString("0") + "," + y.ToString("0") + "=" + (under != null ? under.name : "nothing"));
+                    }
+                }
+                ctx.Record("deadPoints", dead.Count + ": " + string.Join(" ", dead.Take(12)));
+                ctx.Assert(dead.Count == 0, dead.Count + " points down the tab column reach no tab, e.g. " + string.Join(" ", dead.Take(6)));
+
+                // The last tab can be scrolled to, and clicked
+                tabScroll.verticalNormalizedPosition = 0;
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                RectTransform last = tabs[tabs.Count - 1];
+                ctx.Assert(Inside(ScreenRect(last), column), "Scrolled to the bottom, the last tab isn't fully visible: " + ScreenRect(last) + ", the column is " + column);
+                GameObject hit = TopHit(ScreenRect(last).center);
+                ctx.Assert(hit != null && hit.transform.IsChildOf(last), "The last tab: a click on it would hit " + (hit != null ? hit.name : "nothing"));
+                Click(last.gameObject);
+                yield return null;
+                Transform lastPage = PageOf(popup, last.name.Substring("ModMenuTab_".Length));
+                ctx.Assert(lastPage != null && lastPage.gameObject.activeInHierarchy, "Clicking the last tab didn't show its page");
+
+                // The long name: two lines at most, cut short with "…", inside its tab
+                yield return ShowTab(ctx, popup, LongModName);
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                RectTransform longTab = (RectTransform)Find(popup.transform, "ModMenuTab_" + LongModName).First();
+                TextMeshProUGUI longLabel = longTab.GetComponentInChildren<TextMeshProUGUI>(true);
+                TextMeshProUGUI shortLabel = tabs.First(t => t != longTab).GetComponentInChildren<TextMeshProUGUI>(true);
+                longLabel.ForceMeshUpdate();
+                TMP_TextInfo info = longLabel.textInfo;
+                string shown = new string(info.characterInfo.Take(info.characterCount).Where(c => c.isVisible).Select(c => c.character).ToArray());
+                Rect longText = TextRect(longLabel);
+                float oneLine = TextRect(shortLabel).height;
+                ctx.Record("longTab", info.lineCount + " lines, " + (longText.height / oneLine).ToString("0.00") + " lines tall: " + shown);
+                ctx.Assert(info.lineCount <= 2 && longText.height <= 2.2f * oneLine, "The long tab's name takes " + info.lineCount + " lines");
+                ctx.Assert(longLabel.isTextTruncated && shown.EndsWith("…"), "The long tab's name isn't cut short with an ellipsis: '" + shown + "'");
+                ctx.Assert(Inside(longText, ScreenRect(longTab)), "The long tab's name is drawn outside its tab: " + longText + ", the tab is " + ScreenRect(longTab));
+
+                // Its page shows the whole name, wrapped inside the settings
+                TextMeshProUGUI title = PageOf(popup, LongModName).GetChild(0).GetComponent<TextMeshProUGUI>();
+                title.ForceMeshUpdate();
+                Rect titleText = TextRect(title);
+                Rect view = ScreenRect(SettingsScroll(popup).viewport);
+                ctx.Assert(title.text == LongModTitle && !title.isTextTruncated && title.textInfo.lineCount >= 2, "The long mod's page title isn't its whole name on several lines: " + title.textInfo.lineCount + " lines");
+                ctx.Assert(titleText.xMin >= view.xMin - 1 && titleText.xMax <= view.xMax + 1 && Inside(titleText, ScreenRect((RectTransform)title.transform)),
+                    "The long mod's page title is drawn outside the settings: " + titleText + ", the view is " + view);
+
+                yield return Game.CloseAllPopups(ctx);
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+            }
+        }
+
+        /// <summary>
+        /// On a short screen the whole menu is on screen, and Apply and Cancel take clicks. The game's popups are
+        /// 1024 wide whatever the screen, so a 21:9 screen makes them 432 tall; the popups' scaling is changed to
+        /// that height here, as no other screen shape can be tried without changing the player's window. Going back
+        /// to the normal size with the menu open fits it again.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator MenuFitsAShortScreen(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+
+            using (AddTestMod())
+            {
+                var opened = new List<GameObject>();
+                yield return OpenModSettings(ctx, opened);
+                if (opened.Count == 0)
+                {
+                    Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                    yield break;
+                }
+                GameObject popup = opened[0];
+                CanvasScaler scaler = popup.GetComponentInParent<Canvas>().rootCanvas.GetComponent<CanvasScaler>();
+                Vector2 reference = scaler.referenceResolution;
+                float match = scaler.matchWidthOrHeight;
+                yield return Game.CloseAllPopups(ctx);
+
+                using (TestTools.Restore(() =>
+                {
+                    scaler.referenceResolution = reference;
+                    scaler.matchWidthOrHeight = match;
+                }))
+                {
+                    scaler.matchWidthOrHeight = 0;
+                    scaler.referenceResolution = new Vector2(432f * Screen.width / Screen.height, reference.y);
+                    yield return null;
+                    yield return null;
+
+                    var reopened = new List<GameObject>();
+                    yield return OpenModSettings(ctx, reopened);
+                    yield return new WaitForSecondsRealtime(0.6f);
+                    Canvas.ForceUpdateCanvases();
+
+                    RectTransform root = (RectTransform)popup.transform;
+                    ctx.Record("shortPopup", root.rect.size);
+                    ctx.Assert(Mathf.Abs(root.rect.height - 432) < 2, "The popup is " + root.rect.height + " tall, expected 432");
+                    Rect screen = new Rect(0, 0, Screen.width, Screen.height);
+                    foreach (string part in new[] { "Panel", "ModMenuTabs", "ScrollContainer", "ModMenuDivider", "ModMenuApply", "ModMenuCancel" })
+                    {
+                        RectTransform rect = (RectTransform)Find(popup.transform, part).First();
+                        ctx.Assert(Inside(ScreenRect(rect), screen), part + " is off the screen: " + ScreenRect(rect));
+                    }
+                    foreach (string button in new[] { "ModMenuApply", "ModMenuCancel" })
+                    {
+                        RectTransform rect = (RectTransform)popup.transform.Find(button);
+                        GameObject hit = TopHit(ScreenRect(rect).center);
+                        ctx.Assert(hit != null && hit.transform.IsChildOf(rect), button + ": a click on it would hit " + (hit != null ? hit.name : "nothing"));
+                    }
+                    AssertPanelFits(ctx, mod, popup, "on the short screen");
+
+                    // Back to the normal size, with the menu open
+                    scaler.referenceResolution = reference;
+                    scaler.matchWidthOrHeight = match;
+                    yield return null;
+                    yield return null;
+                    yield return null;
+                    AssertPanelFits(ctx, mod, popup, "back at the normal size");
+
+                    yield return Game.CloseAllPopups(ctx);
+                }
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+            }
+        }
+
+        /// <summary>
+        /// The panel is the size ModMenus works out for the popup's size now.
+        /// </summary>
+        private static void AssertPanelFits(TestContext ctx, Assembly mod, GameObject popup, string when)
+        {
+            RectTransform root = (RectTransform)popup.transform;
+            RectTransform panel = (RectTransform)popup.transform.Find("Panel");
+            float buttonHeight = ((RectTransform)popup.transform.Find("ModMenuApply")).rect.height;
+            object layout = AccessTools.Method(mod.GetType("ModMenus.ModMenusUtils", true), "LayoutFor").Invoke(null, new object[] { root.rect.size, buttonHeight });
+            Rect expected = Traverse.Create(layout).Field("Panel").GetValue<Rect>();
+            ctx.Record("panel " + when, panel.rect.size + " in " + root.rect.size);
+            ctx.Assert(Mathf.Abs(panel.rect.width - expected.width) < 1 && Mathf.Abs(panel.rect.height - expected.height) < 1,
+                when + ", the panel is " + panel.rect.size + ", expected " + expected.size + " for a popup " + root.rect.size);
         }
 
         /// <summary>
@@ -781,6 +1153,14 @@ namespace InGameTests.TelMods
                     varID + " item " + i + ": a click on it would hit " + (hit != null ? hit.name : "nothing"));
             }
             ctx.Assert(visible > 0, varID + " shows no items when open");
+
+            // The list touches its box, whether it opened below it or, near the bottom of the screen, above it
+            Rect box = ScreenRect((RectTransform)dropdown.selectedText.transform.parent);
+            float unit = dropdown.GetComponentInParent<Canvas>().rootCanvas.scaleFactor;
+            bool above = listView.center.y > box.center.y;
+            float gap = above ? listView.yMin - box.yMax : box.yMin - listView.yMax;
+            ctx.Record(varID + "ListGap", (above ? "above, " : "below, ") + (gap / unit).ToString("0.0"));
+            ctx.Assert(gap <= unit, varID + "'s list is " + (gap / unit).ToString("0.0") + " units " + (above ? "above" : "below") + " its box, not touching it");
             ctx.Record(varID + "VisibleItems", visible + " of " + dropdown.dropdownItems.Count);
             if (shot != null)
                 yield return Screenshot(shot);
@@ -945,6 +1325,17 @@ namespace InGameTests.TelMods
                         yield return new KeyValuePair<string, string>(prefix + varId, mod.Title);
                 }
             }
+        }
+
+        /// <summary>
+        /// Where an object is, and which of it and its parents are switched off.
+        /// </summary>
+        private static string PathOf(Transform t)
+        {
+            var parts = new List<string>();
+            for (; t != null; t = t.parent)
+                parts.Insert(0, t.name + (t.gameObject.activeSelf ? "" : " (off)"));
+            return string.Join("/", parts);
         }
 
         private static IEnumerable<Transform> Find(Transform root, string name)

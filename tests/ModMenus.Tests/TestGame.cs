@@ -13,6 +13,7 @@ using System.Runtime.Serialization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Xunit;
 using static ModMenus.ModMenusUtils;
@@ -52,6 +53,7 @@ namespace ModMenus.Tests
         public static void Reset()
         {
             Seams.Reset();
+            ModMenuManager.lastModName = null;
             Mods._Mods.Clear();
             staticVars.Settings._Mods.Clear();
             variables.variable.Clear();
@@ -106,21 +108,25 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
-        /// Builds the menu as GenerateMenuPopup does: a panel with the Apply and Cancel handler, holding a
-        /// scroll area whose content AddMenuItems fills.
+        /// Builds the menu as GenerateMenuPopup does: a panel with the Apply and Cancel handler, holding the
+        /// settings' scroll area, then the tabs' scroll area, whose contents AddMenuItems fills.
         /// </summary>
         public static Menu BuildMenu()
         {
             GameObject panel = Seams.NewObject("Panel");
-            Seams.Add<ModMenuManager>(panel);
+            ModMenuManager manager = Seams.Add<ModMenuManager>(panel);
             GameObject scroll = Seams.NewObject(SCROLLRECT_OBJ_NAME, panel);
-            Seams.Add<ScrollRect>(scroll);
+            manager.scroll = Seams.Add<ScrollRect>(scroll);
             GameObject viewport = Seams.NewObject(VIEWPORT_OBJ_NAME, scroll);
             GameObject content = Seams.NewObject(MENUCONTENT_OBJ_NAME, viewport);
+            GameObject tabScroll = Seams.NewObject(TABS_SCROLLRECT_OBJ_NAME, panel);
+            manager.tabScroll = Seams.Add<ScrollRect>(tabScroll);
+            GameObject tabViewport = Seams.NewObject(VIEWPORT_OBJ_NAME, tabScroll);
+            GameObject tabContainer = Seams.NewObject(TAB_CONTAINER_OBJ_NAME, tabViewport);
             GameObject dropdownLayer = Seams.NewObject(DROPDOWN_LAYER_OBJ_NAME, panel);
 
-            Seams.AddMenuItems(Seams.TransformOf(content), Seams.TransformOf(dropdownLayer));
-            return new Menu(panel, content, dropdownLayer);
+            Seams.AddMenuItems(manager, Seams.TransformOf(content), Seams.TransformOf(tabContainer), Seams.TransformOf(dropdownLayer));
+            return new Menu(panel, content, tabContainer, dropdownLayer);
         }
 
         public static string Saved(string varID) => variables.Get(varID);
@@ -251,22 +257,58 @@ namespace ModMenus.Tests
     {
         public readonly GameObject Panel;
         public readonly GameObject Content;
+        public readonly GameObject TabContainer;
         public readonly GameObject DropdownLayer;
-        private bool awake;
 
-        public Menu(GameObject panel, GameObject content, GameObject dropdownLayer)
+        public Menu(GameObject panel, GameObject content, GameObject tabContainer, GameObject dropdownLayer)
         {
             Panel = panel;
             Content = content;
+            TabContainer = tabContainer;
             DropdownLayer = dropdownLayer;
         }
 
         public ModMenuManager Manager => Seams.GetComponent<ModMenuManager>(Panel);
 
+        public ScrollRect Scroll => Manager.scroll;
+
         /// <summary>
-        /// The rows from the top of the menu down.
+        /// Each mod's page, in tab order.
         /// </summary>
-        public List<GameObject> Rows => Seams.ChildrenOf(Content).ToList();
+        public List<GameObject> Pages => Seams.ChildrenOf(Content).Where(IsPage).ToList();
+
+        /// <summary>
+        /// The rows of every page, shown or not, in tab order and then from the top of each page down; or the
+        /// rows straight in the menu when there are no pages.
+        /// </summary>
+        public List<GameObject> Rows => Seams.ChildrenOf(Content).SelectMany(c => IsPage(c) ? Seams.ChildrenOf(c) : new List<GameObject> { c }).ToList();
+
+        /// <summary>
+        /// The page shown: the only one active.
+        /// </summary>
+        public GameObject ShownPage => Assert.Single(Pages, Seams.IsActive);
+
+        public List<string> ShownRowNames => Seams.ChildrenOf(ShownPage).Select(Seams.NameOf).ToList();
+
+        public List<ModMenuTab> Tabs => Seams.ChildrenOf(TabContainer).Select(Seams.GetComponent<ModMenuTab>).ToList();
+
+        public List<string> TabTexts => Tabs.Select(tab => tab.label.text).ToList();
+
+        public ModMenuTab Tab(string text) => Assert.Single(Tabs, tab => tab.label.text == text);
+
+        public ModMenuTab SelectedTab => Manager.selected;
+
+        /// <summary>
+        /// Clicks a mod's tab, found by the name it shows.
+        /// </summary>
+        public void ClickTab(string text) => Seams.Fire(Tab(text).button.onClick);
+
+        /// <summary>
+        /// Opens a dropdown's list, as clicking its box does.
+        /// </summary>
+        public void OpenList(string varID) => Seams.Animate(Dropdown(varID));
+
+        private static bool IsPage(GameObject obj) => Seams.NameOf(obj).StartsWith(PAGE_OBJ_NAME + "_");
 
         public List<string> RowNames => Rows.Select(Seams.NameOf).ToList();
 
@@ -277,18 +319,9 @@ namespace ModMenus.Tests
         public GameObject Row(string varID) => Seams.OwnerOf(Item(varID));
 
         /// <summary>
-        /// Opens the popup. Unity wakes each item the first time it's shown, then enables the panel and items.
+        /// Opens the popup: Unity enables the panel. The rows do nothing when they're shown.
         /// </summary>
-        public void Open()
-        {
-            if (!awake)
-            {
-                Items.ForEach(Seams.ItemAwake);
-                awake = true;
-            }
-            Seams.ManagerOnEnable(Manager);
-            Items.ForEach(Seams.ItemOnEnable);
-        }
+        public void Open() => Seams.ManagerOnEnable(Manager);
 
         public void Apply() => Seams.ManagerOnApply(Manager);
 
@@ -387,11 +420,14 @@ namespace ModMenus.Tests
         public readonly List<Component> Components = new();
         public GameObject GameObject;
         public RectTransform Transform;
+        public bool Active = true;
 
         /// <summary>
-        /// This object then its descendants, depth first, the order GetComponentInChildren searches.
+        /// This object then its descendants, depth first, the order GetComponentInChildren searches. Without
+        /// inactive objects, an inactive object's whole branch is left out, as Unity does.
         /// </summary>
-        public IEnumerable<Node> SelfAndDescendants() => new[] { this }.Concat(Children.SelectMany(c => c.SelfAndDescendants()));
+        public IEnumerable<Node> SelfAndDescendants(bool includeInactive = true) =>
+            !includeInactive && !Active ? Enumerable.Empty<Node>() : new[] { this }.Concat(Children.SelectMany(c => c.SelfAndDescendants(includeInactive)));
     }
 
     /// <summary>
@@ -427,9 +463,41 @@ namespace ModMenus.Tests
         /// </summary>
         public static readonly Dictionary<object, TextAlignmentOptions> Alignments = new(new SameObject());
 
+        /// <summary>
+        /// How each column was laid out (SetColumnLayout): the gap between its children, and whether it sets their height.
+        /// </summary>
+        public static readonly Dictionary<object, (float spacing, bool controlChildHeight)> Columns = new(new SameObject());
+
+        /// <summary>
+        /// Where each rect was put by SetRectTransform: its anchors and its offsets from them.
+        /// </summary>
+        public static readonly Dictionary<object, (Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)> Rects = new(new SameObject());
+
+        /// <summary>
+        /// Where ModMenuLayout put each rect, from the popup's centre.
+        /// </summary>
+        public static readonly Dictionary<object, Rect> Placements = new(new SameObject());
+
+        /// <summary>
+        /// The size each rect has, which the engine would work out; tests set it.
+        /// </summary>
+        public static readonly Dictionary<object, Vector2> Sizes = new(new SameObject());
+
+        /// <summary>
+        /// The tab buttons SetTabLooks styled.
+        /// </summary>
+        public static readonly HashSet<object> StyledTabs = new(new SameObject());
+
+        public static int MovementsStopped;
+
         private static readonly Dictionary<object, Node> Nodes = new(new SameObject());
         private static readonly Dictionary<object, Func<GameObject>> Prefabs = new(new SameObject());
         private static readonly Dictionary<object, float> SliderValues = new(new SameObject());
+
+        /// <summary>
+        /// The row each open dropdown's box came from, before it moved to the list layer.
+        /// </summary>
+        private static readonly Dictionary<object, Node> ListRows = new(new SameObject());
 
         /// <summary>
         /// The mod's methods under test and the vanilla UI methods they call, each with the stand-in that becomes its copy.
@@ -437,6 +505,8 @@ namespace ModMenus.Tests
         private static readonly Dictionary<MethodBase, MethodInfo> Copies = new()
         {
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuItems))] = Stub(nameof(AddMenuItems)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuPage))] = Stub(nameof(AddMenuPage)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuTab))] = Stub(nameof(AddMenuTab)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuText))] = Stub(nameof(AddMenuText)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuSlider))] = Stub(nameof(AddMenuSlider)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuCheckbox))] = Stub(nameof(AddMenuCheckbox)),
@@ -445,8 +515,7 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuInput))] = Stub(nameof(AddMenuInput)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddLabelWrap))] = Stub(nameof(AddLabelWrap)),
             [AccessTools.FirstMethod(AccessTools.Inner(typeof(ModMenusUtils), "<>c"), m => m.Name.Contains(nameof(ModMenusUtils.AddMenuDropdown)))] = Stub(nameof(IsScreenTab)),
-            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.Awake))] = Stub(nameof(ItemAwake)),
-            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.OnEnable))] = Stub(nameof(ItemOnEnable)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.ShowSaved))] = Stub(nameof(ItemShowSaved)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.CloseList))] = Stub(nameof(ItemCloseList)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderSlider))] = Stub(nameof(ItemRenderSlider)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderCheckbox))] = Stub(nameof(ItemRenderCheckbox)),
@@ -458,6 +527,15 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnEnable))] = Stub(nameof(ManagerOnEnable)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnApply))] = Stub(nameof(ManagerOnApply)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnCancel))] = Stub(nameof(ManagerOnCancel)),
+            [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.ShowPage))] = Stub(nameof(ManagerShowPage)),
+            [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.RenderTabs))] = Stub(nameof(ManagerRenderTabs)),
+            [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.CloseDropdownLists))] = Stub(nameof(ManagerCloseDropdownLists)),
+            [AccessTools.Method(typeof(ModMenuTab), nameof(ModMenuTab.OnClick))] = Stub(nameof(TabOnClick)),
+            [AccessTools.Method(typeof(ModMenuTab), nameof(ModMenuTab.Render))] = Stub(nameof(TabRender)),
+            [AccessTools.Method(typeof(ModMenuTab), nameof(ModMenuTab.OnPointerEnter))] = Stub(nameof(TabOnPointerEnter)),
+            [AccessTools.Method(typeof(ModMenuTab), nameof(ModMenuTab.OnPointerExit))] = Stub(nameof(TabOnPointerExit)),
+            [AccessTools.Method(typeof(ModMenuLayout), nameof(ModMenuLayout.OnEnable))] = Stub(nameof(LayoutOnEnable)),
+            [AccessTools.Method(typeof(ModMenuLayout), nameof(ModMenuLayout.Fit))] = Stub(nameof(LayoutFit)),
             [AccessTools.Method(typeof(Checkbox_Text), nameof(Checkbox_Text.SetCheck))] = Stub(nameof(SetCheck)),
             [AccessTools.Method(typeof(ExtensionMethods), nameof(ExtensionMethods.SetColor), new[] { typeof(GameObject), typeof(Color32) })] = Stub(nameof(SetColor)),
         };
@@ -482,12 +560,17 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(Transform), nameof(Transform.GetSiblingIndex))] = Stub(nameof(StubGetSiblingIndex)),
             [AccessTools.Method(typeof(Transform), nameof(Transform.SetAsFirstSibling))] = Stub(nameof(StubSetAsFirstSibling)),
             [AccessTools.Method(typeof(Object), nameof(Object.DestroyImmediate), new[] { typeof(Object) })] = Stub(nameof(StubDestroyImmediate)),
+            [AccessTools.Method(typeof(GameObject), nameof(GameObject.SetActive))] = Stub(nameof(StubSetActive)),
 
             // Layout and looks
             [AccessTools.Method(typeof(ModMenusUtils), "SetRectTransform", new[] { typeof(RectTransform), typeof(Vector2), typeof(Vector2), typeof(Vector2), typeof(Vector2) })] = Stub(nameof(StubSetRect)),
             [AccessTools.Method(typeof(ModMenusUtils), "SetRectTransform", new[] { typeof(RectTransform), typeof(Vector2), typeof(Vector2), typeof(Vector2), typeof(Vector2), typeof(Vector2) })] = Stub(nameof(StubSetRectPivot)),
             [AccessTools.PropertySetter(typeof(RectTransform), nameof(RectTransform.sizeDelta))] = Stub(nameof(StubSetSize)),
             [AccessTools.PropertySetter(typeof(RectTransform), nameof(RectTransform.anchoredPosition))] = Stub(nameof(StubSetSize)),
+            [AccessTools.PropertyGetter(typeof(RectTransform), nameof(RectTransform.rect))] = Stub(nameof(StubGetRect)),
+            [AccessTools.Method(typeof(ModMenusUtils), "SetColumnLayout")] = Stub(nameof(StubSetColumnLayout)),
+            [AccessTools.Method(typeof(ModMenusUtils), "SetTabLooks")] = Stub(nameof(StubSetTabLooks)),
+            [AccessTools.Method(typeof(ModMenuLayout), "PlaceFromCentre")] = Stub(nameof(StubPlaceFromCentre)),
             [AccessTools.PropertySetter(typeof(ContentSizeFitter), nameof(ContentSizeFitter.verticalFit))] = Stub(nameof(StubSetVerticalFit)),
             [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.text))] = Stub(nameof(StubSetText)),
             [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.fontSize))] = Stub(nameof(StubSetFontSize)),
@@ -500,6 +583,8 @@ namespace ModMenus.Tests
             [AccessTools.PropertyGetter(typeof(Slider), nameof(Slider.value))] = Stub(nameof(SliderValueOf)),
             [AccessTools.PropertySetter(typeof(Slider), nameof(Slider.value))] = Stub(nameof(StubSetSliderValue)),
             [AccessTools.PropertySetter(typeof(ScrollRect), nameof(ScrollRect.verticalNormalizedPosition))] = Stub(nameof(StubSetScroll)),
+            [AccessTools.Method(typeof(ScrollRect), nameof(ScrollRect.StopMovement))] = Stub(nameof(StubStopMovement)),
+            [AccessTools.Method(typeof(CustomDropdown), nameof(CustomDropdown.Animate))] = Stub(nameof(Animate)),
             [AccessTools.Method(typeof(CustomDropdown), nameof(CustomDropdown.SetupDropdown))] = Stub(nameof(StubSetupDropdown)),
             [AccessTools.Method(typeof(CustomDropdown), nameof(CustomDropdown.ChangeDropdownInfo))] = Stub(nameof(ChangeDropdownInfo)),
             [AccessTools.PropertySetter(typeof(TMP_InputField), nameof(TMP_InputField.characterLimit))] = Stub(nameof(StubSetCharacterLimit)),
@@ -520,6 +605,7 @@ namespace ModMenus.Tests
             [Generic(typeof(Component), nameof(Component.GetComponentInChildren), 0)] = Stub(nameof(GetComponentInChildren)),
             [Generic(typeof(GameObject), nameof(GameObject.GetComponentInChildren), 0)] = Stub(nameof(GetComponentInChildren)),
             [Generic(typeof(Component), nameof(Component.GetComponentsInChildren), 0)] = Stub(nameof(StubGetComponentsInChildren)),
+            [Generic(typeof(Component), nameof(Component.GetComponentsInChildren), typeof(bool))] = Stub(nameof(StubGetComponentsInChildrenWith)),
             [Generic(typeof(GameObject), nameof(GameObject.AddComponent), 0)] = Stub(nameof(StubAddComponent)),
             [Generic(typeof(Object), nameof(Object.Instantiate), 2)] = Stub(nameof(StubInstantiate)),
             [Generic(typeof(Enumerable), nameof(Enumerable.Cast), 1)] = Stub(nameof(StubCast)),
@@ -535,7 +621,13 @@ namespace ModMenus.Tests
         });
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void AddMenuItems(Transform parentTransform, Transform dropdownLayer) => throw NotInstalled();
+        public static void AddMenuItems(ModMenuManager manager, Transform pageParent, Transform tabParent, Transform dropdownLayer) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject AddMenuPage(MenuSource menu, Transform pageParent, Transform dropdownLayer) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static ModMenuTab AddMenuTab(MenuSource menu, GameObject page, ModMenuManager manager, Transform tabParent) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static GameObject AddMenuText(string textID, Transform parentTransform, float fontSize, Color col, TextAlignmentOptions alignment) => throw NotInstalled();
@@ -563,10 +655,9 @@ namespace ModMenus.Tests
         public static bool IsScreenTab(object closure, Transform t) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void ItemAwake(ModMenuItem instance) => throw NotInstalled();
+        public static void ItemShowSaved(ModMenuItem instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void ItemOnEnable(ModMenuItem instance) => throw NotInstalled();
         public static void ItemCloseList(ModMenuItem instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -600,6 +691,33 @@ namespace ModMenus.Tests
         public static void ManagerOnCancel(ModMenuManager instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerShowPage(ModMenuManager instance, ModMenuTab tab) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerRenderTabs(ModMenuManager instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerCloseDropdownLists(ModMenuManager instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void TabOnClick(ModMenuTab instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void TabRender(ModMenuTab instance, bool selected) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void TabOnPointerEnter(ModMenuTab instance, PointerEventData eventData) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void TabOnPointerExit(ModMenuTab instance, PointerEventData eventData) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void LayoutOnEnable(ModMenuLayout instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void LayoutFit(ModMenuLayout instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public static void SetCheck(Checkbox_Text instance, bool val) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -619,6 +737,13 @@ namespace ModMenus.Tests
             DropdownSetups.Clear();
             ScrollPositions.Clear();
             Alignments.Clear();
+            Columns.Clear();
+            Rects.Clear();
+            Placements.Clear();
+            Sizes.Clear();
+            StyledTabs.Clear();
+            MovementsStopped = 0;
+            ListRows.Clear();
             Nodes.Clear();
             Prefabs.Clear();
             SliderValues.Clear();
@@ -662,6 +787,28 @@ namespace ModMenus.Tests
         public static string NameOf(GameObject obj) => NodeOf(obj).Name;
 
         public static List<GameObject> ChildrenOf(GameObject obj) => NodeOf(obj).Children.Select(c => c.GameObject).ToList();
+
+        public static bool IsActive(GameObject obj) => NodeOf(obj).Active;
+
+        /// <summary>
+        /// Opens or closes a dropdown's list, as the game's CustomDropdown.Animate does: an open list item's box
+        /// moves to its list layer, and back to its row when it closes.
+        /// </summary>
+        public static void Animate(CustomDropdown dropdown)
+        {
+            Node box = NodeOf(dropdown);
+            dropdown.isOn = !dropdown.isOn;
+            if (dropdown.isOn && dropdown.isListItem)
+            {
+                ListRows[dropdown] = box.Parent;
+                SetParent(box, NodeOf(dropdown.listParent));
+            }
+            else if (!dropdown.isOn && ListRows.TryGetValue(dropdown, out Node row))
+            {
+                ListRows.Remove(dropdown);
+                SetParent(box, row);
+            }
+        }
 
         public static T GetComponent<T>(object owner) => NodeOf(owner).Components.OfType<T>().FirstOrDefault();
 
@@ -763,6 +910,12 @@ namespace ModMenus.Tests
         private static MethodInfo Generic(Type type, string name, int parameters) =>
             type.GetMethods().Single(m => m.Name == name && m.IsGenericMethodDefinition && m.GetParameters().Length == parameters);
 
+        /// <summary>
+        /// The generic overload whose only parameter is of this type.
+        /// </summary>
+        private static MethodInfo Generic(Type type, string name, Type parameter) =>
+            type.GetMethods().Single(m => m.Name == name && m.IsGenericMethodDefinition && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == parameter);
+
         private static IEnumerable<CodeInstruction> Redirect(IEnumerable<CodeInstruction> instructions)
         {
             foreach (CodeInstruction instruction in instructions)
@@ -842,8 +995,12 @@ namespace ModMenus.Tests
             Nodes.Remove(obj);
         }
 
-        private static T[] StubGetComponentsInChildren<T>(object owner) =>
-            NodeOf(owner).SelfAndDescendants().SelectMany(n => n.Components).OfType<T>().ToArray();
+        private static T[] StubGetComponentsInChildren<T>(object owner) => StubGetComponentsInChildrenWith<T>(owner, false);
+
+        private static T[] StubGetComponentsInChildrenWith<T>(object owner, bool includeInactive) =>
+            NodeOf(owner).SelfAndDescendants(includeInactive).SelectMany(n => n.Components).OfType<T>().ToArray();
+
+        private static void StubSetActive(GameObject obj, bool value) => NodeOf(obj).Active = value;
 
         private static T StubAddComponent<T>(GameObject owner) => (T)(object)AddComponent(NodeOf(owner), typeof(T));
 
@@ -870,9 +1027,14 @@ namespace ModMenus.Tests
             return source.FirstOrDefault(item => (bool)copy.Invoke(null, new object[] { predicate.Target, item }));
         }
 
-        private static void StubSetRect(RectTransform rt, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax) { }
-        private static void StubSetRectPivot(RectTransform rt, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax, Vector2 pivot) { }
+        private static void StubSetRect(RectTransform rt, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax) => Rects[rt] = (anchorMin, anchorMax, offsetMin, offsetMax);
+        private static void StubSetRectPivot(RectTransform rt, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax, Vector2 pivot) => Rects[rt] = (anchorMin, anchorMax, offsetMin, offsetMax);
         private static void StubSetSize(RectTransform rt, Vector2 size) { }
+        private static Rect StubGetRect(RectTransform rt) => new(Vector2.zero, Sizes.TryGetValue(rt, out Vector2 size) ? size : Vector2.zero);
+        private static void StubPlaceFromCentre(RectTransform rt, Rect place) => Placements[rt] = place;
+        private static void StubSetColumnLayout(VerticalLayoutGroup column, float spacing, bool controlChildHeight) => Columns[column] = (spacing, controlChildHeight);
+        private static void StubSetTabLooks(Button button, TextMeshProUGUI label) => StyledTabs.Add(button);
+        private static void StubStopMovement(ScrollRect scrollRect) => MovementsStopped++;
         private static void StubSetVerticalFit(ContentSizeFitter fitter, ContentSizeFitter.FitMode value) => AccessTools.FieldRefAccess<ContentSizeFitter, ContentSizeFitter.FitMode>("m_VerticalFit")(fitter) = value;
 
         // Text and image setters store their value in the field the getter reads, so tests can read it back

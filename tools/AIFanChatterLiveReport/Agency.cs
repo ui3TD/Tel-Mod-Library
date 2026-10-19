@@ -137,8 +137,8 @@ namespace AIFanChatter.LiveReport
                 .Scandals(2);
             Idol(sister, "Tanaka", "Ruri", 17, new DateTime(2025, 3, 3), 11000, traits._trait._type.Amorous, 53, 50, 72, 40, 57, 31, 60, 46);
             Graduate = idols["Kaho"];
-            // Her clique, which the graduation names as her friends
-            Relationships._clique clique = new() { Leader = idols["Sora"] };
+            // Her clique, known to the player, which the graduation names as her friends
+            Relationships._clique clique = new() { Leader = idols["Sora"], Known = true };
             clique.Members.AddRange(new[] { idols["Sora"], Graduate, idols["Ruri"] });
             Relationships.Cliques.Add(clique);
 

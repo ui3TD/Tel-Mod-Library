@@ -313,13 +313,32 @@ namespace AIFanChatter.Tests
             data_girls.girls leaving = Idol("Leaving");
             data_girls.girls a = Idol("A");
             data_girls.girls b = Idol("B");
-            Group("Stars", Today.AddYears(-3), leaving, a, b, Idol("Popular", fans: 9000));
+            Groups._group stars = Group("Stars", Today.AddYears(-3), leaving, a, b, Idol("Popular", fans: 9000));
             Clique(a, leaving, b);
             leaving.Graduated(Today);
 
             Moment moment = MomentContext.Graduation(leaving, null);
-            Assert.Equal("A, B", moment.Fact(Moment.AgencySection, "Friends in the group"));
+            Assert.Equal("A, B", moment.Fact(Moment.AgencySection, "Friends in " + Members.GroupName(stars)));
             Assert.Null(moment.Fact(Moment.AgencySection, "Most popular members"));
+        }
+
+        /// <summary>
+        /// A clique can span groups: each group gets its own line, by name, hers first.
+        /// </summary>
+        [Fact]
+        public void Graduate_NamesHerFriends_ByGroup_HersFirst()
+        {
+            data_girls.girls leaving = Idol("Leaving");
+            data_girls.girls mainMate = Idol("MainMate");
+            data_girls.girls sisterMate = Idol("SisterMate");
+            Groups._group main = Group("Stars", Today.AddYears(-6), mainMate);
+            Group("Moons", Today.AddYears(-1), leaving, sisterMate);
+            Clique(mainMate, leaving, sisterMate);
+            leaving.Graduated(Today);
+
+            Moment moment = MomentContext.Graduation(leaving, null);
+            List<string> friends = moment.Facts(Moment.AgencySection).Where(f => f.Key.StartsWith("Friends in ")).Select(f => f.Key + ": " + f.Value).ToList();
+            Assert.Equal(new[] { "Friends in Moons: SisterMate", "Friends in " + Members.GroupName(main) + ": MainMate" }, friends);
         }
 
         [Fact]
@@ -331,8 +350,24 @@ namespace AIFanChatter.Tests
             leaving.Graduated(Today);
 
             Moment moment = MomentContext.Graduation(leaving, null);
-            Assert.Null(moment.Fact(Moment.AgencySection, "Friends in the group"));
+            Assert.DoesNotContain(moment.Facts(Moment.AgencySection), f => f.Key.StartsWith("Friends in "));
             Assert.Null(moment.Fact(Moment.AgencySection, "Most popular members"));
+        }
+
+        /// <summary>
+        /// A clique the player hasn't found out about yet is left out.
+        /// </summary>
+        [Fact]
+        public void Graduate_InAnUnknownClique_LeavesFriendsOut()
+        {
+            data_girls.girls leaving = Idol("Leaving");
+            data_girls.girls a = Idol("A");
+            Group("Stars", Today.AddYears(-3), leaving, a);
+            Clique(a, leaving).Known = false;
+            leaving.Graduated(Today);
+
+            Moment moment = MomentContext.Graduation(leaving, null);
+            Assert.DoesNotContain(moment.Facts(Moment.AgencySection), f => f.Key.StartsWith("Friends in "));
         }
 
         /// <summary>
@@ -343,7 +378,7 @@ namespace AIFanChatter.Tests
         {
             data_girls.girls leaving = Idol("Leaving");
             data_girls.girls a = Idol("A");
-            Group("Stars", Today.AddYears(-3), leaving, a);
+            Groups._group stars = Group("Stars", Today.AddYears(-3), leaving, a);
             Relationships._clique clique = Clique(leaving, a);
 
             data_girls_girls_Graduate.Prefix(leaving, out data_girls_girls_Graduate.Before before);
@@ -351,7 +386,7 @@ namespace AIFanChatter.Tests
             leaving.Graduated(Today);
 
             Moment moment = MomentContext.Graduation(leaving, before.Rank, before.Friends);
-            Assert.Equal("A", moment.Fact(Moment.AgencySection, "Friends in the group"));
+            Assert.Equal("A", moment.Fact(Moment.AgencySection, "Friends in " + Members.GroupName(stars)));
         }
 
         [Fact]
@@ -364,7 +399,7 @@ namespace AIFanChatter.Tests
 
             Moment moment = MomentContext.Single(Single("Song", Today, 1, a));
             Assert.Equal("B, A", moment.Fact(Moment.AgencySection, "Most popular members"));
-            Assert.Null(moment.Fact(Moment.AgencySection, "Friends in the group"));
+            Assert.DoesNotContain(moment.Facts(Moment.AgencySection), f => f.Key.StartsWith("Friends in "));
         }
 
         [Fact]

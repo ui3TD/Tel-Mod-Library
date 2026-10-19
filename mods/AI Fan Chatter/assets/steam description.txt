@@ -42,4 +42,4 @@ Your saves load normally without it. The feed then keeps its newest 20 posts.
 - 1.6.0: Concert attendance gives the venue's capacity; singles no longer give their new fans
 - 1.7.0: Posts arrive over the two days after the moment; OpenAI with gpt-6-luna is the default
 - 1.7.1: The saved API key moves to a folder named Tel AI Mods in ModConfig
-- 1.8.0: Graduations name the idol's friends in the group instead of the most popular members
+- 1.8.0: Graduations name the idol's known clique friends instead of the most popular members

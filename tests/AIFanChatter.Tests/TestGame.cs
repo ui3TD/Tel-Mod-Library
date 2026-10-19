@@ -30,11 +30,11 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// A clique of these idols, the first its leader, registered with the game.
+        /// A clique of these idols, the first its leader, that the player knows about, registered with the game.
         /// </summary>
         public static Relationships._clique Clique(params data_girls.girls[] girls)
         {
-            Relationships._clique clique = new() { Leader = girls[0] };
+            Relationships._clique clique = new() { Leader = girls[0], Known = true };
             clique.Members.AddRange(girls);
             Relationships.Cliques.Add(clique);
             return clique;

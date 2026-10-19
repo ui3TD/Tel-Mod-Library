@@ -594,11 +594,14 @@ namespace AIFanChatter
         public static Rank RankOf(data_girls.girls girl) => RankIn(girl, girl?.GetGroup(), null);
 
         /// <summary>
-        /// The other members of her clique; empty when she isn't in one. The game takes her out of it as she graduates.
+        /// The other members of her clique; empty when she isn't in one or the player hasn't found it out yet.
+        /// The game takes her out of it as she graduates.
         /// </summary>
         public static List<data_girls.girls> Friends(data_girls.girls girl)
         {
-            return girl?.GetClique()?.Members.Where(m => m != null && m != girl).ToList() ?? new List<data_girls.girls>();
+            Relationships._clique clique = girl?.GetClique();
+            return clique == null || !clique.Known ? new List<data_girls.girls>()
+                : clique.Members.Where(m => m != null && m != girl).ToList();
         }
 
         /// <summary>

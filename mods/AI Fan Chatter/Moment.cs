@@ -310,7 +310,7 @@ namespace AIFanChatter
         /// group and the main group it belongs to. Null is the main group.
         /// </summary>
         /// <param name="graduation">The moment is a graduation, so the member count is after she left.</param>
-        /// <param name="friends">A graduate's clique, named in place of the most popular members.</param>
+        /// <param name="friends">A graduate's clique, named by group in place of the most popular members.</param>
         /// <param name="rules">Adds the agency rules that matter to this kind of moment, after the concept.</param>
         private static Moment Agency(Moment moment, Groups._group group, bool graduation = false,
             List<data_girls.girls> friends = null, Func<Moment, Moment> rules = null)
@@ -326,10 +326,19 @@ namespace AIFanChatter
                 // The group's totals, once here rather than in every idol's line
                 .AddTo(section, "Group formed", () => group != null ? History.Ago(group.Date_Created, Now) : "")
                 .AddTo(section, "Singles released by the group", () => Members.ReleasedSingles(group).Count)
-                .AddTo(section, graduation ? "Friends in the group" : "Most popular members", () => graduation
-                    ? string.Join(", ", (friends ?? new List<data_girls.girls>()).Select(Name).ToArray())
-                    : group == null ? ""
-                    : string.Join(", ", Members.ByFans(group.GetGirls(true)).Take(Members.MostPopular).Select(Name).ToArray()))
+                .AddTo(section, "Most popular members", () => graduation || group == null ? ""
+                    : string.Join(", ", Members.ByFans(group.GetGirls(true)).Take(Members.MostPopular).Select(Name).ToArray()));
+            if (graduation)
+            {
+                // A clique can span groups: one line per group, hers first
+                foreach (IGrouping<Groups._group, data_girls.girls> mates in (friends ?? new List<data_girls.girls>())
+                    .GroupBy(f => GroupOf(() => f.GetGroup())).Where(g => g.Key != null)
+                    .OrderBy(g => g.Key == group ? -1 : Groups.Groups_.IndexOf(g.Key)))
+                {
+                    moment.AddTo(section, "Friends in " + Members.GroupName(mates.Key), () => string.Join(", ", mates.Select(Name).ToArray()));
+                }
+            }
+            moment
                 .AddTo(section, "Group reputation", () => Members.AgencyReputation(resources.GetScandalPointsTotal()))
                 .AddTo(section, "Group concept", AgencyRules.Concept);
             return (rules?.Invoke(moment) ?? moment)

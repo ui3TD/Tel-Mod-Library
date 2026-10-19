@@ -315,8 +315,12 @@ namespace FanAttrition
         public const float SHOW_FATIGUE_COEFF_HARD = 12500f;
         public const float SHOW_FATIGUE_COEFF_NORMAL = 20000f;
         public const int FATIGUE_RELAUNCH_CAP = 1;
-        // How much more a segment at opinion -100 loses than one at 0 (and how much less one at +100 does)
-        public const double OPINION_LOSS_PULL = 0.25;
+        // How much more a segment with the lowest opinion + appeal loses than a neutral one (and how much less
+        // one with the highest does)
+        public const double APPEAL_LOSS_PULL = 0.25;
+        // The game's opinion + appeal of a neutral segment (opinion 0, stats about 50), and its range
+        public const double NEUTRAL_TOTAL_APPEAL = 1.0;
+        public const float MAX_TOTAL_APPEAL = 2f;
         public const float MARK_SUCCESSCRIT_COEFF = 0.1f;
         public const float MARK_FAIL_CRIT_COEFF = 0.1f;
         public const float FAKESCANDAL_MOD_BASE = 100f;
@@ -384,8 +388,9 @@ namespace FanAttrition
         }
 
         /// <summary>
-        /// Takes fans from an idol's fan segments in proportion to their size, with low opinion pulling a little
-        /// more of the loss: a segment at opinion -100 loses 1.25x its share, one at +100 0.75x.
+        /// Takes fans from an idol's fan segments in proportion to their size, with low opinion and appeal pulling
+        /// a little more of the loss: a segment at the game's lowest opinion + appeal loses 1.25x its share, a
+        /// neutral one 1x and one at the highest 0.75x.
         /// </summary>
         /// <remarks>
         /// Not through the idol's own AddFans: it splits a loss by opinion + stat appeal whatever a segment
@@ -408,11 +413,13 @@ namespace FanAttrition
                     break;
 
                 long remaining = loss - taken;
-                double total = paying.Sum(LossWeight);
+                // Weighed before any segment loses fans, so the split doesn't depend on their order
+                Dictionary<resources._fan, double> weights = paying.ToDictionary(fan => fan, LossWeight);
+                double total = weights.Values.Sum();
                 long round = 0;
                 foreach (resources._fan fan in paying)
                 {
-                    long share = Math.Min(fan.people, (long)Math.Floor(remaining * LossWeight(fan) / total));
+                    long share = Math.Min(fan.people, (long)Math.Floor(remaining * weights[fan] / total));
                     fan.AddPeople(-share);
                     round += share;
                 }
@@ -420,7 +427,7 @@ namespace FanAttrition
                 // Rounding left a few fans: one each from the heaviest segments
                 if (round == 0)
                 {
-                    foreach (resources._fan fan in paying.OrderByDescending(LossWeight))
+                    foreach (resources._fan fan in paying.OrderByDescending(fan => weights[fan]))
                     {
                         if (round == remaining)
                             break;
@@ -434,15 +441,17 @@ namespace FanAttrition
         }
 
         /// <summary>
-        /// A segment's pull on the loss: its fans, times 1.25 at opinion -100, 1 at 0 and 0.75 at +100.
+        /// A segment's pull on the loss: its fans, times 1.25 at the lowest opinion + appeal (0), 1 at a neutral
+        /// 1 and 0.75 at the highest (2). Opinion + appeal is the weight the game splits an idol's fan gains by.
         /// </summary>
         private static double LossWeight(resources._fan fan)
         {
             float ratio = fan.GetOpinion();
-            // A segment with no votes reads as neutral
+            // A segment with no votes reads as neutral opinion
             if (float.IsNaN(ratio))
                 ratio = 0.5f;
-            return fan.people * (1.0 + OPINION_LOSS_PULL * (1.0 - 2.0 * Mathf.Clamp01(ratio)));
+            float totalAppeal = Mathf.Clamp(ratio + fan.appeal, 0f, MAX_TOTAL_APPEAL);
+            return fan.people * (1.0 + APPEAL_LOSS_PULL * (NEUTRAL_TOTAL_APPEAL - totalAppeal));
         }
 
         /// <summary>

@@ -675,17 +675,19 @@ namespace FanAttrition.Tests
         }
 
         /// <summary>
-        /// A segment with this many fans and this opinion ratio (0 shows as -100, 1 as +100).
+        /// A segment with this many fans, this opinion ratio (0 shows as -100, 1 as +100) and this stat appeal
+        /// (about 0.5 at stats of 50). The defaults are neutral: opinion + appeal 1.
         /// </summary>
-        private static resources._fan Segment(resources.fanType hardcoreness, long people, float ratio = 0.5f)
+        private static resources._fan Segment(resources.fanType hardcoreness, long people, float ratio = 0.5f, float appeal = 0.5f)
         {
             resources._fan fan = TestGame.Fans(resources.fanType.male, hardcoreness, resources.fanType.teen, people);
             fan.Ratio = ratio;
+            fan.appeal = appeal;
             return fan;
         }
 
         /// <summary>
-        /// Fixed in 2.0.0: the game's AddFans split a loss by opinion + appeal whatever a segment held, so the
+        /// Fixed in 2.0.0: the game's AddFans split a loss by opinion + appeal alone, whatever a segment held, so the
         /// part that landed on an empty segment was never taken. A hardcore-only idol now pays the whole loss.
         /// </summary>
         [Fact]
@@ -714,18 +716,35 @@ namespace FanAttrition.Tests
         }
 
         /// <summary>
-        /// Low opinion pulls a little more of the loss: -100 loses 1.25x, +100 0.75x. 200 from two segments of
-        /// 1,000 is 125 and 75.
+        /// Low opinion + appeal pulls a little more of the loss: the lowest (0) loses 1.25x, the highest (2)
+        /// 0.75x. 200 from two segments of 1,000 is 125 and 75.
         /// </summary>
         [Fact]
-        public void Segments_LowOpinionLosesMore()
+        public void Segments_LowOpinionAndAppealLoseMore()
         {
-            resources._fan unhappy = Segment(resources.fanType.hardcore, 1000, ratio: 0f);
-            resources._fan happy = Segment(resources.fanType.casual, 1000, ratio: 1f);
+            resources._fan unhappy = Segment(resources.fanType.hardcore, 1000, ratio: 0f, appeal: 0f);
+            resources._fan happy = Segment(resources.fanType.casual, 1000, ratio: 1f, appeal: 1f);
 
             Utility.TakeFromSegments(TestGame.Idol(0.5f, unhappy, happy), 200);
 
             Assert.Equal(new long[] { 1000 - 125, 1000 - 75 }, new[] { unhappy.people, happy.people });
+        }
+
+        /// <summary>
+        /// Opinion and appeal count the same: at neutral opinion, appeal 0 loses 1.125x and appeal 1 0.875x,
+        /// and so do opinion -100 and +100 at neutral appeal. 400 from two segments of 1,000 is 225 and 175.
+        /// </summary>
+        [Theory]
+        [InlineData(0.5f, 0f, 0.5f, 1f)]
+        [InlineData(0f, 0.5f, 1f, 0.5f)]
+        public void Segments_OpinionAndAppealEachPull(float lowRatio, float lowAppeal, float highRatio, float highAppeal)
+        {
+            resources._fan low = Segment(resources.fanType.hardcore, 1000, lowRatio, lowAppeal);
+            resources._fan high = Segment(resources.fanType.casual, 1000, highRatio, highAppeal);
+
+            Utility.TakeFromSegments(TestGame.Idol(0.5f, low, high), 400);
+
+            Assert.Equal(new long[] { 1000 - 225, 1000 - 175 }, new[] { low.people, high.people });
         }
 
         /// <summary>

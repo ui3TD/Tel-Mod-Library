@@ -323,6 +323,8 @@ namespace HarmonyChecker.Tests
             Destroyed.Clear();
             IMHIUpdate.InstalledVersion = () => IMHIUpdate.MIN_VERSION;
             IMHIUpdate.OpenUrl = OpenedUrls.Add;
+            IMHIUpdate.GoldSprite = () => null;
+            IMHIUpdate.AddGlow = button => { };
         }
 
         /// <summary>

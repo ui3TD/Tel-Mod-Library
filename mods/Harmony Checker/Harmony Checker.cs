@@ -2,6 +2,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
@@ -90,6 +92,8 @@ namespace HarmonyChecker
         // Replaced in tests.
         internal static Func<Version> InstalledVersion = () => ReadInstalledVersion(AppDomain.CurrentDomain.GetAssemblies());
         internal static Action<string> OpenUrl = url => Application.OpenURL(url);
+        internal static Func<Sprite> GoldSprite = () => GoldButton.Button.Get();
+        internal static Action<GameObject> AddGlow = button => GoldButton.AddGlow(button);
 
         /// <summary>
         /// The IM-HI version BepInEx loaded, or null if it can't be read. Harmony Checker doesn't
@@ -170,19 +174,36 @@ namespace HarmonyChecker
             click.colors = TintFromWhite(click.colors);
 
             // The button's image is purple, and tinting it only darkens it, so the copy draws a
-            // plain gold background instead, with the game's dark text colour for gold.
+            // gold version of it instead, with white text like the other menu buttons. Without the
+            // picture it falls back to a plain gold background with the game's dark text colour for gold.
+            Sprite gold = GoldSprite();
+            Image buttonImage = button.GetComponent<Image>();
+            Color textColor = gold is null ? (Color)mainScript.blackGold32 : Color.white;
             foreach (Image background in button.GetComponentsInChildren<Image>())
             {
-                background.sprite = null;
-                background.color = mainScript.gold32;
+                if (gold is null)
+                {
+                    background.sprite = null;
+                    background.color = mainScript.gold32;
+                }
+                else if (ReferenceEquals(background, buttonImage))
+                {
+                    background.sprite = gold;
+                    background.color = Color.white;
+                }
             }
             foreach (TMP_Text tmp in button.GetComponentsInChildren<TMP_Text>())
             {
-                tmp.color = mainScript.blackGold32;
+                tmp.color = textColor;
             }
             foreach (Text uiText in button.GetComponentsInChildren<Text>())
             {
-                uiText.color = mainScript.blackGold32;
+                uiText.color = textColor;
+            }
+
+            if (!(gold is null))
+            {
+                AddGlow(button);
             }
         }
 
@@ -219,6 +240,126 @@ namespace HarmonyChecker
             Ratio(state.r, normal.r), Ratio(state.g, normal.g), Ratio(state.b, normal.b), Ratio(state.a, normal.a));
 
         private static float Ratio(float state, float normal) => normal <= 0f ? 1f : Mathf.Clamp01(state / normal);
+    }
+
+    /// <summary>
+    /// A gold copy of the game's menu button picture, which the game only has in blue, green and red,
+    /// and a soft halo around it that pulses to draw the eye.
+    /// </summary>
+    internal static class GoldButton
+    {
+        public const string ModTitle = "IM-HarmonyIntegration Plugin";
+
+        // The halo picture reaches this many pixels past the button on each side.
+        public const float GLOW_PAD = 16f;
+
+        // The game's button picture's 9-slice edges (left, bottom, right, top), so it stretches the same way.
+        public static readonly Picture Button = new Picture("IMHI_Update.png", new Vector4(11f, 17f, 11f, 12f));
+        public static readonly Picture Glow = new Picture("IMHI_Update_Glow.png",
+            new Vector4(11f + GLOW_PAD, 17f + GLOW_PAD, 11f + GLOW_PAD, 12f + GLOW_PAD));
+
+        /// <summary>
+        /// Puts the halo over the button, reaching past its edges. The halo is clear over the button
+        /// itself, so it doesn't cover the button or its text. Without the picture the button has no halo.
+        /// </summary>
+        public static void AddGlow(GameObject button)
+        {
+            Sprite sprite = Glow.Get();
+            if (sprite == null)
+            {
+                return;
+            }
+
+            GameObject glow = new GameObject("Glow", typeof(RectTransform));
+            glow.transform.SetParent(button.transform, false);
+            glow.AddComponent<LayoutElement>().ignoreLayout = true;
+
+            RectTransform rect = (RectTransform)glow.transform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(-GLOW_PAD, -GLOW_PAD);
+            rect.offsetMax = new Vector2(GLOW_PAD, GLOW_PAD);
+
+            Image image = glow.AddComponent<Image>();
+            image.sprite = sprite;
+            image.type = Image.Type.Sliced;
+            image.raycastTarget = false;
+            glow.AddComponent<GlowPulse>().Image = image;
+        }
+
+        /// <summary>The picture's path: next to the DLL, else in a mod folder with this mod's title; null if neither has it.</summary>
+        public static string FindFile(string relativePath, string assemblyDir, IEnumerable<string> modDirs)
+        {
+            return new[] { assemblyDir }.Concat(modDirs)
+                .Where(dir => !string.IsNullOrEmpty(dir))
+                .Select(dir => Path.Combine(dir, relativePath))
+                .FirstOrDefault(File.Exists);
+        }
+
+        internal sealed class Picture
+        {
+            public readonly string RelativePath;
+            public readonly Vector4 Border;
+            private Sprite sprite;
+            private bool loadFailed;
+
+            public Picture(string fileName, Vector4 border)
+            {
+                RelativePath = Path.Combine("Images", fileName);
+                Border = border;
+            }
+
+            /// <summary>The picture, loaded once; null (logged once) if it can't be loaded.</summary>
+            public Sprite Get()
+            {
+                if (sprite != null || loadFailed)
+                {
+                    return sprite;
+                }
+
+                string path = FindFile(RelativePath, Path.GetDirectoryName(typeof(GoldButton).Assembly.Location),
+                    Mods._Mods.Where(mod => mod.Title == ModTitle).Select(mod => mod.GetPath()));
+                Texture2D texture = path != null ? new Texture2D(2, 2, TextureFormat.RGBA32, false) : null;
+                if (texture != null && ImageConversion.LoadImage(texture, File.ReadAllBytes(path)))
+                {
+                    texture.wrapMode = TextureWrapMode.Clamp;
+                    sprite = Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f),
+                        100f, 0, SpriteMeshType.FullRect, Border);
+                    sprite.name = Path.GetFileNameWithoutExtension(RelativePath);
+                }
+                else
+                {
+                    loadFailed = true;
+                    Debug.LogError("[Harmony Checker] couldn't load " + RelativePath + "; the update button is drawn without it.");
+                }
+                return sprite;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fades the halo in and out, once every PERIOD seconds, on real time so a paused game still pulses.
+    /// </summary>
+    internal class GlowPulse : MonoBehaviour
+    {
+        public const float PERIOD = 2f;
+        public const float MIN_ALPHA = 0.1f;
+        public const float MAX_ALPHA = 1f;
+
+        public Image Image;
+
+        public static float AlphaAt(float time) =>
+            MIN_ALPHA + (MAX_ALPHA - MIN_ALPHA) * (0.5f - 0.5f * Mathf.Cos(2f * Mathf.PI * time / PERIOD));
+
+        private void Update()
+        {
+            if (Image != null)
+            {
+                Color color = Image.color;
+                color.a = AlphaAt(Time.unscaledTime);
+                Image.color = color;
+            }
+        }
     }
 
     // Keep the original early path for cases where Harmony mods load before this Start.

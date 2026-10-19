@@ -22,6 +22,10 @@
 		<Reference Include="UnityEngine.UnityWebRequestModule">
 			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
 		</Reference>
+		<!--For loading the gold button picture-->
+		<Reference Include="UnityEngine.ImageConversionModule">
+			<HintPath>$(dllDir)\UnityEngine.ImageConversionModule.dll</HintPath>
+		</Reference>
 		<!--Mods.LoadModsCoroutine releases Steam queries-->
 		<Reference Include="Steamworks.NET">
 			<HintPath>$(dllDir)\Steamworks.NET.dll</HintPath>

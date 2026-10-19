@@ -11,7 +11,8 @@ namespace HarmonyChecker.Tests
 {
     /// <summary>
     /// When the installed IM-HI is older than the version the mod asks for, a yellow copy of the Mods button
-    /// appears below it and opens the IM-HI releases page.
+    /// appears below it and opens the IM-HI releases page. The tests start without the gold picture (the
+    /// fallback); the WithPicture tests give it one.
     /// </summary>
     public class UpdateButtonTests
     {
@@ -57,7 +58,7 @@ namespace HarmonyChecker.Tests
         }
 
         [Fact]
-        public void Outdated_ButtonIsYellow()
+        public void WithoutPicture_ButtonIsPlainGold()
         {
             GameObject button = Refresh(Old);
 
@@ -67,16 +68,79 @@ namespace HarmonyChecker.Tests
         }
 
         /// <summary>
-        /// Dark text, readable on the yellow button.
+        /// Dark text, readable on the plain gold button.
         /// </summary>
         [Theory]
         [InlineData(typeof(TextMeshProUGUI))]
         [InlineData(typeof(Text))]
-        public void Outdated_ButtonTextIsDark(Type textType)
+        public void WithoutPicture_ButtonTextIsDark(Type textType)
         {
             GameObject button = Refresh(Old, textType);
 
             Assert.Equal((Color)mainScript.blackGold32, Seams.Colors[LabelText(button)]);
+        }
+
+        [Fact]
+        public void WithoutPicture_NoGlow()
+        {
+            List<GameObject> glowed = RecordGlow();
+
+            Refresh(Old);
+
+            Assert.Empty(glowed);
+        }
+
+        /// <summary>
+        /// The button's own image draws the gold picture untinted.
+        /// </summary>
+        [Fact]
+        public void WithPicture_ButtonUsesIt()
+        {
+            IMHIUpdate.GoldSprite = () => Seams.Fake<Sprite>();
+
+            GameObject button = Refresh(Old);
+
+            Image background = Seams.GetComponent<Image>(button);
+            Assert.Equal("sprite", Seams.Sprites[background]);
+            Assert.Equal(Color.white, Seams.Colors[background]);
+        }
+
+        /// <summary>
+        /// White text, like the other menu buttons.
+        /// </summary>
+        [Theory]
+        [InlineData(typeof(TextMeshProUGUI))]
+        [InlineData(typeof(Text))]
+        public void WithPicture_ButtonTextIsWhite(Type textType)
+        {
+            IMHIUpdate.GoldSprite = () => Seams.Fake<Sprite>();
+
+            GameObject button = Refresh(Old, textType);
+
+            Assert.Equal(Color.white, Seams.Colors[LabelText(button)]);
+        }
+
+        /// <summary>
+        /// The halo is added to the update button once, not again on later menu refreshes.
+        /// </summary>
+        [Fact]
+        public void WithPicture_GlowsOnce()
+        {
+            IMHIUpdate.GoldSprite = () => Seams.Fake<Sprite>();
+            List<GameObject> glowed = RecordGlow();
+
+            GameObject button = Refresh(Old);
+            Seams.StopSpinnerPostfix();
+
+            Assert.Single(glowed);
+            Assert.Same(button, glowed[0]);
+        }
+
+        private static List<GameObject> RecordGlow()
+        {
+            List<GameObject> glowed = new();
+            IMHIUpdate.AddGlow = glowed.Add;
+            return glowed;
         }
 
         /// <summary>

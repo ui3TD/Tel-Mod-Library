@@ -1,3 +1,4 @@
+using AICore;
 using System;
 using System.Linq;
 using Xunit;

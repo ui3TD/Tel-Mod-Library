@@ -1,3 +1,4 @@
+using AICore;
 using System.IO;
 using Xunit;
 
@@ -67,53 +68,6 @@ namespace AIFanChatter.Tests
             variables_Set.Prefix("SomeOtherMod_Name", ref value);
             Assert.Equal("female_name", value);
             Assert.False(Directory.Exists(TestEnv.KeyFolder));
-        }
-
-        [Fact]
-        public void KeyFolder_IsOutsideSavesAndMods()
-        {
-            string root = Path.Combine(Path.GetTempPath(), "LocalLow", "Idol Manager");
-            string folder = Path.GetFullPath(KeyStore.FolderUnder(root)) + Path.DirectorySeparatorChar;
-            Assert.StartsWith(Path.GetFullPath(root), folder);
-            Assert.DoesNotContain(Path.Combine(root, "data") + Path.DirectorySeparatorChar, folder);
-            Assert.DoesNotContain(Path.Combine(root, "Mods") + Path.DirectorySeparatorChar, folder);
-        }
-
-        [Fact]
-        public void Redact_HidesEverySavedKey()
-        {
-            KeyStore.Set(Provider.OpenAI, "sk-proj-SECRET");
-            Assert.Equal("invalid key: ***", KeyStore.Redact("invalid key: sk-proj-SECRET"));
-        }
-
-        [Fact]
-        public void LogLines_NeverHoldTheKey()
-        {
-            KeyStore.Set(Provider.Anthropic, "sk-ant-LEAK");
-            Log.Warn("echo sk-ant-LEAK");
-            Assert.DoesNotContain("sk-ant-LEAK", TestEnv.Logs[0]);
-        }
-
-        [Fact]
-        public void UnreadableKeyFile_DoesNotLoopOrThrow()
-        {
-            Directory.CreateDirectory(TestEnv.KeyFolder);
-            // Another program holds the file open
-            using (new FileStream(Path.Combine(TestEnv.KeyFolder, "anthropic.key"), FileMode.Create, FileAccess.ReadWrite, FileShare.None))
-            {
-                Assert.Null(KeyStore.Get(Provider.Anthropic));
-            }
-            Assert.Single(TestEnv.Logs);
-        }
-
-        [Fact]
-        public void Scrub_MovesAKeyWrittenStraightIntoTheVariables()
-        {
-            variables.variable.Add(new variables._variable { name = Settings.ApiKeyVar, value = "sneaky-key" });
-            Assert.True(KeyStore.Scrub(variables.variable, Provider.Anthropic));
-            Assert.Equal("", variables.Get(Settings.ApiKeyVar));
-            Assert.Equal("sneaky-key", KeyStore.Get(Provider.Anthropic));
-            Assert.False(KeyStore.Scrub(variables.variable, Provider.Anthropic));
         }
 
         [Fact]

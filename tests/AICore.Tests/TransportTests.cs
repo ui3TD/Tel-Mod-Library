@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace AIFanChatter.Tests
+namespace AICore.Tests
 {
     /// <summary>
     /// The real transport against a one-reply server on this PC; nothing leaves the machine.

@@ -63,6 +63,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Worker Rights", "mods\Worke
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "StatLimits", "shared\StatLimits\StatLimits.shproj", "{3B6BB50B-6D78-4577-B976-A9452E1D8733}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "AICore", "shared\AICore\AICore.shproj", "{37F0E062-3BD3-4D0F-9DB1-9E29EC7E195A}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConcertRebalance.Tests", "tests\ConcertRebalance.Tests\ConcertRebalance.Tests.csproj", "{A1C544A1-4D8C-4629-BCDC-B8960781C239}"
@@ -116,6 +118,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AI Fan Chatter", "mods\AI Fan Chatter\AI Fan Chatter.csproj", "{FDE237CB-1076-47D9-B077-9FA09F151AFA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIFanChatter.Tests", "tests\AIFanChatter.Tests\AIFanChatter.Tests.csproj", "{E86968D4-7306-4A9C-ACE3-5B9413FEC6E3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AICore.Tests", "tests\AICore.Tests\AICore.Tests.csproj", "{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -738,6 +742,18 @@ Global
 		{E86968D4-7306-4A9C-ACE3-5B9413FEC6E3}.Release|x64.Build.0 = Release|Any CPU
 		{E86968D4-7306-4A9C-ACE3-5B9413FEC6E3}.Release|x86.ActiveCfg = Release|Any CPU
 		{E86968D4-7306-4A9C-ACE3-5B9413FEC6E3}.Release|x86.Build.0 = Release|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Debug|x64.Build.0 = Debug|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Debug|x86.Build.0 = Debug|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Release|x64.ActiveCfg = Release|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Release|x64.Build.0 = Release|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Release|x86.ActiveCfg = Release|Any CPU
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -768,13 +784,15 @@ Global
 		{174D3BC4-E4D4-4D8C-82B9-F4B3863B09AD} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{3DB77EDB-9540-4193-B595-D69775024CB4} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{E86968D4-7306-4A9C-ACE3-5B9413FEC6E3} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{0808EFF9-3B28-41FC-82D5-3266F67DFDD1} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {74832412-0B5B-4568-8EA3-0873D921E039}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		shared\AICore\AICore.projitems*{37f0e062-3bd3-4d0f-9db1-9e29ec7e195a}*SharedItemsImports = 13
+		shared\AICore\AICore.projitems*{fde237cb-1076-47d9-b077-9fa09f151afa}*SharedItemsImports = 5
 		shared\StatLimits\StatLimits.projitems*{3b6bb50b-6d78-4577-b976-a9452e1d8733}*SharedItemsImports = 13
-		shared\ModUtilities\ModUtilities.projitems*{75650718-ea26-44f4-ae2b-b79691042aaa}*SharedItemsImports = 13
 		shared\StatLimits\StatLimits.projitems*{82b025e3-6a48-488d-895e-10a036a0a476}*SharedItemsImports = 5
 		shared\StatLimits\StatLimits.projitems*{aa48e8b1-be6c-49e0-b357-da6d33f06833}*SharedItemsImports = 5
 		shared\StatLimits\StatLimits.projitems*{f5fbbb27-949a-41e3-acff-f7f6421f6627}*SharedItemsImports = 5

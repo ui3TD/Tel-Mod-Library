@@ -69,8 +69,8 @@ namespace InGameTests.TelMods
                 yield return Apply(ctx, row);
                 ctx.Assert(variables.Get(KeyVar) == "", "Apply saved the key in the save: " + (variables.Get(KeyVar) ?? "null"));
                 // The key file of the service the menu has selected
-                Type settings = mod.GetType("AIFanChatter.Settings", true);
-                string file = (string)AccessTools.Method(mod.GetType("AIFanChatter.KeyStore", true), "FileFor")
+                Type settings = mod.GetType("AICore.ConnectionSettings", true);
+                string file = (string)AccessTools.Method(mod.GetType("AICore.KeyStore", true), "FileFor")
                     .Invoke(null, new[] { AccessTools.Property(settings, "Provider").GetValue(null, null) });
                 ctx.Assert(File.Exists(file) && File.ReadAllText(file) == typed, "Apply didn't write the key file");
 
@@ -212,10 +212,11 @@ namespace InGameTests.TelMods
 
         /// <summary>
         /// Points the mod's key folder at a temp folder, so the player's own keys are never read or changed.
+        /// With it set, the mod looks in no old key folder either.
         /// </summary>
         private static IDisposable TempKeyFolder(Assembly mod, out string folder)
         {
-            Type store = mod.GetType("AIFanChatter.KeyStore", true);
+            Type store = mod.GetType("AICore.KeyStore", true);
             FieldInfo overrideField = AccessTools.Field(store, "FolderOverride");
             MethodInfo clear = AccessTools.Method(store, "ClearCache");
             object previous = overrideField.GetValue(null);

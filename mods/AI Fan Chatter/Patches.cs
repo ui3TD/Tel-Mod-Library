@@ -1,3 +1,4 @@
+using AICore;
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
@@ -211,14 +212,16 @@ namespace AIFanChatter
     }
 
     /// <summary>
-    /// Releases queued posts as the game clock runs, from the same tick the game's own systems use.
-    /// staticVars.SetTime isn't patched: it's a one-line setter the runtime may inline.
+    /// Moves keys saved before the shared key folder into it, from the main menu on. Releases queued
+    /// posts as the game clock runs, from the same tick the game's own systems use. staticVars.SetTime
+    /// isn't patched: it's a one-line setter the runtime may inline.
     /// </summary>
     [HarmonyPatch(typeof(mainScript), nameof(mainScript.Start))]
     public class mainScript_Start
     {
         public static void Postfix(mainScript __instance)
         {
+            KeyStore.MoveLegacyKeys();
             try
             {
                 if (!mainScript.IsMainMenu())

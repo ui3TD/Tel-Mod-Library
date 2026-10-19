@@ -5,12 +5,15 @@
 		<HarmonyID>com.tel.aifanchatter</HarmonyID>
 		<ModDescription>Fans post about your idols on social media, written by an AI service of your choice (Anthropic, OpenAI or any OpenAI-compatible service).</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.7.0</Version>
+		<Version>1.7.1</Version>
 		<WorkshopID>3821906838</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
 		<JSONLoadOrder>0</JSONLoadOrder>
 	</PropertyGroup>
+
+	<!--The AI service code shared by Tel's AI mods-->
+	<Import Project="..\..\shared\AICore\AICore.projitems" Label="Shared" />
 
 </Project>

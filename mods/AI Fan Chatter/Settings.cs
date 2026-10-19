@@ -1,127 +1,66 @@
+using AICore;
 using System;
-using System.Globalization;
 
 namespace AIFanChatter
 {
-    public enum Provider
-    {
-        Anthropic = 0,
-        OpenAI = 1,
-        Compatible = 2
-    }
-
     /// <summary>
     /// The mod's settings, saved by ModMenus in each save's variables. Without ModMenus nothing is saved
-    /// and the defaults apply, which leave the mod off. Every default matches modmenu.json.
+    /// and the defaults apply, which leave the mod off. Every default matches modmenu.json. The service's
+    /// settings are the shared AI code's, under this mod's prefix.
     /// </summary>
     public static class Settings
     {
-        public const string Prefix = "AIFanChatter_";
+        public const string Prefix = AIMod.SettingsPrefix;
         public const string EnabledVar = Prefix + "Enabled";
-        public const string ProviderVar = Prefix + "Provider";
-        public const string BaseUrlVar = Prefix + "BaseURL";
-        public const string ModelVar = Prefix + "Model";
-        public const string ApiKeyVar = Prefix + "APIKey";
+        public const string ProviderVar = ConnectionSettings.ProviderVar;
+        public const string BaseUrlVar = ConnectionSettings.BaseUrlVar;
+        public const string ModelVar = ConnectionSettings.ModelVar;
+        public const string ApiKeyVar = ConnectionSettings.ApiKeyVar;
         public const string PerWeekVar = Prefix + "PerWeek";
 
         public const bool DefaultEnabled = false;
-        public const Provider DefaultProvider = Provider.OpenAI;
+        public const Provider DefaultProvider = ConnectionSettings.DefaultProvider;
         public const int DefaultPerWeek = 2;
         public const int MaxPerWeek = 7;
 
         /// <summary>
         /// The model a blank Model setting uses on OpenAI, the default service.
         /// </summary>
-        public const string DefaultOpenAIModel = "gpt-6-luna";
+        public const string DefaultOpenAIModel = Providers.DefaultOpenAIModel;
 
         /// <summary>
         /// The model a blank Model setting uses on Anthropic. Other services need one typed in.
         /// </summary>
-        public const string DefaultAnthropicModel = "claude-haiku-5-5";
+        public const string DefaultAnthropicModel = Providers.DefaultAnthropicModel;
 
         /// <summary>
         /// Reads a saved setting; null when there is none. Tests replace it.
         /// </summary>
-        internal static Func<string, string> Read = variables.Get;
+        internal static Func<string, string> Read
+        {
+            get => ConnectionSettings.Read;
+            set => ConnectionSettings.Read = value;
+        }
 
         public static bool Enabled => ReadInt(EnabledVar, DefaultEnabled ? 1 : 0, 0, 1) != 0;
 
-        public static Provider Provider => (Provider)ReadInt(ProviderVar, (int)DefaultProvider, 0, 2);
+        public static Provider Provider => ConnectionSettings.Provider;
 
         public static int PerWeek => ReadInt(PerWeekVar, DefaultPerWeek, 0, MaxPerWeek);
 
-        public static string BaseUrl => (Read(BaseUrlVar) ?? "").Trim();
+        public static string BaseUrl => ConnectionSettings.BaseUrl;
 
-        public static string Model => (Read(ModelVar) ?? "").Trim();
+        public static string Model => ConnectionSettings.Model;
 
         /// <summary>
         /// A whole-number setting. ModMenus saves numbers as text with a dot decimal; anything missing,
         /// unreadable or out of range gives the default.
         /// </summary>
-        internal static int ReadInt(string varID, int def, int min, int max)
-        {
-            if (!double.TryParse(Read(varID), NumberStyles.Float, CultureInfo.InvariantCulture, out double value)
-                || double.IsNaN(value) || double.IsInfinity(value))
-            {
-                return def;
-            }
-            int whole = (int)Math.Floor(value);
-            return whole < min || whole > max ? def : whole;
-        }
+        internal static int ReadInt(string varID, int def, int min, int max) => ConnectionSettings.ReadInt(varID, def, min, max);
 
         /// <summary>
         /// Everything a request needs, read once so a request doesn't mix settings from before and after an Apply.
         /// </summary>
-        public static Connection Current()
-        {
-            Provider provider = Provider;
-            return new Connection
-            {
-                Provider = provider,
-                BaseUrl = BaseUrl,
-                Model = Model,
-                ApiKey = KeyStore.Get(provider)
-            };
-        }
-    }
-
-    public sealed class Connection
-    {
-        public Provider Provider;
-        public string BaseUrl = "";
-        public string Model = "";
-        public string ApiKey;
-
-        /// <summary>
-        /// The model the request names: the setting, or OpenAI's or Anthropic's default when it's blank.
-        /// </summary>
-        public string ResolvedModel => Model != "" ? Model
-            : Provider == Provider.OpenAI ? Settings.DefaultOpenAIModel
-            : Provider == Provider.Anthropic ? Settings.DefaultAnthropicModel
-            : "";
-
-        /// <summary>
-        /// The service as the player knows it: Anthropic, OpenAI, or for any other service its address
-        /// (openrouter.ai, localhost:11434), never the internal name.
-        /// </summary>
-        public string ServiceName
-        {
-            get
-            {
-                switch (Provider)
-                {
-                    case Provider.Anthropic:
-                        return "Anthropic";
-                    case Provider.OpenAI:
-                        return "OpenAI";
-                    default:
-                        return Uri.TryCreate((BaseUrl ?? "").Trim(), UriKind.Absolute, out Uri uri) && uri.Authority != ""
-                            ? uri.Authority
-                            : "your OpenAI-compatible service";
-                }
-            }
-        }
-
-        public string Describe() => ServiceName + " with " + (ResolvedModel != "" ? ResolvedModel : "no model");
+        public static Connection Current() => ConnectionSettings.Current();
     }
 }

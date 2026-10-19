@@ -1,3 +1,4 @@
+using AICore;
 using HarmonyLib;
 using SimpleJSON;
 using System;
@@ -46,8 +47,10 @@ namespace AIFanChatter.LiveReport
             }
 
             Log.Sink = message => Console.Error.WriteLine(message);
-            KeyStore.FolderOverride = KeyStore.FolderUnder(Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "LocalLow", "Glitch Pitch", "Idol Manager"));
+            string gameData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "LocalLow", "Glitch Pitch", "Idol Manager");
+            KeyStore.FolderOverride = KeyStore.FolderUnder(gameData);
+            // A key saved before the shared key folder moves over, as it does in the game
+            KeyStore.LegacyFolderOverride = KeyStore.LegacyFolderUnder(gameData);
             GameText.Load(gameDir, ModFolder());
             OutsideUnity.Patch();
 

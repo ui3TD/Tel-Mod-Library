@@ -3,7 +3,7 @@ using System;
 using System.Globalization;
 using System.Text;
 
-namespace AIFanChatter
+namespace AICore
 {
     /// <summary>
     /// Writes JSON text. The game's SimpleJSON can't: it quotes every number and doesn't escape control

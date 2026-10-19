@@ -13,3 +13,11 @@
    unit tests and `python tools/ai_fan_chatter_live_report.py --dry-run`; run the in-game tests when its
    patches, settings, key store, transport, feed queue or save code change.
 4. Run `python tools/check_repo.py` (changelog line, description, info.json values).
+
+## Shared code
+
+`shared/<Name>/` is compiled into every mod that imports its `.projitems`; each mod ships its own copy.
+`shared/AICore/` is the AI service code (providers, key store, request limits, transport) of Tel's AI
+mods, currently AI Fan Chatter. Each AI mod fills in `AIMod` (name, settings prefix, schema name) in a
+file of its own. After changing `shared/AICore/`, run `tests/AICore.Tests`, then the steps above for
+every AI mod; the key store and transport are covered by AI Fan Chatter's in-game tests.

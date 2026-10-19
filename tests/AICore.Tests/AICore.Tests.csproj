@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--The shared AI code on its own, with the test values in TestAIMod.cs-->
+		<Compile Include="..\..\shared\AICore\*.cs" LinkBase="AICore" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy these from the game's IM_Data\Managed folder-->
+		<!--Type-forwarding facade-->
+		<Reference Include="UnityEngine">
+			<HintPath>$(dllDir)\UnityEngine.dll</HintPath>
+		</Reference>
+		<!--mainScript's static fields need it to initialise-->
+		<Reference Include="UnityEngine.UnityWebRequestModule">
+			<HintPath>$(dllDir)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+		</Reference>
+		<!--staticVars' initializer loads Steamworks types-->
+		<Reference Include="Steamworks.NET">
+			<HintPath>$(dllDir)\Steamworks.NET.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

@@ -3,34 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace AIFanChatter
+namespace AICore
 {
-    public sealed class HttpRequestSpec
+    public enum Provider
     {
-        public string Url;
-        public readonly List<KeyValuePair<string, string>> Headers = new();
-        public string Body;
-
-        public string Header(string name)
-        {
-            foreach (KeyValuePair<string, string> header in Headers)
-            {
-                if (string.Equals(header.Key, name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return header.Value;
-                }
-            }
-            return null;
-        }
-    }
-
-    public sealed class HttpResult
-    {
-        /// <summary>The HTTP status, or 0 when no reply arrived.</summary>
-        public long Status;
-        public string Body = "";
-        /// <summary>Why no reply arrived (no connection, timeout, TLS); null when one did.</summary>
-        public string NetworkError;
+        Anthropic = 0,
+        OpenAI = 1,
+        Compatible = 2
     }
 
     public enum Failure
@@ -66,7 +45,17 @@ namespace AIFanChatter
         public const string AnthropicVersion = "2023-06-01";
 
         /// <summary>
-        /// Room for the posts, and for the reasoning that some models do first and count against the limit.
+        /// The model a blank Model setting uses on OpenAI, the default service.
+        /// </summary>
+        public const string DefaultOpenAIModel = "gpt-6-luna";
+
+        /// <summary>
+        /// The model a blank Model setting uses on Anthropic. Other services need one typed in.
+        /// </summary>
+        public const string DefaultAnthropicModel = "claude-haiku-5-5";
+
+        /// <summary>
+        /// Room for the reply, and for the reasoning that some models do first and count against the limit.
         /// </summary>
         public const int MaxOutputTokens = 4096;
 
@@ -176,7 +165,7 @@ namespace AIFanChatter
                     .Append(",\"").Append(limit).Append("\":").Append(Json.Number(maxTokens));
                 if (schema != null)
                 {
-                    body.Append(",\"response_format\":{\"type\":\"json_schema\",\"json_schema\":{\"name\":\"fan_posts\",\"strict\":true,\"schema\":")
+                    body.Append(",\"response_format\":{\"type\":\"json_schema\",\"json_schema\":{\"name\":").Append(Json.Quote(AIMod.SchemaName)).Append(",\"strict\":true,\"schema\":")
                         .Append(schema).Append("}}");
                 }
                 if (lowEffort)
@@ -223,7 +212,7 @@ namespace AIFanChatter
                 string stop = Json.Str(root, "stop_reason");
                 if (stop == "refusal")
                 {
-                    return ProviderReply.Fail(Failure.BadReply, "The model declined to write the posts.");
+                    return ProviderReply.Fail(Failure.BadReply, AIMod.RefusalText);
                 }
                 if (stop == "max_tokens")
                 {
@@ -265,7 +254,7 @@ namespace AIFanChatter
             string refusal = Json.Str(choice, "refusal");
             if (refusal != "" && refusal != "null")
             {
-                return ProviderReply.Fail(Failure.BadReply, "The model declined to write the posts.");
+                return ProviderReply.Fail(Failure.BadReply, AIMod.RefusalText);
             }
             string reply = Json.Str(choice, "content");
             // SimpleJSON reads a JSON null as the text "null"

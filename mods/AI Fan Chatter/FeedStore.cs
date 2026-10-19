@@ -1,3 +1,4 @@
+using AICore;
 using SimpleJSON;
 using System.Collections.Generic;
 using System.Text;

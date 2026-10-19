@@ -81,6 +81,7 @@ namespace AIFanChatter.LiveReport
             SEvent_Concerts.Concerts.Clear();
             SEvent_SSK.Elections.Clear();
             policies.Values.Clear();
+            Relationships.Cliques.Clear();
             resources.resource.Clear();
             resources.Fans.Clear();
             resources.fanOpinions.Clear();
@@ -136,6 +137,10 @@ namespace AIFanChatter.LiveReport
                 .Scandals(2);
             Idol(sister, "Tanaka", "Ruri", 17, new DateTime(2025, 3, 3), 11000, traits._trait._type.Amorous, 53, 50, 72, 40, 57, 31, 60, 46);
             Graduate = idols["Kaho"];
+            // Her clique, which the graduation names as her friends
+            Relationships._clique clique = new() { Leader = idols["Sora"] };
+            clique.Members.AddRange(new[] { idols["Sora"], Graduate, idols["Ruri"] });
+            Relationships.Cliques.Add(clique);
 
             Singles();
             Concerts();

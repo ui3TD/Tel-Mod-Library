@@ -119,7 +119,7 @@ The group and the agency, one fact per line:
 
 - the group's name, and the main group's name when it's a sister group;
 - the number of members, or for a graduation the members left after she graduated;
-- when the group was formed, how many singles it has released, and the three members with the most fans;
+- when the group was formed, how many singles it has released, and the three members with the most fans. For a graduation, the graduating idol's friends in the group (the other members of her clique) take the place of the three members with the most fans, and the line is left out when she wasn't in a clique;
 - the reputation from scandals, in words;
 - the concept, from the agency's policies;
 - the policies that matter to this kind of moment:

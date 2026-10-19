@@ -25,7 +25,19 @@ namespace AIFanChatter.Tests
             resources.fanOpinions.Clear();
             Language.Variables.Clear();
             policies.Values.Clear();
+            Relationships.Cliques.Clear();
             staticVars.dateTime = Today;
+        }
+
+        /// <summary>
+        /// A clique of these idols, the first its leader, registered with the game.
+        /// </summary>
+        public static Relationships._clique Clique(params data_girls.girls[] girls)
+        {
+            Relationships._clique clique = new() { Leader = girls[0] };
+            clique.Members.AddRange(girls);
+            Relationships.Cliques.Add(clique);
+            return clique;
         }
 
         /// <summary>

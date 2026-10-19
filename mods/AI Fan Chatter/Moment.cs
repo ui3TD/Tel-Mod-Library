@@ -310,8 +310,10 @@ namespace AIFanChatter
         /// group and the main group it belongs to. Null is the main group.
         /// </summary>
         /// <param name="graduation">The moment is a graduation, so the member count is after she left.</param>
+        /// <param name="friends">A graduate's clique, named in place of the most popular members.</param>
         /// <param name="rules">Adds the agency rules that matter to this kind of moment, after the concept.</param>
-        private static Moment Agency(Moment moment, Groups._group group, bool graduation = false, Func<Moment, Moment> rules = null)
+        private static Moment Agency(Moment moment, Groups._group group, bool graduation = false,
+            List<data_girls.girls> friends = null, Func<Moment, Moment> rules = null)
         {
             const string section = Moment.AgencySection;
             Groups._group main = MainGroup();
@@ -324,7 +326,9 @@ namespace AIFanChatter
                 // The group's totals, once here rather than in every idol's line
                 .AddTo(section, "Group formed", () => group != null ? History.Ago(group.Date_Created, Now) : "")
                 .AddTo(section, "Singles released by the group", () => Members.ReleasedSingles(group).Count)
-                .AddTo(section, "Most popular members", () => group == null ? ""
+                .AddTo(section, graduation ? "Friends in the group" : "Most popular members", () => graduation
+                    ? string.Join(", ", (friends ?? new List<data_girls.girls>()).Select(Name).ToArray())
+                    : group == null ? ""
                     : string.Join(", ", Members.ByFans(group.GetGirls(true)).Take(Members.MostPopular).Select(Name).ToArray()))
                 .AddTo(section, "Group reputation", () => Members.AgencyReputation(resources.GetScandalPointsTotal()))
                 .AddTo(section, "Group concept", AgencyRules.Concept);
@@ -375,7 +379,8 @@ namespace AIFanChatter
         }
 
         /// <param name="rankBefore">Her place by fans in her group before she left, taken before the game moved her fans.</param>
-        public static Moment Graduation(data_girls.girls girl, Members.Rank rankBefore)
+        /// <param name="friends">Her clique before she left, taken before the game took her out of it; null reads it now.</param>
+        public static Moment Graduation(data_girls.girls girl, Members.Rank rankBefore, List<data_girls.girls> friends = null)
         {
             Moment moment = new Moment("an idol graduated (left the group)")
                 .Add("Idol", () => Name(girl))
@@ -396,7 +401,7 @@ namespace AIFanChatter
             Groups._group group = GroupOf(() => girl.GetGroup());
             Members.Add(moment, new List<data_girls.girls> { girl }, Now, group, ranks);
             History.Graduation(moment, girl, data_girls.girl, Now);
-            return Agency(moment, group, graduation: true);
+            return Agency(moment, group, graduation: true, friends: friends ?? Members.Friends(girl));
         }
 
         /// <summary>

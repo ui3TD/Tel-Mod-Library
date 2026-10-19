@@ -148,28 +148,44 @@ namespace AIFanChatter
     [HarmonyPriority(Priority.Last)]
     public class data_girls_girls_Graduate
     {
-        /// <summary>
-        /// Her place by fans in her group before graduating: the game moves her fans to other idols as she leaves.
-        /// </summary>
-        public static void Prefix(data_girls.girls __instance, out Members.Rank __state)
+        public sealed class Before
         {
-            __state = null;
+            public Members.Rank Rank;
+            public List<data_girls.girls> Friends;
+        }
+
+        /// <summary>
+        /// Her place by fans in her group and her clique before graduating: the game moves her fans to other
+        /// idols and takes her out of her clique as she leaves.
+        /// </summary>
+        public static void Prefix(data_girls.girls __instance, out Before __state)
+        {
+            __state = new Before();
             try
             {
-                __state = Members.RankOf(__instance);
+                __state.Rank = Members.RankOf(__instance);
             }
             catch (Exception)
             {
                 // Her rank is left out
             }
+            try
+            {
+                __state.Friends = Members.Friends(__instance);
+            }
+            catch (Exception)
+            {
+                // Her friends are left out
+                __state.Friends = new List<data_girls.girls>();
+            }
         }
 
-        public static void Postfix(data_girls.girls __instance, Members.Rank __state, bool __runOriginal)
+        public static void Postfix(data_girls.girls __instance, Before __state, bool __runOriginal)
         {
             if (__runOriginal && __instance != null && __instance.status == data_girls._status.graduated
                 && Moments.FirstGraduationToday(staticVars.dateTime))
             {
-                Moments.Trigger(() => MomentContext.Graduation(__instance, __state));
+                Moments.Trigger(() => MomentContext.Graduation(__instance, __state.Rank, __state.Friends));
             }
         }
     }

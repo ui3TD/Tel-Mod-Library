@@ -304,6 +304,69 @@ namespace AIFanChatter.Tests
             Assert.DoesNotContain(moment.Facts, f => f.Key == "Her fans" || f.Key == "Her fame level" || f.Key == "Years in the group");
         }
 
+        /// <summary>
+        /// A graduate's clique replaces the most popular members, and is left out when she has none.
+        /// </summary>
+        [Fact]
+        public void Graduate_NamesHerFriends_InPlaceOfTheMostPopular()
+        {
+            data_girls.girls leaving = Idol("Leaving");
+            data_girls.girls a = Idol("A");
+            data_girls.girls b = Idol("B");
+            Group("Stars", Today.AddYears(-3), leaving, a, b, Idol("Popular", fans: 9000));
+            Clique(a, leaving, b);
+            leaving.Graduated(Today);
+
+            Moment moment = MomentContext.Graduation(leaving, null);
+            Assert.Equal("A, B", moment.Fact(Moment.AgencySection, "Friends in the group"));
+            Assert.Null(moment.Fact(Moment.AgencySection, "Most popular members"));
+        }
+
+        [Fact]
+        public void Graduate_WithoutAClique_LeavesFriendsOut()
+        {
+            data_girls.girls leaving = Idol("Leaving");
+            Group("Stars", Today.AddYears(-3), leaving, Idol("A"), Idol("B"));
+            Clique(Idol("C"), Idol("D"));
+            leaving.Graduated(Today);
+
+            Moment moment = MomentContext.Graduation(leaving, null);
+            Assert.Null(moment.Fact(Moment.AgencySection, "Friends in the group"));
+            Assert.Null(moment.Fact(Moment.AgencySection, "Most popular members"));
+        }
+
+        /// <summary>
+        /// The game takes her out of her clique as she graduates, so the patch reads it beforehand.
+        /// </summary>
+        [Fact]
+        public void Graduate_KeepsHerFriendsFromBeforeSheLeft()
+        {
+            data_girls.girls leaving = Idol("Leaving");
+            data_girls.girls a = Idol("A");
+            Group("Stars", Today.AddYears(-3), leaving, a);
+            Relationships._clique clique = Clique(leaving, a);
+
+            data_girls_girls_Graduate.Prefix(leaving, out data_girls_girls_Graduate.Before before);
+            clique.Members.Remove(leaving);
+            leaving.Graduated(Today);
+
+            Moment moment = MomentContext.Graduation(leaving, before.Rank, before.Friends);
+            Assert.Equal("A", moment.Fact(Moment.AgencySection, "Friends in the group"));
+        }
+
+        [Fact]
+        public void Single_StillNamesTheMostPopular_NotFriends()
+        {
+            data_girls.girls a = Idol("A", fans: 10);
+            data_girls.girls b = Idol("B", fans: 20);
+            Group("Stars", Today.AddYears(-3), a, b);
+            Clique(a, b);
+
+            Moment moment = MomentContext.Single(Single("Song", Today, 1, a));
+            Assert.Equal("B, A", moment.Fact(Moment.AgencySection, "Most popular members"));
+            Assert.Null(moment.Fact(Moment.AgencySection, "Friends in the group"));
+        }
+
         [Fact]
         public void Graduate_WithoutTrivia_LeavesItOut()
         {

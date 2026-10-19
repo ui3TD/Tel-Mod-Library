@@ -2,6 +2,10 @@
 	{
 		id: "MODMENU__BUTTON_LABEL",
 		text: "Mod Settings"
+	},
+	{
+		id: "MODMENU__NO_SETTINGS",
+		text: "No enabled mod has settings to show."
 	}
 
 ]

@@ -1,7 +1,7 @@
 [h1]REQUIRES: IM-HarmonyIntegration[/h1]
 Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
 
-ModMenus provides a UI menu to manage the settings of other mods.
+ModMenus provides a UI menu to manage the settings of other mods. Each mod gets its own tab, so you can go straight to its settings.
 
 Try one of these mods to see it in action:
 [list]
@@ -26,3 +26,4 @@ Format, examples and tips: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/ma
 - 2.2.0: Mod titles sit closer to their own settings, and rows are closer together.
 - 3.0.0: New password option for text fields: API keys and other secrets show as asterisks.
 - 3.1.0: Long setting labels wrap onto more lines instead of being cut off.
+- 4.0.0: Each mod's settings get their own tab, sorted A to Z; the menu fits every screen shape.

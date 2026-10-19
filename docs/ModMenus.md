@@ -23,6 +23,14 @@ The file is an array of UI elements, shown in order:
 
 Supported element types are text, sliders, checkboxes, dropdowns and text fields. Each one's `labelID` is the ID of a text entry defined in `JSON/Constants/constants.json`.
 
+## How your settings appear
+
+- Each enabled mod with a `modmenu.json` gets its own tab in the column on the left of the menu. Clicking the tab shows that mod's settings, under its name.
+- The tab shows your mod's `title` from `info.json` (or the text it names in `constants.json`). Tabs are in alphabetical order of these names.
+- A name too long for its tab is shown on two lines, ending in "…". The name at the top of your settings is always shown in full.
+- Apply saves every mod's settings, including those on tabs the player never opened. Cancel throws away every change.
+- The menu fits the player's screen. A mod that makes the game's popups narrower than about 600 units cuts off the right end of sliders.
+
 ## type: text
 
 ```json

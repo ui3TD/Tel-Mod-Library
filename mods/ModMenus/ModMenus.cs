@@ -9,6 +9,7 @@ using Michsky.UI.ModernUIPack;
 using System.Linq;
 using System.Collections.Generic;
 using System.Globalization;
+using UnityEngine.EventSystems;
 using static ModMenus.ModMenusUtils;
 
 namespace ModMenus
@@ -79,14 +80,14 @@ namespace ModMenus
         public const string APPLY_LABEL = "APPLY";
         public const string CANCEL_LABEL = "CANCEL";
 
+        public const string NO_SETTINGS_LABEL = "MODMENU__NO_SETTINGS";
+
         // Each row is as tall as what it draws, so the gaps between rows are all MENUITEM_SPACING.
         // A blank text row is MENUITEM_HEIGHT; a text row is as tall as its lines.
         public const int MENUITEM_HEIGHT = 40;
         public const int MENUITEM_SPACING = 10;
-        // A mod's title sits at the bottom of its row, close to its own settings and set apart from the
-        // mod above by TITLE_GAP. The first title has no gap: the panel's margin is above it.
+        // A mod's title is the first row of its page, as tall as its lines
         public const float TITLE_HEIGHT = 26;
-        public const float TITLE_GAP = 26;
         public const float LABEL_HEIGHT = 20;
         public const float CHECKBOX_HEIGHT = 22;
         public const float SLIDER_HEIGHT = 32;
@@ -97,6 +98,31 @@ namespace ModMenus
 
         public const float TEXT_SIZE = 15;
         public const float TITLE_SIZE = 20;
+
+        // The menu fits the popup, which covers the screen: the panel is as big as fits, up to the maximum,
+        // with Apply and Cancel under it, and the two are centred together (see LayoutFor).
+        public const float PANEL_MAX_WIDTH = 840;
+        public const float PANEL_MAX_HEIGHT = 640;
+        public const float POPUP_MARGIN_MIN = 8;
+        public const float POPUP_MARGIN_MAX = 24;
+        public const float BUTTON_GAP = 8;
+        public const float BUTTON_WIDTH = 184;
+        // Apply and Cancel sit this far either side of the panel's centre, as in the game's own popup
+        public const float BUTTON_SPREAD = 143;
+
+        // Inside the panel: the same margin on every side, and twice it between the tabs and the settings,
+        // with a line in the middle. Each column's scroll bar sits inside it, on its right.
+        public const float PANEL_MARGIN = 14;
+        public const float SCROLLBAR_WIDTH = 6;
+        public const float SCROLLBAR_GAP = 8;
+
+        // The tab column on the left, one tab per mod. A long name wraps onto TAB_MAX_LINES, then ends in "…".
+        public const float TAB_WIDTH = 200;
+        public const float TAB_MIN_WIDTH = 140;
+        public const int TAB_MAX_LINES = 2;
+        public const float TAB_PADDING = 6;
+        // Tabs touch, so a click anywhere down the column reaches one; their padding keeps the names apart
+        public const float TAB_SPACING = 0;
 
         public const string JSON_FILE = "modmenu.json";
         public const string JSON_DIR = "Mod Menu";
@@ -133,6 +159,11 @@ namespace ModMenus
         public const string SCROLLRECT_OBJ_NAME = "ScrollContainer";
         public const string VIEWPORT_OBJ_NAME = "Viewport";
         public const string DROPDOWN_LAYER_OBJ_NAME = "DropdownLayer";
+        public const string TABS_SCROLLRECT_OBJ_NAME = "ModMenuTabs";
+        public const string TAB_CONTAINER_OBJ_NAME = "TabContainer";
+        public const string TAB_OBJ_NAME = "ModMenuTab";
+        public const string PAGE_OBJ_NAME = "ModMenuPage";
+        public const string DIVIDER_OBJ_NAME = "ModMenuDivider";
 
         /// <summary>
         /// Returns true only after a gameplay scene is active and its game-only data exists.
@@ -523,11 +554,16 @@ namespace ModMenus
             applyButton.GetComponent<Button>().onClick.AddListener(panelModMenuManager.OnApply);
             cancelButton.GetComponent<Button>().onClick.AddListener(panelModMenuManager.OnCancel);
 
-            // Create Menu Scroll objects
-            GameObject menuContentContainer = GenerateScrollArea(panelTransform);
+            // The settings first, so they're still the panel's first scroll area; then the tabs on the left, and
+            // a line between them. Each page of settings is a child of the settings' container.
+            GameObject menuContentContainer = GenerateScrollArea(panelTransform, SCROLLRECT_OBJ_NAME, MENUCONTENT_OBJ_NAME, 0, true, out ScrollRect settingsScroll);
+            GameObject tabContainer = GenerateScrollArea(panelTransform, TABS_SCROLLRECT_OBJ_NAME, TAB_CONTAINER_OBJ_NAME, TAB_SPACING, false, out ScrollRect tabScroll);
+            GameObject divider = AddDivider(panelTransform);
+            panelModMenuManager.scroll = settingsScroll;
+            panelModMenuManager.tabScroll = tabScroll;
 
             // An open list stays where it is while the rows scroll under it, so scrolling closes it first
-            panelTransform.GetComponentInChildren<ScrollRect>(true).onValueChanged.AddListener(_ => panelModMenuManager.CloseDropdownLists());
+            settingsScroll.onValueChanged.AddListener(_ => panelModMenuManager.CloseDropdownLists());
 
             // An open dropdown's list moves here, the popup's last child, so it shows above every row and the
             // buttons and isn't cut off by the scroll area. It moves back into its row when it closes.
@@ -536,8 +572,33 @@ namespace ModMenus
             SetRectTransform(dropdownLayer.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             dropdownLayer.transform.SetAsLastSibling();
 
+            // The panel and buttons fit the screen whenever the menu opens or the screen changes size
+            ModMenuLayout layout = modMenuObj.AddComponent<ModMenuLayout>();
+            layout.panel = (RectTransform)panelTransform;
+            layout.apply = (RectTransform)applyButton.transform;
+            layout.cancel = (RectTransform)cancelButton.transform;
+            layout.buttonHeight = layout.apply.rect.height;
+            layout.tabColumn = (RectTransform)tabScroll.transform;
+            layout.settingsArea = (RectTransform)settingsScroll.transform;
+            layout.divider = (RectTransform)divider.transform;
+            layout.manager = panelModMenuManager;
+
             // Generate Menu Contents
-            AddMenuItems(menuContentContainer.transform, dropdownLayer.transform);
+            AddMenuItems(panelModMenuManager, menuContentContainer.transform, tabContainer.transform, dropdownLayer.transform);
+        }
+
+        /// <summary>
+        /// The line between the tabs and the settings: the menu's blue, faded. ModMenuLayout places it.
+        /// </summary>
+        private static GameObject AddDivider(Transform panel)
+        {
+            GameObject divider = new(DIVIDER_OBJ_NAME, typeof(RectTransform), typeof(Image));
+            divider.transform.SetParent(panel, false);
+            Image image = divider.GetComponent<Image>();
+            Color32 blue = mainScript.blue32;
+            image.color = new Color32(blue.r, blue.g, blue.b, 77);
+            image.raycastTarget = false;
+            return divider;
         }
 
         /// <summary>
@@ -569,111 +630,252 @@ namespace ModMenus
         }
 
         /// <summary>
-        /// Adds menu items to the mod menu based on JSON configuration files.
+        /// A mod with a menu: its settings, and the name its tab shows.
         /// </summary>
-        /// <param name="parentTransform">The parent transform to add menu items to.</param>
-        /// <param name="dropdownLayer">Where an open dropdown's list goes, above every row (see AddMenuDropdown).</param>
-        public static void AddMenuItems(Transform parentTransform, Transform dropdownLayer)
+        public class MenuSource
         {
+            public Mods._mod Mod;
+            public JSONArray Items;
+            public string Title;
+        }
 
+        /// <summary>
+        /// The enabled mods with a menu file that can be read, in tab order: by the name each tab shows,
+        /// ignoring case. Mods with the same name keep their load order.
+        /// </summary>
+        public static List<MenuSource> FindMenus()
+        {
             string relativePath = Path.Combine("JSON", JSON_DIR, JSON_FILE);
-            string filepath;
-
-            // Rows are added top to bottom, in load order and file order
-            bool firstTitle = true;
+            List<MenuSource> menus = new();
             foreach (Mods._mod mod in Mods._Mods)
             {
-                if (!mod.IsEnabled())
+                if (mod == null || !mod.IsEnabled())
                     continue;
 
-                filepath = Path.Combine(mod.Path, relativePath).Replace("\\", "/");
+                string filepath = Path.Combine(mod.Path, relativePath).Replace("\\", "/");
                 if (!File.Exists(filepath))
                     continue;
 
-                JSONArray jsonArray = ReadMenuFile(mod.Title, filepath);
-                if (jsonArray == null)
+                JSONArray items = ReadMenuFile(mod.Title, filepath);
+                if (items == null)
                     continue;
 
-                GameObject titleRow = AddMenuText(mod.Title, parentTransform, TITLE_SIZE, mainScript.black32, TextAlignmentOptions.Bottom);
-                ((RectTransform)titleRow.transform).sizeDelta = new Vector2(200, TITLE_HEIGHT + (firstTitle ? 0 : TITLE_GAP));
-                firstTitle = false;
+                menus.Add(new MenuSource { Mod = mod, Items = items, Title = ShownText(mod.Title).Trim() });
+            }
 
-                for (int i = 0; i < jsonArray.Count; i++)
+            // OrderBy keeps equal names in load order. Ordinal, so it sorts the same in every language.
+            return menus.OrderBy(menu => menu.Title, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>
+        /// A text ID's text in the player's language, or the ID as written if it isn't a constant.
+        /// </summary>
+        public static string ShownText(string textID)
+        {
+            return textID != null && Language.Data.TryGetValue(textID, out string text) ? text : textID ?? "";
+        }
+
+        /// <summary>
+        /// Builds the menu: a page of settings and a tab for each mod with a menu, then shows the tab the
+        /// player last used, or the first one.
+        /// </summary>
+        /// <param name="manager">The menu's manager, which switches pages when a tab is clicked.</param>
+        /// <param name="pageParent">Where the pages go: the settings' scroll area.</param>
+        /// <param name="tabParent">Where the tabs go: the tab column's scroll area.</param>
+        /// <param name="dropdownLayer">Where an open dropdown's list goes, above every row (see AddMenuDropdown).</param>
+        public static void AddMenuItems(ModMenuManager manager, Transform pageParent, Transform tabParent, Transform dropdownLayer)
+        {
+            manager.tabs = new List<ModMenuTab>();
+            manager.selected = null;
+
+            List<MenuSource> menus = FindMenus();
+            if (menus.Count == 0)
+            {
+                GameObject message = AddMenuText(NO_SETTINGS_LABEL, pageParent, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Center);
+                message.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                return;
+            }
+
+            List<string> modNames = new();
+            foreach (MenuSource menu in menus)
+            {
+                GameObject page = AddMenuPage(menu, pageParent, dropdownLayer);
+                manager.tabs.Add(AddMenuTab(menu, page, manager, tabParent));
+                modNames.Add(menu.Mod.ModName);
+            }
+
+            // Every page is built shown, as the menu's rows always were; only now are the others hidden
+            manager.ShowPage(manager.tabs[RememberedTab(modNames, ModMenuManager.lastModName)]);
+        }
+
+        /// <summary>
+        /// The tab to show: the one the player last used, or the first if that mod has no tab now.
+        /// </summary>
+        public static int RememberedTab(IList<string> modNames, string remembered)
+        {
+            for (int i = 0; i < modNames.Count; i++)
+            {
+                if (modNames[i] == remembered)
+                    return i;
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Adds a mod's page: its name, then its rows in file order.
+        /// </summary>
+        /// <param name="menu">The mod and its settings.</param>
+        /// <param name="pageParent">Where the page goes: the settings' scroll area.</param>
+        /// <param name="dropdownLayer">Where an open dropdown's list goes, above every row (see AddMenuDropdown).</param>
+        /// <returns>The page.</returns>
+        public static GameObject AddMenuPage(MenuSource menu, Transform pageParent, Transform dropdownLayer)
+        {
+            GameObject page = new(PAGE_OBJ_NAME + "_" + menu.Mod.ModName, typeof(RectTransform), typeof(VerticalLayoutGroup));
+            page.transform.SetParent(pageParent, false);
+            SetColumnLayout(page.GetComponent<VerticalLayoutGroup>(), MENUITEM_SPACING, false);
+            Transform parentTransform = page.transform;
+
+            // The whole name, however long: a tab may cut it short
+            GameObject titleRow = AddMenuText(menu.Mod.Title, parentTransform, TITLE_SIZE, mainScript.black32, TextAlignmentOptions.Bottom);
+            ((RectTransform)titleRow.transform).sizeDelta = new Vector2(200, TITLE_HEIGHT);
+            titleRow.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            JSONArray jsonArray = menu.Items;
+            for (int i = 0; i < jsonArray.Count; i++)
+            {
+                JSONNode item = jsonArray[i];
+                string type = item[JSON_FIELD_TYPE];
+                string label = item[JSON_FIELD_LABELID];
+
+                // Text without a label is a blank row, the documented way to add spacing.
+                // (The game's JSON parser drops empty strings, so an empty labelID reads as missing.)
+                if (string.IsNullOrEmpty(type) || (string.IsNullOrEmpty(label) && type != JSON_TYPE_TEXT) || item[JSON_FIELD_IGNORE].AsBool) continue;
+                string id;
+
+                switch (type)
                 {
-                    JSONNode item = jsonArray[i];
-                    string type = item[JSON_FIELD_TYPE];
-                    string label = item[JSON_FIELD_LABELID];
+                    case JSON_TYPE_TEXT:
+                        GameObject textRow = AddMenuText(label ?? "", parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
 
-                    // Text without a label is a blank row, the documented way to add spacing.
-                    // (The game's JSON parser drops empty strings, so an empty labelID reads as missing.)
-                    if (string.IsNullOrEmpty(type) || (string.IsNullOrEmpty(label) && type != JSON_TYPE_TEXT) || item[JSON_FIELD_IGNORE].AsBool) continue;
-                    string id;
+                        // As tall as its lines, so long text doesn't run into the next row. A blank one keeps its height: it's a spacer.
+                        if (!string.IsNullOrEmpty(label))
+                            textRow.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                        break;
 
-                    switch (type)
-                    {
-                        case JSON_TYPE_TEXT:
-                            GameObject textRow = AddMenuText(label ?? "", parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
+                    case JSON_TYPE_SLIDER:
+                        if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
+                            continue;
 
-                            // As tall as its lines, so long text doesn't run into the next row. A blank one keeps its height: it's a spacer.
-                            if (!string.IsNullOrEmpty(label))
-                                textRow.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                            break;
+                        id = item[JSON_FIELD_VARID];
+                        GetSliderRange(item, out float minValue, out float maxValue, out float defaultFloat);
 
-                        case JSON_TYPE_SLIDER:
-                            if (string.IsNullOrEmpty(item[JSON_FIELD_VARID])) 
-                                continue;
+                        AddMenuSlider(id, label, minValue, maxValue, defaultFloat, parentTransform);
+                        break;
 
-                            id = item[JSON_FIELD_VARID];
-                            GetSliderRange(item, out float minValue, out float maxValue, out float defaultFloat);
+                    case JSON_TYPE_CHECKBOX:
+                        if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
+                            continue;
 
-                            AddMenuSlider(id, label, minValue, maxValue, defaultFloat, parentTransform);
-                            break;
+                        id = item[JSON_FIELD_VARID];
+                        bool defaultBool = false;
+                        if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
+                        {
+                            defaultBool = item[JSON_FIELD_DEF].AsBool;
+                        }
 
-                        case JSON_TYPE_CHECKBOX:
-                            if (string.IsNullOrEmpty(item[JSON_FIELD_VARID])) 
-                                continue;
+                        AddMenuCheckbox(id, label, defaultBool, parentTransform);
+                        break;
 
-                            id = item[JSON_FIELD_VARID];
-                            bool defaultBool = false;
-                            if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
-                            {
-                                defaultBool = item[JSON_FIELD_DEF].AsBool;
-                            }
+                    case JSON_TYPE_DROPDOWN:
+                        if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]) || string.IsNullOrEmpty(item[JSON_FIELD_LIST].ToString()) || item[JSON_FIELD_LIST].AsArray == null)
+                            continue;
 
-                            AddMenuCheckbox(id, label, defaultBool, parentTransform);
-                            break;
+                        id = item[JSON_FIELD_VARID];
+                        int defaultSelect = 0;
+                        if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
+                        {
+                            defaultSelect = item[JSON_FIELD_DEF].AsInt;
+                        }
 
-                        case JSON_TYPE_DROPDOWN:
-                            if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]) || string.IsNullOrEmpty(item[JSON_FIELD_LIST].ToString()) || item[JSON_FIELD_LIST].AsArray == null) 
-                                continue;
+                        JSONArray jsonArrayItems = item[JSON_FIELD_LIST].AsArray;
+                        string[] itemList = new string[jsonArrayItems.Count];
+                        for (int j = 0; j < jsonArrayItems.Count; j++)
+                        {
+                            itemList[j] = jsonArrayItems[j];
+                        }
 
-                            id = item[JSON_FIELD_VARID];
-                            int defaultSelect = 0;
-                            if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
-                            {
-                                defaultSelect = item[JSON_FIELD_DEF].AsInt;
-                            }
+                        AddMenuDropdown(id, label, itemList, defaultSelect, parentTransform, dropdownLayer);
+                        break;
 
-                            JSONArray jsonArrayItems = item[JSON_FIELD_LIST].AsArray;
-                            string[] itemList = new string[jsonArrayItems.Count];
-                            for (int j = 0; j < jsonArrayItems.Count; j++)
-                            {
-                                itemList[j] = jsonArrayItems[j];
-                            }
+                    case JSON_TYPE_INPUT:
+                        if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
+                            continue;
 
-                            AddMenuDropdown(id, label, itemList, defaultSelect, parentTransform, dropdownLayer);
-                            break;
-
-                        case JSON_TYPE_INPUT:
-                            if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
-                                continue;
-
-                            id = item[JSON_FIELD_VARID];
-                            AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, item[JSON_FIELD_PASSWORD].AsBool, parentTransform);
-                            break;
-                    }
+                        id = item[JSON_FIELD_VARID];
+                        AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, item[JSON_FIELD_PASSWORD].AsBool, parentTransform);
+                        break;
                 }
             }
+
+            return page;
+        }
+
+        /// <summary>
+        /// Adds a mod's tab: its name, which wraps onto TAB_MAX_LINES and then ends in "…". Clicking it shows its page.
+        /// </summary>
+        /// <param name="menu">The mod.</param>
+        /// <param name="page">The mod's page, which the tab shows.</param>
+        /// <param name="manager">The menu's manager, which switches pages.</param>
+        /// <param name="tabParent">Where the tab goes: the tab column's scroll area.</param>
+        /// <returns>The tab.</returns>
+        public static ModMenuTab AddMenuTab(MenuSource menu, GameObject page, ModMenuManager manager, Transform tabParent)
+        {
+            GameObject tabObj = new(TAB_OBJ_NAME + "_" + menu.Mod.ModName, typeof(RectTransform), typeof(Image), typeof(Button));
+            tabObj.transform.SetParent(tabParent, false);
+            ((RectTransform)tabObj.transform).sizeDelta = new Vector2(TAB_WIDTH, LABEL_HEIGHT + 2 * TAB_PADDING);
+
+            // The name sits in the tab's padding and grows downwards as it wraps, making the tab taller
+            GameObject labelObj = AddMenuText(menu.Mod.Title, tabObj.transform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
+            SetRectTransform((RectTransform)labelObj.transform, Vector2.up, Vector2.one, new Vector2(TAB_PADDING, -TAB_PADDING - LABEL_HEIGHT), new Vector2(-TAB_PADDING, -TAB_PADDING), new Vector2(0.5f, 1));
+            TextMeshProUGUI label = labelObj.GetComponent<TextMeshProUGUI>();
+            AddLabelWrap(tabObj, label, null);
+            tabObj.GetComponent<LabelWrap>().maxLines = TAB_MAX_LINES;
+
+            ModMenuTab tab = tabObj.AddComponent<ModMenuTab>();
+            tab.modName = menu.Mod.ModName;
+            tab.page = page;
+            tab.manager = manager;
+            tab.image = tabObj.GetComponent<Image>();
+            tab.label = label;
+            tab.button = tabObj.GetComponent<Button>();
+            SetTabLooks(tab.button, label);
+
+            tab.button.onClick = new Button.ButtonClickedEvent();
+            tab.button.onClick.AddListener(tab.OnClick);
+            return tab;
+        }
+
+        /// <summary>
+        /// A tab takes clicks on its whole area, not on its name. It draws its own fill (see ModMenuTab.Render),
+        /// so the button doesn't tint it.
+        /// </summary>
+        private static void SetTabLooks(Button button, TextMeshProUGUI label)
+        {
+            label.raycastTarget = false;
+            button.transition = Selectable.Transition.None;
+        }
+
+        /// <summary>
+        /// Lays out a column: each child is the full width; its height is its own, or, if the column controls
+        /// it, its preferred height.
+        /// </summary>
+        private static void SetColumnLayout(VerticalLayoutGroup column, float spacing, bool controlChildHeight)
+        {
+            column.childControlWidth = true;
+            column.childForceExpandWidth = true;
+            column.childControlHeight = controlChildHeight;
+            column.childForceExpandHeight = false;
+            column.spacing = spacing;
         }
 
         /// <summary>
@@ -685,20 +887,9 @@ namespace ModMenus
             // This runs while a game is starting or loading, so nothing may escape into the game's own code
             try
             {
-                string relativePath = Path.Combine("JSON", JSON_DIR, JSON_FILE);
-                foreach (Mods._mod mod in Mods._Mods)
+                foreach (MenuSource menu in FindMenus())
                 {
-                    if (mod == null || !mod.IsEnabled())
-                        continue;
-
-                    string filepath = Path.Combine(mod.Path, relativePath).Replace("\\", "/");
-                    if (!File.Exists(filepath))
-                        continue;
-
-                    JSONArray settings = ReadMenuFile(mod.Title, filepath);
-                    if (settings == null)
-                        continue;
-
+                    JSONArray settings = menu.Items;
                     for (int i = 0; i < settings.Count; i++)
                     {
                         if (!TryGetDefault(settings[i], out string varID, out string value) || variables.Get(varID) != null)
@@ -888,6 +1079,9 @@ namespace ModMenus
             Slider modSliderSlider = modSlider.GetComponentInChildren<Slider>();
             modSliderSlider.onValueChanged = new Slider.SliderEvent();
             modSliderSlider.onValueChanged.AddListener(modSliderMenuItem.onUpdateSlider);
+            modSliderMenuItem.settingsSlider = modSliderSettingsSlider;
+            modSliderMenuItem.slider = modSliderSlider;
+            modSliderMenuItem.sliderText = modSliderSettingsSlider.Title.GetComponent<TextMeshProUGUI>();
 
             // Set slider size and pos. The game's slider is turned on its side, so its height runs across the row;
             // it starts at the row's left edge, under the label, like the other controls.
@@ -935,6 +1129,7 @@ namespace ModMenus
             modCheckboxMenuItem.varID = varID;
             modCheckboxMenuItem.defValue = savedValue ? 1 : 0;
             modCheckboxMenuItem.tempValue = savedValue ? 1 : 0;
+            modCheckboxMenuItem.checkboxText = modCheckboxCheck;
 
             // Configure checkbox button events
             Button modCheckBoxButton = modCheckbox.GetComponentInChildren<Button>();
@@ -995,6 +1190,12 @@ namespace ModMenus
             }
             modDropdownCustomDropdown.dropdownEvent = new CustomDropdown.DropdownEvent();
             modDropdownCustomDropdown.dropdownEvent.AddListener(modDropdown.GetComponent<ModMenuItem>().onUpdateDropdown);
+            modDropdownMenuItem.customDropdown = modDropdownCustomDropdown;
+
+            // The game's dropdown sets itself up again the first time its page shows, which may be long after the
+            // menu opened; it must keep the choice shown then, not load one of its own or run its choice's action
+            modDropdownCustomDropdown.saveSelected = false;
+            modDropdownCustomDropdown.invokeAtStart = false;
             modDropdownCustomDropdown.SetupDropdown();
 
             // The game's dropdown moves itself to listParent while open and back to its row when closed
@@ -1108,6 +1309,7 @@ namespace ModMenus
             }
             modInputField.onValueChanged = new TMP_InputField.OnChangeEvent();
             modInputField.onValueChanged.AddListener(modInputMenuItem.onUpdateInput);
+            modInputMenuItem.inputField = modInputField;
 
             AddLabelWrap(modInput, title.GetComponent<TextMeshProUGUI>(), null, (RectTransform)modField.transform);
 
@@ -1115,14 +1317,19 @@ namespace ModMenus
         }
 
         /// <summary>
-        /// Generates a scrollable area for the mod menu.
+        /// Generates a scrollable column for the mod menu: the settings, or the tabs. ModMenuLayout places it in the panel.
         /// </summary>
         /// <param name="parentTransform">The parent transform to add the scroll area to.</param>
+        /// <param name="name">The scroll area's name.</param>
+        /// <param name="contentName">The name of the container it scrolls.</param>
+        /// <param name="spacing">The gap between the container's children.</param>
+        /// <param name="controlChildHeight">Whether the container makes each child its preferred height, rather than leaving it its own.</param>
+        /// <param name="scrollRect">The scroll area.</param>
         /// <returns>The GameObject representing the content container of the scroll area.</returns>
-        public static GameObject GenerateScrollArea(Transform parentTransform)
+        public static GameObject GenerateScrollArea(Transform parentTransform, string name, string contentName, float spacing, bool controlChildHeight, out ScrollRect scrollRect)
         {
             // Create container to control layout
-            GameObject menuContentContainer = new(MENUCONTENT_OBJ_NAME, typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter), typeof(CanvasGroup));
+            GameObject menuContentContainer = new(contentName, typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter), typeof(CanvasGroup));
 
             // Set container alignment
             RectTransform menuContentRect = menuContentContainer.GetComponent<RectTransform>();
@@ -1132,13 +1339,8 @@ namespace ModMenus
             ContentSizeFitter menuContentFitter = menuContentContainer.GetComponent<ContentSizeFitter>();
             menuContentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             menuContentFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-            // One column, top to bottom: each row is the full width and its own height
-            VerticalLayoutGroup menuContentLayoutGroup = menuContentContainer.GetComponent<VerticalLayoutGroup>();
-            menuContentLayoutGroup.childControlWidth = true;
-            menuContentLayoutGroup.childForceExpandWidth = true;
-            menuContentLayoutGroup.childControlHeight = false;
-            menuContentLayoutGroup.childForceExpandHeight = false;
-            menuContentLayoutGroup.spacing = MENUITEM_SPACING;
+            // One column, top to bottom
+            SetColumnLayout(menuContentContainer.GetComponent<VerticalLayoutGroup>(), spacing, controlChildHeight);
 
             // Create the handle for the scrollbar
             GameObject vHandle = new(SCROLLHANDLE_OBJ_NAME, typeof(RectTransform), typeof(Image));
@@ -1155,14 +1357,9 @@ namespace ModMenus
             // Create the vertical scroll bar
             GameObject verticalScrollBar = new(SCROLLBAR_OBJ_NAME, typeof(RectTransform), typeof(Scrollbar));
 
-            // The menu keeps the same margin on every side of the panel, and the scroll bar sits inside the right one
-            const float margin = 14f;
-            const float scrollbarWidth = 6f;
-            const float scrollbarGap = 8f;
-
-            // Align vertical scroll bar
+            // Align vertical scroll bar: it sits inside the column, on its right
             RectTransform vScrollbarRect = verticalScrollBar.GetComponent<RectTransform>();
-            SetRectTransform(vScrollbarRect, Vector2.right, Vector2.one, new Vector2(-scrollbarWidth, 0), Vector2.zero);
+            SetRectTransform(vScrollbarRect, Vector2.right, Vector2.one, new Vector2(-SCROLLBAR_WIDTH, 0), Vector2.zero);
 
             // Set the Scrollbar properties
             Scrollbar vScrollbar = verticalScrollBar.GetComponent<Scrollbar>();
@@ -1175,11 +1372,11 @@ namespace ModMenus
             vScrollbar.handleRect = handleRect;
 
             // Create ScrollRect container and attach to panel
-            GameObject scrollContainer = new(SCROLLRECT_OBJ_NAME, typeof(RectTransform), typeof(ScrollRect));
+            GameObject scrollContainer = new(name, typeof(RectTransform), typeof(ScrollRect));
 
             // Set scrollRect object alignment
             RectTransform scrollRectTransform = scrollContainer.GetComponent<RectTransform>();
-            SetRectTransform(scrollRectTransform, Vector2.zero, Vector2.one, new Vector2(margin, margin), new Vector2(-margin, -margin));
+            SetRectTransform(scrollRectTransform, Vector2.zero, Vector2.one, new Vector2(PANEL_MARGIN, PANEL_MARGIN), new Vector2(-PANEL_MARGIN, -PANEL_MARGIN));
 
             // Create view area and attach to scrollrect container
             GameObject viewport = new(VIEWPORT_OBJ_NAME, typeof(RectTransform), typeof(Image), typeof(Mask));
@@ -1187,10 +1384,10 @@ namespace ModMenus
 
             // Set view area alignment
             RectTransform viewportTransform = viewport.GetComponent<RectTransform>();
-            SetRectTransform(viewportTransform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-scrollbarWidth - scrollbarGap, 0));
+            SetRectTransform(viewportTransform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-SCROLLBAR_WIDTH - SCROLLBAR_GAP, 0));
 
             // Configure the ScrollRect
-            ScrollRect scrollRect = scrollContainer.GetComponent<ScrollRect>();
+            scrollRect = scrollContainer.GetComponent<ScrollRect>();
             scrollRect.content = menuContentRect; // attach content
             scrollRect.viewport = viewportTransform; // attach viewport
             scrollRect.vertical = true;
@@ -1301,44 +1498,240 @@ namespace ModMenus
 
 
         /// <summary>
-        /// Manages the mod menu functionality.
+        /// Where the panel and the Apply and Cancel buttons go, in the popup's units, measured from its centre.
+        /// </summary>
+        public struct MenuLayout
+        {
+            public Rect Panel;
+            public Rect Apply;
+            public Rect Cancel;
+            public float TabWidth;
+        }
+
+        /// <summary>
+        /// Fits the menu to the popup, which covers the screen. The game's popups keep the screen 1024 wide, so
+        /// a wider screen gives a shorter popup. The panel is as big as fits, up to PANEL_MAX_WIDTH by
+        /// PANEL_MAX_HEIGHT, inside a margin that shrinks on short screens; Apply and Cancel sit under it, and the
+        /// two are centred together. The tab column is a quarter of the panel, between TAB_MIN_WIDTH and TAB_WIDTH.
+        /// </summary>
+        /// <param name="popupSize">The popup's size.</param>
+        /// <param name="buttonHeight">How tall Apply and Cancel are.</param>
+        public static MenuLayout LayoutFor(Vector2 popupSize, float buttonHeight)
+        {
+            float margin = Mathf.Clamp(0.04f * popupSize.y, POPUP_MARGIN_MIN, POPUP_MARGIN_MAX);
+            float width = Mathf.Max(0, Mathf.Min(PANEL_MAX_WIDTH, popupSize.x - 2 * margin));
+            float height = Mathf.Clamp(popupSize.y - 2 * margin - BUTTON_GAP - buttonHeight, 0, PANEL_MAX_HEIGHT);
+            float top = (height + BUTTON_GAP + buttonHeight) / 2;
+            float buttonsBottom = top - height - BUTTON_GAP - buttonHeight;
+
+            // On a panel too narrow for them, the buttons move in and then get narrower, staying under it
+            float buttonWidth = Mathf.Max(0, Mathf.Min(BUTTON_WIDTH, (width - BUTTON_GAP) / 2));
+            float spread = Mathf.Min(BUTTON_SPREAD, (width - buttonWidth) / 2);
+
+            return new MenuLayout
+            {
+                Panel = new Rect(-width / 2, top - height, width, height),
+                Apply = new Rect(spread - buttonWidth / 2, buttonsBottom, buttonWidth, buttonHeight),
+                Cancel = new Rect(-spread - buttonWidth / 2, buttonsBottom, buttonWidth, buttonHeight),
+                TabWidth = Mathf.Clamp(0.24f * width, TAB_MIN_WIDTH, TAB_WIDTH),
+            };
+        }
+
+        /// <summary>
+        /// How tall a label may be: as tall as its wrapped lines, or, with a limit, up to that many lines. A label
+        /// past the limit gets half a line more, so its last line fits whole and the next one doesn't; TextMeshPro
+        /// then ends the last line in "…".
+        /// </summary>
+        /// <param name="wrapped">The label's height, wrapped at its width.</param>
+        /// <param name="oneLine">The label's height on one line.</param>
+        /// <param name="maxLines">The most lines it shows, or 0 for no limit.</param>
+        public static float CappedLabelHeight(float wrapped, float oneLine, int maxLines)
+        {
+            if (maxLines <= 0)
+            {
+                return wrapped;
+            }
+            return Mathf.Min(wrapped, (maxLines + 0.5f) * oneLine);
+        }
+
+        /// <summary>
+        /// Where a scroll area must scroll to show a child whole, moving as little as it can.
+        /// </summary>
+        /// <param name="contentHeight">How tall the scrolled content is.</param>
+        /// <param name="viewHeight">How tall the visible area is.</param>
+        /// <param name="top">The child's top, down from the content's top.</param>
+        /// <param name="bottom">The child's bottom, down from the content's top.</param>
+        /// <param name="position">Where it's scrolled to now: 1 at the top, 0 at the bottom.</param>
+        /// <returns>Where to scroll to, in the same terms.</returns>
+        public static float ScrollPositionShowing(float contentHeight, float viewHeight, float top, float bottom, float position)
+        {
+            float scrollable = contentHeight - viewHeight;
+            if (scrollable <= 0)
+            {
+                return 1;
+            }
+            float offset = (1 - Mathf.Clamp01(position)) * scrollable;
+            if (top < offset)
+            {
+                offset = top;
+            }
+            else if (bottom > offset + viewHeight)
+            {
+                offset = bottom - viewHeight;
+            }
+            return 1 - Mathf.Clamp01(offset / scrollable);
+        }
+
+        /// <summary>
+        /// How far an open dropdown list must move up to stay on screen. The game's lists open below their box;
+        /// one that would run past the bottom goes above its box instead, the same gap away, if it fits there, and
+        /// otherwise moves up until its bottom is on screen. All values are heights on screen, bottom to top.
+        /// </summary>
+        /// <returns>How far to move the list up, or 0 if it fits where it is.</returns>
+        public static float ListShift(float listBottom, float listTop, float boxBottom, float boxTop, float screenBottom, float screenTop)
+        {
+            if (listBottom >= screenBottom)
+            {
+                return 0;
+            }
+            float above = boxTop + Mathf.Max(0, boxBottom - listTop) - listBottom;
+            return listTop + above <= screenTop ? above : screenBottom - listBottom;
+        }
+
+        /// <summary>
+        /// Manages the mod menu functionality: the tabs, the page shown, and Apply and Cancel.
         /// </summary>
         public class ModMenuManager : MonoBehaviour
         {
             /// <summary>
-            /// Called when the mod menu is enabled.
+            /// The mod whose tab the player last showed, so the menu reopens on it, even after the menu is
+            /// built again for another game.
+            /// </summary>
+            public static string lastModName;
+
+            public ScrollRect scroll;
+            public ScrollRect tabScroll;
+            public List<ModMenuTab> tabs;
+            public ModMenuTab selected;
+
+            /// <summary>
+            /// Frames to wait before scrolling the tabs to the one shown: tab names wrap in the first frames.
+            /// </summary>
+            private int framesToShowTab;
+
+            /// <summary>
+            /// Called when the mod menu is enabled. Every page shows the saved settings, whether or not
+            /// its tab is shown; what was changed and not applied is gone.
             /// </summary>
             public void OnEnable()
             {
-                Transform scrollContainer = gameObject.transform.Find("ScrollContainer");
-                if(scrollContainer != null)
+                // A list left open when the menu closed would sit where it was, apart from its row,
+                // after the menu reopens scrolled to the top
+                CloseDropdownLists();
+                foreach (ModMenuItem item in GetComponentsInChildren<ModMenuItem>(true))
                 {
-                    scrollContainer.GetComponent<ScrollRect>().verticalNormalizedPosition = 1;
+                    item.ShowSaved();
+                }
+                if (scroll != null)
+                {
+                    scroll.verticalNormalizedPosition = 1;
+                }
+                RenderTabs();
+                framesToShowTab = 2;
+            }
+
+            public void LateUpdate()
+            {
+                if (framesToShowTab <= 0 || --framesToShowTab > 0)
+                {
+                    return;
+                }
+                ScrollToTab(selected);
+            }
+
+            /// <summary>
+            /// Shows a tab's page and hides the others. Lists are closed first: an open list isn't in its page.
+            /// </summary>
+            public void ShowPage(ModMenuTab tab)
+            {
+                if (tab == null || tab == selected)
+                {
+                    return;
+                }
+                CloseDropdownLists();
+                foreach (ModMenuTab other in tabs)
+                {
+                    other.page.SetActive(other == tab);
+                }
+                selected = tab;
+                lastModName = tab.modName;
+                RenderTabs();
+                if (scroll != null)
+                {
+                    scroll.verticalNormalizedPosition = 1;
+                    scroll.StopMovement();
+                }
+            }
+
+            /// <summary>
+            /// Draws each tab as shown or not.
+            /// </summary>
+            public void RenderTabs()
+            {
+                if (tabs == null)
+                {
+                    return;
+                }
+                foreach (ModMenuTab tab in tabs)
+                {
+                    tab.Render(tab == selected);
+                }
+            }
+
+            /// <summary>
+            /// Scrolls the tab column so a tab shows whole.
+            /// </summary>
+            public void ScrollToTab(ModMenuTab tab)
+            {
+                if (tab == null || tabScroll == null || tabScroll.content == null || tabScroll.viewport == null)
+                {
+                    return;
+                }
+                RectTransform tabRect = (RectTransform)tab.transform;
+                float height = tabRect.rect.height;
+
+                // The column puts each tab's top-left corner at its place down the column
+                float top = -tabRect.anchoredPosition.y - height * (1 - tabRect.pivot.y);
+                tabScroll.verticalNormalizedPosition = ScrollPositionShowing(tabScroll.content.rect.height, tabScroll.viewport.rect.height, top, top + height, tabScroll.verticalNormalizedPosition);
+            }
+
+            /// <summary>
+            /// Closes every open dropdown list.
+            /// </summary>
+            public void CloseDropdownLists()
+            {
+                foreach (ModMenuItem item in GetComponentsInChildren<ModMenuItem>(true))
+                {
+                    item.CloseList();
                 }
             }
 
             /// <summary>
             /// Handles the cancel action for the mod menu.
             /// </summary>
-            public void CloseDropdownLists()
-            {
-                foreach (ModMenuItem item in GetComponentsInChildren<ModMenuItem>())
-                {
-                    item.CloseList();
-                }
-            }
-
             public void OnCancel()
             {
+                CloseDropdownLists();
                 PopupManager.Close_();
             }
 
             /// <summary>
-            /// Handles the apply action for the mod menu, saving all changes.
+            /// Handles the apply action for the mod menu, saving every setting on every page, shown or not.
             /// </summary>
             public void OnApply()
             {
-                foreach(ModMenuItem item in GetComponentsInChildren<ModMenuItem>())
+                CloseDropdownLists();
+                foreach(ModMenuItem item in GetComponentsInChildren<ModMenuItem>(true))
                 {
                     // Only text fields have text; the other items save their number
                     variables.Set(item.varID, item.tempText ?? FormatSetting(item.tempValue));
@@ -1349,30 +1742,143 @@ namespace ModMenus
         }
 
         /// <summary>
-        /// Represents a single item in the mod menu.
+        /// A mod's tab, in the column on the left. Clicking it shows the mod's page.
+        /// </summary>
+        public class ModMenuTab : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            public string modName;
+            public GameObject page;
+            public ModMenuManager manager;
+            public Image image;
+            public TextMeshProUGUI label;
+            public Button button;
+
+            /// <summary>Whether the pointer is over the tab.</summary>
+            public bool hovered;
+
+            /// <summary>Whether the tab's page is shown.</summary>
+            public bool shown;
+
+            public void OnClick()
+            {
+                manager.ShowPage(this);
+            }
+
+            public void OnPointerEnter(PointerEventData eventData)
+            {
+                hovered = true;
+                Render(shown);
+            }
+
+            public void OnPointerExit(PointerEventData eventData)
+            {
+                hovered = false;
+                Render(shown);
+            }
+
+            /// <summary>
+            /// The shown tab is green with white text, as the game's own tabs are. The others are blue text with
+            /// no fill, and a faint blue one while the pointer is over them.
+            /// </summary>
+            public void Render(bool selected)
+            {
+                shown = selected;
+                Color32 blue = mainScript.blue32;
+                image.color = selected ? mainScript.green32 : new Color32(blue.r, blue.g, blue.b, (byte)(hovered ? 38 : 0));
+                label.color = selected ? Color.white : (Color)blue;
+            }
+        }
+
+        /// <summary>
+        /// Fits the menu to the popup (see LayoutFor) when it opens and whenever the screen changes size.
+        /// </summary>
+        public class ModMenuLayout : MonoBehaviour
+        {
+            public RectTransform panel;
+            public RectTransform apply;
+            public RectTransform cancel;
+            public RectTransform tabColumn;
+            public RectTransform settingsArea;
+            public RectTransform divider;
+            public ModMenuManager manager;
+            public float buttonHeight;
+
+            private bool sizeChanged;
+
+            public void OnEnable()
+            {
+                Fit();
+            }
+
+            /// <summary>
+            /// Called while the canvas is being laid out, so the menu is fitted after it, in LateUpdate.
+            /// </summary>
+            public void OnRectTransformDimensionsChange()
+            {
+                sizeChanged = true;
+            }
+
+            public void LateUpdate()
+            {
+                if (!sizeChanged)
+                {
+                    return;
+                }
+                sizeChanged = false;
+                Fit();
+            }
+
+            /// <summary>
+            /// Places the panel, the buttons, and the tab column, line and settings inside the panel.
+            /// </summary>
+            public void Fit()
+            {
+                Vector2 size = ((RectTransform)transform).rect.size;
+                if (size.x <= 0 || size.y <= 0)
+                {
+                    return;
+                }
+                MenuLayout layout = LayoutFor(size, buttonHeight);
+                PlaceFromCentre(panel, layout.Panel);
+                PlaceFromCentre(apply, layout.Apply);
+                PlaceFromCentre(cancel, layout.Cancel);
+
+                float tabsRight = PANEL_MARGIN + layout.TabWidth;
+                float line = tabsRight + PANEL_MARGIN;
+                SetRectTransform(tabColumn, Vector2.zero, Vector2.up, new Vector2(PANEL_MARGIN, PANEL_MARGIN), new Vector2(tabsRight, -PANEL_MARGIN));
+                SetRectTransform(divider, Vector2.zero, Vector2.up, new Vector2(line, PANEL_MARGIN), new Vector2(line + 1, -PANEL_MARGIN));
+                SetRectTransform(settingsArea, Vector2.zero, Vector2.one, new Vector2(line + 1 + PANEL_MARGIN, PANEL_MARGIN), new Vector2(-PANEL_MARGIN, -PANEL_MARGIN));
+
+                // An open list would stay where its row was
+                if (manager != null)
+                {
+                    manager.CloseDropdownLists();
+                }
+            }
+
+            /// <summary>
+            /// Puts a rect where the layout says, measured from the popup's centre.
+            /// </summary>
+            private static void PlaceFromCentre(RectTransform rt, Rect place)
+            {
+                Vector2 centre = new(0.5f, 0.5f);
+                SetRectTransform(rt, centre, centre, Vector2.zero, Vector2.zero, centre);
+                rt.sizeDelta = place.size;
+                rt.anchoredPosition = place.center;
+            }
+        }
+
+        /// <summary>
+        /// Represents a single item in the mod menu. Its controls are set when it's built, as its page may be
+        /// hidden; nothing happens when its page shows, so changes not yet applied stay as they are.
         /// </summary>
         public class ModMenuItem : MonoBehaviour
         {
             /// <summary>
-            /// Initializes the ModMenuItem component.
+            /// Shows the saved setting, or the default if none is saved, and keeps it until it's changed.
+            /// Called for every item when the menu opens.
             /// </summary>
-            public void Awake()
-            {
-                settingsSlider = GetComponent<Settings_Slider>();
-                if(settingsSlider != null)
-                {
-                    slider = settingsSlider.Slider_Obj.GetComponent<Slider>();
-                    sliderText = settingsSlider.Title.GetComponent<TextMeshProUGUI>();
-                }
-                checkboxText = GetComponent<Checkbox_Text>();
-                customDropdown = GetComponentInChildren<CustomDropdown>();
-                inputField = GetComponentInChildren<TMP_InputField>();
-            }
-
-            /// <summary>
-            /// Called when the ModMenuItem is enabled.
-            /// </summary>
-            public void OnEnable()
+            public void ShowSaved()
             {
                 if (settingsSlider != null)
                 {
@@ -1385,15 +1891,122 @@ namespace ModMenus
                 }
                 if (customDropdown != null)
                 {
-                    // A list left open when the menu closed would sit where it was, apart from its row,
-                    // after the menu reopens scrolled to the top
-                    CloseList();
                     RenderDropdown();
                 }
                 if (inputField != null)
                 {
                     RenderInput();
                 }
+            }
+
+            /// <summary>
+            /// A dropdown's list that opens past the bottom of the screen moves up (see ListShift), and back when it closes.
+            /// It's moved every frame while open: the game's dropdown animates its list back into place each frame.
+            /// </summary>
+            public void LateUpdate()
+            {
+                if (customDropdown == null || (!customDropdown.isOn && !listMoved))
+                {
+                    return;
+                }
+                RectTransform list = ListOf(customDropdown);
+                RectTransform box = BoxOf(customDropdown);
+                if (list == null)
+                {
+                    return;
+                }
+
+                // What moves is what holds the list beside the box, so the list's shadow moves with it
+                RectTransform holder = list;
+                while (holder.parent != null && holder.parent != box.parent && holder.parent != customDropdown.transform)
+                {
+                    holder = (RectTransform)holder.parent;
+                }
+                if (holder.parent != box.parent)
+                {
+                    holder = list;
+                }
+
+                if (!customDropdown.isOn)
+                {
+                    holder.anchoredPosition = listPosition;
+                    PlaceBeside(false);
+                    listMoved = false;
+                    return;
+                }
+                if (!listMoved)
+                {
+                    listPosition = holder.anchoredPosition;
+                    beside = new List<RectTransform>();
+                    besidePositions = new List<Vector2>();
+                    foreach (Transform child in holder)
+                    {
+                        if (child != list && !list.IsChildOf(child) && child is RectTransform rect)
+                        {
+                            beside.Add(rect);
+                            besidePositions.Add(rect.anchoredPosition);
+                        }
+                    }
+                    listMoved = true;
+                }
+                RectTransform screen = customDropdown.listParent as RectTransform;
+                if (screen == null || holder.parent.lossyScale.y <= 0)
+                {
+                    return;
+                }
+                Rect listRect = WorldRect(list), boxRect = WorldRect(box), screenRect = WorldRect(screen);
+                float shift = ListShift(listRect.yMin, listRect.yMax, boxRect.yMin, boxRect.yMax, screenRect.yMin, screenRect.yMax);
+                if (shift > 0.5f)
+                {
+                    holder.anchoredPosition += new Vector2(0, shift / holder.parent.lossyScale.y);
+                }
+                PlaceBeside(listRect.center.y + Mathf.Max(0, shift) > boxRect.center.y);
+            }
+
+            /// <summary>
+            /// What's drawn beside the list, its shadow, is offset towards the box, which hides most of it. Above the
+            /// box the offset is turned round, so the shadow is hidden behind the box there too.
+            /// </summary>
+            private void PlaceBeside(bool above)
+            {
+                if (beside == null)
+                {
+                    return;
+                }
+                for (int i = 0; i < beside.Count; i++)
+                {
+                    if (beside[i] != null)
+                    {
+                        beside[i].anchoredPosition = above ? new Vector2(besidePositions[i].x, -besidePositions[i].y) : besidePositions[i];
+                    }
+                }
+            }
+
+            /// <summary>
+            /// The dropdown's list as drawn: the area its items scroll in.
+            /// </summary>
+            private static RectTransform ListOf(CustomDropdown dropdown)
+            {
+                if (dropdown.itemParent == null)
+                {
+                    return null;
+                }
+                return (dropdown.itemParent.parent as RectTransform) ?? (RectTransform)dropdown.itemParent;
+            }
+
+            /// <summary>
+            /// The dropdown's box as drawn: the part showing the choice, which is taller than the dropdown's own rect.
+            /// </summary>
+            private static RectTransform BoxOf(CustomDropdown dropdown)
+            {
+                return (dropdown.selectedText != null ? dropdown.selectedText.transform.parent as RectTransform : null) ?? (RectTransform)dropdown.transform;
+            }
+
+            private static Rect WorldRect(RectTransform rt)
+            {
+                Vector3[] corners = new Vector3[4];
+                rt.GetWorldCorners(corners);
+                return Rect.MinMaxRect(corners[0].x, corners[0].y, corners[2].x, corners[2].y);
             }
 
             /// <summary>
@@ -1447,7 +2060,12 @@ namespace ModMenus
                 int last = Mathf.Max(customDropdown.dropdownItems.Count - 1, 0);
                 int savedValue = Mathf.Clamp((int)Mathf.Floor(GetSavedFloat()), 0, last);
                 tempValue = savedValue;
+
+                // Without a click for every dropdown each time the menu opens
+                bool sounds = customDropdown.enableDropdownSounds;
+                customDropdown.enableDropdownSounds = false;
                 customDropdown.ChangeDropdownInfo(savedValue);
+                customDropdown.enableDropdownSounds = sounds;
             }
 
             /// <summary>
@@ -1532,12 +2150,21 @@ namespace ModMenus
             public string tempText;
             public string defText;
 
-            private Settings_Slider settingsSlider;
-            private Slider slider;
-            private TextMeshProUGUI sliderText;
-            private Checkbox_Text checkboxText;
-            private CustomDropdown customDropdown;
-            private TMP_InputField inputField;
+            /// <summary>
+            /// The item's controls, set when it's built; null for the controls it doesn't have.
+            /// </summary>
+            public Settings_Slider settingsSlider;
+            public Slider slider;
+            public TextMeshProUGUI sliderText;
+            public Checkbox_Text checkboxText;
+            public CustomDropdown customDropdown;
+            public TMP_InputField inputField;
+
+            /// <summary>Whether the open list was moved up, and where it was before.</summary>
+            private bool listMoved;
+            private Vector2 listPosition;
+            private List<RectTransform> beside;
+            private List<Vector2> besidePositions;
         }
 
         /// <summary>
@@ -1555,6 +2182,9 @@ namespace ModMenus
 
             /// <summary>The checkbox, beside the label; null for every other row.</summary>
             public RectTransform box;
+
+            /// <summary>The most lines the label shows, ending in "…", or 0 for no limit (see CappedLabelHeight).</summary>
+            public int maxLines;
 
             /// <summary>How much taller the row is than built, for the extra lines.</summary>
             public float Extra => extra;
@@ -1585,8 +2215,8 @@ namespace ModMenus
 
                 // Measured on the label's own text: the game's TextMeshPro shows whatever text it last measured.
                 // Unwrapped, the label is as tall as the lines it was written with.
-                float wrapped = label.GetPreferredValues(width, 0).y;
                 float unwrapped = label.GetPreferredValues(float.PositiveInfinity, 0).y;
+                float wrapped = CappedLabelHeight(label.GetPreferredValues(width, 0).y, unwrapped, maxLines);
                 float delta = Mathf.Max(0, wrapped - unwrapped) - extra;
                 if (Mathf.Abs(delta) < 0.5f)
                 {
@@ -1628,7 +2258,7 @@ namespace ModMenus
                     label.fontSize = TEXT_SIZE;
                 }
                 label.enableWordWrapping = true;
-                label.overflowMode = TextOverflowModes.Overflow;
+                label.overflowMode = maxLines > 0 ? TextOverflowModes.Ellipsis : TextOverflowModes.Overflow;
 
                 // The game's dropdown label is narrower than the row
                 RectTransform labelRect = label.rectTransform;

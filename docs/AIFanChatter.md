@@ -185,7 +185,7 @@ Rules:
 - Use plain text without emoji: the game can't show them.
 - Write in {language}.
 - Match each fan's tone to their opinion of the group: low is critical or disappointed, around 50% is mixed, high is enthusiastic.
-- Don't quote stats, but approximate sales and attendance numbers can be mentioned where it fits.
+- Don't quote stats or percentages, but approximate sales and attendance numbers can be mentioned where it fits.
 - Stamina and mental stamina aren't public: fans only notice signs, such as an idol looking tired. Scandals are public, and fans know about them.
 
 Reply with only this JSON and nothing else:

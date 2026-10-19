@@ -259,7 +259,7 @@ namespace AIFanChatter.Tests
             Assert.Contains("under 100 characters", prompt);
             Assert.Contains("- Write in Japanese.", prompt);
             Assert.Contains("- Match each fan's tone to their opinion of the group", prompt);
-            Assert.Contains("\n- Don't quote stats, but approximate sales and attendance numbers can be mentioned where it fits.\n", prompt);
+            Assert.Contains("\n- Don't quote stats or percentages, but approximate sales and attendance numbers can be mentioned where it fits.\n", prompt);
             Assert.True(Prompt.AsksForSeveralPosts());
             Assert.DoesNotContain("real people", prompt);
             foreach (string placeholder in new[] { "{min}", "{max}", "{replies}", "{length}", "{language}" })

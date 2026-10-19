@@ -11,7 +11,7 @@ Also recommended, for bugs this mod doesn't fully fix:
 - [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3760864574]Clinic Recovery Priority Fix[/url] by Cosmo
 
 [h3]Main changes[/h3]
-These fixes change how the game plays:
+These fixes change how the game plays. Each one makes the game work the way the developers most likely meant it to:
 - Theater shows use stamina.
 - World tour attendance depends on your fame, so big venues need high fame.
 - The Best Employer award can be lost, and expected salaries follow recent pay.

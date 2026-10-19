@@ -158,7 +158,7 @@ namespace AIFanChatter.Tests
             Moment moment = new("x");
             History.Concert(moment, current, SEvent_Concerts.Concerts, Today);
             // One line, without the concert's name: the game's names are the venue's
-            Assert.Equal("Concert Hall, attendance 90% (1350/1500), held 30 days ago", moment.Fact(H, "Previous concert"));
+            Assert.Equal("Concert Hall, attendance 1350 out of 1500 seats, held 30 days ago", moment.Fact(H, "Previous concert"));
             Assert.Equal(new[] { "Previous concert", "Concerts held before this one", "Biggest audience at an earlier concert" },
                 moment.Facts(H).Select(f => f.Key));
             Assert.Equal("2", moment.Fact(H, "Concerts held before this one"));
@@ -171,7 +171,7 @@ namespace AIFanChatter.Tests
             SEvent_Concerts._concert old = Concert("Old", Today.AddDays(-30), 500);
             old.Venue = SEvent_Concerts._venue.club;
             old.ProjectedValues.Actual_Attendance = 1f;
-            Assert.Equal("attendance 100% (500/500), held 30 days ago", History.ConcertSummary(old, Today));
+            Assert.Equal("attendance 500 out of 500 seats, held 30 days ago", History.ConcertSummary(old, Today));
         }
 
         /// <summary>

@@ -178,7 +178,7 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// "Concert Hall, attendance 100% (1500/1500), held 6 months ago"; without the venue when the game
+        /// "Concert Hall, attendance 1500 out of 1500 seats, held 6 months ago"; without the venue when the game
         /// has no name for it.
         /// </summary>
         public static string ConcertSummary(SEvent_Concerts._concert concert, DateTime now)

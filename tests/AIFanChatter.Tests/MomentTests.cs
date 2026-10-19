@@ -48,8 +48,8 @@ namespace AIFanChatter.Tests
 
             Moment moment = MomentContext.Concert(concert);
             Assert.Equal("199%", moment.Fact(Moment.FactsSection, "Hype"));
-            // The share of seats filled and the people who came, in one line
-            Assert.Equal("92% (15000/" + SEvent_Concerts.GetVenueCapacity(concert.Venue) + ")", moment.Fact(Moment.FactsSection, "Attendance"));
+            // The people who came out of the seats, without a percentage
+            Assert.Equal("15000 out of " + SEvent_Concerts.GetVenueCapacity(concert.Venue) + " seats", moment.Fact(Moment.FactsSection, "Attendance"));
             Assert.Equal("3000 yen", moment.Fact(Moment.FactsSection, "Ticket price"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Audience"));
             Assert.Null(moment.Fact(Moment.FactsSection, "Made a profit"));

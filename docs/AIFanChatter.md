@@ -102,7 +102,7 @@ The moment's own details, one per line.
   - its marketing: each promotion by the game's name for it, such as Group Handshake Event. The game rolls the outcome of a risky promotion (a campaign, a fake scandal or a daring PV), and that outcome follows its name in parentheses: success, great success, failure or major failure.
 - **A concert:**
   - its venue;
-  - its attendance, as the share of seats filled followed by the people who came out of the venue's capacity, such as `92% (9200/10000)`;
+  - its attendance, as the people who came out of the venue's seats, such as `9200 out of 10000 seats`;
   - its hype, as a percentage that can go up to 200%;
   - its ticket price;
   - its set list, in order, one item per line. Each song comes with its genre, lyrics, choreography and the idol at its center, and each talk break with its idols.
@@ -242,7 +242,7 @@ What the mod sent:
 The new event, which every post reacts to:
 Event: the group held a concert
 Venue: Open Air Stage
-Attendance: 92% (9200/10000)
+Attendance: 9200 out of 10000 seats
 Hype: 156%
 Ticket price: 4800 yen
 Set list, in order:
@@ -277,7 +277,7 @@ Kato Hikari: Trait: Shameless. Age 20. Sexiest in Aozora Chapter. A member of Ao
 Mori Sayaka: Trait: Perfectionist. A minor scandal in her past. Age 23. Smartest in the group. A member for 2 years, in 8 of the group's singles (center of 1).
 
 History, for context only (not what the posts are about):
-Previous concert: Concert Hall, attendance 100% (1500/1500), held 6 months ago
+Previous concert: Concert Hall, attendance 1500 out of 1500 seats, held 6 months ago
 Concerts held before this one: 4
 Biggest audience at an earlier concert: 7600
 

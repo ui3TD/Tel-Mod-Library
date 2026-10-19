@@ -451,14 +451,13 @@ namespace AIFanChatter
         };
 
         /// <summary>
-        /// The share of seats filled, then the people who came out of the venue's capacity: "92% (4600/5000)".
-        /// Without the capacity when the game can't give it.
+        /// The people who came out of the venue's seats, without a percentage: "4600 out of 5000 seats".
+        /// "4600 people" when the game can't give the capacity.
         /// </summary>
         public static string Attendance(SEvent_Concerts._concert concert)
         {
             string capacity = Part(() => concert.GetCapacity().ToString(CultureInfo.InvariantCulture));
-            return Math.Round(concert.ProjectedValues.Actual_Attendance * 100) + "% (" + concert.ProjectedValues.Actual_Audience
-                + (capacity == "" ? "" : "/" + capacity) + ")";
+            return concert.ProjectedValues.Actual_Audience + (capacity == "" ? " people" : " out of " + capacity + " seats");
         }
 
         /// <summary>The most singles a graduate's list of center singles holds.</summary>

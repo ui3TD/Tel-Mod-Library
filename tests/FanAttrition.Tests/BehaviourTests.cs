@@ -673,6 +673,114 @@ namespace FanAttrition.Tests
 
             Assert.Equal(100000 - 68, FansTotal());
         }
+
+        /// <summary>
+        /// A segment with this many fans and this opinion ratio (0 shows as -100, 1 as +100).
+        /// </summary>
+        private static resources._fan Segment(resources.fanType hardcoreness, long people, float ratio = 0.5f)
+        {
+            resources._fan fan = TestGame.Fans(resources.fanType.male, hardcoreness, resources.fanType.teen, people);
+            fan.Ratio = ratio;
+            return fan;
+        }
+
+        /// <summary>
+        /// Fixed in 2.0.0: the game's AddFans split a loss by opinion + appeal whatever a segment held, so the
+        /// part that landed on an empty segment was never taken. A hardcore-only idol now pays the whole loss.
+        /// </summary>
+        [Fact]
+        public void Segments_EmptyOnesDontDodgeTheLoss()
+        {
+            resources._fan hardcore = Segment(resources.fanType.hardcore, 1000);
+            resources._fan casual = Segment(resources.fanType.casual, 0);
+            data_girls.girls girl = TestGame.Idol(0.5f, hardcore, casual);
+
+            Assert.Equal(100, Utility.TakeFromSegments(girl, 100));
+            Assert.Equal(new long[] { 900, 0 }, new[] { hardcore.people, casual.people });
+        }
+
+        /// <summary>
+        /// At the same opinion, segments lose in proportion to their size.
+        /// </summary>
+        [Fact]
+        public void Segments_LoseBySize()
+        {
+            resources._fan big = Segment(resources.fanType.hardcore, 3000);
+            resources._fan small = Segment(resources.fanType.casual, 1000);
+
+            Utility.TakeFromSegments(TestGame.Idol(0.5f, big, small), 400);
+
+            Assert.Equal(new long[] { 2700, 900 }, new[] { big.people, small.people });
+        }
+
+        /// <summary>
+        /// Low opinion pulls a little more of the loss: -100 loses 1.25x, +100 0.75x. 200 from two segments of
+        /// 1,000 is 125 and 75.
+        /// </summary>
+        [Fact]
+        public void Segments_LowOpinionLosesMore()
+        {
+            resources._fan unhappy = Segment(resources.fanType.hardcore, 1000, ratio: 0f);
+            resources._fan happy = Segment(resources.fanType.casual, 1000, ratio: 1f);
+
+            Utility.TakeFromSegments(TestGame.Idol(0.5f, unhappy, happy), 200);
+
+            Assert.Equal(new long[] { 1000 - 125, 1000 - 75 }, new[] { unhappy.people, happy.people });
+        }
+
+        /// <summary>
+        /// The few fans rounding leaves are still taken: 10 from three equal segments is 3, 3 and 4.
+        /// </summary>
+        [Fact]
+        public void Segments_RoundingRemainderIsTaken()
+        {
+            resources._fan[] fans = { Segment(resources.fanType.hardcore, 1000), Segment(resources.fanType.casual, 1000), Segment(resources.fanType.casual, 1000) };
+
+            Assert.Equal(10, Utility.TakeFromSegments(TestGame.Idol(0.5f, fans), 10));
+            Assert.Equal(3000 - 10, fans.Sum(fan => fan.people));
+            Assert.All(fans, fan => Assert.InRange(fan.people, 996, 997));
+        }
+
+        /// <summary>
+        /// A segment that can't pay its share passes the rest on; an idol who runs out loses all she has.
+        /// </summary>
+        [Fact]
+        public void Segments_IdolWithTooFewFansLosesAll()
+        {
+            resources._fan hardcore = Segment(resources.fanType.hardcore, 30);
+            resources._fan casual = Segment(resources.fanType.casual, 20, ratio: 0f);
+
+            Assert.Equal(50, Utility.TakeFromSegments(TestGame.Idol(0.5f, hardcore, casual), 80));
+            Assert.Equal(new long[] { 0, 0 }, new[] { hardcore.people, casual.people });
+        }
+
+        /// <summary>
+        /// A segment with no opinion votes (ratio not a number) counts as neutral.
+        /// </summary>
+        [Fact]
+        public void Segments_NoVotesCountAsNeutral()
+        {
+            resources._fan unknown = Segment(resources.fanType.hardcore, 1000, ratio: float.NaN);
+            resources._fan neutral = Segment(resources.fanType.casual, 1000);
+
+            Utility.TakeFromSegments(TestGame.Idol(0.5f, unknown, neutral), 100);
+
+            Assert.Equal(new long[] { 950, 950 }, new[] { unknown.people, neutral.people });
+        }
+
+        /// <summary>
+        /// The day's churn goes through the segment split: an idol with an empty casual segment still pays all
+        /// of her share.
+        /// </summary>
+        [Fact]
+        public void Churn_TakesTheWholeLossFromSegments()
+        {
+            data_girls.girls girl = TestGame.Famous(TestGame.Idol(0.5f, Segment(resources.fanType.hardcore, 100000), Segment(resources.fanType.casual, 0)), 100f);
+
+            Utility.DailyFanChurn();
+
+            Assert.Equal(100000 - 68, Fans(girl));
+        }
     }
 
     /// <summary>

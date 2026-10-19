@@ -5,6 +5,8 @@ Completely revamps the game balance of fans and makes the game way more challeng
 
 You lose fans every day! You have to keep your groups active to grow. At 100k fans, you can expect a fan churn rate of 2% per month in Normal mode and 5% per month in Unfair mode unless you take measures to grow.
 
+Each idol loses fans in proportion to how many fans she has of each type. Fans with a low opinion of her are a little more likely to leave: a fan type at opinion -100 loses fans 1.25 times as fast, and one at +100 0.75 times as fast.
+
 Also comes with a makeover to the fan tooltip.
 
 Here are the rebalancing tweaks to give you more viable ways of attracting fans in the end-game:
@@ -32,3 +34,4 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 - 1.4.0: Loading another save no longer carries its fan churn over, and the fan tooltip is up to date.
 - 1.5.0: Daily fan churn is split across idols by fame instead of hitting one random idol.
 - 1.6.0: Every show relaunch now wears out at the same rate as the first, not faster each time.
+- 2.0.0: Fans are lost by fan type size and low opinion; empty fan types no longer skip the loss.

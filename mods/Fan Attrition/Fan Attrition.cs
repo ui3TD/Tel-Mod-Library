@@ -345,12 +345,13 @@ namespace FanAttrition
         }
 
         /// <summary>
-        /// Takes fans from the idols by their share of fame, the way the game hands out fan gains.
+        /// Takes fans from the idols by their share of fame, the way the game hands out fan gains, and from each
+        /// idol's fan groups by FanSplit.TakeFromSegments.
         /// </summary>
         /// <remarks>
         /// Not through resources.Add: the game's data_girls.AddFans checks for overshooting the total only the
-        /// way a gain can overshoot, so a loss lands entirely on one random idol. Each idol's own AddFans is
-        /// correct for any sign, with or without a fix to the game's method.
+        /// way a gain can overshoot, so a loss lands entirely on one random idol. Not through each idol's AddFans
+        /// either: it ignores how many fans a group has and skips the part that lands on a group with none.
         /// </remarks>
         /// <param name="loss">The number of fans lost, above 0.</param>
         public static void TakeFansByFame(long loss)
@@ -375,9 +376,10 @@ namespace FanAttrition
             {
                 float weight = equally ? 1f / idols.Count : idols[i].GetFamePoints() / fame;
                 long share = i == idols.Count - 1 ? loss - taken : Math.Min((long)Mathf.Round(loss * weight), loss - taken);
-                idols[i].AddFans(-share);
+                FanSplit.TakeFromSegments(idols[i], share);
                 taken += share;
             }
+            resources._OnFansChange();
         }
 
         /// <summary>

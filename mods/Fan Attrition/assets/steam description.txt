@@ -7,6 +7,11 @@ You lose fans every day! You have to keep your groups active to grow. At 100k fa
 
 Also comes with a makeover to the fan tooltip.
 
+[h3]Fan types follow your choices[/h3]
+- Each fan type loses fans in proportion to how many it has. Types that like your idols and that their stats suit lose fewer. Every type keeps some fans, and the mix of fan types settles over time.
+- New fans from singles and shows go more to the fan types that like your idols and that their stats suit.
+- Hardcore fans join more slowly than casual fans. An agency that targets no particular fans settles at about 40% hardcore.
+
 Here are the rebalancing tweaks to give you more viable ways of attracting fans in the end-game:
 
 [h3]Shows are worth it![/h3]
@@ -32,3 +37,4 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 - 1.4.0: Loading another save no longer carries its fan churn over, and the fan tooltip is up to date.
 - 1.5.0: Daily fan churn is split across idols by fame instead of hitting one random idol.
 - 1.6.0: Relaunches wear out at the first's rate. Re-released to undo 2.0.0's fan loss change.
+- 2.0.0: Fan types lose and gain fans by their size, opinion and appeal. Hardcore fans join slower.

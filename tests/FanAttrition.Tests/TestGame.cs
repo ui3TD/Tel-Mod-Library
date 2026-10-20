@@ -261,6 +261,7 @@ namespace FanAttrition.Tests
         {
             _ = Installed.Value;
             Range = (min, _) => min;
+            AddFansEquallyForReal = false;
             SenbatsuStats.Clear();
             ResourcesAdded.Clear();
             FansAddedEqually.Clear();
@@ -397,7 +398,25 @@ namespace FanAttrition.Tests
             return roll;
         }
 
-        private static void StubAddFansEqually(long total_fans, resources._fan _Fan, List<data_girls.girls> Girls) => FansAddedEqually.Add((_Fan, total_fans));
+        private static void StubAddFansEqually(long total_fans, resources._fan _Fan, List<data_girls.girls> Girls)
+        {
+            FansAddedEqually.Add((_Fan, total_fans));
+            if (!AddFansEquallyForReal || Girls == null || Girls.Count == 0 || total_fans < 1)
+                return;
+            // As the game: ceil(total / idols) of that fan group to each idol, the last one taking what's left
+            long each = (long)System.Math.Ceiling((double)total_fans / Girls.Count), given = 0;
+            foreach (data_girls.girls girl in Girls)
+            {
+                long share = System.Math.Min(each, total_fans - given);
+                girl.GetFan(_Fan.gender, _Fan.hardcoreness, _Fan.age)?.AddPeople(share);
+                given += share;
+            }
+        }
+
+        /// <summary>
+        /// When set, the AddFans_Equally stub also hands the fans out to the idols, as the game does.
+        /// </summary>
+        public static bool AddFansEquallyForReal;
         private static bool StubEquality(Object x, Object y) => ReferenceEquals(x, y);
         private static GameObject StubGameObject(Component component) => GameObjectOf(component);
         private static Transform StubTransform(object owner) => TransformOf(owner);

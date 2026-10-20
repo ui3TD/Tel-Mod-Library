@@ -1,3 +1,5 @@
+using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
@@ -286,6 +288,96 @@ namespace FanAttrition.Tests
         {
             public bool Equals(float a, float b) => System.Math.Abs(a - b) < 1e-5f;
             public int GetHashCode(float f) => 0;
+        }
+    }
+
+    /// <summary>
+    /// The new-fan patches on the game's own routines: a show episode (SetSales, which hands fans out through
+    /// AddFans_Equally) and a single (AddNewFans, which hands them out row by row). Each idol keeps what the game
+    /// gave her, re-split by her weight, with hardcore groups at 0.75.
+    /// </summary>
+    public class ReleaseSplitTests
+    {
+        private static readonly Lazy<bool> Patched = new(() =>
+        {
+            Harmony harmony = new("tests.FanAttrition.FanSplit");
+            harmony.CreateClassProcessor(typeof(Shows__show_SetSales_Split)).Patch();
+            harmony.CreateClassProcessor(typeof(singles_AddNewFans_Split)).Patch();
+            return true;
+        });
+
+        public ReleaseSplitTests()
+        {
+            TestGame.Reset();
+            _ = Patched.Value;
+        }
+
+        private static readonly resources._fan[] Groups =
+        {
+            TestGame.Fans(male, casual, teen, 0), TestGame.Fans(male, hardcore, teen, 0),
+        };
+
+        /// <summary>
+        /// An idol at stats of 50 with 1,000 fans in each group; her two groups weigh the same.
+        /// </summary>
+        private static data_girls.girls Idol() =>
+            TestGame.Famous(TestGame.Idol(0.5f, TestGame.Fans(male, casual, teen, 1000), TestGame.Fans(male, hardcore, teen, 1000)), 100f);
+
+        private static long[] People(data_girls.girls girl) => girl.Fans.Select(f => f.people).ToArray();
+
+        /// <summary>
+        /// A TV episode at fame 12 with 60,000 earlier fans has an audience of 30,000 per unit of appeal; both groups'
+        /// appeal sums to 1, so the game gives each group 30 new fans, 15 to each of the two cast idols. Re-split with
+        /// hardcore at 0.75: 30 x 15 / 26.25 = 17.1 and 12.9, so 17 casual and 13 hardcore.
+        /// </summary>
+        [Fact]
+        public void ShowEpisode_IsResplit_AndEachIdolKeepsHerTotal()
+        {
+            resources.resource[(int)resources.type.fame] = (long)resources.FameLevelToPoints(2);
+            resources.Fans.AddRange(Groups);
+            data_girls.girls a = Idol(), b = Idol();
+            Shows._show show = new()
+            {
+                medium = new Shows._param { media_type = Shows._param._media_type.tv },
+                castType = Shows._show._castType.rotatingCast,
+                episodeCount = 5,
+                girls = new[] { a, b, null },
+            };
+            show.fame.Add(10);
+            show.fans.Add(60000);
+            show.fatigue.Add(0f);
+            foreach ((resources.fanType type, float ratio) in new[] { (male, 0.5f), (casual, 0.25f), (hardcore, 0.25f), (teen, 0.25f) })
+                show.FanAppeal.Add(new singles._fanAppeal { type = type, ratio = ratio });
+            Seams.Range = (_, _) => 10;
+            Seams.AddFansEquallyForReal = true;
+
+            TestGame.CallPrivate(show, typeof(Shows._show), "SetSales");
+
+            Assert.Equal(new long[] { 30, 30 }, Seams.FansAddedEqually.Select(x => x.fans).ToArray());
+            Assert.Equal(new long[] { 1017, 1013 }, People(a));
+            Assert.Equal(new long[] { 1017, 1013 }, People(b));
+        }
+
+        /// <summary>
+        /// A single whose senbatsu is one idol in the first row and one in the second: the game gives each row half of
+        /// each group's 400 new fans, 200 per idol per group. Re-split with hardcore at 0.75: 400 x 200 / 350 = 228.6
+        /// and 171.4, so 229 casual and 171 hardcore.
+        /// </summary>
+        [Fact]
+        public void Single_IsResplit_AndEachIdolKeepsHerTotal()
+        {
+            data_girls.girls center = Idol(), second = Idol();
+            singles._single single = new();
+            single.girls.AddRange(new data_girls.girls[15]);
+            single.girls[0] = center;
+            single.girls[1] = second;
+            foreach (resources._fan group in Groups)
+                single.sales.Add(new singles._single._sales { fan = group, new_fans = 400 });
+
+            TestGame.CallPrivate(TestGame.Component<singles>(), typeof(singles), "AddNewFans", single);
+
+            Assert.Equal(new long[] { 1229, 1171 }, People(center));
+            Assert.Equal(new long[] { 1229, 1171 }, People(second));
         }
     }
 }

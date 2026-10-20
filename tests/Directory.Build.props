@@ -4,7 +4,9 @@
 	never deploys anything to the game's Mods folder.
 	-->
 	<PropertyGroup>
-		<dllDir>$(MSBuildThisFileDirectory)..\..\dll</dllDir>
+		<!--Game DLLs: the folder in the IDOL_MANAGER_GAME_DLLS environment variable when set, else IM-Modding\dll beside this repo.-->
+		<dllDir Condition="'$(IDOL_MANAGER_GAME_DLLS)' != ''">$(IDOL_MANAGER_GAME_DLLS)</dllDir>
+		<dllDir Condition="'$(dllDir)' == ''">$(MSBuildThisFileDirectory)..\..\dll</dllDir>
 		<LangVersion>latest</LangVersion>
 		<TargetFramework>net472</TargetFramework>
 		<IsPackable>false</IsPackable>

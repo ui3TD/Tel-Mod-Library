@@ -4,7 +4,9 @@
 		<ModOutputDirRelease>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDirRelease>
 		<ModOutputDirDebug>$(APPDATA)\..\LocalLow\Glitch Pitch\Idol Manager\Mods</ModOutputDirDebug>
 		<DeployToGame Condition="'$(DeployToGame)' == ''">true</DeployToGame>
-		<dllDir>$(MSBuildThisFileDirectory)..\dll</dllDir>
+		<!--Game DLLs: the folder in the IDOL_MANAGER_GAME_DLLS environment variable when set, else IM-Modding\dll beside this repo.-->
+		<dllDir Condition="'$(IDOL_MANAGER_GAME_DLLS)' != ''">$(IDOL_MANAGER_GAME_DLLS)</dllDir>
+		<dllDir Condition="'$(dllDir)' == ''">$(MSBuildThisFileDirectory)..\dll</dllDir>
 		<BeforeMicrosoftNETSdkTargets>$(BeforeMicrosoftNETSdkTargets);$(MSBuildThisFileDirectory)Mod.BeforeSdk.targets</BeforeMicrosoftNETSdkTargets>
 
 		<!--Other assembly info-->

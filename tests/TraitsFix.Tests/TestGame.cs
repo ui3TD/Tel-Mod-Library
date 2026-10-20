@@ -1,4 +1,4 @@
-using HarmonyLib;
+﻿using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -218,10 +218,33 @@ namespace TraitsFixTests
     public static class Seams
     {
         public static Func<float, bool> Chance;
+        public static Func<int, int> RandomIndex;
+
+        /// <summary>
+        /// The game's event manager, holding the events waiting to open. Null means none could be found.
+        /// </summary>
+        public static Event_Manager EventManager;
+
+        public static business Business;
+        public static long Liability;
+        public static readonly List<List<Event_Manager._activeEvent._actor>> ContractsBroken = new();
+        public static readonly List<(resources.type type, long val)> ResourcesAdded = new();
+        public static readonly List<(data_girls.girls girl, resources.fanType? type, float opinion, bool oshihen)> FansAdded = new();
+        public static readonly List<(data_girls.girls girl, resources.fanType type, float opinion)> AppealAdded = new();
+        public static readonly List<Achievements.ID> AchievementsUnlocked = new();
+        public static readonly List<(string text, data_girls.girls girl0, data_girls.girls girl1)> ResultsShown = new();
+
+        /// <summary>
+        /// The game's text the leak results use, filled with each key's own name.
+        /// </summary>
+        private static readonly string[] GameText =
+        {
+            "MENTAL_STAMINA", "PT", "SCANDAL_POINTS", "BIZ__LIABILITY", "FANS_OPINION", "FANS", "FANS__SWITCHED",
+            "FANS__ABANDONED", "FAN_HC", "FAN_C",
+        };
 
         public static readonly List<float> ChancesRolled = new();
         public static readonly List<(data_girls.girls girl, data_girls._paramType type, float val)> ParamsAdded = new();
-        public static readonly List<string> Notifications = new();
         public static readonly List<data_girls.girls> Deteriorated = new();
         public static readonly List<Shows._show._castType> CastTypesSet = new();
 
@@ -229,10 +252,29 @@ namespace TraitsFixTests
         {
             [AccessTools.Method(typeof(mainScript), nameof(mainScript.chance), new[] { typeof(int) })] = Stub(nameof(StubChanceInt)),
             [AccessTools.Method(typeof(mainScript), nameof(mainScript.chance), new[] { typeof(float) })] = Stub(nameof(StubChance)),
-            [AccessTools.Method(typeof(NotificationManager), nameof(NotificationManager.AddNotification), new[] { typeof(string), typeof(Color32), typeof(NotificationManager._notification._type) })] = Stub(nameof(StubNotification)),
             [AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.addParam))] = Stub(nameof(StubAddParam)),
             [AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.AgeDeterioration))] = Stub(nameof(StubAgeDeterioration)),
             [AccessTools.Method(typeof(Show_Popup), nameof(Show_Popup.SetCastType))] = Stub(nameof(StubSetCastType)),
+            [AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.RandomIndex))] = Stub(nameof(StubRandomIndex)),
+            [AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.GetEventManager))] = Stub(nameof(StubEventManager)),
+            [AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.GetBusiness))] = Stub(nameof(StubBusiness)),
+            [AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.ShowLeakResults))] = Stub(nameof(StubShowLeakResults)),
+        };
+
+        /// <summary>
+        /// Game methods stubbed only in the leak's answer, since other traits' tests check their real effect
+        /// (e.g. Misandry's appeal).
+        /// </summary>
+        private static readonly Dictionary<MethodBase, MethodInfo> LeakRedirects = new()
+        {
+            [AccessTools.Method(typeof(business), nameof(business.GetLiability), new[] { typeof(List<Event_Manager._activeEvent._actor>), typeof(List<data_dialogues._action>) })] = Stub(nameof(StubGetLiability)),
+            [AccessTools.Method(typeof(business), nameof(business.BreakContracts), new[] { typeof(List<Event_Manager._activeEvent._actor>) })] = Stub(nameof(StubBreakContracts)),
+            [AccessTools.Method(typeof(resources), nameof(resources.Add), new[] { typeof(resources.type), typeof(long) })] = Stub(nameof(StubResourceAdd)),
+            [AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.AddFans), new[] { typeof(resources.fanType?), typeof(float), typeof(bool) })] = Stub(nameof(StubAddFans)),
+            [AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.AddAppeal))] = Stub(nameof(StubAddAppeal)),
+            [AccessTools.Method(typeof(Achievements), nameof(Achievements.Unlock), new[] { typeof(Achievements.ID) })] = Stub(nameof(StubUnlock)),
+            // Fills in names and variables; it needs the game's random generator and player data
+            [AccessTools.Method(typeof(Event_Manager._activeEvent), nameof(Event_Manager._activeEvent.SwitchVariables))] = Stub(nameof(StubSwitchVariables)),
         };
 
         private static readonly MethodBase[] Patched =
@@ -240,6 +282,9 @@ namespace TraitsFixTests
             AccessTools.Method(typeof(Data_girls_AgeDeterioration), nameof(Data_girls_AgeDeterioration.Postfix)),
             AccessTools.Method(typeof(Data_girls_girls_UpdateDatingStatus), nameof(Data_girls_girls_UpdateDatingStatus.Postfix)),
             AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.TryLeakCouple)),
+            AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.FindIndiscreetLeaker)),
+            AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.StartLeakEvent)),
+            AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.IsInWaitingLeak)),
             AccessTools.Method(typeof(Show_Popup_SetParam), nameof(Show_Popup_SetParam.Postfix)),
             AccessTools.Method(typeof(Shows__show_SetStamina), nameof(Shows__show_SetStamina.Postfix)),
             AccessTools.Method(typeof(Singles_ReleaseSingle), nameof(Singles_ReleaseSingle.Postfix)),
@@ -251,34 +296,71 @@ namespace TraitsFixTests
             HarmonyMethod transpiler = new(typeof(Seams), nameof(Redirect));
             foreach (MethodBase method in Patched)
                 harmony.Patch(method, transpiler: transpiler);
+            HarmonyMethod leakTranspiler = new(typeof(Seams), nameof(RedirectLeak));
+            harmony.Patch(AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.ResolveLeak)), transpiler: leakTranspiler);
+            harmony.Patch(AccessTools.Method(typeof(TraitsFix), "LoseFans"), transpiler: leakTranspiler);
             return true;
         });
 
         /// <summary>
         /// Installs the stubs once per test run, clears what earlier tests recorded, and loads the mod's
-        /// notification text into the game's language table.
+        /// text and random events the way the game does.
         /// </summary>
         public static void Reset()
         {
             _ = Installed.Value;
             Chance = _ => false;
+            RandomIndex = _ => 0;
+            EventManager = TestGame.LiveComponent<Event_Manager>();
+            EventManager.activeEvents = new List<Event_Manager._activeEvent>();
+            variables.variable = new List<variables._variable>();
+            Business = TestGame.LiveComponent<business>();
+            Liability = 0;
+            ContractsBroken.Clear();
+            ResourcesAdded.Clear();
+            FansAdded.Clear();
+            AppealAdded.Clear();
+            AchievementsUnlocked.Clear();
+            ResultsShown.Clear();
+            foreach (string key in GameText)
+                Language.Data[key] = key;
+            Language.Data["ACTORS_FANS"] = "@'s fans";
             ChancesRolled.Clear();
             ParamsAdded.Clear();
-            Notifications.Clear();
             Deteriorated.Clear();
             CastTypesSet.Clear();
 
             SimpleJSON.JSONNode constants = TestGame.LoadJson("JSON/Constants/constants.json");
             for (int i = 0; i < constants.Count; i++)
                 Language.Data[constants[i]["id"]] = constants[i]["text"];
+
+            Event_Manager.RandomEvents = new List<Event_Manager._randomEvent>();
+            SimpleJSON.JSONNode events = TestGame.LoadJson("JSON/Events/random_events.json");
+            for (int i = 0; i < events.Count; i++)
+            {
+                Event_Manager._randomEvent randomEvent = new();
+                randomEvent.Set(events[i], "Traits Fix");
+                Event_Manager.RandomEvents.Add(randomEvent);
+            }
         }
 
-        private static IEnumerable<CodeInstruction> Redirect(IEnumerable<CodeInstruction> instructions)
+        /// <summary>
+        /// The leak events waiting to open, in the order they were queued.
+        /// </summary>
+        public static List<Event_Manager._activeEvent> Events => EventManager.activeEvents;
+
+        private static IEnumerable<CodeInstruction> Redirect(IEnumerable<CodeInstruction> instructions) =>
+            RedirectTo(instructions, Redirects);
+
+        private static IEnumerable<CodeInstruction> RedirectLeak(IEnumerable<CodeInstruction> instructions) =>
+            RedirectTo(RedirectTo(instructions, Redirects), LeakRedirects);
+
+        private static IEnumerable<CodeInstruction> RedirectTo(IEnumerable<CodeInstruction> instructions, Dictionary<MethodBase, MethodInfo> redirects)
         {
             foreach (CodeInstruction instruction in instructions)
             {
                 if ((instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt)
-                    && instruction.operand is MethodBase target && Redirects.TryGetValue(target, out MethodInfo stub))
+                    && instruction.operand is MethodBase target && redirects.TryGetValue(target, out MethodInfo stub))
                 {
                     instruction.opcode = OpCodes.Call;
                     instruction.operand = stub;
@@ -296,9 +378,19 @@ namespace TraitsFixTests
         }
 
         private static bool StubChanceInt(int num) => StubChance(num);
-        private static void StubNotification(string text, Color32 color, NotificationManager._notification._type type) => Notifications.Add(text);
         private static void StubAddParam(data_girls.girls girl, data_girls._paramType type, float val, bool ignorePotential) => ParamsAdded.Add((girl, type, val));
         private static void StubAgeDeterioration(data_girls.girls girl) => Deteriorated.Add(girl);
         private static void StubSetCastType(Show_Popup popup, Shows._show._castType type) => CastTypesSet.Add(type);
+        private static int StubRandomIndex(int count) => RandomIndex(count);
+        private static Event_Manager StubEventManager() => EventManager;
+        private static business StubBusiness() => Business;
+        private static void StubShowLeakResults(string text, data_girls.girls girl0, data_girls.girls girl1) => ResultsShown.Add((text, girl0, girl1));
+        private static long StubGetLiability(business b, List<Event_Manager._activeEvent._actor> actors, List<data_dialogues._action> actions) => Liability;
+        private static void StubBreakContracts(business b, List<Event_Manager._activeEvent._actor> actors) => ContractsBroken.Add(actors);
+        private static void StubResourceAdd(resources.type type, long val) => ResourcesAdded.Add((type, val));
+        private static void StubAddFans(data_girls.girls girl, resources.fanType? type, float val, bool oshihen) => FansAdded.Add((girl, type, val, oshihen));
+        private static void StubAddAppeal(data_girls.girls girl, resources.fanType type, float val) => AppealAdded.Add((girl, type, val));
+        private static void StubUnlock(Achievements.ID id) => AchievementsUnlocked.Add(id);
+        private static string StubSwitchVariables(Event_Manager._activeEvent activeEvent, string text) => "{" + text + "}";
     }
 }

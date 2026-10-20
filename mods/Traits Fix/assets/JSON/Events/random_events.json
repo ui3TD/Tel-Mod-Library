@@ -1,0 +1,597 @@
+[
+    {
+        "id": "traitsfix_indiscreet_bf_1",
+        "title": "",
+        "description": "[traitsfix_indiscreet_bf_1_culprit] was supposed to be promoting the new single in her magazine interview. Instead, when the reporter asked what the members do on their days off, she lit up and announced that [actor_0] \"has the cutest boyfriend, he takes her out for ramen every Friday!\" She even pulled up a photo to prove it. The reporter's pen never stopped moving, and that Friday a photographer was waiting outside the ramen shop.",
+        "image": "indiscreet_bf_1.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Ask the magazine to drop the story",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Have a word with [traitsfix_indiscreet_bf_1_culprit] about interviews",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_bf_2",
+        "title": "",
+        "description": "Streaming from home for the group's official channel, [traitsfix_indiscreet_bf_2_culprit] wanted to show viewers a photo of her new hair clip. She scrolled one photo too far and held up a selfie of [actor_0] on a beach date with her boyfriend, smiling into the camera for a full ten seconds before the chat's screaming caught her eye. By the time the stream ended, the screenshots had been shared thousands of times.",
+        "image": "indiscreet_bf_2.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Have the stream archive deleted",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Have [traitsfix_indiscreet_bf_2_culprit] sit out the next stream",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_bf_3",
+        "title": "",
+        "description": "Halfway through a long meet-and-greet, [traitsfix_indiscreet_bf_3_culprit] decided to make small talk with one of her regulars. \"[actor_0] had to leave early today,\" she whispered behind her hand, \"she has a date with her boyfriend!\" She meant it as a fun little secret between friends. His post about it was trending before the event even ended.",
+        "image": "indiscreet_bf_3.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Ask the fan to take his post down",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Remind [traitsfix_indiscreet_bf_3_culprit] that fans talk",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_bf_4",
+        "title": "",
+        "description": "[traitsfix_indiscreet_bf_4_culprit] volunteered to put together the photo slideshow for tonight's concert and spent all week on it. Between the rehearsal shots and the backstage selfies, she added [actor_0]'s beach holiday, because it was \"such a sweet memory\". She forgot that her boyfriend was in half the photos. The whole arena saw them on the giant screen, and the fan cams caught every second.",
+        "image": "indiscreet_bf_4.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Claim they were old family photos",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Pull the slideshow from the rest of the shows",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_bf_5",
+        "title": "",
+        "description": "On a live variety panel, the host joked about rumors that [actor_0] had been seen out with a man. [traitsfix_indiscreet_bf_5_culprit] leapt in to defend her teammate: \"That's ridiculous! She's definitely NOT dating the guy from the ramen shop!\" The studio went silent. The host thanked her warmly for the clarification, and by morning the ramen shop had a line around the block.",
+        "image": "indiscreet_bf_5.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Ask the network to cut the clip",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Book [traitsfix_indiscreet_bf_5_culprit] some media training",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_gf_1",
+        "title": "",
+        "description": "[traitsfix_indiscreet_gf_1_culprit] stopped by a café between schedules and spotted [actor_0] at a corner table, holding hands with a woman over a giant strawberry parfait. Delighted, she jumped up, waved and shouted across the room: \"[actor_0]! Is this your girlfriend?!\" Half the café turned to look, and several customers quietly took out their phones.",
+        "image": "indiscreet_gf_1.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Ask the café to keep it quiet",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Tell [traitsfix_indiscreet_gf_1_culprit] to send a message next time",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_gf_2",
+        "title": "",
+        "description": "After a cozy night in with the members, [traitsfix_indiscreet_gf_2_culprit] posted a group selfie on the group's official account, captioned \"best girls' night ever!\" Nobody checked the background, where [actor_0] was curled up on the sofa holding hands with her girlfriend. Fans zoomed in within minutes, and the theories were all confirmed by breakfast.",
+        "image": "indiscreet_gf_2.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Have [traitsfix_indiscreet_gf_2_culprit] delete the post",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Ask fans not to share the photo",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_gf_3",
+        "title": "",
+        "description": "Live on a morning radio show, the DJ asked [traitsfix_indiscreet_gf_3_culprit] what the members get up to on their days off. \"Oh, [actor_0] always spends Sundays at her girlfriend's place,\" she answered cheerfully, then froze. She clapped both hands over her mouth just as the DJ leaned in and asked, \"Sorry, could you repeat that?\"",
+        "image": "indiscreet_gf_3.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Ask the station to cut it from the archive",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Keep [traitsfix_indiscreet_gf_3_culprit] off live radio for a while",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_gf_4",
+        "title": "",
+        "description": "Between takes at a photo shoot, [traitsfix_indiscreet_gf_4_culprit] noticed the slim silver ring on [actor_0]'s finger. \"Wait, that's the same ring your girlfriend was wearing when she picked you up yesterday!\" she announced to the entire studio. The photographers, the stylists and a visiting magazine editor all went quiet. Somebody dropped a reflector.",
+        "image": "indiscreet_gf_4.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Ask the crew to keep it to themselves",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Have a talk with [traitsfix_indiscreet_gf_4_culprit]",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_gf_5",
+        "title": "",
+        "description": "[traitsfix_indiscreet_gf_5_culprit] took [actor_0] and her girlfriend to a baseball game as a treat. When the stadium's couple cam started roaming the stands, she waved both arms wildly, desperate to get herself on the big screen. It worked. The camera found her, and right beside her, [actor_0] holding hands with her girlfriend inside a giant pink heart, for forty thousand people to see.",
+        "image": "indiscreet_gf_5.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Ask the stadium for the footage",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Have [traitsfix_indiscreet_gf_5_culprit] apologize to [actor_0]",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_idols_1",
+        "title": "",
+        "description": "Still awake at 2 a.m., [traitsfix_indiscreet_idols_1_culprit] heard the dorm's front door creak open and peeked out of her room to see [actor_0] and [actor_1] tiptoeing down the corridor hand in hand, carrying their shoes. Thrilled, she typed up the whole story with three heart emojis and hit send. It went to the group's official fan club chat instead of the members-only one.",
+        "image": "indiscreet_idols_1.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            },
+            {
+                "name": "@actor_1@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Have [traitsfix_indiscreet_idols_1_culprit] delete the message",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Have [traitsfix_indiscreet_idols_1_culprit] post a correction",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_idols_2",
+        "title": "",
+        "description": "[traitsfix_indiscreet_idols_2_culprit] posted a cheerful backstage selfie on the group's official account before the show, peace sign and all. She didn't notice what was behind her: [actor_0] asleep on [actor_1]'s shoulder on the bench, their fingers laced together. Fans zoomed in on the background within minutes, and the photo has since been shared far more than anything the group has ever posted on purpose.",
+        "image": "indiscreet_idols_2.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            },
+            {
+                "name": "@actor_1@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Have [traitsfix_indiscreet_idols_2_culprit] take the photo down",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Crop the background and repost it",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_idols_3",
+        "title": "",
+        "description": "In a variety show's \"Who's dating?\" corner, the host asked the members to guess which celebrity couple was secretly together. [traitsfix_indiscreet_idols_3_culprit] slammed the buzzer before the question was even finished and shouted \"[actor_0] and [actor_1]!\", thinking it was the funniest answer she could give. The two of them turned bright red. Neither denied it fast enough, and the editors kept every second.",
+        "image": "indiscreet_idols_3.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            },
+            {
+                "name": "@actor_1@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Ask the producers to cut the segment",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Tell [traitsfix_indiscreet_idols_3_culprit] that not everything is a joke",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_idols_4",
+        "title": "",
+        "description": "At a fan meeting, [traitsfix_indiscreet_idols_4_culprit] reached into her bag for the fan she had made for the occasion and proudly held it up for the crowd. It was the wrong one: the one she had decorated at home with a big pink heart around photos of [actor_0] and [actor_1]. She realized a second too late. The front rows had already taken their pictures.",
+        "image": "indiscreet_idols_4.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            },
+            {
+                "name": "@actor_1@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Say the fan was a gift from a fan",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Confiscate [traitsfix_indiscreet_idols_4_culprit]'s craft supplies",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    },
+    {
+        "id": "traitsfix_indiscreet_idols_5",
+        "title": "",
+        "description": "During the encore, [traitsfix_indiscreet_idols_5_culprit] took the mic for an emotional thank-you speech. She thanked the fans, the staff, her parents, and \"[actor_0] and [actor_1], the cutest couple in the group... I mean, duo! Duo!\" The crowd roared louder than at any other point in the concert.",
+        "image": "indiscreet_idols_5.png",
+        "random": false,
+        "actors": [
+            {
+                "name": "@actor_0@",
+                "type": "idol",
+                "conditions": []
+            },
+            {
+                "name": "@actor_1@",
+                "type": "idol",
+                "conditions": []
+            }
+        ],
+        "conditions": [],
+        "effects": [],
+        "options": [
+            {
+                "text": "Insist that she really meant \"duo\"",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            },
+            {
+                "text": "Have [traitsfix_indiscreet_idols_5_culprit] apologize to them backstage",
+                "tooltip": "",
+                "effects": [],
+                "SNS": [],
+                "result": {
+                    "description": "-",
+                    "delay": 0
+                }
+            }
+        ]
+    }
+]

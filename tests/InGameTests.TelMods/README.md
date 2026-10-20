@@ -85,6 +85,7 @@ Theater's attendance or Concert Rebalance's forecast.
 | `MbtiPersonalitiesTests` | An idol's Extras tab doesn't name her type. An idol in the save carries two types. A newly generated idol from an idol pack with a type doesn't end up with exactly that type. |
 | `StarSignsTests` | An idol's Extras tab doesn't end with her star sign, after the other mods' lines. |
 | `NationalTourTests` | A replacement picture didn't load, or the World Tour tab, the new tour map or the tour results don't show it. A country marker isn't on its prefecture. |
+| `TraitsFixTests` | `LeakPopupAndResults`: the game's event popup doesn't load an Indiscreet leak's 600x860 picture from the mod's folder or fill in the culprit's name, or after the player's click the game's reply handling doesn't leave the leak's own results panel as the one open, starting with the clicked reply's result with its names filled in. `LeakOutcomeMatchesGameTemplate`: for any image policy, dating policy and partner gender, the game's own dating scandal template answered with "Do nothing" reaches a different damage, scandal point, buzz or fan opinion change from the mod's copy. Only the running game can open the popups, fill in event text or run the template; the unit tests cover the rest. |
 | `TourStaminaLimitTests` | A tour stop's new fans aren't the game's figure times 2.5, and times 1.2 per Polyglot idol with Traits Expansion on. |
 | `WorkerRightsTests` | A newly generated idol's salary isn't 20,000. |
 

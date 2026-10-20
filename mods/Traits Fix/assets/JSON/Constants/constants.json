@@ -1,18 +1,130 @@
 [
 	{
-		id: "IDOL__OUTSIDE_LEAK",
-		text: "An indiscreet person has leaked that @ is dating. She lost 30 mental stamina points."
+		id: "IDOL__LEAK_REACTION_LOW",
+		text: "The news fails to get any traction, and what little response it does get seems tepid at worst, with few fans even bothering to comment at all."
 	},
 	{
-		id: "IDOL__INSIDE_LEAK",
-		text: "An indiscreet person has leaked that @1 and @2 are dating each other. They both lost 30 mental stamina points."
+		id: "IDOL__LEAK_REACTION_HIGH",
+		text: "The news spreads rapidly, starting with smaller gossip sites and fan blogs, and within several hours several larger publications pick up the story. This doesn't seem like the kind of thing that's going to die down quickly or quietly..."
 	},
 	{
-		id: "IDOL__OUTSIDE_LEAK_SCANDAL",
-		text: "An indiscreet person has leaked that @ is dating. She lost 30 mental stamina points and gained 1 scandal point."
+		id: "traitsfix_indiscreet_bf_1_result_1",
+		text: "The editor promises to \"think about it\" in a tone that suggests he already has. The photos run that Friday anyway, across two pages, in color. [traitsfix_indiscreet_bf_1_culprit] sends [actor_0] a very long apology."
 	},
 	{
-		id: "IDOL__INSIDE_LEAK_SCANDAL",
-		text: "An indiscreet person has leaked that @1 and @2 are dating each other. They both lost 30 mental stamina points and gained 1 scandal point."
+		id: "traitsfix_indiscreet_bf_1_result_2",
+		text: "[traitsfix_indiscreet_bf_1_culprit] nods along to the whole lecture, then asks whether she can at least talk about her own hobbies next time. The magazine, meanwhile, already has everything it needs."
+	},
+	{
+		id: "traitsfix_indiscreet_bf_2_result_1",
+		text: "The archive comes down within the hour, which only convinces everyone that the selfie was real. The screenshots are already everywhere."
+	},
+	{
+		id: "traitsfix_indiscreet_bf_2_result_2",
+		text: "[traitsfix_indiscreet_bf_2_culprit] spends the next stream just off camera, holding up a hand-drawn sign that says \"SORRY\". Viewers ask about the sign more than anything else."
+	},
+	{
+		id: "traitsfix_indiscreet_bf_3_result_1",
+		text: "The fan apologizes politely and deletes the post right away. It had already been reposted several hundred times."
+	},
+	{
+		id: "traitsfix_indiscreet_bf_3_result_2",
+		text: "[traitsfix_indiscreet_bf_3_culprit] is mortified. \"But he's so nice,\" she protests. \"He brings me snacks every time!\" He also has forty thousand followers."
+	},
+	{
+		id: "traitsfix_indiscreet_bf_4_result_1",
+		text: "The statement goes out that night. Fans point out within minutes that the photos are from this summer, and that [actor_0] doesn't have a brother."
+	},
+	{
+		id: "traitsfix_indiscreet_bf_4_result_2",
+		text: "The slideshow is dropped from the remaining shows. [traitsfix_indiscreet_bf_4_culprit] is crushed; she had only just finished syncing it to music."
+	},
+	{
+		id: "traitsfix_indiscreet_bf_5_result_1",
+		text: "The network's reply is very polite and very firm: it was live. The clip is already the most-watched moment of the season."
+	},
+	{
+		id: "traitsfix_indiscreet_bf_5_result_2",
+		text: "Two hours of media training later, [traitsfix_indiscreet_bf_5_culprit] can say \"I have no comment\" in five different tones of voice. The ramen shop, meanwhile, has started selling an \"[actor_0] set\"."
+	},
+	{
+		id: "traitsfix_indiscreet_gf_1_result_1",
+		text: "The café's owner is happy to help, and is also, it turns out, a fan. The customers' photos were online before you'd even picked up the phone."
+	},
+	{
+		id: "traitsfix_indiscreet_gf_1_result_2",
+		text: "[traitsfix_indiscreet_gf_1_culprit] promises she'll just send a message next time. She adds that the parfait looked amazing, and asks whether the whole group could go there sometime."
+	},
+	{
+		id: "traitsfix_indiscreet_gf_2_result_1",
+		text: "The post disappears ten minutes later, which is roughly nine minutes too late. The zoomed-in background has already become its own meme."
+	},
+	{
+		id: "traitsfix_indiscreet_gf_2_result_2",
+		text: "The agency's polite request goes up that afternoon. It does wonders for the photo's reach."
+	},
+	{
+		id: "traitsfix_indiscreet_gf_3_result_1",
+		text: "The station agrees to trim the archived broadcast. The live audience, and the dozens of fans who were recording it, are less cooperative."
+	},
+	{
+		id: "traitsfix_indiscreet_gf_3_result_2",
+		text: "[traitsfix_indiscreet_gf_3_culprit] takes the news hard, then announces that she'll start a podcast instead. You make a note to have that conversation too."
+	},
+	{
+		id: "traitsfix_indiscreet_gf_4_result_1",
+		text: "The crew all nod solemnly. By evening, a stylist's friend's cousin has posted about the matching rings."
+	},
+	{
+		id: "traitsfix_indiscreet_gf_4_result_2",
+		text: "\"But matching rings are so romantic!\" [traitsfix_indiscreet_gf_4_culprit] says, genuinely puzzled about what the problem is. The talk takes a while."
+	},
+	{
+		id: "traitsfix_indiscreet_gf_5_result_1",
+		text: "The stadium hands over its copy without any fuss. Forty thousand people had their own phones, though, and the clip has its own hashtag by midnight."
+	},
+	{
+		id: "traitsfix_indiscreet_gf_5_result_2",
+		text: "[traitsfix_indiscreet_gf_5_culprit] apologizes with a box of the stadium's souvenir cookies. [actor_0] accepts the cookies. The apology is still under review."
+	},
+	{
+		id: "traitsfix_indiscreet_idols_1_result_1",
+		text: "The message is gone within minutes, but the fan chat had already screenshotted it, translated it and set it to music."
+	},
+	{
+		id: "traitsfix_indiscreet_idols_1_result_2",
+		text: "[traitsfix_indiscreet_idols_1_culprit]'s correction reads: \"I was half asleep and didn't see ANYTHING!!\" It has more exclamation marks than the original, and convinces nobody."
+	},
+	{
+		id: "traitsfix_indiscreet_idols_2_result_1",
+		text: "The selfie comes down, and an \"accidental upload\" note goes up in its place. Nobody believes the note."
+	},
+	{
+		id: "traitsfix_indiscreet_idols_2_result_2",
+		text: "The cropped version goes up an hour later. Fans post the original right next to it, circled in red."
+	},
+	{
+		id: "traitsfix_indiscreet_idols_3_result_1",
+		text: "The producers agree, then air the segment anyway in the \"best moments\" special. The ratings are excellent."
+	},
+	{
+		id: "traitsfix_indiscreet_idols_3_result_2",
+		text: "[traitsfix_indiscreet_idols_3_culprit] listens carefully, nods, and asks whether it would have been funnier if she'd guessed someone else. The conversation starts again from the top."
+	},
+	{
+		id: "traitsfix_indiscreet_idols_4_result_1",
+		text: "The agency explains that the fan was a fan's gift. Within the hour, someone points out that the handwriting matches [traitsfix_indiscreet_idols_4_culprit]'s autographs."
+	},
+	{
+		id: "traitsfix_indiscreet_idols_4_result_2",
+		text: "[traitsfix_indiscreet_idols_4_culprit] surrenders two bags of glitter pens and a heart-shaped stencil. She asks whether she can at least keep the stickers."
+	},
+	{
+		id: "traitsfix_indiscreet_idols_5_result_1",
+		text: "The official statement says \"duo\" four times. The crowd's chant on the way out of the venue said something else."
+	},
+	{
+		id: "traitsfix_indiscreet_idols_5_result_2",
+		text: "[traitsfix_indiscreet_idols_5_culprit] apologizes to [actor_0] and [actor_1] backstage, very sincerely, then calls them \"you two lovebirds\" on her way out."
 	}
 ]

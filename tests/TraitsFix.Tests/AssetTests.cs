@@ -197,10 +197,8 @@ namespace TraitsFixTests
                 Invariant($"- Annoying: causes other members to spend {1 + ANNOYING_MODIFIER}x physical stamina in shows."),
                 $"- Misandry: {MISANDRY_CHANCE}% chance of receiving bad opinions from Male fans",
                 $"- Perfectionist: {PERFECTIONIST_MENTAL} to mental stamina when world tours end with less than {PERFECTIONIST_TOUR_ATT}% attendance, or when they participate in concerts with less than {PERFECTIONIST_HYPE}% hype.",
-                $"- Indiscreet: girls in dating relationships unknown to the player have a {INDISCREET_CHANCE}% chance of having the relationship revealed each week.",
-                "Each leak shows as an illustrated event describing how the indiscreet idol let it slip.",
-                $"The girls revealed to be dating lose {-INDISCREET_MENTAL} mental stamina (except Thick Skin and Shameless girls, as in the game's scandals) and get the consequences of the game's own dating scandal event",
-                $"no new outside relationships for {SCANDAL_TEMPLATE_BLOCK_DAYS} days.",
+                $"- Indiscreet: each week, a secret relationship has a {INDISCREET_CHANCE}% chance of being let slip by an indiscreet member, shown as an illustrated event.",
+                $"The girls involved lose {-INDISCREET_MENTAL} mental stamina (not Thick Skin or Shameless girls) and can't start a new outside relationship for {SCANDAL_TEMPLATE_BLOCK_DAYS} days.",
             };
             foreach (string line in expected)
                 Assert.Contains(line, text);

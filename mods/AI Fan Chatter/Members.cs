@@ -16,6 +16,8 @@ namespace AIFanChatter
         public const int LowStamina = 50;
         public const int ConcertCap = 5;
         public const int EventCap = 3;
+        /// <summary>The most idols a policy change names, from the ones whose scandal points paid for it.</summary>
+        public const int PolicyCap = 5;
         /// <summary>Only the idols this far up the order get their trivia, to keep the prompt short.</summary>
         public const int TriviaIdols = 2;
         public const int TriviaLength = 120;

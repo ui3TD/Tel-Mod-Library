@@ -271,6 +271,39 @@ namespace AIFanChatter
             }
         }
 
+        /// <summary>
+        /// For a paid policy change, the latest scandal of each idol whose scandal points paid for it, and of
+        /// the group when its own points did: her most recent event that can add scandal points (an idol in
+        /// it), or the group's (no idol in it), from the game's event log. Dating scandals aren't in that
+        /// log, and the game doesn't keep their outcome, so they're never named.
+        /// </summary>
+        public static void PolicyChange(Moment moment, IList<data_girls.girls> idols, bool group, IEnumerable<Event_Manager._activeEvent> log, DateTime now)
+        {
+            if (log == null)
+            {
+                return;
+            }
+            List<Event_Manager._activeEvent> scandals = log.Where(e => e != null && e.date <= now && EventOutcome.CanAddScandalPoints(e.data)).ToList();
+            foreach (data_girls.girls girl in idols ?? new List<data_girls.girls>())
+            {
+                Latest(moment, MomentContext.Name(girl) + "'s latest scandal", scandals.Where(e => e.actors.Any(a => a?.girl == girl)), now);
+            }
+            if (group)
+            {
+                Latest(moment, "The group's latest scandal", scandals.Where(e => !e.actors.Any(a => a?.girl != null)), now);
+            }
+        }
+
+        private static void Latest(Moment moment, string label, IEnumerable<Event_Manager._activeEvent> events, DateTime now)
+        {
+            Event_Manager._activeEvent latest = events.OrderByDescending(e => e.date).FirstOrDefault();
+            if (latest != null)
+            {
+                string ago = Ago(latest.date, now);
+                moment.AddTo(Section, label + (ago == "" ? "" : ", " + ago), () => latest.GetDescription());
+            }
+        }
+
         private const string TriggerEvent = "trigger_event";
         private const string TriggerEventSameActor = "trigger_event_same_actor";
 

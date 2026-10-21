@@ -12,14 +12,14 @@ using System.Runtime.CompilerServices;
 namespace AIFanChatter.LiveReport
 {
     /// <summary>
-    /// Sends five moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
+    /// Sends six moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
     /// prompt, dispatcher, request and reply code, once per model, and writes every request, reply and
     /// queued post to a JSON file for tools/ai_fan_chatter_live_report.py. Runs outside the game: the
     /// game's text comes from its install folder and the key from the mod's key file. It costs money.
     ///
     ///     AIFanChatterLiveReport --game-dir DIR --provider 2 --base-url URL --model M [--model M2] --out FILE
     ///     AIFanChatterLiveReport --game-dir DIR --dry-run 1      (prints the prompts; sends nothing)
-    /// Options: --moment single|concert|event|scandal|graduation (repeat to pick several; all five by default),
+    /// Options: --moment single|concert|event|scandal|policy|graduation (repeat to pick several; all six by default),
     /// --setlist "Signal Fire/Rin; talk: Mao, Kaede" for the concert (see Agency.SetList), and for the
     /// random event --event ID (from the game's random_events.json), --event-reply N (the player's
     /// answer, from 0; by default the first one without posts of its own) and --event-idols "Rena, Mao"
@@ -188,13 +188,14 @@ namespace AIFanChatter.LiveReport
                 new("concert", () => MomentContext.Concert(agency.NewConcert)),
                 new("event", () => EventMoment(agency)),
                 new("scandal", () => ScandalMoment(agency)),
+                new("policy", () => PolicyMoment(agency)),
                 // Last, as the graduate leaves the group
                 new("graduation", () => MomentContext.Graduation(agency.Graduate, agency.GraduateNow())),
             };
             string unknown = picked?.FirstOrDefault(name => all.All(m => m.Key != name));
             if (unknown != null)
             {
-                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal and graduation");
+                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy and graduation");
             }
             return all.Where(m => picked == null || picked.Contains(m.Key))
                 .Select(m => new KeyValuePair<string, Func<Moment>>(Names[m.Key], m.Value)).ToList();
@@ -206,6 +207,7 @@ namespace AIFanChatter.LiveReport
             ["concert"] = "a concert",
             ["event"] = "a random event",
             ["scandal"] = "a dating scandal",
+            ["policy"] = "a paid policy change",
             ["graduation"] = "a graduation",
         };
 
@@ -273,6 +275,32 @@ namespace AIFanChatter.LiveReport
         }
 
         /// <summary>
+        /// The agency's dating rule changed from Ambiguous to Forbidden, paid with 1 of the first --event-idols
+        /// idol's scandal points, with the game's stream_rant event about her 3 weeks before as her latest
+        /// scandal. Titles come from the game's policies.json.
+        /// </summary>
+        private static Moment PolicyMoment(Agency agency)
+        {
+            string name = eventIdols.Split(',').Select(n => n.Trim()).FirstOrDefault(n => n != "") ?? "";
+            string Title(policies._value value) =>
+                GameText.Policies.FirstOrDefault(p => p.Type == policies._type.dating && p.Value == value)?.Title ?? value.ToString();
+            policies.Values.Add(new policies.value { Type = policies._type.dating, Value = policies._value.NONE, Title = Title(policies._value.NONE) });
+            policies.value now = policies.GetSelectedPolicyValue(policies._type.dating);
+            now.Title = Title(now.Value);
+            policies.value before = new() { Type = policies._type.dating, Value = policies._value.dating_ambiguous, Title = Title(policies._value.dating_ambiguous) };
+            if (!GameText.Events.TryGetValue("stream_rant", out Event_Manager._randomEvent rant))
+            {
+                throw new ArgumentException("No random event stream_rant in the game's random_events.json");
+            }
+            Event_Manager._activeEvent scandal = agency.Event(rant, new[] { name });
+            scandal.date = scandal.date.AddDays(-21);
+            scandal.state = Event_Manager._activeEvent._state.complete;
+            data_girls.girls girl = scandal.actors[0].girl;
+            return MomentContext.PolicyChange(before, now, new List<PolicyChange.Cleared> { new() { Girl = girl, Points = 1 } },
+                new List<Event_Manager._activeEvent> { scandal });
+        }
+
+        /// <summary>
         /// "--name value" pairs; a name given more than once keeps every value.
         /// </summary>
         private static Dictionary<string, List<string>> Options(string[] args)
@@ -302,6 +330,9 @@ namespace AIFanChatter.LiveReport
     {
         /// <summary>The game's ways to promote a single, as singles.Params holds them.</summary>
         public static readonly List<singles._param> Marketing = new();
+
+        /// <summary>The game's policies with their titles, as policies.Load reads them.</summary>
+        public static readonly List<policies.value> Policies = new();
 
         /// <summary>The game's random events by id.</summary>
         public static readonly Dictionary<string, Event_Manager._randomEvent> Events = new();
@@ -344,6 +375,13 @@ namespace AIFanChatter.LiveReport
             // The game's own list, where the mod finds which events start which
             Event_Manager.RandomEvents.Clear();
             Event_Manager.RandomEvents.AddRange(Events.Values);
+            Policies.Clear();
+            foreach (JSONNode item in Read(Path.Combine(english, "Policies", "policies.json")).AsArray)
+            {
+                policies.value policy = new();
+                policy.SetData(item);
+                Policies.Add(policy);
+            }
             Event_Templates.Templates.Clear();
             foreach (JSONNode item in Read(Path.Combine(english, "Events", "event_templates.json")).AsArray)
             {

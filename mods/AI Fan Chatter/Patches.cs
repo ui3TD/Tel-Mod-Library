@@ -262,6 +262,69 @@ namespace AIFanChatter
     }
 
     /// <summary>
+    /// Paid policy changes: the player spends scandal points on them, the agency acting on its image. Free
+    /// changes (free policies, and every policy in the first month) and the game's own selections (loading a
+    /// save, story scripts) get no posts.
+    /// </summary>
+    [HarmonyPatch(typeof(policies.value), nameof(policies.value._Select))]
+    [HarmonyPriority(Priority.Last)]
+    public class policies_value_Select
+    {
+        public sealed class Before
+        {
+            public bool Paid;
+            public policies.value Previous;
+            public List<PolicyChange.Cleared> Cleared = new();
+        }
+
+        public static void Prefix(policies.value __instance, bool free, out Before __state)
+        {
+            __state = null;
+            try
+            {
+                bool paid = !free && __instance.Cost > 0;
+                __state = new Before
+                {
+                    Paid = paid,
+                    Previous = policies.GetSelectedPolicyValue(__instance.Type),
+                    // The popup has closed by now, but still holds what was chosen
+                    Cleared = paid ? PolicyChange.ClearedPoints() : new List<PolicyChange.Cleared>(),
+                };
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        public static void Postfix(policies.value __instance, Before __state, bool __runOriginal)
+        {
+            if (ShouldPost(__state, __instance, __runOriginal))
+            {
+                Moments.Trigger(() => MomentContext.PolicyChange(__state.Previous, __instance, __state.Cleared, EventLog()));
+            }
+        }
+
+        internal static bool ShouldPost(Before before, policies.value value, bool ran)
+        {
+            return ran && before != null && before.Paid && value != null && value.Value != policies._value.NONE
+                && value.Selected && value != before.Previous;
+        }
+
+        private static IEnumerable<Event_Manager._activeEvent> EventLog()
+        {
+            try
+            {
+                return Camera.main.GetComponent<mainScript>().Data.GetComponent<Event_Manager>().activeEvents;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
     /// The outcomes of the dating scandal answered in Event_Templates_ConcludeEvent, as the game picks them.
     /// </summary>
     internal static class DatingScandal

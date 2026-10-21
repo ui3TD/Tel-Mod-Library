@@ -59,6 +59,16 @@ namespace AIFanChatter
             return (reply.SNS != null && reply.SNS.Count > 0) || (reply.Effects != null && reply.Effects.Any(IsPublic));
         }
 
+        /// <summary>
+        /// Whether any of the event's answers can add scandal points, to the agency or to an idol: a scandal,
+        /// whichever answer the player gave.
+        /// </summary>
+        public static bool CanAddScandalPoints(Event_Manager._randomEvent data)
+        {
+            return data?.reply != null && data.reply.Any(r => r?.Effects != null && r.Effects.Any(effect =>
+                effect != null && (effect.parameter == "scandalPoints" || effect.parameter == "param scandalPoints")));
+        }
+
         private static bool IsPublic(data_dialogues._action effect)
         {
             if (effect == null)

@@ -576,6 +576,50 @@ namespace AIFanChatter
                 .AddTo(Moment.AgencySection, "Group dating rule", AgencyRules.Dating));
         }
 
+        /// <param name="cleared">The scandal points the player spent on the change.</param>
+        /// <param name="log">The game's events so far (Event_Manager.activeEvents), for each one's latest scandal.</param>
+        public static Moment PolicyChange(policies.value previous, policies.value value, IList<PolicyChange.Cleared> cleared,
+            IEnumerable<Event_Manager._activeEvent> log = null)
+        {
+            string policy = Part(() => value.GetParent()?.Title);
+            List<data_girls.girls> idols = (cleared ?? new List<PolicyChange.Cleared>()).Where(c => !c.Group && c.Girl != null)
+                .Select(c => c.Girl).Distinct().Take(Members.PolicyCap).ToList();
+            bool group = cleared != null && cleared.Any(c => c.Group);
+            List<string> whose = idols.Select(Name).ToList();
+            if (group)
+            {
+                whose.Add("the group itself");
+            }
+            Moment moment = new Moment("the agency changed one of its policies for all groups")
+                .Labelled(() => "the " + Moment.Clean(policy) + " policy change")
+                .Add("Policy", () => policy)
+                .Add("Changed from", () => previous?.Title)
+                .Add("Changed to", () => value.Title)
+                .Add("Reason for change", () => whose.Count == 0 ? "" : "scandals involving " + JoinAnd(whose));
+            // Known friends and bullying, as for a graduation; named per idol when there are several
+            foreach (data_girls.girls girl in idols)
+            {
+                string who = idols.Count == 1 ? "" : Name(girl) + ": ";
+                string Label(string text) => who == "" ? char.ToUpperInvariant(text[0]) + text.Substring(1) : who + text;
+                // A clique can span groups: one line per group, hers first
+                Groups._group own = GroupOf(() => girl.GetGroup());
+                foreach (IGrouping<Groups._group, data_girls.girls> mates in Members.Friends(girl)
+                    .GroupBy(f => GroupOf(() => f.GetGroup())).Where(g => g.Key != null)
+                    .OrderBy(g => g.Key == own ? -1 : Groups.Groups_.IndexOf(g.Key)))
+                {
+                    moment.Add(Label("friends in " + Members.GroupName(mates.Key)), () => string.Join(", ", mates.Select(Name).ToArray()));
+                }
+                moment
+                    .Add(Label("suspected to be bullied by"), () => string.Join(", ", Members.BulliedBy(girl).Select(Name).ToArray()))
+                    .Add(Label("suspected to have bullied"), () => string.Join(", ", Members.Bullied(girl).Select(Name).ToArray()));
+            }
+            // Policies are agency-wide; the moment is about the first named idol's group, as an event is
+            Groups._group about = idols.Count > 0 ? GroupOf(() => idols[0].GetGroup()) : null;
+            Members.Add(moment, idols, Now, about ?? MainGroup());
+            History.PolicyChange(moment, idols, group, log, Now);
+            return Agency(moment, about);
+        }
+
         /// <summary>
         /// The scandal as the game describes it (_active_template.GetDescription), without the question to the
         /// player that follows the last part: the formula is cut after its last [part].

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using TraitFix;
 using Xunit;
 using static traits._trait._type;
@@ -591,19 +593,149 @@ namespace TraitsFixTests
             Assert.Same(beth, Seams.Events[1].actors[0].girl);
         }
 
+        /// <summary>
+        /// Leaks one couple of the kind after another, each answered before the next, and returns the
+        /// story numbers shown.
+        /// </summary>
+        private static List<int> LeakInTurn(int count, string kind = "bf")
+        {
+            List<int> stories = new();
+            for (int i = 0; i < count; i++)
+            {
+                data_girls.girls girl = DatingOutside("Idol" + i);
+                if (kind == "gf")
+                    girl.DatingData.Partner_Status = PartnerStatus.taken_outside_gf;
+                LeakAll(girl);
+                Event_Manager._activeEvent leak = Seams.Events[Seams.Events.Count - 1];
+                leak.state = Event_Manager._activeEvent._state.complete;
+                stories.Add(int.Parse(leak.data.id.Substring(leak.data.id.LastIndexOf('_') + 1)));
+            }
+            return stories;
+        }
+
+        private static string Order(string kind) =>
+            variables.variable.Find(v => v.name == INDISCREET_EVENT_PREFIX + kind + INDISCREET_ORDER_SUFFIX)?.value;
+
         [Fact]
         public void CompletedEvent_CanShowAgain()
         {
             TestGame.Hire(TestGame.Idol(Indiscreet));
+
+            List<int> stories = LeakInTurn(INDISCREET_EVENTS_PER_KIND + 1);
+
+            Assert.Contains(stories[INDISCREET_EVENTS_PER_KIND], stories.GetRange(0, INDISCREET_EVENTS_PER_KIND));
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(4)]
+        public void EveryStoryOfTheKind_ShownBeforeAnyRepeats(int pick)
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            Seams.RandomIndex = count => Math.Min(pick, count - 1);
+
+            List<int> stories = LeakInTurn(INDISCREET_EVENTS_PER_KIND);
+
+            Assert.Equal(new[] { 1, 2, 3, 4, 5 }, stories.OrderBy(s => s));
+        }
+
+        /// <summary>
+        /// Once every story was shown, the two shown last are kept back and the three older ones are
+        /// equally likely, whatever order they were shown in.
+        /// </summary>
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        public void AllShown_RepeatIsOneOfTheOlderThree(int pick)
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            variables.variable.Add(new variables._variable { name = INDISCREET_EVENT_PREFIX + "bf" + INDISCREET_ORDER_SUFFIX, value = "4,2,5,1,3" });
+            Seams.RandomIndex = count => count == 3 ? pick : throw new InvalidOperationException("Expected 3 candidates, got " + count);
+
+            List<int> stories = LeakInTurn(1);
+
+            Assert.Equal(new[] { 5, 1, 3 }.OrderBy(s => s).ElementAt(pick), stories[0]);
+            Assert.Equal(stories[0] + ",4,2," + string.Join(",", new[] { 5, 1, 3 }.Where(s => s != stories[0])), Order("bf"));
+        }
+
+        [Fact]
+        public void LongRun_NeverRepeatsEitherOfTheLastTwo()
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            int call = 0;
+            Seams.RandomIndex = count => call++ * 7 % count;
+
+            List<int> stories = LeakInTurn(40);
+
+            for (int i = 2; i < stories.Count; i++)
+                Assert.DoesNotContain(stories[i], new[] { stories[i - 1], stories[i - 2] });
+            Assert.Equal(new[] { 1, 2, 3, 4, 5 }, stories.Distinct().OrderBy(s => s));
+        }
+
+        [Fact]
+        public void Kinds_KeepSeparateRecords()
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+
+            LeakInTurn(2, "bf");
+            List<int> girlfriend = LeakInTurn(1, "gf");
+
+            Assert.Equal("2,1", Order("bf"));
+            Assert.Equal(new[] { 1 }, girlfriend);
+            Assert.Equal("1", Order("gf"));
+        }
+
+        /// <summary>
+        /// When the older stories are all waiting, a recent one is shown rather than no leak.
+        /// </summary>
+        [Fact]
+        public void OnlyRecentStoriesFree_ShowsARecentOne()
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            variables.variable.Add(new variables._variable { name = INDISCREET_EVENT_PREFIX + "bf" + INDISCREET_ORDER_SUFFIX, value = "4,2,5,1,3" });
+            foreach (int waiting in new[] { 5, 1, 3 })
+                Seams.Events.Add(new Event_Manager._activeEvent
+                {
+                    data = Event_Manager.GetRandomEvent("traitsfix_indiscreet_bf_" + waiting),
+                    state = Event_Manager._activeEvent._state.waiting,
+                });
+
+            LeakAll(DatingOutside("Aya"));
+
+            Assert.Equal("traitsfix_indiscreet_bf_2", Seams.Events[3].data.id);
+            Assert.Equal("2,4,5,1,3", Order("bf"));
+        }
+
+        [Theory]
+        [InlineData(null, "1")]
+        [InlineData("", "1")]
+        [InlineData("garbage", "1")]
+        [InlineData("9,0,-1,x,,2,2", "1,2")]
+        public void DamagedRecord_UnreadableEntriesCountAsUnseen(string record, string after)
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            variables.variable.Add(new variables._variable { name = INDISCREET_EVENT_PREFIX + "bf" + INDISCREET_ORDER_SUFFIX, value = record });
+
+            List<int> stories = LeakInTurn(1);
+
+            Assert.Equal(1, stories[0]);
+            Assert.Equal(after, Order("bf"));
+        }
+
+        [Fact]
+        public void NoEventQueued_RecordUnchanged()
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
             data_girls.girls aya = DatingOutside("Aya");
-            data_girls.girls beth = DatingOutside("Beth");
+            Event_Manager.RandomEvents.Clear();
+
             LeakAll(aya);
-            Seams.Events[0].state = Event_Manager._activeEvent._state.complete;
 
-            LeakAll(beth);
-
-            Assert.Equal("traitsfix_indiscreet_bf_1", Seams.Events[1].data.id);
-            Assert.Same(beth, Seams.Events[1].actors[0].girl);
+            Assert.Null(Order("bf"));
         }
 
         [Fact]

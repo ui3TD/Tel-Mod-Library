@@ -549,6 +549,10 @@ namespace TraitFix
         public const string INDISCREET_KIND_GIRLFRIEND = "gf";
         public const string INDISCREET_KIND_IDOLS = "idols";
         public const int INDISCREET_EVENTS_PER_KIND = 5;
+        // Which stories of a kind were shown is the variable <prefix><kind><order suffix>. Once all are
+        // shown, the most recent few are kept back.
+        public const string INDISCREET_ORDER_SUFFIX = "_order";
+        public const int INDISCREET_RECENT_STORIES = 2;
 
         private sealed class TraitCalculationContext
         {
@@ -816,17 +820,19 @@ namespace TraitFix
             if (manager == null || manager.activeEvents == null)
                 return false;
 
-            List<Event_Manager._randomEvent> available = new List<Event_Manager._randomEvent>();
+            List<int> available = new List<int>();
             for (int i = 1; i <= INDISCREET_EVENTS_PER_KIND; i++)
             {
                 Event_Manager._randomEvent randomEvent = Event_Manager.GetRandomEvent(INDISCREET_EVENT_PREFIX + kind + "_" + i);
                 if (randomEvent?.actor != null && randomEvent.actor.Count == couple.Length && !IsWaiting(manager, randomEvent))
-                    available.Add(randomEvent);
+                    available.Add(i);
             }
             if (available.Count == 0)
                 return false;
 
-            Event_Manager._randomEvent chosen = available[RandomIndex(available.Count)];
+            List<int> shown = GetShownStories(kind);
+            int story = PickStory(available, shown);
+            Event_Manager._randomEvent chosen = Event_Manager.GetRandomEvent(INDISCREET_EVENT_PREFIX + kind + "_" + story);
             Event_Manager._activeEvent activeEvent = new Event_Manager._activeEvent
             {
                 data = chosen,
@@ -838,7 +844,46 @@ namespace TraitFix
             // Coloured like the actors' names, which the game colours as it fills them in
             SetVariable(chosen.id + INDISCREET_CULPRIT_SUFFIX, ExtensionMethods.color(culprit.girlName(false), mainScript.blue));
             manager.activeEvents.Add(activeEvent);
+            shown.Remove(story);
+            shown.Insert(0, story);
+            SetVariable(INDISCREET_EVENT_PREFIX + kind + INDISCREET_ORDER_SUFFIX, string.Join(",", shown));
             return true;
+        }
+
+        /// <summary>
+        /// A story not shown yet if there is one; otherwise any but the most recently shown few, so the
+        /// stories don't settle into a fixed cycle. Falls back to any available story when only recent
+        /// ones are left (the others already waiting).
+        /// </summary>
+        private static int PickStory(List<int> available, List<int> shown)
+        {
+            List<int> candidates = available.FindAll(story => !shown.Contains(story));
+            if (candidates.Count == 0)
+            {
+                List<int> recent = shown.GetRange(0, Math.Min(INDISCREET_RECENT_STORIES, shown.Count));
+                candidates = available.FindAll(story => !recent.Contains(story));
+            }
+            if (candidates.Count == 0)
+                candidates = available;
+            return candidates[RandomIndex(candidates.Count)];
+        }
+
+        /// <summary>
+        /// The kind's story numbers, most recently shown first, saved with the game. Entries that aren't
+        /// one of the kind's stories are dropped, so a damaged record only makes stories count as unseen.
+        /// </summary>
+        private static List<int> GetShownStories(string kind)
+        {
+            List<int> shown = new List<int>();
+            string record = GetVariable(INDISCREET_EVENT_PREFIX + kind + INDISCREET_ORDER_SUFFIX);
+            if (string.IsNullOrEmpty(record))
+                return shown;
+            foreach (string entry in record.Split(','))
+            {
+                if (int.TryParse(entry.Trim(), out int story) && story >= 1 && story <= INDISCREET_EVENTS_PER_KIND && !shown.Contains(story))
+                    shown.Add(story);
+            }
+            return shown;
         }
 
         public static bool IsLeakEvent(Event_Manager._activeEvent activeEvent) =>
@@ -1077,6 +1122,18 @@ namespace TraitFix
                 }
             }
             variables.variable.Add(new variables._variable { name = name, value = value });
+        }
+
+        private static string GetVariable(string name)
+        {
+            if (variables.variable == null)
+                return null;
+            foreach (variables._variable variable in variables.variable)
+            {
+                if (variable?.name == name)
+                    return variable.value;
+            }
+            return null;
         }
 
         public static Event_Manager GetEventManager() => GetGameComponent<Event_Manager>();

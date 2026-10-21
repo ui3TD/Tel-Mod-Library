@@ -284,6 +284,7 @@ namespace TraitsFixTests
             AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.TryLeakCouple)),
             AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.FindIndiscreetLeaker)),
             AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.StartLeakEvent)),
+            AccessTools.Method(typeof(TraitsFix), "PickStory"),
             AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.IsInWaitingLeak)),
             AccessTools.Method(typeof(Show_Popup_SetParam), nameof(Show_Popup_SetParam.Postfix)),
             AccessTools.Method(typeof(Shows__show_SetStamina), nameof(Shows__show_SetStamina.Postfix)),

@@ -141,15 +141,17 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void OnlyThreeBatches_Wait()
+        public void NoBatch_IsDropped()
         {
-            foreach (string tag in new[] { "a", "b", "c", "d" })
+            string[] tags = { "a", "b", "c", "d", "e" };
+            for (int i = 0; i < tags.Length; i++)
             {
-                FeedQueue.AddBatch(Batch(tag), Now, new Random(1));
+                FeedQueue.AddBatch(Batch(tags[i]), Now.AddHours(i), new Random(i));
             }
-            Assert.DoesNotContain(FeedQueue.Items, i => i.Text.StartsWith("a "));
-            Assert.Contains(FeedQueue.Items, i => i.Text.StartsWith("d "));
-            Assert.Equal(3, FeedQueue.Items.Select(i => i.Batch).Distinct().Count());
+            List<QueuedItem> released = FeedQueue.TakeAllDue(Now.AddDays(10));
+            Assert.Equal(tags.Length * 6, released.Count);
+            Assert.All(tags, tag => Assert.Equal(6, released.Count(i => i.Text.StartsWith(tag + " "))));
+            Assert.Equal(released.Select(i => i.Due).OrderBy(d => d), released.Select(i => i.Due));
         }
 
         [Fact]
@@ -169,9 +171,18 @@ namespace AIFanChatter.Tests
                 Assert.Equal(before[i].ParentText, FeedQueue.Items[i].ParentText);
                 Assert.Equal(before[i].First, FeedQueue.Items[i].First);
             }
-            // New batches after a load don't reuse a loaded batch's number
-            FeedQueue.AddBatch(Batch("new"), Now, new Random(3));
-            Assert.Equal(2, FeedQueue.Items.Select(i => i.Batch).Distinct().Count());
+        }
+
+        [Fact]
+        public void OldSavedQueue_WithBatchNumbers_StillLoads()
+        {
+            FeedQueue.Load("[{\"batch\":\"4\",\"first\":\"1\",\"due\":\"2020-06-03T12:00:00.0000000\",\"user\":\"F_HC_T\",\"text\":\"old post\"},"
+                + "{\"batch\":\"4\",\"first\":\"0\",\"due\":\"2020-06-03T13:00:00.0000000\",\"user\":\"M_C_A\",\"text\":\"old reply\",\"parentUser\":\"F_HC_T\",\"parentText\":\"old post\"}]");
+            Assert.Equal(2, FeedQueue.Items.Count);
+            Assert.True(FeedQueue.Items[0].First);
+            Assert.Equal(new DateTime(2020, 6, 3, 12, 0, 0), FeedQueue.Items[0].Due);
+            Assert.True(FeedQueue.Items[1].IsReply);
+            Assert.Equal("old post", FeedQueue.Items[1].ParentText);
         }
 
         [Theory]

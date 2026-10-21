@@ -108,7 +108,7 @@ namespace AIFanChatter.LiveReport
                         result["error"] = "Couldn't build the moment: " + e.Message;
                         continue;
                     }
-                    int batchesBefore = FeedQueue.Items.Count == 0 ? 0 : FeedQueue.Items.Max(i => i.Batch);
+                    int queuedBefore = FeedQueue.Items.Count;
                     JSONArray calls = new();
                     result["calls"] = calls;
                     transport.Calls = calls;
@@ -133,7 +133,7 @@ namespace AIFanChatter.LiveReport
                     }
 
                     JSONArray queued = new();
-                    foreach (QueuedItem item in FeedQueue.Items.Where(i => i.Batch > batchesBefore))
+                    foreach (QueuedItem item in FeedQueue.Items.Skip(queuedBefore))
                     {
                         JSONClass entry = new();
                         entry["user"] = item.User;

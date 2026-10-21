@@ -3,14 +3,12 @@ using SimpleJSON;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 
 namespace AIFanChatter
 {
     public sealed class QueuedItem
     {
-        public int Batch;
         /// <summary>The batch's first post, the only one that shows the game's notification.</summary>
         public bool First;
         public DateTime Due;
@@ -29,26 +27,23 @@ namespace AIFanChatter
     public static class FeedQueue
     {
         public const string QueueVar = Settings.Prefix + "Queue";
-        public const int MaxBatches = 3;
         /// <summary>The in-game hours after the moment that its posts and replies come in over.</summary>
         public const int WindowHours = 48;
         /// <summary>The most in-game hours a reply comes after its post.</summary>
         public const int MaxReplyDelayHours = 6;
 
         public static readonly List<QueuedItem> Items = new();
-        private static int lastBatch;
 
         public static void Clear()
         {
             Items.Clear();
-            lastBatch = 0;
         }
 
         /// <summary>
         /// Queues a batch over the 48 in-game hours after its moment: the hours are split into one stretch per
         /// post, in order, and each post comes at a random time in its stretch. Each reply comes with its post
         /// or up to 6 hours after it, within the 48 hours. Times already past when the reply arrives are due at
-        /// once. The oldest batches still waiting are dropped past three.
+        /// once.
         /// </summary>
         /// <param name="moment">When the moment happened: the request was sent then.</param>
         public static void AddBatch(List<SNS_Manager._message> posts, DateTime moment, Random random)
@@ -57,14 +52,13 @@ namespace AIFanChatter
             {
                 return;
             }
-            int batch = ++lastBatch;
             int stretch = WindowHours * 60 / posts.Count;
             DateTime end = moment.AddHours(WindowHours);
             for (int i = 0; i < posts.Count; i++)
             {
                 SNS_Manager._message post = posts[i];
                 DateTime due = moment.AddMinutes(i * stretch + random.Next(stretch));
-                Items.Add(new QueuedItem { Batch = batch, First = i == 0, Due = due, User = post.User, Text = post.Message });
+                Items.Add(new QueuedItem { First = i == 0, Due = due, User = post.User, Text = post.Message });
                 foreach (SNS_Manager._message reply in post.Replies)
                 {
                     // Half the replies come with the post, the rest trickle in after it
@@ -75,7 +69,6 @@ namespace AIFanChatter
                     }
                     Items.Add(new QueuedItem
                     {
-                        Batch = batch,
                         Due = replyDue,
                         User = reply.User,
                         Text = reply.Message,
@@ -84,12 +77,6 @@ namespace AIFanChatter
                         ParentText = post.Message
                     });
                 }
-            }
-
-            List<int> batches = Items.Select(item => item.Batch).Distinct().OrderBy(b => b).ToList();
-            for (int i = 0; i < batches.Count - MaxBatches; i++)
-            {
-                Items.RemoveAll(item => item.Batch == batches[i]);
             }
         }
 
@@ -143,8 +130,7 @@ namespace AIFanChatter
                 {
                     sb.Append(',');
                 }
-                sb.Append("{\"batch\":").Append(Json.Quote(item.Batch.ToString(CultureInfo.InvariantCulture)))
-                    .Append(",\"first\":").Append(Json.Quote(item.First ? "1" : "0"))
+                sb.Append("{\"first\":").Append(Json.Quote(item.First ? "1" : "0"))
                     .Append(",\"due\":").Append(Json.Quote(item.Due.ToString("o", CultureInfo.InvariantCulture)))
                     .Append(",\"user\":").Append(Json.Quote(item.User))
                     .Append(",\"text\":").Append(Json.Quote(item.Text));
@@ -172,15 +158,13 @@ namespace AIFanChatter
             for (int i = 0; i < items.Count; i++)
             {
                 JSONNode node = items[i];
-                if (!int.TryParse(Json.Str(node, "batch"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int batch)
-                    || !DateTime.TryParse(Json.Str(node, "due"), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTime due)
+                if (!DateTime.TryParse(Json.Str(node, "due"), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTime due)
                     || Json.Str(node, "text") == "")
                 {
                     continue;
                 }
                 QueuedItem item = new()
                 {
-                    Batch = batch,
                     First = Json.Str(node, "first") == "1",
                     Due = due,
                     User = Json.Str(node, "user"),
@@ -190,7 +174,6 @@ namespace AIFanChatter
                 };
                 item.IsReply = item.ParentText != "";
                 Items.Add(item);
-                lastBatch = Math.Max(lastBatch, batch);
             }
         }
     }

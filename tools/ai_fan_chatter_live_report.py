@@ -14,7 +14,7 @@ key file for the chosen service (OpenAI-compatible by default).
     python tools/ai_fan_chatter_live_report.py --moments event --event stream_rant --event-idols Mao
     python tools/ai_fan_chatter_live_report.py --from-json report.json   # only rewrite the Markdown
 
-The report goes to ../reports/ai-fan-chatter-live-report.md (outside the repo), with the raw recording
+The report goes to ../reports/ai-fan-chatter/ai-fan-chatter-live-report.md (outside the repo), with the raw recording
 next to it as .json. Its findings section is left for you to write.
 """
 
@@ -30,7 +30,7 @@ REPO = Path(__file__).resolve().parents[1]
 RUN = REPO / "tests" / "InGameTests.TelMods" / "run.py"
 TOOL = REPO / "tools" / "AIFanChatterLiveReport" / "AIFanChatterLiveReport.csproj"
 CSPROJ = REPO / "mods" / "AI Fan Chatter" / "AI Fan Chatter.csproj"
-DEFAULT_OUT = REPO.parent / "reports" / "ai-fan-chatter-live-report.md"
+DEFAULT_OUT = REPO.parent / "reports" / "ai-fan-chatter" / "ai-fan-chatter-live-report.md"
 MAX_SHOWN = 200
 PROVIDERS = {"anthropic": 0, "openai": 1, "compatible": 2}
 
@@ -331,6 +331,7 @@ def main() -> int:
 
     raw = args.from_json or record(args)
     data = json.loads(raw.read_text(encoding="utf-8"), strict=False)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(render(data, args), encoding="utf-8")
     print(f"Wrote {args.out}")
     return 0

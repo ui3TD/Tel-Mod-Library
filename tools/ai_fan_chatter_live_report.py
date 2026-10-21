@@ -128,7 +128,8 @@ def usage_of(response: dict) -> dict:
         "input": usage.get("prompt_tokens", usage.get("input_tokens", 0)),
         "output": usage.get("completion_tokens", usage.get("output_tokens", 0)),
         "reasoning": (usage.get("completion_tokens_details") or {}).get("reasoning_tokens", 0),
-        "cost": usage.get("cost", 0) or 0,
+        # With the player's own key on OpenRouter (BYOK), "cost" is 0 and the provider's charge is upstream
+        "cost": usage.get("cost", 0) or (usage.get("cost_details") or {}).get("upstream_inference_cost", 0) or 0,
     }
 
 
@@ -266,11 +267,17 @@ def render(data: dict, args) -> str:
             posts = f"{i['posts']} post{'s' if i['posts'] != 1 else ''}, {i['reply_count']} repl{'ies' if i['reply_count'] != 1 else 'y'}"
             if i["retried"]:
                 posts += f" (after a retry: {i['requests']} requests)"
-            out.append(f"| {name} | {m['name']} | {i['input']:,} | {i['output']:,} ({i['reasoning']:,} reasoning) | ${i['cost']:.4f} | {i['seconds']:.1f} | "
+            out.append(f"| {name} | {m['name']} | {i['input']:,} | {i['output']:,} ({i['reasoning']:,} reasoning) | \\${i['cost']:.4f} | {i['seconds']:.1f} | "
                        f"{', '.join(str(s) for s in i['statuses'])} | {i['schema']} | {posts} | {i['cut']} of {i['texts']} |")
-    totals = [f"${sum(info[(r['model'], m['name'])]['cost'] for m in r['moments']):.4f} for {name}" for r, name in zip(runs, names)]
-    out += ["", "Together the requests cost " + ", ".join(totals) + ".", "",
-            "## Findings to investigate", "", "_To be written._", ""]
+    # A bare $ pair renders as math in Markdown previews
+    totals = [f"\\${sum(info[(r['model'], m['name'])]['cost'] for m in r['moments']):.4f} for {name}" for r, name in zip(runs, names)]
+    out += ["", "Together the requests cost " + ", ".join(totals) + "."]
+    # OpenRouter passes requests on to the player's own provider key (BYOK) when one is set up there
+    byok = sorted({p for i in info.values() if any(u.get("is_byok") for u in i["usages"]) for p in i["providers"]})
+    if byok:
+        out += ["", f"**Billed to your {' and '.join(byok)} account, not OpenRouter:** OpenRouter sent these requests "
+                    "with your own provider key, so the costs above are that provider's charges."]
+    out += ["", "## Findings to investigate", "", "_To be written._", ""]
 
     systems = {i["system"] for i in info.values() if i["system"]}
     first_system = next((i["system"] for i in info.values() if i["system"]), "")

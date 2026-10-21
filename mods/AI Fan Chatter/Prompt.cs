@@ -23,7 +23,7 @@ namespace AIFanChatter
         };
 
         /// <summary>
-        /// The feed's code for one of the game's fan types (resources._fan): M_HC_YA for devoted young adult men.
+        /// The feed's code for one of the game's fan types (resources._fan): M_HC_YA for hardcore young adult men.
         /// </summary>
         public static string CodeFor(resources.fanType gender, resources.fanType hardcoreness, resources.fanType age)
         {
@@ -47,7 +47,7 @@ namespace AIFanChatter
 
         public static string Describe(string code)
         {
-            string hardcore = code.Contains("_HC_") ? "devoted" : "casual";
+            string hardcore = code.Contains("_HC_") ? "hardcore" : "casual";
             string age = code.EndsWith("_T") ? "teen" : code.EndsWith("_YA") ? "young adult" : "adult";
             string gender = code.StartsWith("M") ? (age == "teen" ? "boy" : "man") : (age == "teen" ? "girl" : "woman");
             return hardcore + " " + age + " " + gender;

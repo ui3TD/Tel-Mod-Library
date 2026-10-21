@@ -84,7 +84,7 @@ def record(args) -> Path:
 
 
 def describe(code: str) -> str:
-    hardcore = "devoted" if "_HC_" in code else "casual"
+    hardcore = "hardcore" if "_HC_" in code else "casual"
     age = "teen" if code.endswith("_T") else "young adult" if code.endswith("_YA") else "adult"
     gender = ("boy" if age == "teen" else "man") if code.startswith("M") else ("girl" if age == "teen" else "woman")
     return f"{hardcore} {age} {gender}"

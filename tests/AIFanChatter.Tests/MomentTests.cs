@@ -316,7 +316,7 @@ namespace AIFanChatter.Tests
             Dictionary<string, int> opinions = new() { ["M_C_T"] = 12, ["F_HC_A"] = 88 };
             string prompt = Prompt.System("English", null, opinions);
             Assert.Contains("- M_C_T: casual teen boy, opinion of the group: 12%", prompt);
-            Assert.Contains("- F_HC_A: devoted adult woman, opinion of the group: 88%", prompt);
+            Assert.Contains("- F_HC_A: hardcore adult woman, opinion of the group: 88%", prompt);
             Assert.Contains("- M_C_YA: casual young adult man\n", prompt);
         }
 
@@ -384,8 +384,8 @@ namespace AIFanChatter.Tests
 
         [Theory]
         [InlineData("M_C_T", "casual teen boy")]
-        [InlineData("F_HC_YA", "devoted young adult woman")]
-        [InlineData("M_HC_A", "devoted adult man")]
+        [InlineData("F_HC_YA", "hardcore young adult woman")]
+        [InlineData("M_HC_A", "hardcore adult man")]
         public void FanCodes_AreDescribed(string code, string description)
         {
             Assert.Equal(description, Prompt.Describe(code));

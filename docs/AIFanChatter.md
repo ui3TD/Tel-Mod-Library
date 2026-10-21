@@ -75,7 +75,7 @@ Make your changes in a small mod of your own, not in AI Fan Chatter's files. Ste
 | `{replies}` | The default most replies per post: 3. | A smaller number works. The mod keeps at most 3 replies per post. |
 | `{length}` | The default most characters per post or reply: 100. | Any number up to 200. The mod cuts any text over 200 characters, so a larger number only gets texts cut short. |
 | `{language}` | The game's language setting: English, Japanese, Simplified Chinese, Brazilian Portuguese or Russian, or a translation mod's language code. | A language name, to always get posts in that language. |
-| `{fan_types}` | The list of the 12 fan accounts, one per line, from your game. Each line gives the account's code (such as `F_HC_T`), what kind of fan it is (such as devoted teen girl), its name in the game's feed, and that kind of fan's current opinion of your group as a percentage. | Your text must still give the AI the 12 codes. A post with any other code gets a random one, and the feed picks each fan's picture from the code. |
+| `{fan_types}` | The list of the 12 fan accounts, one per line, from your game. Each line gives the account's code (such as `F_HC_T`), what kind of fan it is (such as hardcore teen girl), its name in the game's feed, and that kind of fan's current opinion of your group as a percentage. | Your text must still give the AI the 12 codes. A post with any other code gets a random one, and the feed picks each fan's picture from the code. |
 | `{format}` | The reply format the mod can read: an example of posts, each with a fan code, a text and replies. | Keep it. If it's missing, the mod adds it at the end. |
 
 ## Placeholders in the user message
@@ -212,15 +212,15 @@ When the mod sent it, it filled in these values:
   - M_C_T: casual teen boy (shown as @kazubuta), opinion of the group: 33%
   - M_C_YA: casual young adult man (shown as @satoshi_cars), opinion of the group: 50%
   - M_C_A: casual adult man (shown as @takuya_nozawa_72), opinion of the group: 67%
-  - M_HC_T: devoted teen boy (shown as @pizzakk), opinion of the group: 67%
-  - M_HC_YA: devoted young adult man (shown as @shinji1602), opinion of the group: 83%
-  - M_HC_A: devoted adult man (shown as @heihachiro1960), opinion of the group: 100%
+  - M_HC_T: hardcore teen boy (shown as @pizzakk), opinion of the group: 67%
+  - M_HC_YA: hardcore young adult man (shown as @shinji1602), opinion of the group: 83%
+  - M_HC_A: hardcore adult man (shown as @heihachiro1960), opinion of the group: 100%
   - F_C_T: casual teen girl (shown as @ICECREAMNAKAI), opinion of the group: 0%
   - F_C_YA: casual young adult woman (shown as @machi_panpkn), opinion of the group: 17%
   - F_C_A: casual adult woman (shown as @wanitamaru), opinion of the group: 33%
-  - F_HC_T: devoted teen girl (shown as @kazunyan_dm), opinion of the group: 33%
-  - F_HC_YA: devoted young adult woman (shown as @sakisuki69), opinion of the group: 50%
-  - F_HC_A: devoted adult woman (shown as @wakana_1967), opinion of the group: 67%
+  - F_HC_T: hardcore teen girl (shown as @kazunyan_dm), opinion of the group: 33%
+  - F_HC_YA: hardcore young adult woman (shown as @sakisuki69), opinion of the group: 50%
+  - F_HC_A: hardcore adult woman (shown as @wakana_1967), opinion of the group: 67%
   ```
 
 ### The user message

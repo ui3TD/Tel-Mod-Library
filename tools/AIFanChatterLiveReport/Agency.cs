@@ -253,7 +253,7 @@ namespace AIFanChatter.LiveReport
         /// <summary>
         /// The agency's resources (money, fans, buzz, scandal points, fame) and its fan groups, with each fan
         /// type's record of good and bad reactions, as resources.GetFanOpinion reads them. Each trait leans one
-        /// way, so the fan types use the whole scale: devoted adult men 100, casual teen girls 0, and 17, 33,
+        /// way, so the fan types use the whole scale: hardcore adult men 100, casual teen girls 0, and 17, 33,
         /// 50, 67 and 83 between.
         /// </summary>
         private static void Fans()
@@ -328,7 +328,7 @@ namespace AIFanChatter.LiveReport
             Param(girl, data_girls._paramType.physicalStamina, 85);
             Param(girl, data_girls._paramType.mentalStamina, 80);
             Param(girl, data_girls._paramType.scandalPoints, 0);
-            // A third of her fans are devoted; most are men, as in the game's default fan mix
+            // A third of her fans are hardcore; most are men, as in the game's default fan mix
             girl.Fans.Add(new resources._fan { gender = resources.fanType.male, hardcoreness = resources.fanType.casual, age = resources.fanType.youngAdult, people = fans * 5 / 12 });
             girl.Fans.Add(new resources._fan { gender = resources.fanType.male, hardcoreness = resources.fanType.hardcore, age = resources.fanType.adult, people = fans / 3 });
             girl.Fans.Add(new resources._fan { gender = resources.fanType.female, hardcoreness = resources.fanType.casual, age = resources.fanType.teen, people = fans - fans * 5 / 12 - fans / 3 });

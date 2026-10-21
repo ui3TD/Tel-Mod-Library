@@ -1,6 +1,5 @@
 ﻿using HarmonyLib;
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using System.Reflection;
 using static WorkerRights.WorkerRights;
@@ -94,10 +93,10 @@ namespace WorkerRights
         /// <summary>Normal or Unfair with manual salaries: only then does low salary move the date.</summary>
         public bool LowSalaryApplies;
         public data_girls._status Status;
-        /// <summary>Days since her last contract, 0 while a longer contract is running, -1 if she never had one.</summary>
+        /// <summary>Days since her last contract ended (a one-off ends the day it's accepted), 0 while a longer contract runs, -1 if she never had one.</summary>
         public int DaysSinceContract;
-        /// <summary>Contracts accepted in the last 60 days: 1 per one-off, 10 per longer contract.</summary>
-        public int ContractPoints;
+        /// <summary>Contract work in the last 60 days: 1 per one-off, 10 per longer contract spread evenly over its length.</summary>
+        public float ContractPoints;
         public int Shows;
         /// <summary>Row in the latest released single: 0 center, 1 for 2nd-3rd, 2-4 further back, 5 or -1 not in it.</summary>
         public int SingleRow;
@@ -116,19 +115,6 @@ namespace WorkerRights
         // A longer contract costs about 10 times the stamina of a one-off
         public const int CONTRACT_POINTS_LONG = 10;
         public const float CONTRACT_MAX = 2f;
-
-        // The game keeps running contracts on its business component
-        public static Func<List<business.active_proposal>> RunningContracts = () =>
-        {
-            Camera camera = Camera.main;
-            if (camera == null)
-                return null;
-            mainScript main = camera.GetComponent<mainScript>();
-            if (main == null || main.Data == null)
-                return null;
-            business business = main.Data.GetComponent<business>();
-            return business == null ? null : business.ActiveProposals;
-        };
 
         public static bool LowSalaryApplies()
         {
@@ -240,7 +226,7 @@ namespace WorkerRights
             int age = girl.GetAge();
             policies.value dating = policies.GetSelectedPolicyValue(policies._type.dating);
             singles._single single = singles.GetLatestReleasedSingle();
-            ReadContracts(girl, out int daysSinceContract, out int contractPoints);
+            ReadContracts(girl, out int daysSinceContract, out float contractPoints);
 
             return new GraduationInputs
             {
@@ -263,52 +249,49 @@ namespace WorkerRights
         }
 
         /// <summary>
-        /// Days since her last accepted contract (the game's GetDaysSinceLastProposal returns the first),
-        /// and her contract points over the last 60 days.
+        /// Days since her last contract ended, and her contract work over the last 60 days. A one-off is all its
+        /// work on the day it's accepted; a longer contract's work is spread evenly from acceptance to its end
+        /// date. (The game's GetDaysSinceLastProposal returns the first contract's acceptance, not the last.)
         /// </summary>
-        public static void ReadContracts(data_girls.girls girl, out int daysSinceContract, out int contractPoints)
+        public static void ReadContracts(data_girls.girls girl, out int daysSinceContract, out float contractPoints)
         {
             daysSinceContract = -1;
-            contractPoints = 0;
-            if (business.History != null)
-            {
-                foreach (business._history contract in business.History)
-                {
-                    if (contract == null || contract.Girl != girl)
-                        continue;
-                    int days = (staticVars.dateTime - contract.Date).Days;
-                    if (daysSinceContract < 0 || days < daysSinceContract)
-                        daysSinceContract = days;
-                    if (days < CONTRACT_WINDOW_DAYS)
-                        contractPoints += IsLongContract(contract.Type) ? CONTRACT_POINTS_LONG : CONTRACT_POINTS_ONE_OFF;
-                }
-            }
-
-            List<business.active_proposal> running = null;
-            try
-            {
-                running = RunningContracts();
-            }
-            catch (Exception)
-            {
-                // No business component outside a loaded game
-            }
-            if (running == null)
+            contractPoints = 0f;
+            if (business.History == null)
                 return;
-            foreach (business.active_proposal contract in running)
+
+            DateTime now = staticVars.dateTime;
+            DateTime windowStart = now.AddDays(-CONTRACT_WINDOW_DAYS);
+            foreach (business._history contract in business.History)
             {
-                if (contract != null && contract.Girl == girl && contract.EndDate >= staticVars.dateTime)
+                if (contract == null || contract.Girl != girl)
+                    continue;
+
+                int months = ContractMonths(contract.Type);
+                DateTime end = contract.Date.AddMonths(months);
+                int sinceEnd = end > now ? 0 : (now - end).Days;
+                if (daysSinceContract < 0 || sinceEnd < daysSinceContract)
+                    daysSinceContract = sinceEnd;
+
+                if (months == 0)
                 {
-                    daysSinceContract = 0;
-                    return;
+                    if ((now - contract.Date).Days < CONTRACT_WINDOW_DAYS)
+                        contractPoints += CONTRACT_POINTS_ONE_OFF;
+                    continue;
                 }
+
+                DateTime from = contract.Date > windowStart ? contract.Date : windowStart;
+                DateTime to = end < now ? end : now;
+                if (to > from)
+                    contractPoints += (float)(CONTRACT_POINTS_LONG * (to - from).TotalDays / (end - contract.Date).TotalDays);
             }
         }
 
-        public static bool IsLongContract(business._type type)
+        /// <summary>The contract's length in months from the game's contract data; 0 (one-off) when it has none.</summary>
+        public static int ContractMonths(business._type type)
         {
             business._data data = business.GetData(type);
-            return data != null && data.duration > 0;
+            return data == null ? 0 : Math.Max(data.duration, 0);
         }
     }
 

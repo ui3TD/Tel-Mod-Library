@@ -54,15 +54,11 @@ namespace WorkerRightsTests
                 new() { business_type = business._type.photoshoot, duration = 0 },
                 new() { business_type = business._type.tv_drama, duration = 3 },
             };
-            Running = new List<business.active_proposal>();
-            GraduationWeek.RunningContracts = () => Running;
             Shows.shows = new List<Shows._show>();
             singles.Singles = new List<singles._single>();
             Pushes.Girls = new List<data_girls.girls> { null, null, null };
         }
 
-        /// <summary>The running contracts the mod sees.</summary>
-        public static List<business.active_proposal> Running = new();
 
         /// <summary>
         /// Adds an idol at this fame level. With weeklyEarnings, she has earned that much a week for three months.
@@ -427,7 +423,8 @@ namespace WorkerRightsTests
             string text = File.ReadAllText(TestGame.ModAsset("steam description.txt"));
             Assert.Contains($"at most +{GraduationWeek.WEEKLY_MAX} days", text);
             Assert.Contains($"under 50% moves the date {Mod.GRAD_DAYS_PENALTY} days closer each week, under 20% {Mod.GRAD_DAYS_PENALTY_SEVERE} days", text);
-            Assert.Contains($"up to +{GraduationWeek.CONTRACT_MAX}: a one-off counts {GraduationWeek.CONTRACT_POINTS_ONE_OFF}, a longer contract {GraduationWeek.CONTRACT_POINTS_LONG}", text);
+            Assert.Contains($"up to +{GraduationWeek.CONTRACT_MAX}: a one-off counts {GraduationWeek.CONTRACT_POINTS_ONE_OFF}, a longer contract {GraduationWeek.CONTRACT_POINTS_LONG} spread over its length", text);
+            Assert.Contains("counts from the day her last contract ended", text);
             Assert.Contains($"in the last {GraduationWeek.CONTRACT_WINDOW_DAYS} days", text);
         }
 
@@ -490,6 +487,7 @@ namespace WorkerRightsTests
             { "a contract a month", With(w => { w.DaysSinceContract = 10; w.ContractPoints = 2; return w; }), 7.0 },
             { "a contract every 2 weeks", With(w => { w.DaysSinceContract = 5; w.ContractPoints = 4; return w; }), 7.5 },
             { "a contract a week", With(w => { w.DaysSinceContract = 3; w.ContractPoints = 8; return w; }), 8.1 },
+            { "always on a 3-month contract", With(w => { w.DaysSinceContract = 0; w.ContractPoints = 10f * 60 / 92; return w; }), 8.1 },
             { "1 show", With(w => { w.Shows = 1; return w; }), 7.0 },
             { "2 shows", With(w => { w.Shows = 2; return w; }), 7.5 },
             { "3 shows", With(w => { w.Shows = 3; return w; }), 8.1 },
@@ -510,7 +508,8 @@ namespace WorkerRightsTests
     }
 
     /// <summary>
-    /// Contracts: days since the last one, and points over the last 60 days (1 per one-off, 10 per longer contract).
+    /// Contracts: days since the last one ended, and work over the last 60 days (1 per one-off,
+    /// 10 per longer contract spread evenly from acceptance to its end). Today is 2023-06-05.
     /// </summary>
     public class ContractTests
     {
@@ -519,32 +518,31 @@ namespace WorkerRightsTests
         private static void Accepted(data_girls.girls girl, business._type type, int daysAgo) =>
             business.History.Add(new business._history { Girl = girl, Type = type, Date = TestGame.Today.AddDays(-daysAgo) });
 
-        private static (int days, int points) Read(data_girls.girls girl)
+        private static (int days, float points) Read(data_girls.girls girl)
         {
-            GraduationWeek.ReadContracts(girl, out int days, out int points);
+            GraduationWeek.ReadContracts(girl, out int days, out float points);
             return (days, points);
+        }
+
+        private static void AssertRead(data_girls.girls girl, int expectedDays, double expectedPoints)
+        {
+            (int days, float points) = Read(girl);
+            Assert.Equal(expectedDays, days);
+            Assert.Equal(expectedPoints, points, 3);
         }
 
         [Fact]
         public void NeverHadOne()
         {
-            Assert.Equal((-1, 0), Read(TestGame.Idol(0)));
+            AssertRead(TestGame.Idol(0), -1, 0);
         }
 
         [Fact]
-        public void OneOff_1Point()
+        public void OneOff_1PointAtOnce()
         {
             data_girls.girls girl = TestGame.Idol(0);
             Accepted(girl, business._type.photoshoot, 10);
-            Assert.Equal((10, 1), Read(girl));
-        }
-
-        [Fact]
-        public void LongerContract_10Points()
-        {
-            data_girls.girls girl = TestGame.Idol(0);
-            Accepted(girl, business._type.tv_drama, 10);
-            Assert.Equal((10, 10), Read(girl));
+            AssertRead(girl, 10, 1);
         }
 
         /// <summary>
@@ -555,7 +553,42 @@ namespace WorkerRightsTests
         {
             data_girls.girls girl = TestGame.Idol(0);
             Accepted(girl, business._type.variety, 10);
-            Assert.Equal((10, 1), Read(girl));
+            AssertRead(girl, 10, 1);
+        }
+
+        /// <summary>
+        /// A 3-month contract (here 92 days) builds up its 10 points over its length, and counts as work today while it runs.
+        /// </summary>
+        [Theory]
+        [InlineData(0, 0)]
+        [InlineData(10, 10.0 * 10 / 92)]
+        [InlineData(30, 10.0 * 30 / 92)]
+        [InlineData(80, 10.0 * 60 / 92)]
+        public void LongerContract_Running(int daysAgo, double expectedPoints)
+        {
+            data_girls.girls girl = TestGame.Idol(0);
+            Accepted(girl, business._type.tv_drama, daysAgo);
+            AssertRead(girl, 0, expectedPoints);
+        }
+
+        /// <summary>
+        /// Accepted 100 days ago, it ran 89 days and ended 11 days ago: the timer starts at its end,
+        /// and the 49 days of it inside the last 60 still count.
+        /// </summary>
+        [Fact]
+        public void LongerContract_TimerStartsAtItsEnd()
+        {
+            data_girls.girls girl = TestGame.Idol(0);
+            Accepted(girl, business._type.tv_drama, 100);
+            AssertRead(girl, 11, 10.0 * 49 / 89);
+        }
+
+        [Fact]
+        public void LongerContract_LongOver()
+        {
+            data_girls.girls girl = TestGame.Idol(0);
+            Accepted(girl, business._type.tv_drama, 200);
+            AssertRead(girl, 108, 0);
         }
 
         /// <summary>
@@ -567,16 +600,16 @@ namespace WorkerRightsTests
             data_girls.girls girl = TestGame.Idol(0);
             Accepted(girl, business._type.photoshoot, 400);
             Accepted(girl, business._type.photoshoot, 5);
-            Assert.Equal((5, 1), Read(girl));
+            AssertRead(girl, 5, 1);
         }
 
         [Fact]
-        public void Only60DaysCount()
+        public void OneOffs_Only60DaysCount()
         {
             data_girls.girls girl = TestGame.Idol(0);
             Accepted(girl, business._type.photoshoot, 59);
             Accepted(girl, business._type.photoshoot, 60);
-            Assert.Equal((59, 1), Read(girl));
+            AssertRead(girl, 59, 1);
         }
 
         [Fact]
@@ -584,34 +617,7 @@ namespace WorkerRightsTests
         {
             data_girls.girls girl = TestGame.Idol(0);
             Accepted(TestGame.Idol(0), business._type.tv_drama, 5);
-            Assert.Equal((-1, 0), Read(girl));
-        }
-
-        [Fact]
-        public void RunningLongerContract_CountsAsToday()
-        {
-            data_girls.girls girl = TestGame.Idol(0);
-            Accepted(girl, business._type.tv_drama, 80);
-            TestGame.Running.Add(new business.active_proposal { Girl = girl, EndDate = TestGame.Today.AddDays(10) });
-            Assert.Equal((0, 0), Read(girl));
-        }
-
-        [Fact]
-        public void EndedContract_NoLongerCounts()
-        {
-            data_girls.girls girl = TestGame.Idol(0);
-            Accepted(girl, business._type.tv_drama, 95);
-            TestGame.Running.Add(new business.active_proposal { Girl = girl, EndDate = TestGame.Today.AddDays(-1) });
-            Assert.Equal((95, 0), Read(girl));
-        }
-
-        [Fact]
-        public void NoBusinessComponent_Ignored()
-        {
-            data_girls.girls girl = TestGame.Idol(0);
-            Accepted(girl, business._type.photoshoot, 70);
-            GraduationWeek.RunningContracts = () => throw new NullReferenceException();
-            Assert.Equal((70, 0), Read(girl));
+            AssertRead(girl, -1, 0);
         }
     }
 

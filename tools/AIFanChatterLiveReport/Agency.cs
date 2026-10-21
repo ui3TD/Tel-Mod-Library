@@ -328,10 +328,18 @@ namespace AIFanChatter.LiveReport
             Param(girl, data_girls._paramType.physicalStamina, 85);
             Param(girl, data_girls._paramType.mentalStamina, 80);
             Param(girl, data_girls._paramType.scandalPoints, 0);
-            // A third of her fans are hardcore; most are men, as in the game's default fan mix
-            girl.Fans.Add(new resources._fan { gender = resources.fanType.male, hardcoreness = resources.fanType.casual, age = resources.fanType.youngAdult, people = fans * 5 / 12 });
-            girl.Fans.Add(new resources._fan { gender = resources.fanType.male, hardcoreness = resources.fanType.hardcore, age = resources.fanType.adult, people = fans / 3 });
-            girl.Fans.Add(new resources._fan { gender = resources.fanType.female, hardcoreness = resources.fanType.casual, age = resources.fanType.teen, people = fans - fans * 5 / 12 - fans / 3 });
+            // Fans of every type, so every fan account can post: two thirds men, a third hardcore, and
+            // teens 30%, young adults 40%, adults 30%. The first type takes what's left after rounding.
+            long rest = fans;
+            foreach (var (gender, genderShare) in new[] { (resources.fanType.male, 2), (resources.fanType.female, 1) })
+                foreach (var (devotion, devotionShare) in new[] { (resources.fanType.casual, 2), (resources.fanType.hardcore, 1) })
+                    foreach (var (fanAge, ageShare) in new[] { (resources.fanType.teen, 3), (resources.fanType.youngAdult, 4), (resources.fanType.adult, 3) })
+                    {
+                        long people = fans * genderShare * devotionShare * ageShare / 90;
+                        rest -= people;
+                        girl.Fans.Add(new resources._fan { gender = gender, hardcoreness = devotion, age = fanAge, people = people });
+                    }
+            girl.Fans[0].people += rest;
             if (traits.GetTrait(trait) == null)
             {
                 traits.Traits.Add(new traits._trait { Type = trait, Title = trait.ToString().Replace('_', ' ') });

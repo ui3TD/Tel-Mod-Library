@@ -7,7 +7,14 @@ Idols will demand fair wages! Brand new staff cannot be blamed for scandals!
 - 20000 yen/wk is the expected starting salary for 100% satisfaction.
 - 20000 yen/wk is the default starting salary.
 - In Unfair, idols at 10 fame will expect at least 10% of their average earnings as salary so that the endgame is more challenging. This never lowers what they would expect otherwise.
-- In Unfair and Normal mode with manual salaries, underpaid idols graduate sooner. Each week, if salary satisfaction is under 50%, the graduation date moves closer by 10 days. If under 20% then 30 days.
+
+[h3]Graduation Dates[/h3]
+The base game works out each week how an idol's graduation date should move, but never saves it. Now it does, with retuned numbers so busy idols don't stay forever.
+- Later: salary satisfaction over 75% / 100% / 150% (+0.5 / +1 / +1.5 days a week), friendship with you of almost level 4 or more (+1), each flirt point (+1, up to 4), on hiatus (+2), contracts in the last 60 days (up to +2: a one-off counts 1, a longer contract 10), shows (+1 / +1.5 / +2 for 1 / 2 / 3), latest single (+3.5 center, +1.5 2nd-3rd row, +0.5 further back), pushed (+1.5).
+- Sooner: physical stamina under 25 (-1), mental stamina under 25 / 50 (-3 / -1), friendship with you of almost level -2 or less (-2), dating banned (-2), injured (-2), depressed (-7), no contract for over 60 / 90 / 120 / 180 / 360 days (-1 / -2 / -3 / -4 / -6).
+- In Unfair and Normal mode with manual salaries, underpaid idols graduate sooner: salary satisfaction under 50% moves the date 10 days closer each week, under 20% 30 days.
+- The week's total is at most +5 days, so even the best-treated idols graduate around 30.
+- Age: over 20 / 25 / 30 moves the date 1 / 3 / 7 days closer each week.
 
 [h3]Staff Rights[/h3]
 - Staff cannot be fired using scandal points within the first month so that you can't just hire and immediately fire staff to get rid of points.
@@ -16,3 +23,4 @@ Idols will demand fair wages! Brand new staff cannot be blamed for scandals!
 
 [h3]Changelog[/h3]
 - 1.1.0: The low-salary graduation penalty now works; the 10-fame floor no longer lowers expectations.
+- 2.0.0: Graduation dates now move each week with how idols are treated and used.

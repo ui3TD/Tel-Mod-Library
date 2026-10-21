@@ -257,18 +257,79 @@ namespace AIFanChatter
                     return;
                 }
                 List<Event_Manager._activeEvent> before = log.Where(e => e != null && e != active && e.data?.id == id).ToList();
-                if (before.Count == 0)
+                if (before.Count > 0)
                 {
-                    return;
+                    moment
+                        .AddTo(Section, "Times this event happened before", () => before.Count)
+                        .AddTo(Section, "Last time it happened", () => Ago(before.Max(e => e.date), now));
                 }
-                moment
-                    .AddTo(Section, "Times this event happened before", () => before.Count)
-                    .AddTo(Section, "Last time it happened", () => Ago(before.Max(e => e.date), now));
+                Storyline(moment, active, log, now);
             }
             catch (Exception)
             {
                 // No history for this event
             }
+        }
+
+        private const string TriggerEvent = "trigger_event";
+        private const string TriggerEventSameActor = "trigger_event_same_actor";
+
+        /// <summary>
+        /// The text of the storyline's earlier events that happened and reached the public, oldest first: the
+        /// events whose answers start this one (a trigger_event effect), and the ones that start those. The
+        /// game doesn't save which answer the player gave, so an earlier event is left out unless every
+        /// answer of it that leads on in the storyline has a public outcome (EventOutcome.IsPublic). The
+        /// answers themselves aren't sent.
+        /// </summary>
+        private static void Storyline(Moment moment, Event_Manager._activeEvent active, IEnumerable<Event_Manager._activeEvent> log, DateTime now)
+        {
+            // Each earlier event, with the answers of it that lead on to a later event of the storyline
+            Dictionary<string, List<Event_Manager._randomEvent._reply>> leading = new();
+            Queue<string> next = new();
+            next.Enqueue(active.data.id);
+            while (next.Count > 0)
+            {
+                string id = next.Dequeue();
+                foreach (Event_Manager._randomEvent data in Event_Manager.RandomEvents)
+                {
+                    List<Event_Manager._randomEvent._reply> starting = Starting(data, id);
+                    if (starting.Count == 0 || string.IsNullOrEmpty(data.id) || data.id == active.data.id)
+                    {
+                        continue;
+                    }
+                    if (!leading.TryGetValue(data.id, out List<Event_Manager._randomEvent._reply> answers))
+                    {
+                        answers = new List<Event_Manager._randomEvent._reply>();
+                        leading[data.id] = answers;
+                        next.Enqueue(data.id);
+                    }
+                    answers.AddRange(starting.Where(r => !answers.Contains(r)));
+                }
+            }
+            List<Event_Manager._activeEvent> chapters = leading
+                .Where(chapter => chapter.Value.All(EventOutcome.IsPublic))
+                .Select(chapter => log.Where(e => e != null && e != active && e.data?.id == chapter.Key && e.date <= active.date)
+                    .OrderByDescending(e => e.date).FirstOrDefault())
+                .Where(e => e != null)
+                .OrderBy(e => e.date)
+                .ToList();
+            foreach (Event_Manager._activeEvent chapter in chapters)
+            {
+                string ago = Ago(chapter.date, now);
+                moment.AddTo(Section, "Earlier in this storyline" + (ago == "" ? "" : ", " + ago), () => chapter.GetDescription());
+            }
+        }
+
+        /// <summary>The event's answers that start the event with this id.</summary>
+        private static List<Event_Manager._randomEvent._reply> Starting(Event_Manager._randomEvent data, string id)
+        {
+            if (data?.reply == null)
+            {
+                return new List<Event_Manager._randomEvent._reply>();
+            }
+            return data.reply.Where(r => r?.Effects != null && r.Effects.Any(effect =>
+                effect != null && (effect.parameter == TriggerEvent || effect.parameter == TriggerEventSameActor)
+                && (effect.formula ?? "").Split(' ')[0] == id)).ToList();
         }
     }
 }

@@ -171,7 +171,7 @@ namespace AIFanChatter.LiveReport
 
         private static string setList;
         private static List<string> picked;
-        private static string eventId = "dating_caught_aftermath";
+        private static string eventId = "onions_30";
         private static int? eventReply;
         private static string eventIdols = "Rin";
 
@@ -228,8 +228,21 @@ namespace AIFanChatter.LiveReport
             {
                 throw new ArgumentException("Answer " + reply + " of " + eventId + " posts on the feed itself, so the mod sends nothing for it");
             }
-            Event_Manager._activeEvent active = agency.Event(data, eventIdols.Split(',').Select(n => n.Trim()).Where(n => n != "").ToList());
-            return MomentContext.Event(active, data.reply[reply], new List<Event_Manager._activeEvent> { active });
+            List<string> names = eventIdols.Split(',').Select(n => n.Trim()).Where(n => n != "").ToList();
+            Event_Manager._activeEvent active = agency.Event(data, names);
+            List<Event_Manager._activeEvent> log = new() { active };
+            // The event that starts this one, when it's part of a storyline, as already answered 3 days ago
+            // with the same idols
+            Event_Manager._randomEvent earlier = GameText.Events.Values.FirstOrDefault(e => e.reply.Any(r => r.Effects.Any(effect =>
+                effect.parameter.StartsWith("trigger_event") && (effect.formula ?? "").Split(' ')[0] == eventId)));
+            if (earlier != null)
+            {
+                Event_Manager._activeEvent chapter = agency.Event(earlier, names);
+                chapter.date = active.date.AddDays(-3);
+                chapter.state = Event_Manager._activeEvent._state.complete;
+                log.Insert(0, chapter);
+            }
+            return MomentContext.Event(active, data.reply[reply], log);
         }
 
         /// <summary>
@@ -328,6 +341,9 @@ namespace AIFanChatter.LiveReport
                 data.Set(item);
                 Events[data.id] = data;
             }
+            // The game's own list, where the mod finds which events start which
+            Event_Manager.RandomEvents.Clear();
+            Event_Manager.RandomEvents.AddRange(Events.Values);
             Event_Templates.Templates.Clear();
             foreach (JSONNode item in Read(Path.Combine(english, "Events", "event_templates.json")).AsArray)
             {

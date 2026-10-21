@@ -302,5 +302,151 @@ namespace AIFanChatter.Tests
             History.Event(moment, current, new List<Event_Manager._activeEvent> { current }, Today);
             Assert.Empty(moment.Facts(H));
         }
+
+        /// <summary>
+        /// An event in the game's list whose answer starts the next one, as random_events.json writes it:
+        /// "trigger_event politician_2 14". The answer also adds buzz, a public outcome, unless it's private.
+        /// </summary>
+        private static Event_Manager._randomEvent Starts(string id, string next, string effect = "trigger_event", bool isPublic = true)
+        {
+            Event_Manager._randomEvent data = Event_Manager.RandomEvents.FirstOrDefault(e => e.id == id);
+            if (data == null)
+            {
+                data = new Event_Manager._randomEvent { id = id };
+                Event_Manager.RandomEvents.Add(data);
+            }
+            Event_Manager._randomEvent._reply reply = new();
+            reply.Effects.Add(new data_dialogues._action { target = "meta", parameter = effect, formula = next + " 14" });
+            reply.Effects.Add(isPublic
+                ? new data_dialogues._action { target = "resource", parameter = "buzz", formula = "20" }
+                : new data_dialogues._action { target = "resource", parameter = "money", formula = "-100000" });
+            data.reply.Add(reply);
+            return data;
+        }
+
+        private static Event_Manager._activeEvent Chapter(string id, DateTime date, string text)
+        {
+            Event_Manager._activeEvent chapter = Event(id, date);
+            chapter.data.description = text;
+            return chapter;
+        }
+
+        private static List<KeyValuePair<string, string>> StoryLines(Moment moment) =>
+            moment.Facts(H).Where(f => f.Key.StartsWith("Earlier in this storyline")).ToList();
+
+        /// <summary>
+        /// The event history with a player, as the game always has: an event's text names the player.
+        /// </summary>
+        private static void EventHistory(Moment moment, Event_Manager._activeEvent current, List<Event_Manager._activeEvent> log)
+        {
+            staticVars._playerData playerBefore = staticVars.PlayerData;
+            List<staff._staff> staffBefore = staff.Staff.ToList();
+            try
+            {
+                staticVars.PlayerData = new staticVars._playerData { FirstName = "Haruto", LastName = "Sato" };
+                staff.Staff.Clear();
+                staff.Staff.Add(new staff._staff { type = staff._type.player });
+                History.Event(moment, current, log, Today);
+            }
+            finally
+            {
+                staticVars.PlayerData = playerBefore;
+                staff.Staff.Clear();
+                staff.Staff.AddRange(staffBefore);
+            }
+        }
+
+        /// <summary>
+        /// The storyline's earlier events that happened, oldest first, each with how long ago; events outside
+        /// the storyline, and a later run of an earlier chapter, are left out.
+        /// </summary>
+        [Fact]
+        public void Event_InAStoryline_GivesTheEarlierChapters()
+        {
+            Starts("politician", "politician_2");
+            Starts("politician_2", "politician_3a", "trigger_event_same_actor");
+            Starts("fake_tickets", "elsewhere");
+            List<Event_Manager._activeEvent> log = new()
+            {
+                Chapter("politician_2", Today.AddDays(-40), "He doubles down."),
+                Chapter("politician", Today.AddDays(-104), "A politician attacks idol groups."),
+                Chapter("fake_tickets", Today.AddDays(-50), "Fake tickets."),
+                Chapter("politician", Today.AddDays(5), "Not yet."),
+            };
+            Event_Manager._activeEvent current = Chapter("politician_3a", Today, "He resigns.");
+            log.Add(current);
+
+            Moment moment = new("x");
+            EventHistory(moment, current, log);
+            Assert.Equal(new[]
+            {
+                new KeyValuePair<string, string>("Earlier in this storyline, 3 months ago", "A politician attacks idol groups."),
+                new KeyValuePair<string, string>("Earlier in this storyline, 40 days ago", "He doubles down."),
+            }, StoryLines(moment));
+        }
+
+        /// <summary>
+        /// A chapter missing from the save is left out and the rest still show; an event that starts itself
+        /// or a loop of events ends.
+        /// </summary>
+        [Fact]
+        public void Event_Storyline_SkipsMissingChapters_AndEndsLoops()
+        {
+            Starts("onions_10", "onions_20");
+            Starts("onions_20", "onions_30");
+            Starts("onions_30", "onions_10");
+            Starts("onions_30", "onions_30");
+            Event_Manager._activeEvent current = Chapter("onions_30", Today, "Third.");
+            List<Event_Manager._activeEvent> log = new() { Chapter("onions_10", Today.AddDays(-14), "First."), current };
+
+            Moment moment = new("x");
+            EventHistory(moment, current, log);
+            Assert.Equal(new[] { new KeyValuePair<string, string>("Earlier in this storyline, 14 days ago", "First.") }, StoryLines(moment));
+        }
+
+        /// <summary>
+        /// The game doesn't save the answer given, so an earlier event is left out when any answer of it that
+        /// leads on could have been private; one whose leading answers were all public, or posted by the game
+        /// itself, still shows.
+        /// </summary>
+        [Fact]
+        public void Event_Storyline_LeavesOutChaptersThatMayHaveStayedPrivate()
+        {
+            Starts("blackmail", "fallout", isPublic: false);
+            Starts("rumour", "fallout");
+            Starts("rumour", "fallout", isPublic: false);
+            Event_Manager._randomEvent posted = Starts("trolls", "fallout", isPublic: false);
+            posted.reply[0].SNS.Add(new Event_Manager._randomEvent._reply._SNS());
+            Starts("press", "fallout");
+            Event_Manager._activeEvent current = Chapter("fallout", Today, "Now.");
+            List<Event_Manager._activeEvent> log = new()
+            {
+                Chapter("blackmail", Today.AddDays(-4), "A private email."),
+                Chapter("rumour", Today.AddDays(-3), "Maybe private."),
+                Chapter("trolls", Today.AddDays(-2), "Trolls, posted by the game."),
+                Chapter("press", Today.AddDays(-1), "In the papers."),
+                current,
+            };
+
+            Moment moment = new("x");
+            EventHistory(moment, current, log);
+            Assert.Equal(new[] { "Trolls, posted by the game.", "In the papers." }, StoryLines(moment).Select(l => l.Value));
+        }
+
+        /// <summary>
+        /// An event outside any storyline keeps only its count of earlier runs.
+        /// </summary>
+        [Fact]
+        public void Event_OutsideAStoryline_HasNoStoryline()
+        {
+            Starts("politician", "politician_2");
+            Event_Manager._activeEvent current = Chapter("scandal", Today, "Now.");
+            List<Event_Manager._activeEvent> log = new() { Chapter("scandal", Today.AddDays(-20), "Before."), Chapter("politician", Today.AddDays(-5), "Other."), current };
+
+            Moment moment = new("x");
+            EventHistory(moment, current, log);
+            Assert.Empty(StoryLines(moment));
+            Assert.Equal("1", moment.Fact(H, "Times this event happened before"));
+        }
     }
 }

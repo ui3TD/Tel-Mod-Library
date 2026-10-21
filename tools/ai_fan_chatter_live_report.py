@@ -331,7 +331,7 @@ def main() -> int:
     ap.add_argument("--game-dir", type=Path, help="the game's install folder, for its text (found through Steam if left out)")
     ap.add_argument("--dry-run", action="store_true", help="print the prompts the first model would get; sends nothing")
     ap.add_argument("--moments", nargs="+", choices=["single", "concert", "event", "scandal", "graduation"], help="the moments to send, in their usual order (all five if left out)")
-    ap.add_argument("--event", help="the random event's id in the game's random_events.json (default dating_caught_aftermath)")
+    ap.add_argument("--event", help="the random event's id in the game's random_events.json (default onions_30)")
     ap.add_argument("--event-reply", type=int, help="the player's answer to the event, from 0 (default: the first one without posts of its own)")
     ap.add_argument("--event-idols", help="who plays the event's idols, by first name, split by commas (default: Rin)")
     ap.add_argument("--setlist", help='the concert\'s set list, items split by ";": "Single title/center" or "talk: idol, idol", idols by first name')

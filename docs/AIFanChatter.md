@@ -114,6 +114,7 @@ The moment's own details, one per line.
 - **A random event:**
   - what happened, the details, the agency's response, the outcome, and who was involved.
   - The game writes its events to the player. When the details, the response or the outcome say "you", a line `You: the group's producer (name)` tells the AI who that is, with the player's name as the game shows it.
+  - Fans only post when the answer changed something the public sees: fans, fans' opinion, buzz, scandal points or fame. Answers that only cost money, stamina or relationships, or only lead to a dialogue or a later event, get no posts.
 - **A dating scandal** (the game's dating scandals option): what happened, without the game's question to the player, the agency's response, the outcome, and who was involved, with the same `You` line. Fans only post when the outcome reached the public: paying off the blackmailer or the publication, the police catching the blackmailer, a blackmailer who was bluffing, and an editor who drops the story after a denial all get no posts.
 
 ### `{agency}`
@@ -160,7 +161,7 @@ Earlier results to compare with. Empty when there's nothing earlier.
 - **A single:** the group's last 3 singles, each with its genre, lyrics, choreography, sales, quality, fan satisfaction and release date, then how many singles came before and the best-selling one.
 - **A concert:** the previous concert's venue, attendance and date, how many concerts came before, and the biggest audience so far.
 - **A graduation:** the previous graduate from the same group and when she left, and how many of the group's idols graduated before her. When she's the group's first graduate, it says so.
-- **A random event:** how often the same event happened before, and when it last did.
+- **A random event:** how often the same event happened before, and when it last did. For an event in a storyline, the text of the storyline's earlier events that happened, oldest first. The game doesn't keep which answer was given, so an earlier event is only included when every answer of it that leads on in the storyline had a public outcome, or the game posted about it. The answers themselves aren't included.
 - **A dating scandal:** nothing. The game gives each idol at most one.
 
 ### `{feed}`

@@ -26,6 +26,7 @@ namespace AIFanChatter.Tests
             Language.Variables.Clear();
             policies.Values.Clear();
             Relationships.Cliques.Clear();
+            Event_Manager.RandomEvents.Clear();
             Event_Templates.Dating_Reactions.Clear();
             Event_Templates.Active_Template = null;
             DatingScandal.Capturing = false;

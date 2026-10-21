@@ -212,21 +212,26 @@ namespace AIFanChatter
     }
 
     /// <summary>
-    /// Random events, scandals included. Events that already post on the feed are left to the game.
+    /// Random events, scandals included, when the answer had a public outcome (EventOutcome). Events that
+    /// already post on the feed are left to the game.
     /// </summary>
     [HarmonyPatch(typeof(Event_Manager), nameof(Event_Manager.ConcludeEvent))]
     [HarmonyPriority(Priority.Last)]
     public class Event_Manager_ConcludeEvent
     {
-        /// <summary>
-        /// The event being answered; the game may mark it complete during the method.
-        /// </summary>
-        public static void Prefix(Event_Manager __instance, out Event_Manager._activeEvent __state)
+        public sealed class Before
+        {
+            /// <summary>The event being answered; the game may mark it complete during the method.</summary>
+            public Event_Manager._activeEvent Active;
+            public List<double> PublicState;
+        }
+
+        public static void Prefix(Event_Manager __instance, out Before __state)
         {
             __state = null;
             try
             {
-                __state = __instance.GetActiveEvent();
+                __state = new Before { Active = __instance.GetActiveEvent(), PublicState = EventOutcome.PublicState() };
             }
             catch (Exception)
             {
@@ -234,17 +239,25 @@ namespace AIFanChatter
             }
         }
 
-        public static void Postfix(Event_Manager __instance, Event_Manager._randomEvent._reply reply, Event_Manager._activeEvent __state, bool __runOriginal)
+        public static void Postfix(Event_Manager __instance, Event_Manager._randomEvent._reply reply, Before __state, bool __runOriginal)
         {
-            if (ShouldPost(reply, __state, __runOriginal))
+            try
             {
-                Moments.Trigger(() => MomentContext.Event(__state, reply, __instance?.activeEvents));
+                // Read after the other mods' postfixes, so outcomes they apply in code count
+                if (__state != null && ShouldPost(reply, __state.Active, __runOriginal, EventOutcome.Changed(__state.PublicState, EventOutcome.PublicState())))
+                {
+                    Moments.Trigger(() => MomentContext.Event(__state.Active, reply, __instance?.activeEvents));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
             }
         }
 
-        internal static bool ShouldPost(Event_Manager._randomEvent._reply reply, Event_Manager._activeEvent active, bool ran)
+        internal static bool ShouldPost(Event_Manager._randomEvent._reply reply, Event_Manager._activeEvent active, bool ran, bool publicOutcome)
         {
-            return ran && reply != null && active != null && (reply.SNS == null || reply.SNS.Count == 0);
+            return ran && publicOutcome && reply != null && active != null && (reply.SNS == null || reply.SNS.Count == 0);
         }
     }
 

@@ -98,10 +98,19 @@ namespace AIFanChatter.Tests
             Event_Manager._randomEvent._reply posting = new();
             posting.SNS.Add(new Event_Manager._randomEvent._reply._SNS());
 
-            Assert.True(Event_Manager_ConcludeEvent.ShouldPost(quiet, active, ran: true));
-            Assert.False(Event_Manager_ConcludeEvent.ShouldPost(posting, active, ran: true));
-            Assert.False(Event_Manager_ConcludeEvent.ShouldPost(quiet, active, ran: false));
-            Assert.False(Event_Manager_ConcludeEvent.ShouldPost(quiet, null, ran: true));
+            Assert.True(Event_Manager_ConcludeEvent.ShouldPost(quiet, active, ran: true, publicOutcome: true));
+            Assert.False(Event_Manager_ConcludeEvent.ShouldPost(posting, active, ran: true, publicOutcome: true));
+            Assert.False(Event_Manager_ConcludeEvent.ShouldPost(quiet, active, ran: false, publicOutcome: true));
+            Assert.False(Event_Manager_ConcludeEvent.ShouldPost(quiet, null, ran: true, publicOutcome: true));
+        }
+
+        /// <summary>
+        /// An answer whose outcome the public doesn't see gets no posts.
+        /// </summary>
+        [Fact]
+        public void EventsWithAPrivateOutcome_GetNoPosts()
+        {
+            Assert.False(Event_Manager_ConcludeEvent.ShouldPost(new Event_Manager._randomEvent._reply(), new Event_Manager._activeEvent(), ran: true, publicOutcome: false));
         }
 
         [Fact]

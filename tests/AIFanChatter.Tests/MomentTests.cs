@@ -238,7 +238,7 @@ namespace AIFanChatter.Tests
         [Fact]
         public void SystemPrompt_ListsEveryFanCodeTheFeedDraws()
         {
-            string prompt = Prompt.System("English", new Dictionary<string, string>(), null);
+            string prompt = Prompt.System("English", Prompt.FanCodes, new Dictionary<string, string>(), null);
             foreach (string code in Prompt.FanCodes)
             {
                 Assert.Contains("- " + code + ":", prompt);
@@ -252,7 +252,7 @@ namespace AIFanChatter.Tests
         [Fact]
         public void SystemPrompt_UsesTheConstantsText()
         {
-            string prompt = Prompt.System("Japanese", new Dictionary<string, string>(), null);
+            string prompt = Prompt.System("Japanese", Prompt.FanCodes, new Dictionary<string, string>(), null);
             Assert.StartsWith("You write fan posts for the social media feed of an idol management game.", prompt);
             Assert.Contains("\n- Write 3 to 6 posts reacting to the event", prompt);
             Assert.Contains("0 to 3 replies from other fans but not themselves.", prompt);
@@ -287,7 +287,7 @@ namespace AIFanChatter.Tests
         public void ChangedWording_IsUsed()
         {
             Language.Data[Prompt.SystemKey] = "Only {max} posts, in {language}. Fans argue about everything.";
-            string prompt = Prompt.System("Russian", null, null);
+            string prompt = Prompt.System("Russian", Prompt.FanCodes, null, null);
             Assert.StartsWith("Only 6 posts, in Russian. Fans argue about everything.", prompt);
             Assert.EndsWith(Prompt.FormatLead + "\n" + Prompt.FormatExample, prompt);
             Assert.Single(TestEnv.Logs);
@@ -300,7 +300,7 @@ namespace AIFanChatter.Tests
         public void MissingText_FallsBackToTheEssentials()
         {
             Language.Data.Remove(Prompt.SystemKey);
-            string prompt = Prompt.System("English", null, null);
+            string prompt = Prompt.System("English", Prompt.FanCodes, null, null);
             Assert.StartsWith("Fan accounts.", prompt);
             Assert.Contains("- F_HC_A:", prompt);
             Assert.EndsWith(Prompt.FormatExample, prompt);
@@ -314,7 +314,7 @@ namespace AIFanChatter.Tests
         public void FanAccounts_CarryTheirOpinion()
         {
             Dictionary<string, int> opinions = new() { ["M_C_T"] = 12, ["F_HC_A"] = 88 };
-            string prompt = Prompt.System("English", null, opinions);
+            string prompt = Prompt.System("English", Prompt.FanCodes, null, opinions);
             Assert.Contains("- M_C_T: casual teen boy, opinion of the group: 12%", prompt);
             Assert.Contains("- F_HC_A: hardcore adult woman, opinion of the group: 88%", prompt);
             Assert.Contains("- M_C_YA: casual young adult man\n", prompt);
@@ -352,6 +352,45 @@ namespace AIFanChatter.Tests
             opinions = new GameHost().FanOpinions;
             Assert.Equal(8, opinions.Count);
             Assert.False(opinions.ContainsKey("M_C_A"));
+        }
+
+        /// <summary>
+        /// The system prompt lists only the kinds of fans the agency has, and its reply format names only them.
+        /// </summary>
+        [Fact]
+        public void SystemPrompt_NamesOnlyTheAgencysFanTypes()
+        {
+            string prompt = Prompt.System("English", new[] { "M_C_YA", "F_C_T" }, null, null);
+            Assert.Contains("- M_C_YA:", prompt);
+            Assert.Contains("- F_C_T:", prompt);
+            Assert.DoesNotContain("F_HC_T", prompt);
+            Assert.DoesNotContain("M_C_A", prompt);
+            Assert.EndsWith("{\"posts\":[{\"user\":\"M_C_YA\",\"text\":\"...\",\"replies\":[{\"user\":\"F_C_T\",\"text\":\"...\"}]}]}", prompt);
+
+            Assert.EndsWith("{\"posts\":[{\"user\":\"F_C_T\",\"text\":\"...\",\"replies\":[]}]}", Prompt.System("English", new[] { "F_C_T" }, null, null));
+            Assert.Equal(Prompt.FormatExample, Prompt.FormatFor(Prompt.FanCodes));
+        }
+
+        /// <summary>
+        /// The fans per kind are those of the idols still in the agency, as the game counts its total, not
+        /// resources.Fans, which the game only refreshes in the fans tooltip. Kinds without fans are left out.
+        /// </summary>
+        [Fact]
+        public void GameHost_CountsTheFansOfIdolsStillInTheAgency()
+        {
+            TestGame.Idol("Arisa", fans: 300);
+            data_girls.girls kokoro = TestGame.Idol("Kokoro", fans: 200);
+            kokoro.Fans.Add(new resources._fan { gender = resources.fanType.female, hardcoreness = resources.fanType.hardcore, age = resources.fanType.adult, people = 50 });
+            kokoro.Fans.Add(new resources._fan { gender = resources.fanType.male, hardcoreness = resources.fanType.hardcore, age = resources.fanType.teen, people = 0 });
+            kokoro.Fans.Add(new resources._fan { gender = (resources.fanType)99, hardcoreness = resources.fanType.casual, age = resources.fanType.teen, people = 70 });
+            kokoro.Fans.Add(null);
+            TestGame.Idol("Mika", fans: 1000).Graduated(TestGame.Today);
+            resources.Fans.Add(new resources._fan { gender = resources.fanType.female, hardcoreness = resources.fanType.casual, age = resources.fanType.adult, people = 5000 });
+
+            IDictionary<string, long> counts = new GameHost().FanCounts;
+            Assert.Equal(2, counts.Count);
+            Assert.Equal(500, counts["M_C_T"]);
+            Assert.Equal(50, counts["F_HC_A"]);
         }
 
         [Theory]

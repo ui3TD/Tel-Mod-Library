@@ -123,7 +123,7 @@ namespace AIFanChatter.Tests
             moment.AddTo(Moment.HistorySection, "Previous single", () => "Old Song");
             moment.AddTo(Moment.AgencySection, "Group", () => "Stars");
             string user = Prompt.User(moment, new List<SNS_Manager._message> { TestEnv.Post("F_C_T", "hi") });
-            string system = Prompt.System("English", null, null);
+            string system = Prompt.System("English", Prompt.FanCodes, null, null);
             Assert.DoesNotMatch(Placeholder, user);
             Assert.DoesNotMatch(Placeholder, system);
             Assert.Empty(TestEnv.Logs);
@@ -132,7 +132,7 @@ namespace AIFanChatter.Tests
         [Fact]
         public void ShippedRules_KeepFansOnTheNewEvent()
         {
-            string system = Prompt.System("English", null, null);
+            string system = Prompt.System("English", Prompt.FanCodes, null, null);
             Assert.Contains("\n- Every post reacts to the new event. The background and the earlier posts are history", system);
             Assert.Contains("\n- Stamina and mental stamina aren't public: fans only notice signs", system);
         }

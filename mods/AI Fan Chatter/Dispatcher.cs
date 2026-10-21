@@ -1,6 +1,7 @@
 using AICore;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace AIFanChatter
 {
@@ -13,6 +14,8 @@ namespace AIFanChatter
         IDictionary<string, string> FanHandles { get; }
         /// <summary>Each fan code's opinion of the group, 0 to 100, where the game has one.</summary>
         IDictionary<string, int> FanOpinions { get; }
+        /// <summary>How many fans of each fan code the agency has, only the codes it has any of.</summary>
+        IDictionary<string, long> FanCounts { get; }
         /// <summary>The feed's posts, oldest first, then the queued ones that haven't appeared yet.</summary>
         IList<SNS_Manager._message> RecentPosts { get; }
         /// <summary>Queues the posts for the moment that happened at this in-game time.</summary>
@@ -21,7 +24,7 @@ namespace AIFanChatter
 
     /// <summary>
     /// Asks for posts about moments through the shared AI client, which keeps the requests within the
-    /// player's limits. A reply with a single post, when the prompt asked for several, is taken as a failed
+    /// player's limits. An agency with fewer than MinFans fans gets no posts. A reply with a single post, when the prompt asked for several, is taken as a failed
     /// reply and the request is sent once more; if that one has a single post too, it's shown, and there
     /// are no more such retries until the settings change. A reply with no posts at all stops requests until
     /// the player presses Apply, as the model will keep failing.
@@ -33,6 +36,9 @@ namespace AIFanChatter
         public const double BackoffSeconds = AIClient.BackoffSeconds;
         public const double ErrorNoticeSeconds = AIClient.ErrorNoticeSeconds;
         public const int TestMaxTokens = AIClient.TestMaxTokens;
+
+        /// <summary>Fewer fans than this, and there's no one to post.</summary>
+        public const long MinFans = 100;
 
         private static Dispatcher instance;
 
@@ -68,7 +74,7 @@ namespace AIFanChatter
         /// <summary>
         /// Why a request can't be sent now, or null when it can.
         /// </summary>
-        public string Blocked() => client.Blocked();
+        public string Blocked() => client.Blocked() ?? (host.FanCounts.Values.Sum() < MinFans ? "the agency has fewer than " + MinFans + " fans" : null);
 
         /// <summary>
         /// Asks for posts about a moment, if the limits allow. Returns whether a request was sent.
@@ -79,7 +85,14 @@ namespace AIFanChatter
             {
                 return false;
             }
-            string system = Prompt.System(host.LanguageName, host.FanHandles, host.FanOpinions);
+            // Only the kinds of fans the agency has post
+            List<string> codes = Prompt.FanCodes.Where(host.FanCounts.ContainsKey).ToList();
+            if (codes.Count == 0)
+            {
+                // The prompt never goes without accounts
+                codes = Prompt.FanCodes.ToList();
+            }
+            string system = Prompt.System(host.LanguageName, codes, host.FanHandles, host.FanOpinions);
             IList<SNS_Manager._message> feed = null;
             try
             {
@@ -98,7 +111,7 @@ namespace AIFanChatter
 
             void Handle(AIClient.Reply reply, bool retried)
             {
-                List<SNS_Manager._message> posts = PostParser.Parse(reply.Text, random);
+                List<SNS_Manager._message> posts = PostParser.Parse(reply.Text, random, codes);
                 if (posts.Count == 0)
                 {
                     // The model will keep failing, so requests stop until the player presses Apply
@@ -133,7 +146,7 @@ namespace AIFanChatter
                 host.Queue(posts, momentTime);
             }
 
-            return client.Send(system, user, Prompt.ReplySchema, reply => Handle(reply, false), moment.Label);
+            return client.Send(system, user, Prompt.ReplySchemaFor(codes),reply => Handle(reply, false), moment.Label);
         }
 
         /// <summary>

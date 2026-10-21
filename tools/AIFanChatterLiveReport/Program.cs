@@ -162,7 +162,7 @@ namespace AIFanChatter.LiveReport
         {
             List<KeyValuePair<string, Func<Moment>>> moments = Moments();
             ReportHost host = new();
-            Console.WriteLine(Prompt.System(host.LanguageName, host.FanHandles, host.FanOpinions));
+            Console.WriteLine(Prompt.System(host.LanguageName, Prompt.FanCodes.Where(host.FanCounts.ContainsKey).ToList(), host.FanHandles, host.FanOpinions));
             foreach (var moment in moments)
             {
                 Console.WriteLine("\n======== " + moment.Key + "\n" + Prompt.User(moment.Value(), host.RecentPosts));
@@ -404,6 +404,7 @@ namespace AIFanChatter.LiveReport
         public string LanguageName => "English";
         public IDictionary<string, string> FanHandles => game.FanHandles;
         public IDictionary<string, int> FanOpinions => game.FanOpinions;
+        public IDictionary<string, long> FanCounts => game.FanCounts;
         public IList<SNS_Manager._message> RecentPosts => game.RecentPosts;
         /// <summary>The last notice the mod showed, for the report.</summary>
         public string LastNotice;

@@ -75,8 +75,8 @@ Make your changes in a small mod of your own, not in AI Fan Chatter's files. Ste
 | `{replies}` | The default most replies per post: 3. | A smaller number works. The mod keeps at most 3 replies per post. |
 | `{length}` | The default most characters per post or reply: 100. | Any number up to 200. The mod cuts any text over 200 characters, so a larger number only gets texts cut short. |
 | `{language}` | The game's language setting: English, Japanese, Simplified Chinese, Brazilian Portuguese or Russian, or a translation mod's language code. | A language name, to always get posts in that language. |
-| `{fan_types}` | The list of the 12 fan accounts, one per line, from your game. Each line gives the account's code (such as `F_HC_T`), what kind of fan it is (such as hardcore teen girl), its name in the game's feed, and that kind of fan's current opinion of your group as a percentage. | Your text must still give the AI the 12 codes. A post with any other code gets a random one, and the feed picks each fan's picture from the code. |
-| `{format}` | The reply format the mod can read: an example of posts, each with a fan code, a text and replies. | Keep it. If it's missing, the mod adds it at the end. |
+| `{fan_types}` | The fan accounts, one per line, from your game: one for each of the 12 kinds of fans that your agency has any fans of. Each line gives the account's code (such as `F_HC_T`), what kind of fan it is (such as hardcore teen girl), its name in the game's feed, and that kind of fan's current opinion of your group as a percentage. | Your text must still give the AI these codes. A post with any other code gets a random one of them, and the feed picks each fan's picture from the code. |
+| `{format}` | The reply format the mod can read: an example of posts, each with a fan code, a text and replies. Its fan codes are ones your agency has. | Keep it. If it's missing, the mod adds it at the end. |
 
 ## Placeholders in the user message
 
@@ -203,24 +203,15 @@ When the mod sent it, it filled in these values:
 - `{format}` became the reply format:
 
   ```text
-  {"posts":[{"user":"F_HC_T","text":"...","replies":[{"user":"M_C_A","text":"..."}]}]}
+  {"posts":[{"user":"M_C_YA","text":"...","replies":[{"user":"M_HC_A","text":"..."}]}]}
   ```
 
-- `{fan_types}` became the fan accounts:
+- `{fan_types}` became the fan accounts. The agency's idols have fans of 3 kinds, so there are 3 accounts:
 
   ```text
-  - M_C_T: casual teen boy (shown as @kazubuta), opinion of the group: 33%
   - M_C_YA: casual young adult man (shown as @satoshi_cars), opinion of the group: 50%
-  - M_C_A: casual adult man (shown as @takuya_nozawa_72), opinion of the group: 67%
-  - M_HC_T: hardcore teen boy (shown as @pizzakk), opinion of the group: 67%
-  - M_HC_YA: hardcore young adult man (shown as @shinji1602), opinion of the group: 83%
   - M_HC_A: hardcore adult man (shown as @heihachiro1960), opinion of the group: 100%
   - F_C_T: casual teen girl (shown as @ICECREAMNAKAI), opinion of the group: 0%
-  - F_C_YA: casual young adult woman (shown as @machi_panpkn), opinion of the group: 17%
-  - F_C_A: casual adult woman (shown as @wanitamaru), opinion of the group: 33%
-  - F_HC_T: hardcore teen girl (shown as @kazunyan_dm), opinion of the group: 33%
-  - F_HC_YA: hardcore young adult woman (shown as @sakisuki69), opinion of the group: 50%
-  - F_HC_A: hardcore adult woman (shown as @wakana_1967), opinion of the group: 67%
   ```
 
 ### The user message
@@ -307,7 +298,8 @@ Each placeholder was filled in as follows:
 
 ## What the mod does whatever the prompt says
 
-- **Fan codes:** it uses only the 12 fan codes, and gives a random one to a post with another code.
+- **Fewer than 100 fans:** it sends no requests while your agency has fewer than 100 fans, counting only idols who haven't graduated, as the game does.
+- **Fan codes:** it uses only the codes of the kinds of fans your agency has, and gives a random one of them to a post with another code.
 - **Limits:** it keeps at most 6 posts and 3 replies per post, and cuts texts over 200 characters.
 - **Replies to themselves:** it drops a reply from the fan who wrote the post.
 - **One post:** when the prompt asks for several posts through `{min}` and the reply has only one, it sends the request once more. If that reply has only one post too, it shows it, and doesn't send one-post replies again until you change a setting.

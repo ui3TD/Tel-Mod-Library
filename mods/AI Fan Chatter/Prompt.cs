@@ -1,6 +1,7 @@
 using AICore;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace AIFanChatter
@@ -82,6 +83,18 @@ namespace AIFanChatter
         public const string FormatExample = "{\"posts\":[{\"user\":\"F_HC_T\",\"text\":\"...\",\"replies\":[{\"user\":\"M_C_A\",\"text\":\"...\"}]}]}";
 
         /// <summary>
+        /// The reply format with fan codes the agency has: FormatExample's when it has both, otherwise its
+        /// first ones, and no reply when it has a single kind of fan.
+        /// </summary>
+        public static string FormatFor(IList<string> codes)
+        {
+            string post = codes.Contains("F_HC_T") ? "F_HC_T" : codes[0];
+            string reply = codes.Contains("M_C_A") && post != "M_C_A" ? "M_C_A" : codes.FirstOrDefault(code => code != post);
+            string replies = reply == null ? "" : "{\"user\":\"" + reply + "\",\"text\":\"...\"}";
+            return "{\"posts\":[{\"user\":\"" + post + "\",\"text\":\"...\",\"replies\":[" + replies + "]}]}";
+        }
+
+        /// <summary>
         /// What's sent when constants.json has no system template: the parts the reply depends on.
         /// </summary>
         public const string FallbackSystem = "Fan accounts. Use these exact codes as \"user\":\n{fan_types}\n\n" + FormatLead + "\n{format}";
@@ -128,12 +141,12 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// One line per fan code: who the fans are, the game's name for the account, and their opinion.
+        /// One line per fan code given: who the fans are, the game's name for the account, and their opinion.
         /// </summary>
-        public static string FanTypes(IDictionary<string, string> handles, IDictionary<string, int> opinions)
+        public static string FanTypes(IEnumerable<string> codes, IDictionary<string, string> handles, IDictionary<string, int> opinions)
         {
             StringBuilder sb = new();
-            foreach (string code in FanCodes)
+            foreach (string code in codes)
             {
                 if (sb.Length > 0)
                 {
@@ -152,9 +165,10 @@ namespace AIFanChatter
             return sb.ToString();
         }
 
+        /// <param name="codes">The fan codes the agency has fans of; only these are listed.</param>
         /// <param name="handles">The game's display name for each fan code, where it has one.</param>
         /// <param name="opinions">Each fan code's opinion of the group in the game, 0 to 100, where the game has one.</param>
-        public static string System(string language, IDictionary<string, string> handles, IDictionary<string, int> opinions)
+        public static string System(string language, IList<string> codes, IDictionary<string, string> handles, IDictionary<string, int> opinions)
         {
             string template = Template(SystemKey, FallbackSystem);
             if (!template.Contains("{format}"))
@@ -165,8 +179,8 @@ namespace AIFanChatter
             }
             return PromptTemplate.Fill(template, new Dictionary<string, Func<string>>
             {
-                ["fan_types"] = () => FanTypes(handles, opinions),
-                ["format"] = () => FormatExample,
+                ["fan_types"] = () => FanTypes(codes, handles, opinions),
+                ["format"] = () => FormatFor(codes),
                 ["min"] = () => MinPosts.ToString(),
                 ["max"] = () => MaxPosts.ToString(),
                 ["replies"] = () => MaxReplies.ToString(),
@@ -198,13 +212,12 @@ namespace AIFanChatter
         /// The reply's JSON schema, for services that hold the model to one. Every object lists all of its
         /// properties as required and allows no others, as OpenAI's strict mode and Anthropic both need; the
         /// replies are written out rather than referenced, for services that copy OpenAI's format. Lengths
-        /// and counts can't be set in a schema, so PostParser still enforces them.
+        /// and counts can't be set in a schema, so PostParser still enforces them. The fan codes are the
+        /// ones given: the kinds of fans the agency has.
         /// </summary>
-        public static readonly string ReplySchema = BuildReplySchema();
-
-        private static string BuildReplySchema()
+        public static string ReplySchemaFor(IEnumerable<string> fanCodes)
         {
-            string codes = string.Join(",", Array.ConvertAll(FanCodes, Json.Quote));
+            string codes = string.Join(",", fanCodes.Select(Json.Quote).ToArray());
             string user = "\"user\":{\"type\":\"string\",\"enum\":[" + codes + "]}";
             string text = "\"text\":{\"type\":\"string\"}";
             string reply = "{\"type\":\"object\",\"properties\":{" + user + "," + text + "},\"required\":[\"user\",\"text\"],\"additionalProperties\":false}";

@@ -2,6 +2,7 @@ using AICore;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Xunit;
 
@@ -112,6 +113,8 @@ namespace AIFanChatter.Tests
         public string LanguageName { get; set; } = "English";
         public IDictionary<string, string> FanHandles { get; } = new Dictionary<string, string>();
         public IDictionary<string, int> FanOpinions { get; } = new Dictionary<string, int>();
+        /// <summary>Every kind of fan, 1000 each, unless a test sets its own.</summary>
+        public IDictionary<string, long> FanCounts { get; } = Prompt.FanCodes.ToDictionary(code => code, code => 1000L);
         public List<SNS_Manager._message> Posts { get; } = new();
         /// <summary>Replaces reading Posts, for a feed that can't be read.</summary>
         public Func<IList<SNS_Manager._message>> ReadPosts;

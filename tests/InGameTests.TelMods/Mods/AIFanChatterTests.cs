@@ -202,9 +202,15 @@ namespace InGameTests.TelMods
                 yield return TestTools.WaitFor(ctx, () => server.Requests >= 1, 10f, "the connection test");
                 yield return new WaitForSecondsRealtime(1f);
 
+                // The fans are counted from the game's idols, matching the game's own total
+                object host = Activator.CreateInstance(mod.GetType("AIFanChatter.GameHost", true), true);
+                IDictionary<string, long> counts = (IDictionary<string, long>)AccessTools.Property(host.GetType(), "FanCounts").GetValue(host, null);
+                ctx.Record("fanKinds", counts.Count);
+                ctx.Assert(counts.Values.Sum() == resources.GetFansTotal(), "The fan counts add up to " + counts.Values.Sum() + ", the game's total is " + resources.GetFansTotal());
+
                 // The prompt's wording reached the game's loaded constants, with every placeholder filled in
                 string prompt = (string)AccessTools.Method(mod.GetType("AIFanChatter.Prompt", true), "System")
-                    .Invoke(null, new object[] { "English", null, null });
+                    .Invoke(null, new object[] { "English", counts.Keys.ToList(), null, null });
                 ctx.Assert(prompt.StartsWith("You write fan posts") && prompt.Contains("\n- Write 3 to 6 posts") && !prompt.Contains("{language}"),
                     "The prompt didn't come from constants.json: " + prompt.Substring(0, Math.Min(200, prompt.Length)));
 

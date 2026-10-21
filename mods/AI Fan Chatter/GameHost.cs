@@ -2,6 +2,7 @@ using AICore;
 using DG.Tweening;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace AIFanChatter
@@ -56,6 +57,54 @@ namespace AIFanChatter
                 }
                 return opinions;
             }
+        }
+
+        /// <summary>
+        /// The fans of the idols who haven't graduated, as the game counts its total. Not resources.Fans:
+        /// the game only refreshes its numbers when the fans tooltip opens.
+        /// </summary>
+        public IDictionary<string, long> FanCounts => CountFans(data_girls.girl);
+
+        private static readonly resources.fanType[] Genders = { resources.fanType.male, resources.fanType.female };
+        private static readonly resources.fanType[] Kinds = { resources.fanType.casual, resources.fanType.hardcore };
+        private static readonly resources.fanType[] Ages = { resources.fanType.teen, resources.fanType.youngAdult, resources.fanType.adult };
+
+        /// <summary>
+        /// People per fan code, only the codes with any. A fan entry with a value the game doesn't use
+        /// (another mod's) is left out, as it has no code.
+        /// </summary>
+        internal static Dictionary<string, long> CountFans(IEnumerable<data_girls.girls> girls)
+        {
+            Dictionary<string, long> counts = new();
+            if (girls == null)
+            {
+                return counts;
+            }
+            foreach (data_girls.girls girl in girls)
+            {
+                try
+                {
+                    if (girl == null || girl.status == data_girls._status.graduated || girl.Fans == null)
+                    {
+                        continue;
+                    }
+                    foreach (resources._fan fan in girl.Fans)
+                    {
+                        if (fan == null || fan.people <= 0 || !Genders.Contains(fan.gender) || !Kinds.Contains(fan.hardcoreness) || !Ages.Contains(fan.age))
+                        {
+                            continue;
+                        }
+                        string code = Prompt.CodeFor(fan.gender, fan.hardcoreness, fan.age);
+                        counts.TryGetValue(code, out long people);
+                        counts[code] = people + fan.people;
+                    }
+                }
+                catch (Exception)
+                {
+                    // That idol's fans are left out
+                }
+            }
+            return counts;
         }
 
         /// <summary>

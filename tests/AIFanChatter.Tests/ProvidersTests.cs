@@ -19,13 +19,20 @@ namespace AIFanChatter.Tests
         [Fact]
         public void ReplySchema_AllowsOnlyTheFeedsFanCodes()
         {
-            JSONNode schema = JSON.Parse(Prompt.ReplySchema);
+            JSONNode schema = JSON.Parse(Prompt.ReplySchemaFor(Prompt.FanCodes));
             JSONNode post = schema["properties"]["posts"]["items"];
             JSONNode reply = post["properties"]["replies"]["items"];
             foreach (JSONNode user in new[] { post["properties"]["user"], reply["properties"]["user"] })
             {
                 Assert.Equal(Prompt.FanCodes, Values(user["enum"]));
             }
+        }
+
+        [Fact]
+        public void ReplySchema_AllowsOnlyTheGivenFanCodes()
+        {
+            JSONNode user = JSON.Parse(Prompt.ReplySchemaFor(new[] { "M_C_T", "F_HC_A" }))["properties"]["posts"]["items"]["properties"]["user"];
+            Assert.Equal(new[] { "M_C_T", "F_HC_A" }, Values(user["enum"]));
         }
 
         /// <summary>
@@ -52,7 +59,7 @@ namespace AIFanChatter.Tests
                     }
                 }
             }
-            Check(JSON.Parse(Prompt.ReplySchema));
+            Check(JSON.Parse(Prompt.ReplySchemaFor(Prompt.FanCodes)));
             Assert.Equal(3, objects);
         }
     }
@@ -64,7 +71,7 @@ namespace AIFanChatter.Tests
         [Fact]
         public void ParsesPostsAndReplies()
         {
-            var posts = PostParser.Parse(Replies.Posts, Random);
+            var posts = PostParser.Parse(Replies.Posts, Random, Prompt.FanCodes);
             Assert.Equal(3, posts.Count);
             Assert.Equal("F_HC_T", posts[0].User);
             Assert.Equal("<noparse>Best single yet!</noparse>", posts[0].Message);
@@ -80,7 +87,7 @@ namespace AIFanChatter.Tests
         {
             var posts = PostParser.Parse("{\"posts\":[{\"user\":\"F_HC_T\",\"text\":\"Best single yet!\",\"replies\":["
                 + "{\"user\":\"F_HC_T\",\"text\":\"me again\"},{\"user\":\"M_C_A\",\"text\":\"one\"},{\"user\":\"f_hc_t\",\"text\":\"and again\"},"
-                + "{\"user\":\"M_C_T\",\"text\":\"two\"},{\"user\":\"F_C_A\",\"text\":\"three\"}]}]}", Random);
+                + "{\"user\":\"M_C_T\",\"text\":\"two\"},{\"user\":\"F_C_A\",\"text\":\"three\"}]}]}", Random, Prompt.FanCodes);
             Assert.Equal(new[] { "<noparse>one</noparse>", "<noparse>two</noparse>", "<noparse>three</noparse>" },
                 posts.Single().Replies.Select(r => r.Message));
         }
@@ -88,15 +95,24 @@ namespace AIFanChatter.Tests
         [Fact]
         public void FindsTheJsonInsideProseAndCodeFences()
         {
-            Assert.Equal(3, PostParser.Parse("Here you go:\n```json\n" + Replies.Posts + "\n```\nEnjoy!", Random).Count);
+            Assert.Equal(3, PostParser.Parse("Here you go:\n```json\n" + Replies.Posts + "\n```\nEnjoy!", Random, Prompt.FanCodes).Count);
         }
 
         [Fact]
         public void UnknownFanCodes_BecomeValidOnes()
         {
-            var posts = PostParser.Parse("{\"posts\":[{\"user\":\"superfan99\",\"text\":\"hi\"},{\"user\":\"f_hc_ya\",\"text\":\"yo\"}]}", Random);
+            var posts = PostParser.Parse("{\"posts\":[{\"user\":\"superfan99\",\"text\":\"hi\"},{\"user\":\"f_hc_ya\",\"text\":\"yo\"}]}", Random, Prompt.FanCodes);
             Assert.Contains(posts[0].User, Prompt.FanCodes);
             Assert.Equal("F_HC_YA", posts[1].User);
+        }
+
+        [Fact]
+        public void FanCodesTheAgencyLacks_BecomeOnesItHas()
+        {
+            var posts = PostParser.Parse("{\"posts\":[{\"user\":\"M_HC_A\",\"text\":\"hi\",\"replies\":[{\"user\":\"F_HC_YA\",\"text\":\"yo\"}]}]}", Random, new[] { "F_C_T" });
+            Assert.Equal("F_C_T", posts[0].User);
+            // As a reply it would be her own, which is dropped
+            Assert.Empty(posts[0].Replies);
         }
 
         /// <summary>
@@ -105,7 +121,7 @@ namespace AIFanChatter.Tests
         [Fact]
         public void AngleBrackets_ShowAsTyped()
         {
-            string text = PostParser.Parse("{\"posts\":[{\"user\":\"M_C_T\",\"text\":\"<color=red>wow</color> <3 </noparse><b>\"}]}", Random)[0].Message;
+            string text = PostParser.Parse("{\"posts\":[{\"user\":\"M_C_T\",\"text\":\"<color=red>wow</color> <3 </noparse><b>\"}]}", Random, Prompt.FanCodes)[0].Message;
             Assert.Equal("<noparse><color=red>wow</color> <3 <b></noparse>", text);
         }
 
@@ -115,7 +131,7 @@ namespace AIFanChatter.Tests
             string longText = new('a', 500);
             string replies = string.Join(",", Enumerable.Repeat("{\"user\":\"M_C_T\",\"text\":\"r\"}", 10));
             string post = "{\"user\":\"F_C_T\",\"text\":\"" + longText + "\",\"replies\":[" + replies + "]}";
-            var posts = PostParser.Parse("{\"posts\":[" + string.Join(",", Enumerable.Repeat(post, 10)) + "]}", Random);
+            var posts = PostParser.Parse("{\"posts\":[" + string.Join(",", Enumerable.Repeat(post, 10)) + "]}", Random, Prompt.FanCodes);
             Assert.Equal(Prompt.MaxPosts, posts.Count);
             Assert.Equal(Prompt.MaxReplies, posts[0].Replies.Count);
             Assert.Equal(PostParser.MaxShownLength, PostParser.Clean(longText).Length);
@@ -149,7 +165,7 @@ namespace AIFanChatter.Tests
         [InlineData("}{")]
         public void UnusableReplies_GiveNoPosts(string text)
         {
-            Assert.Empty(PostParser.Parse(text, Random));
+            Assert.Empty(PostParser.Parse(text, Random, Prompt.FanCodes));
         }
     }
 }

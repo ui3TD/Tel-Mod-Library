@@ -21,9 +21,10 @@ namespace AIFanChatter
         public const int MaxShownLength = 200;
 
         /// <summary>
-        /// The posts, or an empty list when there are none usable.
+        /// The posts, or an empty list when there are none usable. A post with any fan code but the given
+        /// ones (the kinds of fans the agency has) gets a random one of them.
         /// </summary>
-        public static List<SNS_Manager._message> Parse(string text, Random random)
+        public static List<SNS_Manager._message> Parse(string text, Random random, IList<string> codes)
         {
             List<SNS_Manager._message> posts = new();
             if (string.IsNullOrEmpty(text))
@@ -43,7 +44,7 @@ namespace AIFanChatter
             }
             for (int i = 0; i < items.Count && posts.Count < Prompt.MaxPosts; i++)
             {
-                SNS_Manager._message post = Message(items[i], random);
+                SNS_Manager._message post = Message(items[i], random, codes);
                 if (post == null)
                 {
                     continue;
@@ -51,7 +52,7 @@ namespace AIFanChatter
                 JSONArray replies = Json.Arr(items[i], "replies");
                 for (int j = 0; replies != null && j < replies.Count && post.Replies.Count < Prompt.MaxReplies; j++)
                 {
-                    SNS_Manager._message reply = Message(replies[j], random);
+                    SNS_Manager._message reply = Message(replies[j], random, codes);
                     // A fan replying to her own post is dropped: the prompt asks for other fans' replies
                     if (reply != null && reply.User != post.User)
                     {
@@ -63,7 +64,7 @@ namespace AIFanChatter
             return posts;
         }
 
-        private static SNS_Manager._message Message(JSONNode item, Random random)
+        private static SNS_Manager._message Message(JSONNode item, Random random, IList<string> codes)
         {
             string text = Clean(Json.Str(item, "text"));
             if (text == "")
@@ -71,9 +72,9 @@ namespace AIFanChatter
                 return null;
             }
             string user = Json.Str(item, "user").Trim().ToUpperInvariant();
-            if (!Prompt.FanCodes.Contains(user))
+            if (!codes.Contains(user))
             {
-                user = Prompt.FanCodes[random.Next(Prompt.FanCodes.Length)];
+                user = codes[random.Next(codes.Count)];
             }
             return new SNS_Manager._message { User = user, Message = ForFeed(text) };
         }

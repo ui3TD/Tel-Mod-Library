@@ -320,6 +320,48 @@ namespace AIFanChatter.Tests
             Assert.Contains("opinion of the group: 23%", body);
         }
 
+        /// <summary>
+        /// An agency with fewer than 100 fans gets no posts, and its moment isn't even read.
+        /// </summary>
+        [Fact]
+        public void FewerThan100Fans_SendsNothing()
+        {
+            host.FanCounts.Clear();
+            host.FanCounts["M_C_T"] = 60;
+            host.FanCounts["F_C_T"] = 39;
+            Assert.Equal("the agency has fewer than 100 fans", dispatcher.Blocked());
+            Assert.False(dispatcher.Request(Moment()));
+            Dispatcher.Instance = dispatcher;
+            bool read = false;
+            Moments.Trigger(() => { read = true; return Moment(); });
+            Assert.False(read);
+            Assert.Empty(transport.Sent);
+
+            host.FanCounts["F_C_T"] = 40;
+            Assert.Null(dispatcher.Blocked());
+            Assert.True(dispatcher.Request(Moment()));
+        }
+
+        /// <summary>
+        /// Only the kinds of fans the agency has are in the prompt and the reply schema, and a post by any
+        /// other kind goes to one the agency has.
+        /// </summary>
+        [Fact]
+        public void OnlyTheAgencysFanTypes_Post()
+        {
+            host.FanCounts.Clear();
+            host.FanCounts["F_C_T"] = 500;
+            host.FanCounts["M_HC_A"] = 500;
+            Assert.True(SendAndReply(Replies.Anthropic("{\"posts\":[{\"user\":\"M_C_YA\",\"text\":\"hi\",\"replies\":[]},{\"user\":\"F_C_T\",\"text\":\"yo\",\"replies\":[]}]}")));
+            string body = transport.Sent.Single().Body;
+            Assert.Contains("- F_C_T:", body);
+            Assert.Contains("- M_HC_A:", body);
+            Assert.DoesNotContain("- M_C_YA:", body);
+            Assert.Contains("\"enum\":[\"M_HC_A\",\"F_C_T\"]", body);
+            Assert.Contains(host.Queued.Single()[0].User, new[] { "F_C_T", "M_HC_A" });
+            Assert.Equal("F_C_T", host.Queued.Single()[1].User);
+        }
+
         [Fact]
         public void Prompt_CarriesTheRecentPosts()
         {

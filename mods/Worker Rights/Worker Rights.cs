@@ -95,8 +95,8 @@ namespace WorkerRights
         public data_girls._status Status;
         /// <summary>Days since her last contract ended (a one-off ends the day it's accepted), 0 while a longer contract runs, -1 if she never had one.</summary>
         public int DaysSinceContract;
-        /// <summary>Contract work in the last 60 days: 1 per one-off, 10 per longer contract spread evenly over its length.</summary>
-        public float ContractPoints;
+        /// <summary>Weeks of contract work in the last 60 days: 1 per one-off, and every week a longer contract ran.</summary>
+        public float ContractWeeks;
         public int Shows;
         /// <summary>Row in the latest released single: 0 center, 1 for 2nd-3rd, 2-4 further back, 5 or -1 not in it.</summary>
         public int SingleRow;
@@ -111,9 +111,10 @@ namespace WorkerRights
     {
         public const float WEEKLY_MAX = 5f;
         public const int CONTRACT_WINDOW_DAYS = 60;
-        public const int CONTRACT_POINTS_ONE_OFF = 1;
-        // A longer contract costs about 10 times the stamina of a one-off
-        public const int CONTRACT_POINTS_LONG = 10;
+        // A one-off counts as one week of work; a week of a longer contract costs about as much stamina
+        public const int ONE_OFF_WEEKS = 1;
+        public const float CONTRACT_BASE = 0.5f;
+        public const float CONTRACT_PER_WEEK = 0.25f;
         public const float CONTRACT_MAX = 2f;
 
         public static bool LowSalaryApplies()
@@ -184,7 +185,7 @@ namespace WorkerRights
             else if (w.DaysSinceContract > 60)
                 days -= 1f;
             else if (w.DaysSinceContract >= 0)
-                days += Math.Min(CONTRACT_MAX, 0.5f + w.ContractPoints / 4f);
+                days += Math.Min(CONTRACT_MAX, CONTRACT_BASE + w.ContractWeeks * CONTRACT_PER_WEEK);
 
             int shows = Math.Min(w.Shows, 3);
             if (shows > 0)
@@ -226,7 +227,7 @@ namespace WorkerRights
             int age = girl.GetAge();
             policies.value dating = policies.GetSelectedPolicyValue(policies._type.dating);
             singles._single single = singles.GetLatestReleasedSingle();
-            ReadContracts(girl, out int daysSinceContract, out float contractPoints);
+            ReadContracts(girl, out int daysSinceContract, out float contractWeeks);
 
             return new GraduationInputs
             {
@@ -240,7 +241,7 @@ namespace WorkerRights
                 LowSalaryApplies = LowSalaryApplies(),
                 Status = girl.status,
                 DaysSinceContract = daysSinceContract,
-                ContractPoints = contractPoints,
+                ContractWeeks = contractWeeks,
                 Shows = Shows.GetShowsWithGirl(girl, count_entire_group: false).Count,
                 SingleRow = single == null ? -1 : single.GetRowOfAGirl(girl),
                 Pushed = girl.Is_Pushed(),
@@ -249,14 +250,14 @@ namespace WorkerRights
         }
 
         /// <summary>
-        /// Days since her last contract ended, and her contract work over the last 60 days. A one-off is all its
-        /// work on the day it's accepted; a longer contract's work is spread evenly from acceptance to its end
-        /// date. (The game's GetDaysSinceLastProposal returns the first contract's acceptance, not the last.)
+        /// Days since her last contract ended, and her weeks of contract work over the last 60 days. A one-off
+        /// counts as one week on the day it's accepted; a longer contract counts every week from acceptance to its
+        /// end date. (The game's GetDaysSinceLastProposal returns the first contract's acceptance, not the last.)
         /// </summary>
-        public static void ReadContracts(data_girls.girls girl, out int daysSinceContract, out float contractPoints)
+        public static void ReadContracts(data_girls.girls girl, out int daysSinceContract, out float contractWeeks)
         {
             daysSinceContract = -1;
-            contractPoints = 0f;
+            contractWeeks = 0f;
             if (business.History == null)
                 return;
 
@@ -276,14 +277,14 @@ namespace WorkerRights
                 if (months == 0)
                 {
                     if ((now - contract.Date).Days < CONTRACT_WINDOW_DAYS)
-                        contractPoints += CONTRACT_POINTS_ONE_OFF;
+                        contractWeeks += ONE_OFF_WEEKS;
                     continue;
                 }
 
                 DateTime from = contract.Date > windowStart ? contract.Date : windowStart;
                 DateTime to = end < now ? end : now;
                 if (to > from)
-                    contractPoints += (float)(CONTRACT_POINTS_LONG * (to - from).TotalDays / (end - contract.Date).TotalDays);
+                    contractWeeks += (float)((to - from).TotalDays / 7.0);
             }
         }
 

@@ -350,10 +350,10 @@ namespace WorkerRightsTests
             { "last contract 181 days ago", With(w => { w.DaysSinceContract = 181; return w; }), -4f },
             { "last contract 361 days ago", With(w => { w.DaysSinceContract = 361; return w; }), -6f },
             { "last contract 60 days ago", With(w => { w.DaysSinceContract = 60; return w; }), 0.5f },
-            { "2 contract points", With(w => { w.DaysSinceContract = 5; w.ContractPoints = 2; return w; }), 1f },
-            { "4 contract points", With(w => { w.DaysSinceContract = 5; w.ContractPoints = 4; return w; }), 1.5f },
-            { "6 contract points", With(w => { w.DaysSinceContract = 5; w.ContractPoints = 6; return w; }), 2f },
-            { "10 contract points", With(w => { w.DaysSinceContract = 5; w.ContractPoints = 10; return w; }), 2f },
+            { "2 contract weeks", With(w => { w.DaysSinceContract = 5; w.ContractWeeks = 2; return w; }), 1f },
+            { "4 contract weeks", With(w => { w.DaysSinceContract = 5; w.ContractWeeks = 4; return w; }), 1.5f },
+            { "6 contract weeks", With(w => { w.DaysSinceContract = 5; w.ContractWeeks = 6; return w; }), 2f },
+            { "10 contract weeks", With(w => { w.DaysSinceContract = 5; w.ContractWeeks = 10; return w; }), 2f },
             { "1 show", With(w => { w.Shows = 1; return w; }), 1f },
             { "2 shows", With(w => { w.Shows = 2; return w; }), 1.5f },
             { "3 shows", With(w => { w.Shows = 3; return w; }), 2f },
@@ -382,7 +382,7 @@ namespace WorkerRightsTests
             w.SalarySatisfaction = 151;
             w.Relationship = 0.9f;
             w.DaysSinceContract = 3;
-            w.ContractPoints = 8;
+            w.ContractWeeks = 8;
             w.Shows = 3;
             w.SingleRow = 0;
             w.Pushed = true;
@@ -415,7 +415,7 @@ namespace WorkerRightsTests
         }
 
         /// <summary>
-        /// The Steam description names the same limit, salary penalties and contract points.
+        /// The Steam description names the same limit, salary penalties and contract values.
         /// </summary>
         [Fact]
         public void Description_MatchesCode()
@@ -423,7 +423,7 @@ namespace WorkerRightsTests
             string text = File.ReadAllText(TestGame.ModAsset("steam description.txt"));
             Assert.Contains($"at most +{GraduationWeek.WEEKLY_MAX} days", text);
             Assert.Contains($"under 50% moves the date {Mod.GRAD_DAYS_PENALTY} days closer each week, under 20% {Mod.GRAD_DAYS_PENALTY_SEVERE} days", text);
-            Assert.Contains($"up to +{GraduationWeek.CONTRACT_MAX}: a one-off counts {GraduationWeek.CONTRACT_POINTS_ONE_OFF}, a longer contract {GraduationWeek.CONTRACT_POINTS_LONG} spread over its length", text);
+            Assert.Contains($"(+{GraduationWeek.CONTRACT_BASE}, plus {GraduationWeek.CONTRACT_PER_WEEK} per week of work, up to +{GraduationWeek.CONTRACT_MAX}; a one-off counts as one week", text);
             Assert.Contains("counts from the day her last contract ended", text);
             Assert.Contains($"in the last {GraduationWeek.CONTRACT_WINDOW_DAYS} days", text);
         }
@@ -484,10 +484,10 @@ namespace WorkerRightsTests
             { "no contract for 121 days", With(w => { w.DaysSinceContract = 121; return w; }), 4.5 },
             { "no contract for 181 days", With(w => { w.DaysSinceContract = 181; return w; }), 4.2 },
             { "no contract for 361 days", With(w => { w.DaysSinceContract = 361; return w; }), 3.6 },
-            { "a contract a month", With(w => { w.DaysSinceContract = 10; w.ContractPoints = 2; return w; }), 7.0 },
-            { "a contract every 2 weeks", With(w => { w.DaysSinceContract = 5; w.ContractPoints = 4; return w; }), 7.5 },
-            { "a contract a week", With(w => { w.DaysSinceContract = 3; w.ContractPoints = 8; return w; }), 8.1 },
-            { "always on a 3-month contract", With(w => { w.DaysSinceContract = 0; w.ContractPoints = 10f * 60 / 92; return w; }), 8.1 },
+            { "a contract a month", With(w => { w.DaysSinceContract = 10; w.ContractWeeks = 2; return w; }), 7.0 },
+            { "a contract every 2 weeks", With(w => { w.DaysSinceContract = 5; w.ContractWeeks = 4; return w; }), 7.5 },
+            { "a contract a week", With(w => { w.DaysSinceContract = 3; w.ContractWeeks = 8; return w; }), 8.1 },
+            { "always on a 3-month contract", With(w => { w.DaysSinceContract = 0; w.ContractWeeks = 60f / 7; return w; }), 8.1 },
             { "1 show", With(w => { w.Shows = 1; return w; }), 7.0 },
             { "2 shows", With(w => { w.Shows = 2; return w; }), 7.5 },
             { "3 shows", With(w => { w.Shows = 3; return w; }), 8.1 },
@@ -518,17 +518,17 @@ namespace WorkerRightsTests
         private static void Accepted(data_girls.girls girl, business._type type, int daysAgo) =>
             business.History.Add(new business._history { Girl = girl, Type = type, Date = TestGame.Today.AddDays(-daysAgo) });
 
-        private static (int days, float points) Read(data_girls.girls girl)
+        private static (int days, float weeks) Read(data_girls.girls girl)
         {
-            GraduationWeek.ReadContracts(girl, out int days, out float points);
-            return (days, points);
+            GraduationWeek.ReadContracts(girl, out int days, out float weeks);
+            return (days, weeks);
         }
 
-        private static void AssertRead(data_girls.girls girl, int expectedDays, double expectedPoints)
+        private static void AssertRead(data_girls.girls girl, int expectedDays, double expectedWeeks)
         {
-            (int days, float points) = Read(girl);
+            (int days, float weeks) = Read(girl);
             Assert.Equal(expectedDays, days);
-            Assert.Equal(expectedPoints, points, 3);
+            Assert.Equal(expectedWeeks, weeks, 3);
         }
 
         [Fact]
@@ -557,18 +557,18 @@ namespace WorkerRightsTests
         }
 
         /// <summary>
-        /// A 3-month contract (here 92 days) builds up its 10 points over its length, and counts as work today while it runs.
+        /// A 3-month contract counts every week it runs, and counts as work today while it runs.
         /// </summary>
         [Theory]
         [InlineData(0, 0)]
-        [InlineData(10, 10.0 * 10 / 92)]
-        [InlineData(30, 10.0 * 30 / 92)]
-        [InlineData(80, 10.0 * 60 / 92)]
-        public void LongerContract_Running(int daysAgo, double expectedPoints)
+        [InlineData(10, 10 / 7.0)]
+        [InlineData(30, 30 / 7.0)]
+        [InlineData(80, 60 / 7.0)]
+        public void LongerContract_Running(int daysAgo, double expectedWeeks)
         {
             data_girls.girls girl = TestGame.Idol(0);
             Accepted(girl, business._type.tv_drama, daysAgo);
-            AssertRead(girl, 0, expectedPoints);
+            AssertRead(girl, 0, expectedWeeks);
         }
 
         /// <summary>
@@ -580,7 +580,7 @@ namespace WorkerRightsTests
         {
             data_girls.girls girl = TestGame.Idol(0);
             Accepted(girl, business._type.tv_drama, 100);
-            AssertRead(girl, 11, 10.0 * 49 / 89);
+            AssertRead(girl, 11, 49 / 7.0);
         }
 
         [Fact]
@@ -737,7 +737,7 @@ namespace WorkerRightsTests
             Assert.Equal(200, w.SalarySatisfaction);
             Assert.True(w.LowSalaryApplies);
             Assert.Equal(4, w.DaysSinceContract);
-            Assert.Equal(1, w.ContractPoints);
+            Assert.Equal(1, w.ContractWeeks);
             Assert.Equal(0, w.Shows);
             Assert.Equal(-1, w.SingleRow);
             Assert.True(w.Pushed);

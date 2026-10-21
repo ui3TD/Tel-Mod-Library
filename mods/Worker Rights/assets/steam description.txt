@@ -10,7 +10,7 @@ Idols will demand fair wages! Brand new staff cannot be blamed for scandals!
 
 [h3]Graduation Dates[/h3]
 The base game works out each week how an idol's graduation date should move, but never saves it. Now it does, with retuned numbers so busy idols don't stay forever.
-- Later: salary satisfaction over 75% / 100% / 150% (+0.5 / +1 / +1.5 days a week), friendship with you of almost level 4 or more (+1), each flirt point (+1, up to 4), on hiatus (+2), contracts in the last 60 days (up to +2: a one-off counts 1, a longer contract 10 spread over its length), shows (+1 / +1.5 / +2 for 1 / 2 / 3), latest single (+3.5 center, +1.5 2nd-3rd row, +0.5 further back), pushed (+1.5).
+- Later: salary satisfaction over 75% / 100% / 150% (+0.5 / +1 / +1.5 days a week), friendship with you of almost level 4 or more (+1), each flirt point (+1, up to 4), on hiatus (+2), contract work in the last 60 days (+0.5, plus 0.25 per week of work, up to +2; a one-off counts as one week, a longer contract counts every week it runs), shows (+1 / +1.5 / +2 for 1 / 2 / 3), latest single (+3.5 center, +1.5 2nd-3rd row, +0.5 further back), pushed (+1.5).
 - Sooner: physical stamina under 25 (-1), mental stamina under 25 / 50 (-3 / -1), friendship with you of almost level -2 or less (-2), dating banned (-2), injured (-2), depressed (-7), no contract for over 60 / 90 / 120 / 180 / 360 days (-1 / -2 / -3 / -4 / -6). This counts from the day her last contract ended.
 - In Unfair and Normal mode with manual salaries, underpaid idols graduate sooner: salary satisfaction under 50% moves the date 10 days closer each week, under 20% 30 days.
 - The week's total is at most +5 days, so even the best-treated idols graduate around 30.

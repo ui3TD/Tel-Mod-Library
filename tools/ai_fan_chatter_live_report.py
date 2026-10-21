@@ -267,6 +267,8 @@ def render(data: dict, args) -> str:
             posts = f"{i['posts']} post{'s' if i['posts'] != 1 else ''}, {i['reply_count']} repl{'ies' if i['reply_count'] != 1 else 'y'}"
             if i["retried"]:
                 posts += f" (after a retry: {i['requests']} requests)"
+            if m.get("stopped") == "true":
+                posts += " (requests stopped)"
             out.append(f"| {name} | {m['name']} | {i['input']:,} | {i['output']:,} ({i['reasoning']:,} reasoning) | \\${i['cost']:.4f} | {i['seconds']:.1f} | "
                        f"{', '.join(str(s) for s in i['statuses'])} | {i['schema']} | {posts} | {i['cut']} of {i['texts']} |")
     # A bare $ pair renders as math in Markdown previews
@@ -306,6 +308,10 @@ def render(data: dict, args) -> str:
                 continue
             if i["retried"]:
                 out += ["The first reply had only one post, so the mod sent the request again; these are the posts from the last reply.", ""]
+            if m.get("notice"):
+                out += [f"The mod's notice: \"{m['notice']}\"", ""]
+            if m.get("stopped") == "true":
+                out += ["The mod stopped requests here until the player presses Apply. The report carried on with the next moment as if the player had.", ""]
             out += [posts_markdown(m.get("queued", []), fans, raw_texts_of(i["replies"])), "",
                     f"<details><summary>{name}'s raw repl{'ies' if len(i['replies']) > 1 else 'y'} and usage</summary>", ""]
             for k, (reply, usage) in enumerate(zip(i["replies"], i["usages"]), 1):

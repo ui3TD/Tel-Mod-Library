@@ -119,6 +119,18 @@ namespace AIFanChatter.LiveReport
                         continue;
                     }
                     transport.Calls = null;
+                    if (host.LastNotice != null)
+                    {
+                        result["notice"] = host.LastNotice;
+                        host.LastNotice = null;
+                    }
+                    if (dispatcher.Suspended)
+                    {
+                        // The mod stops requests here until the player presses Apply; the report carries on with a
+                        // fresh dispatcher so the model still gets every moment
+                        result["stopped"] = "true";
+                        dispatcher = new Dispatcher(host, transport, new Random());
+                    }
 
                     JSONArray queued = new();
                     foreach (QueuedItem item in FeedQueue.Items.Where(i => i.Batch > batchesBefore))
@@ -349,7 +361,14 @@ namespace AIFanChatter.LiveReport
         public IDictionary<string, string> FanHandles => game.FanHandles;
         public IDictionary<string, int> FanOpinions => game.FanOpinions;
         public IList<SNS_Manager._message> RecentPosts => game.RecentPosts;
-        public void Notify(string text, bool error) => Console.Error.WriteLine((error ? "Notice (error): " : "Notice: ") + text);
+        /// <summary>The last notice the mod showed, for the report.</summary>
+        public string LastNotice;
+
+        public void Notify(string text, bool error)
+        {
+            LastNotice = text;
+            Console.Error.WriteLine((error ? "Notice (error): " : "Notice: ") + text);
+        }
         public void NextFrame(Action action) => action();
         // Straight into the queue: the game's feed isn't there to release posts into, and the report lists them all
         public void Queue(List<SNS_Manager._message> posts, DateTime moment) => FeedQueue.AddBatch(posts, moment, new Random());

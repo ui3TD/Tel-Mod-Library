@@ -88,7 +88,7 @@ The group these parts call "the group" is the group the moment is about:
 - for a graduation, the graduating idol's group;
 - for a random event, the group of the idol it's mainly about, or the main group when no idol is involved;
 - for a dating scandal, the idol's group;
-- for a policy change, the group of the first idol whose scandal points paid for it, or the main group.
+- for a policy change or a staff firing, the group of the first idol whose scandal points paid for it, or the main group.
 
 ### `{event}`
 
@@ -117,6 +117,7 @@ The moment's own details, one per line.
   - The game writes its events to the player. When the details, the response or the outcome say "you", a line `You: the group's producer (name)` tells the AI who that is, with the player's name as the game shows it.
   - Fans only post when the answer changed something the public sees: fans, fans' opinion, buzz, scandal points or fame. Answers that only cost money, stamina or relationships, or only lead to a dialogue or a later event, get no posts.
 - **A paid policy change** (only changes that cost scandal points; a free change gets no posts): the policy, its old and new option, and the reason for the change, naming whose scandal points the player spent (idols, the group itself, or both). For each of those idols, her known friends (`Friends in <group>`) and known bullying (`Suspected to be bullied by`, `Suspected to have bullied`), labelled with her name when there are several.
+- **A staff firing** (through the game's firing, which always costs scandal points; staff fired by story scenes get no posts): the staff member, their role with what they mostly did by their strongest skill (production staff, trainer, dealmaker, physical or mental health care, styling), their time at the agency, and the announced reason: blamed for the scandals of the idols or the group whose points the player spent, or "budget problems (ostensibly)" when the player accepted the staffer's deal to announce that. Production staff come with the agency's latest 3 singles released while they worked there; dealmakers with the agency's 3 biggest running business contracts, without their pay. The idols whose points were spent get the same lines as for a policy change, budget firings included, so fans can doubt the announcement.
 - **A dating scandal** (the game's dating scandals option): what happened, without the game's question to the player, the agency's response, the outcome, and who was involved, with the same `You` line. Fans only post when the outcome reached the public: paying off the blackmailer or the publication, the police catching the blackmailer, a blackmailer who was bluffing, and an editor who drops the story after a denial all get no posts.
 
 ### `{agency}`
@@ -136,7 +137,7 @@ The group and the agency, one fact per line:
 
 ### `{members}`
 
-One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation, the idol for a dating scandal, and up to 5 idols whose scandal points paid for a policy change.
+One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation, the idol for a dating scandal, and up to 5 idols whose scandal points paid for a policy change or a staff firing.
 
 Each line gives, in this order:
 
@@ -165,7 +166,7 @@ Earlier results to compare with. Empty when there's nothing earlier.
 - **A graduation:** the previous graduate from the same group and when she left, and how many of the group's idols graduated before her. When she's the group's first graduate, it says so.
 - **A random event:** how often the same event happened before, and when it last did. For an event in a storyline, the text of the storyline's earlier events that happened, oldest first. The game doesn't keep which answer was given, so an earlier event is only included when every answer of it that leads on in the storyline had a public outcome, or the game posted about it. The answers themselves aren't included.
 - **A dating scandal:** nothing. The game gives each idol at most one.
-- **A paid policy change:** the latest scandal of each idol whose points paid for it, and of the group when its own points did: the text of her most recent event that can add scandal points. Dating scandals aren't in the game's event log, so they're never named.
+- **A paid policy change or a staff firing:** the latest scandal of each idol whose points paid for it, and of the group when its own points did: the text of her most recent event that can add scandal points. Dating scandals aren't in the game's event log, so they're never named.
 
 ### `{feed}`
 

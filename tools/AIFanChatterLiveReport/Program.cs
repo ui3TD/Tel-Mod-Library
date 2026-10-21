@@ -12,14 +12,14 @@ using System.Runtime.CompilerServices;
 namespace AIFanChatter.LiveReport
 {
     /// <summary>
-    /// Sends six moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
+    /// Sends seven moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
     /// prompt, dispatcher, request and reply code, once per model, and writes every request, reply and
     /// queued post to a JSON file for tools/ai_fan_chatter_live_report.py. Runs outside the game: the
     /// game's text comes from its install folder and the key from the mod's key file. It costs money.
     ///
     ///     AIFanChatterLiveReport --game-dir DIR --provider 2 --base-url URL --model M [--model M2] --out FILE
     ///     AIFanChatterLiveReport --game-dir DIR --dry-run 1      (prints the prompts; sends nothing)
-    /// Options: --moment single|concert|event|scandal|policy|graduation (repeat to pick several; all six by default),
+    /// Options: --moment single|concert|event|scandal|policy|firing|graduation (repeat to pick several; all seven by default),
     /// --setlist "Signal Fire/Rin; talk: Mao, Kaede" for the concert (see Agency.SetList), and for the
     /// random event --event ID (from the game's random_events.json), --event-reply N (the player's
     /// answer, from 0; by default the first one without posts of its own) and --event-idols "Rena, Mao"
@@ -41,6 +41,8 @@ namespace AIFanChatter.LiveReport
             eventId = Option("event") ?? eventId;
             eventReply = Option("event-reply") is string r ? int.Parse(r, CultureInfo.InvariantCulture) : null;
             eventIdols = Option("event-idols") ?? eventIdols;
+            firingBudget = Option("firing-budget") == "1";
+            firingRole = Option("firing-role") ?? firingRole;
             if (gameDir == null || !dryRun && (outFile == null || models.Count == 0))
             {
                 Console.Error.WriteLine("Usage: AIFanChatterLiveReport --game-dir DIR --provider N --base-url URL --model M [--model M2] --out FILE");
@@ -189,13 +191,14 @@ namespace AIFanChatter.LiveReport
                 new("event", () => EventMoment(agency)),
                 new("scandal", () => ScandalMoment(agency)),
                 new("policy", () => PolicyMoment(agency)),
+                new("firing", () => FiringMoment(agency)),
                 // Last, as the graduate leaves the group
                 new("graduation", () => MomentContext.Graduation(agency.Graduate, agency.GraduateNow())),
             };
             string unknown = picked?.FirstOrDefault(name => all.All(m => m.Key != name));
             if (unknown != null)
             {
-                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy and graduation");
+                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing and graduation");
             }
             return all.Where(m => picked == null || picked.Contains(m.Key))
                 .Select(m => new KeyValuePair<string, Func<Moment>>(Names[m.Key], m.Value)).ToList();
@@ -208,6 +211,7 @@ namespace AIFanChatter.LiveReport
             ["event"] = "a random event",
             ["scandal"] = "a dating scandal",
             ["policy"] = "a paid policy change",
+            ["firing"] = "a staff firing",
             ["graduation"] = "a graduation",
         };
 
@@ -300,6 +304,58 @@ namespace AIFanChatter.LiveReport
                 new List<Event_Manager._activeEvent> { scandal });
         }
 
+        private static bool firingBudget;
+        private static string firingRole = "choreographer";
+
+        /// <summary>
+        /// A choreographer hired 18 months before, fired with 1 of the first --event-idols idol's scandal points blamed
+        /// on him, with the game's stream_rant event about her 3 weeks before as her latest scandal.
+        /// --firing-budget makes it the staffer's deal instead: budget problems announced. --firing-role makes him
+        /// a dance_coach (a trainer, no singles) or a sales_manager (a dealmaker, with the agency's running
+        /// contracts) instead.
+        /// </summary>
+        private static Moment FiringMoment(Agency agency)
+        {
+            string name = eventIdols.Split(',').Select(n => n.Trim()).FirstOrDefault(n => n != "") ?? "";
+            if (!GameText.Events.TryGetValue("stream_rant", out Event_Manager._randomEvent rant))
+            {
+                throw new ArgumentException("No random event stream_rant in the game's random_events.json");
+            }
+            Event_Manager._activeEvent scandal = agency.Event(rant, new[] { name });
+            scandal.date = scandal.date.AddDays(-21);
+            scandal.state = Event_Manager._activeEvent._state.complete;
+            // A professional's starting skills (staff.cs): the role's main skill at 4, the other at 1
+            (staff._type type, staff._skill_type main, staff._skill_type other) = firingRole switch
+            {
+                "choreographer" => (staff._type.choreographer, staff._skill_type.production, staff._skill_type.coaching),
+                "dance_coach" => (staff._type.dance_coach, staff._skill_type.coaching, staff._skill_type.production),
+                "sales_manager" => (staff._type.sales_manager, staff._skill_type.deals, staff._skill_type.production),
+                _ => throw new ArgumentException("No firing role " + firingRole + "; the roles are choreographer, dance_coach and sales_manager"),
+            };
+            staff._staff staffer = new()
+            {
+                firstName = "Kenji",
+                lastName = "Hayashi",
+                type = type,
+                HireDate = scandal.date.AddMonths(-18),
+                skills = new List<staff._staff._skill>
+                {
+                    new() { skill_type = main, level = 4, primary = true },
+                    new() { skill_type = other, level = 1 },
+                },
+            };
+            data_girls.girls mirai = data_girls.girl.First(g => g.firstName == "Mirai");
+            List<business.active_proposal> contracts = new()
+            {
+                new() { Type = business._type.ad, Product_Name = "Sparkle Soda", Agent_Name = "Hoshi Beverages", Girl = mirai, Payment_per_week = 900000, EndDate = Agency.Today.AddDays(60) },
+                new() { Type = business._type.tv_drama, Product_Name = "Station of Dreams", Agent_Name = "NTX Television", isGroup = true, Payment_per_week = 1500000, EndDate = Agency.Today.AddDays(30) },
+                new() { Type = business._type.ad, Product_Name = "Kumo Mobile", Agent_Name = "Kumo Telecom", Girl = scandal.actors[0].girl, Payment_per_week = 400000, EndDate = Agency.Today.AddDays(80) },
+                new() { Type = business._type.ad, Product_Name = "Fresh Mint Gum", Agent_Name = "Daiwa Foods", Girl = mirai, Payment_per_week = 100000, EndDate = Agency.Today.AddDays(10) },
+            };
+            return MomentContext.StaffFiring(staffer, firingBudget, new List<PolicyChange.Cleared> { new() { Girl = scandal.actors[0].girl, Points = 1 } },
+                new List<Event_Manager._activeEvent> { scandal }, contracts);
+        }
+
         /// <summary>
         /// "--name value" pairs; a name given more than once keeps every value.
         /// </summary>
@@ -375,6 +431,13 @@ namespace AIFanChatter.LiveReport
             // The game's own list, where the mod finds which events start which
             Event_Manager.RandomEvents.Clear();
             Event_Manager.RandomEvents.AddRange(Events.Values);
+            business.data.Clear();
+            foreach (JSONNode item in Read(Path.Combine(english, "Business", "business.json")).AsArray)
+            {
+                business._data data = new();
+                data.Set(item);
+                business.data.Add(data);
+            }
             Policies.Clear();
             foreach (JSONNode item in Read(Path.Combine(english, "Policies", "policies.json")).AsArray)
             {

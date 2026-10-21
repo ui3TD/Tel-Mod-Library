@@ -325,6 +325,128 @@ namespace AIFanChatter
     }
 
     /// <summary>
+    /// The player starts firing a staffer: the scandal points popup, or first a talk when it costs more than 2.
+    /// Story scripts fire staff without this, and get no posts.
+    /// </summary>
+    [HarmonyPatch(typeof(Staff_Fire), nameof(Staff_Fire.Fire))]
+    public class Staff_Fire_Fire
+    {
+        public static void Postfix(staff._staff _Staff)
+        {
+            try
+            {
+                StaffFiring.Start(_Staff, talk: _Staff != null && _Staff.PointsToFire() > 2);
+            }
+            catch (Exception)
+            {
+                StaffFiring.Clear();
+            }
+        }
+    }
+
+    /// <summary>
+    /// The talk ends: whether the player accepted the staffer's deal to announce budget problems.
+    /// </summary>
+    [HarmonyPatch(typeof(Staff_Fire), nameof(Staff_Fire.DoComplete))]
+    public class Staff_Fire_DoComplete
+    {
+        public static void Prefix()
+        {
+            if (StaffFiring.Talk)
+            {
+                StaffFiring.Budget = Staff_Fire.Accepted && !Staff_Fire.IsSeverance;
+            }
+        }
+    }
+
+    /// <summary>
+    /// A cancelled scandal points popup ends the firing, so a later story firing isn't taken for it.
+    /// </summary>
+    [HarmonyPatch(typeof(ScandalPoints_Popup), nameof(ScandalPoints_Popup.OnCancel))]
+    public class ScandalPoints_Popup_OnCancel
+    {
+        public static void Postfix() => StaffFiring.Clear();
+    }
+
+    /// <summary>
+    /// A staffer fired through the game's firing flow, with scandals blamed on them or budget problems
+    /// announced: the agency acting on its image.
+    /// </summary>
+    [HarmonyPatch(typeof(staff._staff), nameof(staff._staff.Fire))]
+    [HarmonyPriority(Priority.Last)]
+    public class staff_staff_Fire
+    {
+        public sealed class Before
+        {
+            public bool Employed;
+            public bool Budget;
+            public List<PolicyChange.Cleared> Cleared = new();
+        }
+
+        public static void Prefix(staff._staff __instance, out Before __state)
+        {
+            __state = null;
+            try
+            {
+                if (__instance != null && __instance == StaffFiring.Pending)
+                {
+                    // The popup has closed by now, but still holds what was chosen
+                    __state = new Before { Employed = staff.Staff.Contains(__instance), Budget = StaffFiring.Budget, Cleared = PolicyChange.ClearedPoints() };
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        public static void Postfix(staff._staff __instance, Before __state, bool __runOriginal)
+        {
+            try
+            {
+                if (ShouldPost(__state, __instance, __runOriginal))
+                {
+                    StaffFiring.Clear();
+                    Moments.Trigger(() => MomentContext.StaffFiring(__instance, __state.Budget, __state.Cleared, EventLog(), Contracts()));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        private static IEnumerable<business.active_proposal> Contracts()
+        {
+            try
+            {
+                return Camera.main.GetComponent<mainScript>().Data.GetComponent<business>().ActiveProposals;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        internal static bool ShouldPost(Before before, staff._staff staffer, bool ran)
+        {
+            return ran && before != null && before.Employed && staffer != null && !staff.Staff.Contains(staffer);
+        }
+
+        private static IEnumerable<Event_Manager._activeEvent> EventLog()
+        {
+            try
+            {
+                return Camera.main.GetComponent<mainScript>().Data.GetComponent<Event_Manager>().activeEvents;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
     /// The outcomes of the dating scandal answered in Event_Templates_ConcludeEvent, as the game picks them.
     /// </summary>
     internal static class DatingScandal

@@ -31,6 +31,7 @@ namespace AIFanChatter.Tests
             Event_Templates.Active_Template = null;
             DatingScandal.Capturing = false;
             DatingScandal.Reactions.Clear();
+            StaffFiring.Clear();
             staticVars.dateTime = Today;
         }
 

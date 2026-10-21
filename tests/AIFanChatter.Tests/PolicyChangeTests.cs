@@ -223,7 +223,7 @@ namespace AIFanChatter.Tests
                 Scandal("lyrics", Today.AddDays(-40), "The group's lyrics.", true),
             };
             Moment moment = new("x");
-            History.PolicyChange(moment, new List<data_girls.girls> { aya }, true, log, Today);
+            History.ScandalsPaidFor(moment, new List<data_girls.girls> { aya }, true, log, Today);
             Assert.Equal(new[]
             {
                 new KeyValuePair<string, string>("Aya's latest scandal, 21 days ago", "Her stream rant."),

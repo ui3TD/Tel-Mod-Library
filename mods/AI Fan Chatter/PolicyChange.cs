@@ -52,4 +52,26 @@ namespace AIFanChatter
             return cleared;
         }
     }
+
+    /// <summary>
+    /// The staffer the player is firing through the game's firing flow (Staff_Fire), until the firing is
+    /// done or the scandal points popup is cancelled. The mod's own notes; the game's state is only read.
+    /// </summary>
+    internal static class StaffFiring
+    {
+        public static staff._staff Pending;
+        /// <summary>Whether the firing went through the talk with the staffer (more than 2 points).</summary>
+        public static bool Talk;
+        /// <summary>Whether the player accepted the staffer's deal to announce budget problems.</summary>
+        public static bool Budget;
+
+        public static void Start(staff._staff staffer, bool talk)
+        {
+            Pending = staffer;
+            Talk = talk;
+            Budget = false;
+        }
+
+        public static void Clear() => Start(null, false);
+    }
 }

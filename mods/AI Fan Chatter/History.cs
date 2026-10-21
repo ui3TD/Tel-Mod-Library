@@ -272,12 +272,12 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// For a paid policy change, the latest scandal of each idol whose scandal points paid for it, and of
+        /// For a paid policy change or a firing, the latest scandal of each idol whose scandal points paid for it, and of
         /// the group when its own points did: her most recent event that can add scandal points (an idol in
         /// it), or the group's (no idol in it), from the game's event log. Dating scandals aren't in that
         /// log, and the game doesn't keep their outcome, so they're never named.
         /// </summary>
-        public static void PolicyChange(Moment moment, IList<data_girls.girls> idols, bool group, IEnumerable<Event_Manager._activeEvent> log, DateTime now)
+        public static void ScandalsPaidFor(Moment moment, IList<data_girls.girls> idols, bool group, IEnumerable<Event_Manager._activeEvent> log, DateTime now)
         {
             if (log == null)
             {

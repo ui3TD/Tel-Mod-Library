@@ -197,7 +197,7 @@ namespace TraitsFixTests
                 Invariant($"- Annoying: causes other members to spend {1 + ANNOYING_MODIFIER}x physical stamina in shows."),
                 $"- Misandry: {MISANDRY_CHANCE}% chance of receiving bad opinions from Male fans",
                 $"- Perfectionist: {PERFECTIONIST_MENTAL} to mental stamina when world tours end with less than {PERFECTIONIST_TOUR_ATT}% attendance, or when they participate in concerts with less than {PERFECTIONIST_HYPE}% hype.",
-                $"- Indiscreet: each week, a secret relationship has a {INDISCREET_CHANCE}% chance of being let slip by an indiscreet member, shown as an illustrated event.",
+                $"- Indiscreet: each week, every indiscreet member has a {INDISCREET_CHANCE}% chance of letting a secret relationship slip (about once a year each), shown as an illustrated event.",
                 $"The girls involved lose {-INDISCREET_MENTAL} mental stamina (not Thick Skin or Shameless girls) and can't start a new outside relationship for {SCANDAL_TEMPLATE_BLOCK_DAYS} days.",
             };
             foreach (string line in expected)

@@ -89,30 +89,12 @@ namespace TraitFix
         }
     }
 
-    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.UpdateDatingStatus))]
-    public class Data_girls_girls_UpdateDatingStatus
+    // Runs once a week, after every idol's own dating update. Each Indiscreet idol gets one leak roll, so
+    // leaks grow with the number of Indiscreet idols, not with the number of secret relationships.
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.UpdateDatingStatus))]
+    public class Data_girls_UpdateDatingStatus
     {
-        // Outside relationships get one reveal roll; idol-idol dating is handled by CheckDating below.
-        public static void Postfix(data_girls.girls __instance)
-        {
-            if (__instance?.DatingData == null
-                || !__instance.DatingData.Is_Taken_Outside()
-                || __instance.DatingData.Is_Partner_Status_Known
-                || IsInWaitingLeak(__instance)
-                || !mainScript.chance(INDISCREET_CHANCE))
-            {
-                return;
-            }
-            data_girls.girls culprit = FindIndiscreetLeaker(__instance);
-            if (culprit == null)
-                return;
-
-            // The event is the leak: its effects apply when it opens, and with no event there's no leak
-            string kind = __instance.DatingData.Partner_Status == data_girls.girls._dating_data._partner_status.taken_outside_gf
-                ? INDISCREET_KIND_GIRLFRIEND
-                : INDISCREET_KIND_BOYFRIEND;
-            StartLeakEvent(kind, culprit, new[] { __instance });
-        }
+        public static void Postfix() => RollIndiscreetLeaks();
     }
 
     // Last, so other mods' patches see the leak event as the active one, as they would see any event whose
@@ -135,20 +117,6 @@ namespace TraitFix
         }
     }
 
-    // The game's weekly dating check stops at the first couple that starts or ends, so a patch on each
-    // couple's own check would miss the couples after it. Every couple gets its leak roll here instead.
-    [HarmonyPatch(typeof(Relationships), nameof(Relationships.CheckDating))]
-    public class Relationships_CheckDating
-    {
-        public static void Postfix()
-        {
-            if (Relationships.RelationshipsData == null)
-                return;
-
-            foreach (Relationships._relationship relationship in Relationships.RelationshipsData)
-                TryLeakCouple(relationship);
-        }
-    }
 
     [HarmonyPatch(typeof(Relationships._relationship), nameof(Relationships._relationship.Initialize))]
     public class Relationships__relationship_Initialize
@@ -519,6 +487,7 @@ namespace TraitFix
         public const float MATERNAL_WEEKLY_BONUS = MATERNAL_BONUS / 2;
         public const float PRECOCIOUS_WEEKLY_BONUS = PRECOCIOUS_BONUS / 2;
         public const float ARROGANT_WEEKLY_PENALTY = ARROGANT_PENALTY / 2;
+        // Weekly chance that each Indiscreet idol lets a secret relationship slip: about once a year each
         public const int INDISCREET_CHANCE = 2;
         public const float INDISCREET_MENTAL = -30f;
         public const int MISANDRY_CHANCE = 20;
@@ -773,37 +742,63 @@ namespace TraitFix
         }
 
         /// <summary>
-        /// A random active Indiscreet idol other than the excluded ones, or null if there is none.
+        /// Each active Indiscreet idol, in roster order, has a chance to let slip one secret relationship she
+        /// isn't part of, picked at random. One that leaks waits for the player, so a second Indiscreet idol
+        /// succeeding the same week leaks another.
         /// </summary>
-        public static data_girls.girls FindIndiscreetLeaker(params data_girls.girls[] excludedGirls)
+        public static void RollIndiscreetLeaks()
         {
             List<data_girls.girls> activeGirls = data_girls.GetActiveGirls(null);
             if (activeGirls == null)
-                return null;
+                return;
 
-            List<data_girls.girls> leakers = new List<data_girls.girls>();
-            foreach (data_girls.girls girl in activeGirls)
+            foreach (data_girls.girls culprit in activeGirls)
             {
-                if (girl == null || girl.trait != traits._trait._type.Indiscreet)
+                if (culprit == null || culprit.trait != traits._trait._type.Indiscreet)
                     continue;
-                bool excluded = false;
-                if (excludedGirls != null)
+                List<data_girls.girls[]> secrets = FindSecretRelationships(culprit);
+                if (secrets.Count == 0 || !mainScript.chance(INDISCREET_CHANCE))
+                    continue;
+
+                data_girls.girls[] couple = secrets.Count == 1 ? secrets[0] : secrets[RandomIndex(secrets.Count)];
+                string kind = couple.Length == 2
+                    ? INDISCREET_KIND_IDOLS
+                    : couple[0].DatingData.Partner_Status == data_girls.girls._dating_data._partner_status.taken_outside_gf
+                        ? INDISCREET_KIND_GIRLFRIEND
+                        : INDISCREET_KIND_BOYFRIEND;
+                // The event is the leak: its effects apply when it opens, and with no event there's no leak
+                StartLeakEvent(kind, culprit, couple);
+            }
+        }
+
+        /// <summary>
+        /// The secret relationships the culprit could let slip: each idol dating outside the agency whose
+        /// relationship the player doesn't know (one idol), and each secret idol couple (two idols). Not her
+        /// own, and not one whose leak is already waiting.
+        /// </summary>
+        public static List<data_girls.girls[]> FindSecretRelationships(data_girls.girls culprit)
+        {
+            List<data_girls.girls[]> secrets = new List<data_girls.girls[]>();
+            if (data_girls.girl != null)
+            {
+                foreach (data_girls.girls girl in data_girls.girl)
                 {
-                    foreach (data_girls.girls excludedGirl in excludedGirls)
+                    if (girl?.DatingData != null && girl != culprit && girl.status != data_girls._status.graduated
+                        && girl.DatingData.Is_Taken_Outside() && !girl.DatingData.Is_Partner_Status_Known && !IsInWaitingLeak(girl))
                     {
-                        if (girl == excludedGirl)
-                        {
-                            excluded = true;
-                            break;
-                        }
+                        secrets.Add(new[] { girl });
                     }
                 }
-                if (!excluded)
-                    leakers.Add(girl);
             }
-            if (leakers.Count == 0)
-                return null;
-            return leakers.Count == 1 ? leakers[0] : leakers[RandomIndex(leakers.Count)];
+            if (Relationships.RelationshipsData != null)
+            {
+                foreach (Relationships._relationship relationship in Relationships.RelationshipsData)
+                {
+                    if (IsSecretCouple(relationship, out data_girls.girls girl0, out data_girls.girls girl1) && girl0 != culprit && girl1 != culprit)
+                        secrets.Add(new[] { girl0, girl1 });
+                }
+            }
+            return secrets;
         }
 
         public static int RandomIndex(int count) => UnityEngine.Random.Range(0, count);
@@ -890,7 +885,7 @@ namespace TraitFix
             activeEvent?.data?.id != null && activeEvent.data.id.StartsWith(INDISCREET_EVENT_PREFIX);
 
         /// <summary>
-        /// Whether the idol is in a leak event that hasn't been answered yet, so she isn't rolled for again.
+        /// Whether the idol is in a leak event that hasn't been answered yet, so her relationship isn't leaked again.
         /// </summary>
         public static bool IsInWaitingLeak(data_girls.girls girl)
         {
@@ -1171,31 +1166,21 @@ namespace TraitFix
         }
 
         /// <summary>
-        /// Rolls for an Indiscreet idol leaking that two idols are secretly dating each other.
+        /// Whether two idols are dating each other without the player knowing, and no leak of them is waiting.
         /// </summary>
-        public static void TryLeakCouple(Relationships._relationship relationship)
+        public static bool IsSecretCouple(Relationships._relationship relationship, out data_girls.girls girl0, out data_girls.girls girl1)
         {
-            if (!TryGetRelationshipGirls(relationship, out data_girls.girls girl0, out data_girls.girls girl1) || !relationship.Dating)
-                return;
+            if (!TryGetRelationshipGirls(relationship, out girl0, out girl1) || !relationship.Dating)
+                return false;
 
             if (relationship.IsRelationshipKnown())
-                return;
+                return false;
 
             // A leak marks both idols as dating an idol, so this stops the same couple leaking every week.
             // Knowing only one of them is dating (but not who) leaves the couple secret.
             if (IsKnownToDateIdol(girl0) && IsKnownToDateIdol(girl1))
-                return;
-            if (IsInWaitingLeak(girl0) || IsInWaitingLeak(girl1))
-                return;
-
-            if (!mainScript.chance(INDISCREET_CHANCE))
-                return;
-            data_girls.girls culprit = FindIndiscreetLeaker(girl0, girl1);
-            if (culprit == null)
-                return;
-
-            // The event is the leak: its effects apply when it opens, and with no event there's no leak
-            StartLeakEvent(INDISCREET_KIND_IDOLS, culprit, new[] { girl0, girl1 });
+                return false;
+            return !IsInWaitingLeak(girl0) && !IsInWaitingLeak(girl1);
         }
 
         public static void MarkIdolRelationshipKnown(data_girls.girls girl0, data_girls.girls girl1)

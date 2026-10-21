@@ -220,21 +220,37 @@ namespace TraitsFixTests
     }
 
     /// <summary>
-    /// With an Indiscreet idol in the group, an idol secretly dating someone outside the group has a 2%
-    /// chance each week of it leaking, as a leak event; what happens when the player answers it is checked
-    /// in game (InGameTests.TelMods) and its numbers in LeakOutcomeTests. The Indiscreet idol doesn't leak
-    /// her own relationship.
+    /// Each week, every active Indiscreet idol has a 2% chance of letting slip one secret relationship she
+    /// isn't part of, picked at random: an idol dating someone outside the group, or two idols dating each
+    /// other. So leaks grow with the number of Indiscreet idols, not with the number of secrets. What
+    /// happens when the player answers is checked in game (InGameTests.TelMods) and its numbers in
+    /// LeakOutcomeTests.
     /// </summary>
-    public class IndiscreetOutsideTests
+    public class IndiscreetWeeklyRollTests
     {
-        public IndiscreetOutsideTests() => TestGame.Reset();
+        public IndiscreetWeeklyRollTests() => TestGame.Reset();
 
-        private static data_girls.girls Dating(PartnerStatus status = PartnerStatus.taken_outside_bf)
+        private static data_girls.girls Dating(string name = "Aya", PartnerStatus status = PartnerStatus.taken_outside_bf)
         {
-            data_girls.girls girl = TestGame.Hire(TestGame.Idol(name: "Aya"));
+            data_girls.girls girl = TestGame.Hire(TestGame.Idol(name: name));
             girl.DatingData.Partner_Status = status;
             return girl;
         }
+
+        private static Relationships._relationship SecretCouple(string name0, string name1)
+        {
+            data_girls.girls girl0 = Dating(name0, PartnerStatus.taken_idol);
+            data_girls.girls girl1 = Dating(name1, PartnerStatus.taken_idol);
+            Relationships._relationship couple = Pair.Of(girl0, girl1);
+            couple.Dating = true;
+            Relationships.RelationshipsData.Add(couple);
+            return couple;
+        }
+
+        private static void Week() => Data_girls_UpdateDatingStatus.Postfix();
+
+        private static string Culprit(Event_Manager._activeEvent leak) =>
+            variables.variable.Find(v => v.name == leak.data.id + INDISCREET_CULPRIT_SUFFIX)?.value;
 
         [Fact]
         public void Leak_StartsEvent()
@@ -243,7 +259,7 @@ namespace TraitsFixTests
             data_girls.girls girl = Dating();
             Seams.Chance = _ => true;
 
-            Data_girls_girls_UpdateDatingStatus.Postfix(girl);
+            Week();
 
             Assert.Equal(new float[] { INDISCREET_CHANCE }, Seams.ChancesRolled);
             Leak.AssertEvent("traitsfix_indiscreet_bf_1", culprit, girl);
@@ -253,30 +269,83 @@ namespace TraitsFixTests
         public void Girlfriend_StartsGirlfriendEvent()
         {
             data_girls.girls culprit = TestGame.Hire(TestGame.Idol(Indiscreet, name: "Cleo"));
-            data_girls.girls girl = Dating(PartnerStatus.taken_outside_gf);
+            data_girls.girls girl = Dating(status: PartnerStatus.taken_outside_gf);
             Seams.Chance = _ => true;
 
-            Data_girls_girls_UpdateDatingStatus.Postfix(girl);
+            Week();
 
             Leak.AssertEvent("traitsfix_indiscreet_gf_1", culprit, girl);
         }
 
-        /// <summary>
-        /// Until the player answers, the idol isn't rolled for again.
-        /// </summary>
         [Fact]
-        public void LeakWaiting_NoRoll()
+        public void Couple_NamesBoth()
         {
-            TestGame.Hire(TestGame.Idol(Indiscreet));
-            data_girls.girls girl = Dating();
+            data_girls.girls culprit = TestGame.Hire(TestGame.Idol(Indiscreet, name: "Cleo"));
+            Relationships._relationship couple = SecretCouple("Aya", "Beth");
             Seams.Chance = _ => true;
 
-            Data_girls_girls_UpdateDatingStatus.Postfix(girl);
-            Seams.Events[0].state = Event_Manager._activeEvent._state.active;
-            Data_girls_girls_UpdateDatingStatus.Postfix(girl);
+            Week();
 
-            Assert.Single(Seams.ChancesRolled);
-            Assert.Single(Seams.Events);
+            Assert.Equal(new float[] { INDISCREET_CHANCE }, Seams.ChancesRolled);
+            Leak.AssertEvent("traitsfix_indiscreet_idols_1", culprit, couple.Girls[0], couple.Girls[1]);
+        }
+
+        /// <summary>
+        /// The point of the weekly roll: one Indiscreet idol rolls once, however many secrets there are.
+        /// </summary>
+        [Fact]
+        public void OneIndiscreetIdol_OneRoll_HoweverManySecrets()
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            for (int i = 0; i < 5; i++)
+                Dating("Out" + i);
+            for (int i = 0; i < 3; i++)
+                SecretCouple("A" + i, "B" + i);
+
+            Week();
+
+            Assert.Equal(new float[] { INDISCREET_CHANCE }, Seams.ChancesRolled);
+        }
+
+        /// <summary>
+        /// Each Indiscreet idol rolls; two succeeding the same week leak two different secrets, each naming
+        /// the idol who let it slip.
+        /// </summary>
+        [Fact]
+        public void TwoIndiscreetIdols_TwoRolls_TwoDifferentLeaks()
+        {
+            data_girls.girls cleo = TestGame.Hire(TestGame.Idol(Indiscreet, name: "Cleo"));
+            data_girls.girls dana = TestGame.Hire(TestGame.Idol(Indiscreet, name: "Dana"));
+            data_girls.girls aya = Dating("Aya");
+            data_girls.girls beth = Dating("Beth");
+            Seams.Chance = _ => true;
+
+            Week();
+
+            Assert.Equal(new float[] { INDISCREET_CHANCE, INDISCREET_CHANCE }, Seams.ChancesRolled);
+            Assert.Equal(2, Seams.Events.Count);
+            Assert.Same(aya, Seams.Events[0].actors[0].girl);
+            Assert.Same(beth, Seams.Events[1].actors[0].girl);
+            Assert.Contains(cleo.girlName(false), Culprit(Seams.Events[0]));
+            Assert.Contains(dana.girlName(false), Culprit(Seams.Events[1]));
+        }
+
+        [Theory]
+        [InlineData(0, "traitsfix_indiscreet_bf_1")]
+        [InlineData(1, "traitsfix_indiscreet_gf_1")]
+        [InlineData(2, "traitsfix_indiscreet_idols_1")]
+        public void RandomPick_CanBeAnySecret(int pick, string expected)
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            Dating("Aya");
+            Dating("Beth", PartnerStatus.taken_outside_gf);
+            SecretCouple("Cleo", "Dana");
+            Seams.Chance = _ => true;
+            Seams.RandomIndex = count => count == 3 ? pick : 0;
+
+            Week();
+
+            Assert.Equal(expected, Assert.Single(Seams.Events).data.id);
         }
 
         [Fact]
@@ -285,8 +354,9 @@ namespace TraitsFixTests
             TestGame.Hire(TestGame.Idol(Indiscreet));
             data_girls.girls girl = Dating();
 
-            Data_girls_girls_UpdateDatingStatus.Postfix(girl);
+            Week();
 
+            Assert.Single(Seams.ChancesRolled);
             Leak.AssertNone();
             Assert.False(girl.DatingData.Is_Partner_Status_Known);
             Assert.Equal(100f, TestGame.Stat(girl, data_girls._paramType.mentalStamina));
@@ -295,116 +365,136 @@ namespace TraitsFixTests
         [Theory]
         [InlineData(data_girls._status.hiatus)]
         [InlineData(data_girls._status.graduated)]
-        public void NoActiveIndiscreetIdol_NoLeak(data_girls._status status)
+        public void NoActiveIndiscreetIdol_NoRoll(data_girls._status status)
         {
             TestGame.Hire(TestGame.Idol(Indiscreet)).status = status;
-            data_girls.girls girl = Dating();
+            Dating();
             Seams.Chance = _ => true;
 
-            Data_girls_girls_UpdateDatingStatus.Postfix(girl);
+            Week();
+
+            Assert.Empty(Seams.ChancesRolled);
             Leak.AssertNone();
         }
 
         [Fact]
-        public void IndiscreetIdol_DoesntLeakHerself()
+        public void NoSecrets_NoRoll()
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            TestGame.Hire(TestGame.Idol());
+
+            Week();
+
+            Assert.Empty(Seams.ChancesRolled);
+        }
+
+        /// <summary>
+        /// Until the player answers, the relationship isn't a secret to leak again.
+        /// </summary>
+        [Fact]
+        public void LeakWaiting_NotLeakedAgain()
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            Dating();
+            Seams.Chance = _ => true;
+
+            Week();
+            Seams.Events[0].state = Event_Manager._activeEvent._state.active;
+            Week();
+
+            Assert.Single(Seams.ChancesRolled);
+            Assert.Single(Seams.Events);
+        }
+
+        /// <summary>
+        /// Two Indiscreet idols with secrets of their own: each leaks only the other's.
+        /// </summary>
+        [Fact]
+        public void IndiscreetIdol_DoesntLeakHerOwn()
+        {
+            data_girls.girls girl = Dating();
+            girl.trait = Indiscreet;
+            Relationships._relationship couple = SecretCouple("Beth", "Cleo");
+            couple.Girls[0].trait = Indiscreet;
+            Seams.Chance = _ => true;
+
+            Week();
+
+            Assert.Equal(2, Seams.Events.Count);
+            Assert.Equal("traitsfix_indiscreet_idols_1", Seams.Events[0].data.id);
+            Assert.Contains(girl.girlName(false), Culprit(Seams.Events[0]));
+            Assert.Same(girl, Seams.Events[1].actors[0].girl);
+            Assert.Contains(couple.Girls[0].girlName(false), Culprit(Seams.Events[1]));
+        }
+
+        [Fact]
+        public void OnlyHerOwnSecret_NoRoll()
         {
             data_girls.girls girl = Dating();
             girl.trait = Indiscreet;
             Seams.Chance = _ => true;
 
-            Data_girls_girls_UpdateDatingStatus.Postfix(girl);
-            Leak.AssertNone();
-        }
+            Week();
 
-        [Fact]
-        public void AlreadyKnown_NoRoll()
-        {
-            TestGame.Hire(TestGame.Idol(Indiscreet));
-            data_girls.girls girl = Dating();
-            girl.DatingData.Is_Partner_Status_Known = true;
-            Seams.Chance = _ => true;
-
-            Data_girls_girls_UpdateDatingStatus.Postfix(girl);
             Assert.Empty(Seams.ChancesRolled);
             Leak.AssertNone();
         }
 
+        [Fact]
+        public void AlreadyKnown_NotASecret()
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            Dating().DatingData.Is_Partner_Status_Known = true;
+
+            Week();
+
+            Assert.Empty(Seams.ChancesRolled);
+        }
+
+        [Fact]
+        public void GraduatedIdol_NotASecret()
+        {
+            TestGame.Hire(TestGame.Idol(Indiscreet));
+            Dating().status = data_girls._status.graduated;
+
+            Week();
+
+            Assert.Empty(Seams.ChancesRolled);
+        }
+
         /// <summary>
-        /// Idols dating each other leak through the couple's roll instead.
+        /// Idols dating each other leak as a couple, through their relationship.
         /// </summary>
         [Theory]
         [InlineData(PartnerStatus.free)]
         [InlineData(PartnerStatus.taken_idol)]
         [InlineData(PartnerStatus.taken_player)]
-        public void NotDatingOutside_NoRoll(PartnerStatus status)
+        public void NotDatingOutside_NotASecret(PartnerStatus status)
         {
             TestGame.Hire(TestGame.Idol(Indiscreet));
-            data_girls.girls girl = Dating(status);
-            Seams.Chance = _ => true;
+            Dating(status: status);
 
-            Data_girls_girls_UpdateDatingStatus.Postfix(girl);
+            Week();
+
             Assert.Empty(Seams.ChancesRolled);
         }
 
-        [Fact]
-        public void NoIdol_NoError()
-        {
-            Data_girls_girls_UpdateDatingStatus.Postfix(null);
-        }
-    }
-
-    /// <summary>
-    /// With an Indiscreet idol in the group, two idols secretly dating each other have a 2% chance each
-    /// week of it leaking, once, as a leak event. Knowing that one of them is dating someone, but not who,
-    /// keeps the couple secret.
-    /// </summary>
-    public class IndiscreetCoupleTests
-    {
-        public IndiscreetCoupleTests() => TestGame.Reset();
-
-        private data_girls.girls aya;
-        private data_girls.girls beth;
-
-        private Relationships._relationship Couple()
-        {
-            aya = TestGame.Hire(TestGame.Idol(name: "Aya"));
-            beth = TestGame.Hire(TestGame.Idol(name: "Beth"));
-            aya.DatingData.Partner_Status = PartnerStatus.taken_idol;
-            beth.DatingData.Partner_Status = PartnerStatus.taken_idol;
-            Relationships._relationship relationship = Pair.Of(aya, beth);
-            relationship.Dating = true;
-            return relationship;
-        }
-
-        [Fact]
-        public void Leak_NamesBoth()
-        {
-            data_girls.girls culprit = TestGame.Hire(TestGame.Idol(Indiscreet, name: "Cleo"));
-            Relationships._relationship couple = Couple();
-            Seams.Chance = _ => true;
-
-            TryLeakCouple(couple);
-
-            Assert.Equal(new float[] { INDISCREET_CHANCE }, Seams.ChancesRolled);
-            Leak.AssertEvent("traitsfix_indiscreet_idols_1", culprit, aya, beth);
-        }
-
         /// <summary>
-        /// While the leak waits for the player, and after it reveals the couple, there's no other roll.
+        /// While the leak waits for the player, and after it reveals the couple, the couple isn't leaked again.
         /// </summary>
         [Fact]
-        public void LeaksOnlyOnce()
+        public void Couple_LeaksOnlyOnce()
         {
             TestGame.Hire(TestGame.Idol(Indiscreet));
-            Relationships._relationship couple = Couple();
+            Relationships._relationship couple = SecretCouple("Aya", "Beth");
             Seams.Chance = _ => true;
 
-            TryLeakCouple(couple);
-            TryLeakCouple(couple);
+            Week();
+            Week();
             // Answered: the leak revealed the couple
             Seams.Events[0].state = Event_Manager._activeEvent._state.complete;
-            MarkIdolRelationshipKnown(aya, beth);
-            TryLeakCouple(couple);
+            MarkIdolRelationshipKnown(couple.Girls[0], couple.Girls[1]);
+            Week();
 
             Assert.Single(Seams.ChancesRolled);
             Assert.Single(Seams.Events);
@@ -414,21 +504,16 @@ namespace TraitsFixTests
         /// The player knows Aya is dating an idol (e.g. from flirting), but not that it's Beth.
         /// </summary>
         [Fact]
-        public void OneKnown_StaysSecretUntilLeak()
+        public void Couple_OneKnown_StillSecret()
         {
             TestGame.Hire(TestGame.Idol(Indiscreet));
-            Relationships._relationship couple = Couple();
-            aya.DatingData.Is_Partner_Status_Known = true;
-            aya.DatingData.Partner_Status_Known_To_Player = PartnerStatus.taken_idol;
-
-            TryLeakCouple(couple);
-
-            Assert.Single(Seams.ChancesRolled);
-            Leak.AssertNone();
-            Assert.False(beth.DatingData.Is_Partner_Status_Known);
-
+            Relationships._relationship couple = SecretCouple("Aya", "Beth");
+            couple.Girls[0].DatingData.Is_Partner_Status_Known = true;
+            couple.Girls[0].DatingData.Partner_Status_Known_To_Player = PartnerStatus.taken_idol;
             Seams.Chance = _ => true;
-            TryLeakCouple(couple);
+
+            Week();
+
             Assert.Single(Seams.Events);
         }
 
@@ -436,115 +521,65 @@ namespace TraitsFixTests
         /// Aya was known to have a boyfriend before; the game doesn't clear that when she moves on.
         /// </summary>
         [Fact]
-        public void StaleKnowledge_StillRolls()
+        public void Couple_StaleKnowledge_StillSecret()
         {
             TestGame.Hire(TestGame.Idol(Indiscreet));
-            Relationships._relationship couple = Couple();
-            aya.DatingData.Is_Partner_Status_Known = true;
-            aya.DatingData.Partner_Status_Known_To_Player = PartnerStatus.taken_outside_bf;
-            beth.DatingData.Is_Partner_Status_Known = true;
-            beth.DatingData.Partner_Status_Known_To_Player = PartnerStatus.taken_idol;
+            Relationships._relationship couple = SecretCouple("Aya", "Beth");
+            couple.Girls[0].DatingData.Is_Partner_Status_Known = true;
+            couple.Girls[0].DatingData.Partner_Status_Known_To_Player = PartnerStatus.taken_outside_bf;
+            couple.Girls[1].DatingData.Is_Partner_Status_Known = true;
+            couple.Girls[1].DatingData.Partner_Status_Known_To_Player = PartnerStatus.taken_idol;
 
-            TryLeakCouple(couple);
+            Week();
 
             Assert.Single(Seams.ChancesRolled);
-            Assert.Equal(PartnerStatus.taken_outside_bf, aya.DatingData.Partner_Status_Known_To_Player);
+            Assert.Equal(PartnerStatus.taken_outside_bf, couple.Girls[0].DatingData.Partner_Status_Known_To_Player);
         }
 
         [Fact]
-        public void RelationshipsKnown_NoRoll()
+        public void Couple_RelationshipsKnown_NotASecret()
         {
             TestGame.Hire(TestGame.Idol(Indiscreet));
-            Relationships._relationship couple = Couple();
-            aya.RelationshipsKnown = true;
-            Seams.Chance = _ => true;
+            SecretCouple("Aya", "Beth").Girls[0].RelationshipsKnown = true;
 
-            TryLeakCouple(couple);
+            Week();
+
             Assert.Empty(Seams.ChancesRolled);
         }
 
         [Fact]
-        public void NotDating_NoRoll()
+        public void Couple_NotDating_NotASecret()
         {
             TestGame.Hire(TestGame.Idol(Indiscreet));
-            Relationships._relationship couple = Couple();
-            couple.Dating = false;
-            Seams.Chance = _ => true;
+            SecretCouple("Aya", "Beth").Dating = false;
 
-            TryLeakCouple(couple);
+            Week();
+
             Assert.Empty(Seams.ChancesRolled);
         }
 
         [Fact]
-        public void IndiscreetIdolInCouple_DoesntLeakIt()
-        {
-            Relationships._relationship couple = Couple();
-            aya.trait = Indiscreet;
-            Seams.Chance = _ => true;
-
-            TryLeakCouple(couple);
-            Leak.AssertNone();
-        }
-
-        [Fact]
-        public void NoLeakRoll_NothingHappens()
+        public void NoOrIncompleteRelationships_NoError()
         {
             TestGame.Hire(TestGame.Idol(Indiscreet));
-            Relationships._relationship couple = Couple();
-
-            TryLeakCouple(couple);
-
-            Leak.AssertNone();
-            Assert.False(aya.DatingData.Is_Partner_Status_Known);
-            Assert.False(beth.DatingData.Is_Partner_Status_Known);
-        }
-
-        /// <summary>
-        /// Fixed in 1.3.0: the leak roll was made on each couple's own weekly check, which the game stops
-        /// at the first couple that starts or ends. Now every couple gets its roll after the check.
-        /// </summary>
-        [Fact]
-        public void WeeklyCheck_RollsForEveryCouple()
-        {
-            TestGame.Hire(TestGame.Idol(Indiscreet));
-            Relationships._relationship first = Couple();
-            data_girls.girls cleo = TestGame.Hire(TestGame.Idol(name: "Cleo"));
-            data_girls.girls dana = TestGame.Hire(TestGame.Idol(name: "Dana"));
-            Relationships._relationship second = Pair.Of(cleo, dana);
-            second.Dating = true;
-            Relationships._relationship friends = Pair.Of(aya, cleo);
-            Relationships.RelationshipsData = new() { first, friends, second };
-            Seams.Chance = _ => false;
-
-            Relationships_CheckDating.Postfix();
-
-            Assert.Equal(new float[] { INDISCREET_CHANCE, INDISCREET_CHANCE }, Seams.ChancesRolled);
-        }
-
-        [Fact]
-        public void WeeklyCheck_NoRelationships_NoError()
-        {
             Relationships.RelationshipsData = null;
-            Relationships_CheckDating.Postfix();
-            Relationships.RelationshipsData = new() { null };
-            Relationships_CheckDating.Postfix();
-            Assert.Empty(Seams.ChancesRolled);
-        }
+            Week();
+            Relationships.RelationshipsData = new()
+            {
+                null,
+                new Relationships._relationship { Dating = true },
+                new Relationships._relationship { Dating = true, Girls = new List<data_girls.girls> { TestGame.Idol(), null } },
+            };
+            Week();
 
-        [Fact]
-        public void IncompleteRelationship_NoError()
-        {
-            TryLeakCouple(null);
-            TryLeakCouple(new Relationships._relationship { Dating = true });
-            TryLeakCouple(new Relationships._relationship { Dating = true, Girls = new List<data_girls.girls> { TestGame.Idol(), null } });
             Assert.Empty(Seams.ChancesRolled);
         }
     }
 
     /// <summary>
-    /// A leak shows as one of its kind's five events, naming the couple and a random Indiscreet idol as the
-    /// culprit. The event is the leak: when no event of that kind can start, nothing happens and the
-    /// relationship stays secret.
+    /// A leak shows as one of its kind's five events, naming the couple and, as the culprit, the Indiscreet
+    /// idol who let it slip. The event is the leak: when no event of that kind can start, nothing happens
+    /// and the relationship stays secret.
     /// </summary>
     public class IndiscreetLeakEventTests
     {
@@ -560,21 +595,9 @@ namespace TraitsFixTests
         private static void LeakAll(params data_girls.girls[] girls)
         {
             Seams.Chance = _ => true;
-            foreach (data_girls.girls girl in girls)
-                Data_girls_girls_UpdateDatingStatus.Postfix(girl);
-        }
-
-        [Fact]
-        public void SeveralIndiscreetIdols_RandomOneIsTheCulprit()
-        {
-            TestGame.Hire(TestGame.Idol(Indiscreet, name: "Cleo"));
-            data_girls.girls dana = TestGame.Hire(TestGame.Idol(Indiscreet, name: "Dana"));
-            data_girls.girls aya = DatingOutside("Aya");
-            Seams.RandomIndex = count => count - 1;
-
-            LeakAll(aya);
-
-            Leak.AssertEvent("traitsfix_indiscreet_bf_5", dana, aya);
+            // One Indiscreet idol: each week leaks the first secret not already waiting
+            foreach (data_girls.girls _ in girls)
+                Data_girls_UpdateDatingStatus.Postfix();
         }
 
         /// <summary>
@@ -608,6 +631,8 @@ namespace TraitsFixTests
                 LeakAll(girl);
                 Event_Manager._activeEvent leak = Seams.Events[Seams.Events.Count - 1];
                 leak.state = Event_Manager._activeEvent._state.complete;
+                // Answered: the leak revealed it
+                girl.DatingData.Is_Partner_Status_Known = true;
                 stories.Add(int.Parse(leak.data.id.Substring(leak.data.id.LastIndexOf('_') + 1)));
             }
             return stories;
@@ -768,8 +793,10 @@ namespace TraitsFixTests
             {
                 Relationships._relationship couple = Pair.Of(girls[i], girls[i + 1]);
                 couple.Dating = true;
-                TryLeakCouple(couple);
+                Relationships.RelationshipsData.Add(couple);
             }
+            for (int i = 0; i < girls.Count / 2; i++)
+                Data_girls_UpdateDatingStatus.Postfix();
 
             Assert.Equal(INDISCREET_EVENTS_PER_KIND, Seams.Events.Count);
             Assert.DoesNotContain(Seams.Events, e => e.actors[0].girl == girls[girls.Count - 2]);

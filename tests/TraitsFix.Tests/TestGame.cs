@@ -280,9 +280,7 @@ namespace TraitsFixTests
         private static readonly MethodBase[] Patched =
         {
             AccessTools.Method(typeof(Data_girls_AgeDeterioration), nameof(Data_girls_AgeDeterioration.Postfix)),
-            AccessTools.Method(typeof(Data_girls_girls_UpdateDatingStatus), nameof(Data_girls_girls_UpdateDatingStatus.Postfix)),
-            AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.TryLeakCouple)),
-            AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.FindIndiscreetLeaker)),
+            AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.RollIndiscreetLeaks)),
             AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.StartLeakEvent)),
             AccessTools.Method(typeof(TraitsFix), "PickStory"),
             AccessTools.Method(typeof(TraitsFix), nameof(TraitsFix.IsInWaitingLeak)),

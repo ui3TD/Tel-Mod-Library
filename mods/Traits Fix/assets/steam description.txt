@@ -25,7 +25,7 @@ Let me know of any bugs.
 - Annoying: causes other members to spend 1.2x physical stamina in shows.
 - Misandry: 20% chance of receiving bad opinions from Male fans when participating in a single with handshakes.
 - Perfectionist: -20 to mental stamina when world tours end with less than 80% attendance, or when they participate in concerts with less than 100% hype.
-- Indiscreet: each week, a secret relationship has a 2% chance of being let slip by an indiscreet member, shown as an illustrated event. The girls involved lose 30 mental stamina (not Thick Skin or Shameless girls) and can't start a new outside relationship for 180 days. Stricter dating and image policies also bring scandal points, lost fans and broken business contracts.
+- Indiscreet: each week, every indiscreet member has a 2% chance of letting a secret relationship slip (about once a year each), shown as an illustrated event. The girls involved lose 30 mental stamina (not Thick Skin or Shameless girls) and can't start a new outside relationship for 180 days. Stricter dating and image policies also bring scandal points, lost fans and broken business contracts.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
@@ -35,3 +35,4 @@ Let me know of any bugs.
 - 1.4.0: Indiscreet leaks are illustrated events with the game's dating scandal consequences.
 - 1.4.1: Fixed the wording of an Indiscreet leak result that depended on the idol's name.
 - 1.4.2: Indiscreet leaks show every story before repeating one, never one of the last two.
+- 1.5.0: Indiscreet leaks happen about once a year per indiscreet idol, whatever the group size.

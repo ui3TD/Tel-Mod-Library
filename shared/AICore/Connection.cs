@@ -96,7 +96,7 @@ namespace AICore
                     case Provider.OpenAI:
                         return "OpenAI";
                     default:
-                        return Uri.TryCreate((BaseUrl ?? "").Trim(), UriKind.Absolute, out Uri uri) && uri.Authority != ""
+                        return Uri.TryCreate(Providers.WithScheme(BaseUrl), UriKind.Absolute, out Uri uri) && uri.Authority != ""
                             ? uri.Authority
                             : "your OpenAI-compatible service";
                 }

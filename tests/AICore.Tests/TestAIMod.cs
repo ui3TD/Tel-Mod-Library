@@ -10,5 +10,8 @@ namespace AICore
         public const string LegacyKeyFolder = "Old Test AI Mod";
         public const string SchemaName = "test_reply";
         public const string RefusalText = "The model declined the test.";
+        public const string AnswerKey = "answer";
+        public const string Missed = "No test answer";
+        public const string OthersGoOn = "Other tests will still run.";
     }
 }

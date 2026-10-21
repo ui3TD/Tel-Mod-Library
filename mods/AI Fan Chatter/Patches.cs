@@ -15,7 +15,8 @@ namespace AIFanChatter
     /// <summary>
     /// Keeps the API key out of the saves. ModMenus' Apply saves every setting through variables.Set; the
     /// key goes to its file instead and the save gets "". Runs first, so no other patch on Set sees the
-    /// key. Any change to the mod's settings lets requests run again and tests the connection.
+    /// key. Any change to the mod's settings lets requests run again and tests the connection, and so does
+    /// pressing Apply with nothing changed while requests are stopped.
     /// </summary>
     [HarmonyPatch(typeof(variables), nameof(variables.Set))]
     [HarmonyPriority(Priority.First)]
@@ -43,6 +44,12 @@ namespace AIFanChatter
                 if (changed)
                 {
                     Dispatcher.Instance.OnSettingsChanged();
+                }
+                else if (name == Settings.ApiKeyVar)
+                {
+                    // Apply saves every row, changed or not, and only Apply saves the key row: pressing it
+                    // with nothing changed lifts a stop, so the player can try again after fixing the cause
+                    Dispatcher.Instance.OnApplied();
                 }
             }
             catch (Exception e)

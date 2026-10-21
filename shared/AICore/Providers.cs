@@ -2,6 +2,7 @@ using SimpleJSON;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace AICore
 {
@@ -19,19 +20,30 @@ namespace AICore
         Settings,
         /// <summary>The service is busy, down or unreachable: try again later.</summary>
         Transient,
-        /// <summary>A reply arrived but held nothing usable.</summary>
-        BadReply
+        /// <summary>The model's reply can't be used (out of room, empty, the wrong format): this model will keep failing.</summary>
+        BadReply,
+        /// <summary>Only this request failed (a refusal, a content filter): the next one may well work.</summary>
+        Declined
     }
 
     public sealed class ProviderReply
     {
         public Failure Failure;
+        public Problem Problem;
+        /// <summary>The HTTP status, for the problems that come from one.</summary>
+        public long Status;
+        /// <summary>The service's own message or the network error, for the notice; "" for none.</summary>
+        public string Detail = "";
         public string Text = "";
+        /// <summary>What went wrong, for the log.</summary>
         public string Error = "";
+        /// <summary>The answer came in the reply's reasoning field rather than its content.</summary>
+        public bool FromReasoning;
 
         public bool Ok => Failure == Failure.None;
 
-        public static ProviderReply Fail(Failure failure, string error) => new() { Failure = failure, Error = error };
+        public static ProviderReply Fail(Problem problem, string error, string detail = "", long status = 0) =>
+            new() { Failure = Notices.FailureOf(problem), Problem = problem, Error = error, Detail = detail ?? "", Status = status };
     }
 
     /// <summary>
@@ -81,9 +93,10 @@ namespace AICore
                         return null;
                 }
             }
+            url = WithScheme(url);
             if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
             {
-                error = "The Base URL must start with http:// or https://.";
+                error = "The Base URL must be a web address, such as openrouter.ai/api/v1.";
                 return null;
             }
             string endpoint = Endpoint(connection.Provider);
@@ -97,6 +110,32 @@ namespace AICore
                 return url + "/" + endpoint;
             }
             return url + "/v1/" + endpoint;
+        }
+
+        /// <summary>
+        /// An address typed without http:// or https:// gets one: http:// for this PC and the local network,
+        /// where services such as Ollama and LM Studio run without encryption, and https:// for anything else.
+        /// </summary>
+        internal static string WithScheme(string url)
+        {
+            url = (url ?? "").Trim();
+            if (url == "" || url.IndexOf("://", StringComparison.Ordinal) >= 0)
+            {
+                return url;
+            }
+            string host = url.Split('/')[0];
+            host = host.StartsWith("[", StringComparison.Ordinal) ? host.Substring(0, host.IndexOf(']') + 1) : host.Split(':')[0];
+            host = host.ToLowerInvariant();
+            bool local = host == "localhost" || host == "[::1]" || host == "0.0.0.0" || host.EndsWith(".local", StringComparison.Ordinal)
+                || host.StartsWith("127.", StringComparison.Ordinal) || host.StartsWith("10.", StringComparison.Ordinal)
+                || host.StartsWith("192.168.", StringComparison.Ordinal) || IsPrivate172(host);
+            return (local ? "http://" : "https://") + url;
+        }
+
+        private static bool IsPrivate172(string host)
+        {
+            string[] parts = host.Split('.');
+            return parts.Length == 4 && parts[0] == "172" && int.TryParse(parts[1], out int second) && second >= 16 && second <= 31;
         }
 
         /// <summary>
@@ -183,6 +222,39 @@ namespace AICore
             return request;
         }
 
+        private const string OutOfRoom = "The model ran out of room before finishing, by reasoning or writing too much.";
+
+        /// <summary>
+        /// How a reply ended, from its stop reason. Services that copy OpenAI's API mostly send OpenAI's
+        /// words; OpenRouter keeps the model's own in native_finish_reason, and some services pass on
+        /// Google's or Anthropic's words directly. Unknown and missing reasons are normal: the text decides.
+        /// </summary>
+        private enum Ending { Normal, OutOfTokens, Refused, Filtered, Error }
+
+        private static Ending EndingOf(string reason)
+        {
+            switch ((reason ?? "").Trim().ToLowerInvariant())
+            {
+                case "length":
+                case "max_tokens":
+                case "model_context_window_exceeded":
+                    return Ending.OutOfTokens;
+                case "refusal":
+                    return Ending.Refused;
+                case "content_filter":
+                case "safety":
+                case "recitation":
+                case "prohibited_content":
+                case "blocklist":
+                case "spii":
+                    return Ending.Filtered;
+                case "error":
+                    return Ending.Error;
+                default:
+                    return Ending.Normal;
+            }
+        }
+
         /// <summary>
         /// The model's text from a reply, or why there is none.
         /// </summary>
@@ -190,38 +262,51 @@ namespace AICore
         {
             if (result == null || result.Status == 0)
             {
-                return ProviderReply.Fail(Failure.Transient, "No connection to the service: " + (result?.NetworkError ?? "unknown error"));
+                string network = result?.NetworkError ?? "unknown error";
+                return ProviderReply.Fail(Problem.NoConnection, "No connection to the service: " + network, network);
             }
 
             JSONNode root = Json.TryParse(result.Body);
             if (result.Status < 200 || result.Status >= 300)
             {
-                string message = ErrorMessage(root);
-                string error = "The service replied HTTP " + result.Status + (message != "" ? ": " + Shorten(message, 200) : "");
-                // 408 and 429 are timing; 5xx is the service; every other 4xx is the request, so the settings
-                bool transient = result.Status == 408 || result.Status == 429 || result.Status >= 500;
-                return ProviderReply.Fail(transient ? Failure.Transient : Failure.Settings, error);
+                string message = Shorten(ErrorMessage(root), 200);
+                string error = "The service replied HTTP " + result.Status + (message != "" ? ": " + message : "");
+                return ProviderReply.Fail(HttpProblem(result.Status, message), error, message, result.Status);
+            }
+            if (string.IsNullOrWhiteSpace(result.Body))
+            {
+                return ProviderReply.Fail(Problem.EmptyAnswer, "The service sent an empty answer.");
             }
             if (root is not JSONClass)
             {
-                return ProviderReply.Fail(Failure.BadReply, "The service's reply isn't JSON. Check the Base URL.");
+                return ProviderReply.Fail(Problem.NotJson, "The service's reply isn't JSON. Check the Base URL.");
+            }
+            // A provider behind the service can fail after the request started and still send a 2xx
+            string failed = Json.Obj(root, "error") != null ? ErrorMessage(root) : Json.Str(root, "error");
+            // Some services always send the field, as null
+            if (failed == "null")
+            {
+                failed = "";
+            }
+            if (Json.Obj(root, "error") != null || failed != "")
+            {
+                failed = Shorten(failed, 200);
+                return ProviderReply.Fail(Problem.ProviderFailed, "The service's provider failed: " + failed, failed);
             }
 
             if (provider == Provider.Anthropic)
             {
-                string stop = Json.Str(root, "stop_reason");
-                if (stop == "refusal")
+                switch (EndingOf(Json.Str(root, "stop_reason")))
                 {
-                    return ProviderReply.Fail(Failure.BadReply, AIMod.RefusalText);
-                }
-                if (stop == "max_tokens")
-                {
-                    return ProviderReply.Fail(Failure.BadReply, "The model ran out of room before finishing.");
+                    case Ending.OutOfTokens:
+                        return ProviderReply.Fail(Problem.OutOfTokens, OutOfRoom);
+                    case Ending.Refused:
+                        return ProviderReply.Fail(Problem.Refused, AIMod.RefusalText);
                 }
                 JSONArray content = Json.Arr(root, "content");
                 if (content == null)
                 {
-                    return ProviderReply.Fail(Failure.BadReply, "The reply has no content.");
+                    return ProviderReply.Fail(Problem.EmptyAnswer, "The reply has no content.");
                 }
                 // Thinking blocks come first on models that think; only text blocks are the answer
                 StringBuilder text = new();
@@ -238,27 +323,117 @@ namespace AICore
             JSONArray choices = Json.Arr(root, "choices");
             if (choices == null || choices.Count == 0)
             {
-                return ProviderReply.Fail(Failure.BadReply, "The reply has no choices.");
+                return ProviderReply.Fail(Problem.EmptyAnswer, "The reply has no choices.");
             }
-            string finish = Json.Str(choices[0], "finish_reason");
-            if (finish == "length")
+            JSONNode first = choices[0];
+            if (Json.Obj(first, "error") != null)
             {
-                return ProviderReply.Fail(Failure.BadReply, "The model ran out of room before finishing.");
+                string message = Shorten(Json.Str(Json.Obj(first, "error"), "message"), 200);
+                return ProviderReply.Fail(Problem.ProviderFailed, "The service's provider failed: " + message, message);
             }
-            if (finish == "content_filter")
+            Ending ending = EndingOf(Json.Str(first, "finish_reason"));
+            if (ending == Ending.Normal)
             {
-                return ProviderReply.Fail(Failure.BadReply, "The service's content filter stopped the reply.");
+                ending = EndingOf(Json.Str(first, "native_finish_reason"));
             }
-            JSONClass choice = Json.Obj(choices[0], "message");
-            // A refusal comes in a field of its own, with no content to read
+            switch (ending)
+            {
+                case Ending.OutOfTokens:
+                    return ProviderReply.Fail(Problem.OutOfTokens, OutOfRoom);
+                case Ending.Refused:
+                    return ProviderReply.Fail(Problem.Refused, AIMod.RefusalText);
+                case Ending.Filtered:
+                    return ProviderReply.Fail(Problem.Filtered, "The service's content filter stopped the reply.");
+                case Ending.Error:
+                    return ProviderReply.Fail(Problem.ProviderFailed, "The service's provider failed.");
+            }
+            JSONClass choice = Json.Obj(first, "message");
+            // A refusal comes in a field of its own, with no content to read; most services always send the field, as null
             string refusal = Json.Str(choice, "refusal");
             if (refusal != "" && refusal != "null")
             {
-                return ProviderReply.Fail(Failure.BadReply, AIMod.RefusalText);
+                return ProviderReply.Fail(Problem.Refused, AIMod.RefusalText);
             }
-            string reply = Json.Str(choice, "content");
-            // SimpleJSON reads a JSON null as the text "null"
-            return new ProviderReply { Text = reply == "null" ? "" : reply };
+            string reply = TextOf(choice?["content"]);
+            if (reply.Trim() == "")
+            {
+                // Some providers put the whole answer in the reasoning field and leave the content empty
+                foreach (string field in new[] { "reasoning", "reasoning_content" })
+                {
+                    string answer = LastAnswer(TextOf(choice?[field]));
+                    if (answer != "")
+                    {
+                        return new ProviderReply { Text = answer, FromReasoning = true };
+                    }
+                }
+            }
+            return new ProviderReply { Text = reply };
+        }
+
+        /// <summary>
+        /// The text of a content field: a string, or a list of parts whose text is joined. SimpleJSON reads
+        /// a JSON null as the text "null", which is no text.
+        /// </summary>
+        private static string TextOf(JSONNode node)
+        {
+            if (node is JSONData)
+            {
+                string text = node.Value ?? "";
+                return text == "null" ? "" : text;
+            }
+            if (node is JSONArray parts)
+            {
+                StringBuilder text = new();
+                for (int i = 0; i < parts.Count; i++)
+                {
+                    string type = Json.Str(parts[i], "type");
+                    if (type == "" || type == "text" || type == "output_text")
+                    {
+                        text.Append(Json.Str(parts[i], "text"));
+                    }
+                }
+                return text.ToString();
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// The last JSON object in a text that starts with the mod's answer key, up to the end of the text;
+        /// "" when there is none. Reasoning can hold drafts, so the last one is the answer.
+        /// </summary>
+        internal static string LastAnswer(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return "";
+            }
+            MatchCollection starts = Regex.Matches(text, "\\{\\s*\"" + Regex.Escape(AIMod.AnswerKey) + "\"\\s*:");
+            return starts.Count == 0 ? "" : text.Substring(starts[starts.Count - 1].Index).Trim();
+        }
+
+        /// <summary>
+        /// What an HTTP error status means: 408 and 429 are timing, 5xx is the service, and every other 4xx is
+        /// the request, so the settings.
+        /// </summary>
+        /// <param name="message">The service's own message. OpenRouter answers 404 "Provider returned error"
+        /// when the model exists but none of its providers could take the request, which passes.</param>
+        private static Problem HttpProblem(long status, string message)
+        {
+            if (status == 429)
+                return Problem.RateLimited;
+            if (status == 408 || status >= 500)
+                return Problem.Unavailable;
+            if (status == 404 && (message ?? "").IndexOf("provider returned error", StringComparison.OrdinalIgnoreCase) >= 0)
+                return Problem.Unavailable;
+            if (status == 401)
+                return Problem.KeyRejected;
+            if (status == 403)
+                return Problem.Forbidden;
+            if (status == 402)
+                return Problem.NoCredit;
+            if (status == 404)
+                return Problem.NotFound;
+            return Problem.Rejected;
         }
 
         /// <summary>

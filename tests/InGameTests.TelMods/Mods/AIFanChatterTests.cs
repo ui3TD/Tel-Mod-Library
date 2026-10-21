@@ -85,6 +85,93 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
+        /// The mod's longest notice, with a long model name and a long message from the service, fits the
+        /// game's real notification panel: TextMesh Pro doesn't cut it off, the text stays inside its box,
+        /// and the notification stays on screen. Only the engine lays the text out; the unit tests check
+        /// every notice's wording.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator LongestNoticeFitsTheNotificationPanel(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+            yield return Game.CloseAllPopups(ctx);
+            NotificationsContainer container = UnityEngine.Object.FindObjectOfType<NotificationsContainer>();
+            if (container == null)
+            {
+                ctx.Fail("The game has no notification panel");
+                yield break;
+            }
+
+            // The longest notice the mod can show, built by the mod's own code
+            Type problems = mod.GetType("AICore.Problem", true);
+            Type connectionType = mod.GetType("AICore.Connection", true);
+            object connection = Activator.CreateInstance(connectionType);
+            AccessTools.Field(connectionType, "Provider").SetValue(connection, Enum.ToObject(mod.GetType("AICore.Provider", true), 2));
+            AccessTools.Field(connectionType, "BaseUrl").SetValue(connection, "https://openrouter.ai/api/v1");
+            AccessTools.Field(connectionType, "Model").SetValue(connection, "deepseek/deepseek-v4-pro-0813");
+            MethodInfo text = AccessTools.Method(mod.GetType("AICore.Notices", true), "Text");
+            string detail = string.Concat(Enumerable.Repeat("The upstream provider returned an error while handling the request. ", 4)).Substring(0, 200);
+            string longest = Enum.GetValues(problems).Cast<object>().Where(p => (int)p != 0)
+                .Select(p => (string)text.Invoke(null, new[] { p, detail, 503L, connection, "the event Producer caught dating an idol" }))
+                .OrderByDescending(t => t.Length).First();
+            string notice = "AI Fan Chatter: " + longest;
+            ctx.Record("characters", notice.Length);
+
+            int before = container.transform.childCount;
+            ctx.Record("shownBefore", before);
+            NotificationManager.AddNotification(notice, mainScript.red32);
+            yield return TestTools.WaitFor(ctx, () => container.transform.childCount > before, 3f, "the notice to show");
+            if (container.transform.childCount <= before)
+                yield break;
+            // Layout and TMP's mesh settle over the next frames
+            yield return null;
+            yield return null;
+
+            // The game's notifications use Unity's UI Text in a panel that grows to fit it
+            Notification shown = container.GetComponentsInChildren<Notification>(true).LastOrDefault();
+            Text label = shown?.TextObj?.GetComponentInChildren<Text>(true);
+            if (label == null)
+            {
+                ctx.Fail("The notification has no text: " + (shown == null ? "no Notification component"
+                    : string.Join(", ", shown.GetComponentsInChildren<Component>(true).Select(c => c.GetType().Name).Distinct().ToArray())));
+                yield break;
+            }
+            Canvas.ForceUpdateCanvases();
+            TextGenerator drawn = label.cachedTextGenerator;
+            ctx.Record("lines", drawn.lineCount);
+            ctx.Assert(label.text == notice, "The notification shows other text than the notice");
+            // Spaces and line breaks aren't drawn, so the drawn characters are the notice without them
+            int drawable = notice.Count(c => !char.IsWhiteSpace(c));
+            ctx.Assert(drawn.characterCountVisible >= drawable,
+                "The notification cut the notice off: " + drawn.characterCountVisible + " of " + drawable + " characters drawn");
+            Rect box = label.rectTransform.rect;
+            ctx.Assert(label.preferredHeight <= box.height + 1f, "The text (" + label.preferredHeight + " high) is taller than its box (" + box.height + ")");
+
+            Canvas canvas = shown.GetComponentInParent<Canvas>();
+            Camera camera = canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            Vector3[] corners = new Vector3[4];
+            ((RectTransform)shown.transform).GetWorldCorners(corners);
+            foreach (Vector3 corner in corners)
+            {
+                Vector2 point = RectTransformUtility.WorldToScreenPoint(camera, corner);
+                ctx.Assert(point.x >= -1f && point.x <= Screen.width + 1f && point.y >= -1f && point.y <= Screen.height + 1f,
+                    "The notification reaches off screen at " + point);
+            }
+
+            string shots = Path.Combine(Path.GetTempPath(), "AIFanChatterNoticeScreens");
+            Directory.CreateDirectory(shots);
+            string shot = Path.Combine(shots, "longest-notice.png");
+            if (File.Exists(shot))
+                File.Delete(shot);
+            ScreenCapture.CaptureScreenshot(shot);
+            float start = Time.realtimeSinceStartup;
+            while (!File.Exists(shot) && Time.realtimeSinceStartup - start < 5f)
+                yield return null;
+            ctx.Record("screenshot", shot);
+        }
+
+        /// <summary>
         /// A request through the real transport, to a plain-http server on this PC: the reply comes back to
         /// the main thread, and as the game clock runs every post and reply lands in the real feed, with
         /// the game's avatars. Running the clock can't be undone (training and treatment finish), so it's

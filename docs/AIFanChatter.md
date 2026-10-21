@@ -312,3 +312,15 @@ Each placeholder was filled in as follows:
 - **Timing:** it spreads the posts over the two in-game days after the moment, in order, each at a random time in its share of the two days. Each reply comes with its post or up to 6 hours after it. Posts whose time has already passed when the AI's reply arrives appear at once.
 - **Reply format:** when your AI service supports it, it asks for replies in the reply format, so the replies always come back in that shape.
 - **Reasoning:** it asks models that reason before answering to reason only a little (low effort), which makes requests cheaper. A service ignores the setting if it doesn't know it. A service or model that rejects the request gets it again without the low effort, and if it rejects that too, without the reply format. What it rejected isn't asked for again until you change a setting.
+- **An answer in the wrong field:** some providers send the whole answer in the reply's reasoning field and leave the answer itself empty. The mod uses the posts it finds there.
+
+## When a request fails
+
+The mod never sends a failed request again. It shows a notification that says what happened, which service and model it was, which moment got no posts, and what you can do. What happens next depends on whose fault it was:
+
+- **The model can't do the job:** it ran out of room for its answer (by reasoning or writing too much), sent an empty answer, or sent an answer that isn't in the format the mod asked for. The same model would keep failing and costing money, so requests stop. Choose another model, then press Apply in Mod Settings to start them again.
+- **The settings are wrong:** the service rejected the API key or refused access to the model, the account is out of credit, the service doesn't know the model, or the Base URL leads to something that isn't an AI service. Requests stop. Fix the setting, or add credit, then press Apply in Mod Settings to start them again.
+- **The service is busy or can't be reached:** no internet connection, a timeout, too many requests, the service is down, or a provider behind the service failed or had no room for the request (common with free models). Requests pause for 10 minutes, then go on. Press Apply in Mod Settings to try again at once.
+- **The model declined, or the service's content filter stopped the answer:** only that moment gets no posts, because it depends on what the moment is about. Requests go on.
+
+Pressing Apply starts stopped or paused requests again even when you haven't changed anything, and tests the connection, so a notification tells you at once whether it works now. When requests aren't stopped, pressing Apply sends nothing.

@@ -23,10 +23,12 @@ namespace AICore
     /// <summary>
     /// Sends the requests and keeps them within the player's limits: the weekly setting, one at a time,
     /// 30 seconds apart and 20 an hour in real time, so fast-forwarding can't run up a bill. A rejected
-    /// key, model or address stops requests until the settings change; a busy or unreachable service
-    /// pauses them for 10 minutes. Requests ask for the reply schema and for low reasoning effort; a
-    /// service or model that rejects the request gets it again without the effort, and if it rejects that
-    /// too, without the schema, and what it rejected isn't asked for again until the settings change.
+    /// key, model or address, and a model whose reply can't be used (out of room, empty, the wrong
+    /// format), stop requests until the player presses Apply; a busy or unreachable service pauses them
+    /// for 10 minutes; a refusal or a content filter only costs that one request. Nothing is retried.
+    /// Requests ask for the reply schema and for low reasoning effort; a service or model that rejects the
+    /// request gets it again without the effort, and if it rejects that too, without the schema, and what
+    /// it rejected isn't asked for again until the settings change.
     /// </summary>
     public sealed class AIClient
     {
@@ -43,12 +45,16 @@ namespace AICore
         {
             private readonly AIClient client;
             private readonly Action<Action<Reply>> retry;
+            private readonly Connection connection;
+            private readonly string label;
 
-            internal Reply(AIClient client, string text, Action<Action<Reply>> retry)
+            internal Reply(AIClient client, string text, Action<Action<Reply>> retry, Connection connection, string label)
             {
                 this.client = client;
                 Text = text;
                 this.retry = retry;
+                this.connection = connection;
+                this.label = label;
             }
 
             public string Text { get; }
@@ -63,9 +69,13 @@ namespace AICore
             }
 
             /// <summary>
-            /// Reports a reply the mod can't use, as the client reports its own errors.
+            /// A reply the mod can't use (Problem.EmptyReply or Problem.Unreadable): the model will keep
+            /// failing, so it's reported and requests stop until the player presses Apply.
             /// </summary>
-            public void Error(string error) => client.ReportError(error);
+            public void Unusable(Problem problem, string error)
+            {
+                client.HandleFailure(new ProviderReply { Failure = Failure.BadReply, Problem = problem, Error = error }, connection, label);
+            }
         }
 
         private readonly IAIHost host;
@@ -134,7 +144,8 @@ namespace AICore
         /// model's text. Failures are reported here and done isn't called. Returns whether a request was sent.
         /// </summary>
         /// <param name="schema">A JSON schema the reply must follow, for services that support one; null for none.</param>
-        public bool Send(string system, string user, string schema, Action<Reply> done)
+        /// <param name="label">What the request is for, as the player knows it ("Kaho's graduation"), for the notices.</param>
+        public bool Send(string system, string user, string schema, Action<Reply> done, string label = null)
         {
             if (Blocked() != null)
             {
@@ -148,7 +159,7 @@ namespace AICore
             if (request == null)
             {
                 suspended = true;
-                ReportError(error);
+                ReportError(error, always: true);
                 return false;
             }
 
@@ -178,7 +189,7 @@ namespace AICore
                         Log.Warn(effortSent
                             ? "The service doesn't accept low reasoning effort (HTTP " + result.Status + "); sending the request without it."
                             : "The service doesn't accept a reply schema (HTTP " + result.Status + "); sending the request without one.");
-                        Transmit(smaller, retry => Handle(smaller, retry, schemaNext, false, then));
+                        Transmit(smaller, retry => Handle(smaller, retry, schemaNext, false, then), connection, label);
                         return;
                     }
                 }
@@ -192,13 +203,18 @@ namespace AICore
                 ProviderReply reply = Providers.ParseResponse(connection.Provider, result);
                 if (!reply.Ok)
                 {
-                    HandleFailure(reply);
+                    HandleFailure(reply, connection, label);
                     return;
                 }
-                then(new Reply(this, reply.Text, next => Transmit(sent, again => Handle(sent, again, schemaSent, effortSent, next))));
+                if (reply.FromReasoning)
+                {
+                    Log.Warn("The service sent the answer in the reasoning field, with no content; the answer there is used.");
+                }
+                then(new Reply(this, reply.Text, next => Transmit(sent, again => Handle(sent, again, schemaSent, effortSent, next), connection, label),
+                    connection, label));
             }
 
-            Transmit(request, result => Handle(request, result, withSchema, withEffort, done));
+            Transmit(request, result => Handle(request, result, withSchema, withEffort, done), connection, label);
             return true;
         }
 
@@ -215,6 +231,28 @@ namespace AICore
             backoffUntil = double.NegativeInfinity;
             showNextError = true;
             SettingsChanged?.Invoke();
+            TestNextFrame(testSystem, testUser);
+        }
+
+        /// <summary>
+        /// Called when the player presses Apply without changing anything. If requests are stopped or
+        /// paused, they may run again, the next error shows at once, and a connection test shows whether the
+        /// problem is fixed. Otherwise nothing happens, so an Apply costs nothing.
+        /// </summary>
+        public void OnApplied(string testSystem, string testUser)
+        {
+            if (!suspended && host.RealTime >= backoffUntil)
+            {
+                return;
+            }
+            suspended = false;
+            backoffUntil = double.NegativeInfinity;
+            showNextError = true;
+            TestNextFrame(testSystem, testUser);
+        }
+
+        private void TestNextFrame(string testSystem, string testUser)
+        {
             if (testPending)
             {
                 return;
@@ -240,25 +278,28 @@ namespace AICore
             if (request == null)
             {
                 suspended = true;
-                ReportError(error);
+                ReportError(error, always: true);
                 return;
             }
             Transmit(request, result =>
             {
                 ProviderReply reply = Providers.ParseResponse(connection.Provider, result);
-                // Any proper reply means the address, key and model work, even one cut short
-                if (reply.Ok || reply.Failure == Failure.BadReply && result.Status >= 200 && result.Status < 300)
+                // Any proper reply means the address, key and model work, even one cut short (a model that
+                // reasons always runs out of room on this tiny test) or declined
+                bool answered = result.Status >= 200 && result.Status < 300
+                    && (reply.Failure == Failure.BadReply || reply.Failure == Failure.Declined);
+                if (reply.Ok || answered)
                 {
                     host.Notify(AIMod.Name + " connected: " + connection.Describe(), error: false);
                 }
                 else
                 {
-                    HandleFailure(reply);
+                    HandleFailure(reply, connection, null);
                 }
-            });
+            }, connection, null);
         }
 
-        private void Transmit(HttpRequestSpec request, Action<HttpResult> done)
+        private void Transmit(HttpRequestSpec request, Action<HttpResult> done, Connection connection, string label)
         {
             try
             {
@@ -278,37 +319,44 @@ namespace AICore
             catch (Exception e)
             {
                 inFlight = false;
-                ReportError("Couldn't send the request: " + e.Message);
+                HandleFailure(ProviderReply.Fail(Problem.SendFailed, "Couldn't send the request: " + e.Message, e.Message), connection, label);
             }
         }
 
-        private void HandleFailure(ProviderReply reply)
+        /// <summary>
+        /// Stops requests for the settings or a model whose replies can't be used, pauses them for a busy
+        /// or unreachable service, and only reports a failure that affects one request. The notice says
+        /// what happened, for what, and what the player can do; one that stops requests always shows.
+        /// </summary>
+        internal void HandleFailure(ProviderReply reply, Connection connection, string label)
         {
-            if (reply.Failure == Failure.Settings)
+            string notice =Notices.Text(reply.Problem, reply.Detail, reply.Status, connection, label);
+            switch (reply.Failure)
             {
-                suspended = true;
-                ReportError(reply.Error + " Requests stop until the settings change.");
-            }
-            else if (reply.Failure == Failure.Transient)
-            {
-                backoffUntil = host.RealTime + BackoffSeconds;
-                ReportError(reply.Error + " Trying again in 10 minutes.");
-            }
-            else
-            {
-                ReportError(reply.Error);
+                case Failure.Settings:
+                case Failure.BadReply:
+                    suspended = true;
+                    ReportError(notice, always: true);
+                    break;
+                case Failure.Transient:
+                    backoffUntil = host.RealTime + BackoffSeconds;
+                    ReportError(notice);
+                    break;
+                default:
+                    ReportError(notice);
+                    break;
             }
         }
 
         /// <summary>
         /// Logs every error and shows it in game at most once every 10 minutes, apart from the first one
-        /// after the settings change, which always shows.
+        /// after the settings change and one that stops requests, which always show.
         /// </summary>
-        private void ReportError(string error)
+        private void ReportError(string error, bool always = false)
         {
             Log.Warn(error);
             double now = host.RealTime;
-            if (showNextError || now - lastErrorNotice >= ErrorNoticeSeconds)
+            if (always || showNextError || now - lastErrorNotice >= ErrorNoticeSeconds)
             {
                 showNextError = false;
                 lastErrorNotice = now;

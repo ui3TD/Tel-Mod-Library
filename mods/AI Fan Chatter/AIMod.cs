@@ -18,5 +18,14 @@ namespace AICore
         public const string SchemaName = "fan_posts";
 
         public const string RefusalText = "The model declined to write the posts.";
+
+        /// <summary>The key the reply's JSON starts with, for finding an answer a service put in the reasoning.</summary>
+        public const string AnswerKey = "posts";
+
+        /// <summary>The start of a notice about a moment that got nothing.</summary>
+        public const string Missed = "No fan posts";
+
+        /// <summary>The end of a notice about a failure that only affects one moment.</summary>
+        public const string OthersGoOn = "Other moments still get posts.";
     }
 }

@@ -32,6 +32,8 @@ namespace AICore.Tests
         [InlineData(Provider.OpenAI, "", "OpenAI")]
         [InlineData(Provider.Compatible, "https://openrouter.ai/api/v1", "openrouter.ai")]
         [InlineData(Provider.Compatible, " http://localhost:11434 ", "localhost:11434")]
+        [InlineData(Provider.Compatible, "openrouter.ai/api/v1", "openrouter.ai")]
+        [InlineData(Provider.Compatible, "localhost:11434", "localhost:11434")]
         [InlineData(Provider.Compatible, "", "your OpenAI-compatible service")]
         [InlineData(Provider.Compatible, "not a url", "your OpenAI-compatible service")]
         public void ServiceName_IsWhatThePlayerKnows(Provider provider, string baseUrl, string expected)

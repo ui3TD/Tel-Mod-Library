@@ -24,6 +24,7 @@ namespace AIFanChatter
 
         public readonly string Kind;
         private readonly Dictionary<string, List<KeyValuePair<string, string>>> sections = new();
+        private string label;
 
         public Moment(string kind)
         {
@@ -32,6 +33,28 @@ namespace AIFanChatter
             {
                 sections[section] = new List<KeyValuePair<string, string>>();
             }
+        }
+
+        /// <summary>
+        /// The moment as the player knows it, for notices: "the single Midnight Platform", "Kaho's
+        /// graduation". The kind when no name was given or the game couldn't give one.
+        /// </summary>
+        public string Label => string.IsNullOrEmpty(label) ? Kind : label;
+
+        /// <summary>
+        /// Names the moment for the player; a name the game can't give leaves the kind.
+        /// </summary>
+        public Moment Labelled(Func<string> name)
+        {
+            try
+            {
+                label = Clean(name());
+            }
+            catch (Exception)
+            {
+                label = null;
+            }
+            return this;
         }
 
         /// <summary>The moment's own facts.</summary>
@@ -348,6 +371,7 @@ namespace AIFanChatter
         public static Moment Single(singles._single single)
         {
             Moment moment = new Moment("the group released a new single")
+                .Labelled(() => "the single " + single.title)
                 .Add("Title", () => single.title)
                 .Add("Center", () => single.GetCenter() is data_girls.girls center ? Name(center) : "")
                 .Add("Members", () => Names(single.girls, 7))
@@ -369,6 +393,7 @@ namespace AIFanChatter
         public static Moment Concert(SEvent_Concerts._concert concert)
         {
             Moment moment = new Moment("the group held a concert")
+                .Labelled(() => "the concert at " + SEvent_Concerts.GetVenueTitle(concert.Venue))
                 .Add("Venue", () => SEvent_Concerts.GetVenueTitle(concert.Venue))
                 .Add("Attendance", () => Attendance(concert))
                 // The game's hype runs from 0 to 200 (Concert_Popup.AddHype) and shows as a percentage
@@ -397,6 +422,7 @@ namespace AIFanChatter
             bulliedBy ??= Members.BulliedBy(girl);
             bullied ??= Members.Bullied(girl);
             Moment moment = new Moment("an idol graduated (left the group)")
+                .Labelled(() => Name(girl) + "'s graduation")
                 .Add("Idol", () => Name(girl))
                 .Add("After graduating", () => Members.Cut(Moment.Clean(girl.Graduation_Trivia_Text), Members.GraduationTriviaLength))
                 // Only bullying the player has found out; fans can only suspect it
@@ -509,6 +535,8 @@ namespace AIFanChatter
         public static Moment Event(Event_Manager._activeEvent active, Event_Manager._randomEvent._reply reply, IEnumerable<Event_Manager._activeEvent> log = null)
         {
             Moment moment = new Moment("something happened at the agency")
+                // Some of the game's events have no title
+                .Labelled(() => Translate(active.data?.title) is string title && title.Trim() != "" ? "the event " + title : "an event at the agency")
                 .Add("What happened", () => Translate(active.data?.title))
                 // The game's event texts speak to the player, who is the producer
                 .Add("You", () => SpeaksToYou(Part(() => active.GetDescription()), Part(() => Translate(reply.text)), Part(() => Translate(reply.description)))

@@ -162,19 +162,81 @@ namespace AIFanChatter.Tests
         [Fact]
         public void Errors_ShowAtMostEveryTenMinutes()
         {
+            // Refusals only cost their own request, so requests go on and each one fails again
             TestEnv.Vars[Settings.PerWeekVar] = "7";
             for (int i = 0; i < 3; i++)
             {
                 host.RealTime += 31;
                 Assert.True(dispatcher.Request(Moment()));
-                transport.Reply(200, Replies.Anthropic("no json here"));
+                transport.Reply(200, Replies.Anthropic("", "refusal"));
             }
             Assert.Single(host.Notices);
             Assert.Equal(3, TestEnv.Logs.Count);
             host.RealTime += 600;
             Assert.True(dispatcher.Request(Moment()));
-            transport.Reply(200, Replies.Anthropic("still no json"));
+            transport.Reply(200, Replies.Anthropic("", "refusal"));
             Assert.Equal(2, host.Notices.Count);
+        }
+
+        /// <summary>
+        /// A model whose reply has no posts will keep failing: requests stop until the player presses
+        /// Apply, and the notice names the moment, the model and what to do.
+        /// </summary>
+        [Fact]
+        public void NoPosts_StopsRequests_UntilApply()
+        {
+            Moment single = new Moment("the group released a new single").Labelled(() => "the single Midnight Platform");
+            Assert.True(dispatcher.Request(single));
+            transport.Reply(200, Replies.Anthropic("Here are some posts: none, sorry."));
+            Assert.True(dispatcher.Suspended);
+            Assert.Equal("AI Fan Chatter: No fan posts for the single Midnight Platform: claude-haiku-5-5 on Anthropic didn't use the "
+                + "reply format. Requests stopped: choose another model, then press Apply in Mod Settings.", host.Notices.Single().Text);
+            host.RealTime += 3600;
+            Assert.False(dispatcher.Request(Moment()));
+
+            dispatcher.OnApplied();
+            Assert.False(dispatcher.Suspended);
+            Assert.True(dispatcher.Request(Moment()));
+        }
+
+        /// <summary>
+        /// A moment the game can't name for the player falls back to its kind.
+        /// </summary>
+        [Fact]
+        public void MomentLabel_FallsBackToTheKind()
+        {
+            Assert.Equal("the single Song", new Moment("a single").Labelled(() => "the single Song").Label);
+            Assert.Equal("a single", new Moment("a single").Labelled(() => throw new NullReferenceException()).Label);
+            Assert.Equal("a single", new Moment("a single").Labelled(() => "  ").Label);
+            Assert.Equal("a single", new Moment("a single").Label);
+        }
+
+        [Fact]
+        public void EmptyReply_StopsRequests_AndSaysSo()
+        {
+            Assert.True(SendAndReply(Replies.Anthropic("")));
+            Assert.True(dispatcher.Suspended);
+            Assert.Contains("sent an empty reply", host.Notices.Single().Text);
+        }
+
+        /// <summary>
+        /// A reply recorded on 18 October 2026: the provider (Sail Research, serving DeepSeek through
+        /// OpenRouter) sent the whole answer in the reasoning field, with no content. Its posts are used.
+        /// </summary>
+        [Fact]
+        public void AnswerInTheReasoningField_IsQueued()
+        {
+            TestEnv.Configure(Provider.Compatible, model: "~deepseek/deepseek-pro-latest", baseUrl: "https://openrouter.ai/api/v1");
+            string reasoning = Json.Quote("We need 3 to 6 posts about Kaho. Let me draft. "
+                + "{\"posts\":[{\"user\":\"M_C_YA\",\"text\":\"Kaho graduating? Studying architecture is respectable.\",\"replies\":[]},"
+                + "{\"user\":\"M_HC_YA\",\"text\":\"Covers and a degree? Iconic.\",\"replies\":[{\"user\":\"F_HC_T\",\"text\":\"Covers aren't the same as being on stage.\"}]}]}");
+            Assert.True(dispatcher.Request(Moment()));
+            transport.Reply(200, "{\"id\":\"gen-1\",\"provider\":\"Sail Research\",\"model\":\"deepseek/deepseek-v4-pro\",\"choices\":[{\"index\":0,"
+                + "\"finish_reason\":\"stop\",\"native_finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":null,"
+                + "\"refusal\":null,\"reasoning\":" + reasoning + "}}],\"usage\":{\"prompt_tokens\":1400,\"completion_tokens\":2225}}");
+            Assert.Equal(2, host.Queued.Single().Count);
+            Assert.False(dispatcher.Suspended);
+            Assert.Empty(host.Notices);
         }
 
         [Fact]

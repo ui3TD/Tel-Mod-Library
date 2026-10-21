@@ -23,7 +23,8 @@ namespace AIFanChatter
     /// Asks for posts about moments through the shared AI client, which keeps the requests within the
     /// player's limits. A reply with a single post, when the prompt asked for several, is taken as a failed
     /// reply and the request is sent once more; if that one has a single post too, it's shown, and there
-    /// are no more such retries until the settings change.
+    /// are no more such retries until the settings change. A reply with no posts at all stops requests until
+    /// the player presses Apply, as the model will keep failing.
     /// </summary>
     public sealed class Dispatcher
     {
@@ -100,7 +101,15 @@ namespace AIFanChatter
                 List<SNS_Manager._message> posts = PostParser.Parse(reply.Text, random);
                 if (posts.Count == 0)
                 {
-                    reply.Error("The model's reply had no posts in the expected format.");
+                    // The model will keep failing, so requests stop until the player presses Apply
+                    if ((reply.Text ?? "").Trim() == "")
+                    {
+                        reply.Unusable(Problem.EmptyReply, "The model's reply was empty.");
+                    }
+                    else
+                    {
+                        reply.Unusable(Problem.Unreadable, "The model's reply had no posts in the expected format.");
+                    }
                     return;
                 }
                 if (!ReferenceEquals(session, host.Session))
@@ -124,7 +133,7 @@ namespace AIFanChatter
                 host.Queue(posts, momentTime);
             }
 
-            return client.Send(system, user, Prompt.ReplySchema, reply => Handle(reply, false));
+            return client.Send(system, user, Prompt.ReplySchema, reply => Handle(reply, false), moment.Label);
         }
 
         /// <summary>
@@ -133,6 +142,12 @@ namespace AIFanChatter
         /// connection test runs on the next frame, after every setting is saved.
         /// </summary>
         public void OnSettingsChanged() => client.OnSettingsChanged(Prompt.TestSystem, Prompt.TestUser);
+
+        /// <summary>
+        /// Called when the player presses Apply without changing anything: stopped or paused requests may
+        /// run again, after a connection test. Nothing happens when requests weren't stopped.
+        /// </summary>
+        public void OnApplied() => client.OnApplied(Prompt.TestSystem, Prompt.TestUser);
 
         /// <summary>
         /// A tiny request that shows whether the settings work. It doesn't count towards the limits.

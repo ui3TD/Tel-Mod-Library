@@ -20,6 +20,13 @@ namespace AICore.Tests
         [InlineData(Provider.Compatible, "https://example.com/custom/chat/completions", "https://example.com/custom/chat/completions")]
         [InlineData(Provider.Anthropic, "https://proxy.example.com", "https://proxy.example.com/v1/messages")]
         [InlineData(Provider.Anthropic, "https://proxy.example.com/v1/messages", "https://proxy.example.com/v1/messages")]
+        // Typed without http:// or https://: http for this PC and the local network, https for the rest
+        [InlineData(Provider.Compatible, "openrouter.ai/api/v1", "https://openrouter.ai/api/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "localhost:11434", "http://localhost:11434/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "127.0.0.1:1234/v1", "http://127.0.0.1:1234/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "192.168.1.20:11434", "http://192.168.1.20:11434/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "172.20.0.5:8000", "http://172.20.0.5:8000/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "172.40.0.5", "https://172.40.0.5/v1/chat/completions")]
         public void ResolveUrl(Provider provider, string baseUrl, string expected)
         {
             Assert.Equal(expected, Providers.ResolveUrl(new Connection { Provider = provider, BaseUrl = baseUrl }, out string error));
@@ -28,8 +35,8 @@ namespace AICore.Tests
 
         [Theory]
         [InlineData(Provider.Compatible, "")]
-        [InlineData(Provider.Compatible, "localhost:11434")]
         [InlineData(Provider.OpenAI, "ftp://example.com")]
+        [InlineData(Provider.Compatible, "not an address")]
         public void ResolveUrl_Unusable(Provider provider, string baseUrl)
         {
             Assert.Null(Providers.ResolveUrl(new Connection { Provider = provider, BaseUrl = baseUrl }, out string error));
@@ -187,13 +194,14 @@ namespace AICore.Tests
         }
 
         [Theory]
-        [InlineData("refusal", "declined")]
-        [InlineData("max_tokens", "ran out")]
-        public void Anthropic_StopReasonsThatAreFailures(string stop, string message)
+        [InlineData("refusal", Problem.Refused, Failure.Declined)]
+        [InlineData("max_tokens", Problem.OutOfTokens, Failure.BadReply)]
+        [InlineData("model_context_window_exceeded", Problem.OutOfTokens, Failure.BadReply)]
+        public void Anthropic_StopReasonsThatAreFailures(string stop, Problem problem, Failure failure)
         {
             ProviderReply reply = Parse(Provider.Anthropic, 200, Replies.Anthropic("partial", stop));
-            Assert.Equal(Failure.BadReply, reply.Failure);
-            Assert.Contains(message, reply.Error);
+            Assert.Equal(problem, reply.Problem);
+            Assert.Equal(failure, reply.Failure);
         }
 
         [Fact]
@@ -215,15 +223,101 @@ namespace AICore.Tests
         [Fact]
         public void OpenAI_LengthAndFilterAreFailures()
         {
+            Assert.Equal(Problem.OutOfTokens, Parse(Provider.OpenAI, 200, Replies.OpenAI("x", "length")).Problem);
             Assert.Equal(Failure.BadReply, Parse(Provider.OpenAI, 200, Replies.OpenAI("x", "length")).Failure);
-            Assert.Equal(Failure.BadReply, Parse(Provider.Compatible, 200, Replies.OpenAI("x", "content_filter")).Failure);
+            Assert.Equal(Problem.Filtered, Parse(Provider.Compatible, 200, Replies.OpenAI("x", "content_filter")).Problem);
+            Assert.Equal(Failure.Declined, Parse(Provider.Compatible, 200, Replies.OpenAI("x", "content_filter")).Failure);
+        }
+
+        private static string WithNative(string finish, string native) =>
+            "{\"choices\":[{\"message\":{\"content\":\"x\"},\"finish_reason\":" + finish + ",\"native_finish_reason\":\"" + native + "\"}]}";
+
+        /// <summary>
+        /// Services that don't turn the model's own stop reason into OpenAI's pass it on as it is: in
+        /// finish_reason, or, on OpenRouter, in native_finish_reason. Case doesn't matter.
+        /// </summary>
+        [Theory]
+        [InlineData("null", "MAX_TOKENS", Problem.OutOfTokens)]
+        [InlineData("\"MAX_TOKENS\"", "MAX_TOKENS", Problem.OutOfTokens)]
+        [InlineData("\"stop\"", "max_tokens", Problem.OutOfTokens)]
+        [InlineData("null", "SAFETY", Problem.Filtered)]
+        [InlineData("\"stop\"", "RECITATION", Problem.Filtered)]
+        [InlineData("\"stop\"", "refusal", Problem.Refused)]
+        [InlineData("\"error\"", "error", Problem.ProviderFailed)]
+        [InlineData("\"stop\"", "STOP", Problem.None)]
+        [InlineData("\"stop\"", "end_turn", Problem.None)]
+        [InlineData("null", "completed", Problem.None)]
+        [InlineData("\"something_new\"", "", Problem.None)]
+        public void ProviderStopReasons_AreRead(string finish, string native, Problem expected)
+        {
+            Assert.Equal(expected, Parse(Provider.Compatible, 200, WithNative(finish, native)).Problem);
+        }
+
+        /// <summary>
+        /// Some providers put the whole answer in the reasoning field and leave the content empty
+        /// (OpenRouter's reasoning, DeepSeek's and vLLM's reasoning_content). Reasoning can hold drafts,
+        /// so the last answer in it is used.
+        /// </summary>
+        [Theory]
+        [InlineData("reasoning")]
+        [InlineData("reasoning_content")]
+        public void AnswerInTheReasoningField_IsUsed(string field)
+        {
+            string reasoning = Json.Quote("First try: {\"answer\": \"draft\"} no. Final: { \"answer\" : \"final\"}");
+            ProviderReply reply = Parse(Provider.Compatible, 200,
+                "{\"choices\":[{\"message\":{\"content\":null,\"refusal\":null,\"" + field + "\":" + reasoning + "},\"finish_reason\":\"stop\"}]}");
+            Assert.True(reply.Ok);
+            Assert.True(reply.FromReasoning);
+            Assert.Equal("{ \"answer\" : \"final\"}", reply.Text);
+        }
+
+        [Fact]
+        public void ReasoningWithoutAnAnswer_IsAnEmptyReply()
+        {
+            ProviderReply reply = Parse(Provider.Compatible, 200,
+                "{\"choices\":[{\"message\":{\"content\":\"\",\"reasoning\":\"Thinking about fans...\"},\"finish_reason\":\"stop\"}]}");
+            Assert.True(reply.Ok);
+            Assert.False(reply.FromReasoning);
+            Assert.Equal("", reply.Text);
+        }
+
+        [Fact]
+        public void ContentAsAListOfParts_IsJoined()
+        {
+            ProviderReply reply = Parse(Provider.Compatible, 200,
+                "{\"choices\":[{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"Hello \"},{\"type\":\"image_url\"},{\"type\":\"text\",\"text\":\"fans\"}]},\"finish_reason\":\"stop\"}]}");
+            Assert.Equal("Hello fans", reply.Text);
+        }
+
+        /// <summary>
+        /// A provider behind the service can fail after the request started and still send a 2xx: the
+        /// service is unavailable, not the model broken. An error field that's only null is no error.
+        /// </summary>
+        [Fact]
+        public void ProviderErrorsInsideA2xx_AreTransient()
+        {
+            ProviderReply top = Parse(Provider.Compatible, 200, "{\"error\":{\"message\":\"Upstream failed\",\"code\":502}}");
+            Assert.Equal(Problem.ProviderFailed, top.Problem);
+            Assert.Equal(Failure.Transient, top.Failure);
+            Assert.Equal("Upstream failed", top.Detail);
+
+            ProviderReply inChoice = Parse(Provider.Compatible, 200,
+                "{\"choices\":[{\"error\":{\"message\":\"Provider crashed\"},\"message\":{\"content\":\"\"},\"finish_reason\":\"error\"}]}");
+            Assert.Equal(Problem.ProviderFailed, inChoice.Problem);
+            Assert.Equal("Provider crashed", inChoice.Detail);
+
+            ProviderReply nullError = Parse(Provider.Compatible, 200,
+                "{\"error\":null,\"choices\":[{\"message\":{\"content\":\"hi\"},\"finish_reason\":\"stop\"}]}");
+            Assert.True(nullError.Ok);
+            Assert.Equal("hi", nullError.Text);
         }
 
         [Fact]
         public void OpenAI_RefusalIsAFailure()
         {
             ProviderReply reply = Parse(Provider.OpenAI, 200, "{\"choices\":[{\"message\":{\"content\":null,\"refusal\":\"I can't help with that.\"},\"finish_reason\":\"stop\"}]}");
-            Assert.Equal(Failure.BadReply, reply.Failure);
+            Assert.Equal(Failure.Declined, reply.Failure);
+            Assert.Equal(Problem.Refused, reply.Problem);
             Assert.Contains("declined", reply.Error);
 
             ProviderReply normal = Parse(Provider.Compatible, 200, "{\"choices\":[{\"message\":{\"content\":\"{}\",\"refusal\":null},\"finish_reason\":\"stop\"}]}");
@@ -238,17 +332,34 @@ namespace AICore.Tests
         }
 
         [Theory]
-        [InlineData(401, Failure.Settings)]
-        [InlineData(403, Failure.Settings)]
-        [InlineData(404, Failure.Settings)]
-        [InlineData(400, Failure.Settings)]
-        [InlineData(408, Failure.Transient)]
-        [InlineData(429, Failure.Transient)]
-        [InlineData(500, Failure.Transient)]
-        [InlineData(529, Failure.Transient)]
-        public void HttpErrors_AreSettingsOrTransient(long status, Failure expected)
+        [InlineData(401, Failure.Settings, Problem.KeyRejected)]
+        [InlineData(403, Failure.Settings, Problem.Forbidden)]
+        [InlineData(402, Failure.Settings, Problem.NoCredit)]
+        [InlineData(404, Failure.Settings, Problem.NotFound)]
+        [InlineData(400, Failure.Settings, Problem.Rejected)]
+        [InlineData(408, Failure.Transient, Problem.Unavailable)]
+        [InlineData(429, Failure.Transient, Problem.RateLimited)]
+        [InlineData(500, Failure.Transient, Problem.Unavailable)]
+        [InlineData(529, Failure.Transient, Problem.Unavailable)]
+        public void HttpErrors_AreSettingsOrTransient(long status, Failure expected, Problem problem)
         {
-            Assert.Equal(expected, Parse(Provider.Anthropic, status, "").Failure);
+            ProviderReply reply = Parse(Provider.Anthropic, status, "");
+            Assert.Equal(expected, reply.Failure);
+            Assert.Equal(problem, reply.Problem);
+            Assert.Equal(status, reply.Status);
+        }
+
+        /// <summary>
+        /// OpenRouter answers 404 "Provider returned error" when the model exists but none of its providers
+        /// could take the request (a free model at capacity); that passes, so it's a pause, not a stop.
+        /// </summary>
+        [Fact]
+        public void OpenRoutersProvider404_IsTransient()
+        {
+            ProviderReply reply = Parse(Provider.Compatible, 404, "{\"error\":{\"message\":\"Provider returned error\",\"code\":404}}");
+            Assert.Equal(Problem.Unavailable, reply.Problem);
+            Assert.Equal(Failure.Transient, reply.Failure);
+            Assert.Equal(Problem.NotFound, Parse(Provider.Compatible, 404, "{\"error\":{\"message\":\"x is not a valid model ID\"}}").Problem);
         }
 
         [Fact]
@@ -261,10 +372,15 @@ namespace AICore.Tests
             Assert.Contains("HTTP 502", Parse(Provider.Compatible, 502, "<html>Bad gateway</html>").Error);
         }
 
+        /// <summary>
+        /// A web page instead of a reply means the Base URL points somewhere else: the settings.
+        /// </summary>
         [Fact]
-        public void HtmlPageOn200_IsABadReply()
+        public void HtmlPageOn200_IsTheSettings()
         {
-            Assert.Equal(Failure.BadReply, Parse(Provider.Compatible, 200, "<html>login</html>").Failure);
+            ProviderReply reply = Parse(Provider.Compatible, 200, "<html>login</html>");
+            Assert.Equal(Failure.Settings, reply.Failure);
+            Assert.Equal(Problem.NotJson, reply.Problem);
         }
 
         [Fact]
@@ -275,10 +391,15 @@ namespace AICore.Tests
             Assert.Contains("Cannot connect", reply.Error);
         }
 
+        /// <summary>
+        /// An empty 2xx is the service's or a proxy's doing, not the model's.
+        /// </summary>
         [Fact]
-        public void EmptyBodyOn200_IsABadReply()
+        public void EmptyBodyOn200_IsTransient()
         {
-            Assert.Equal(Failure.BadReply, Parse(Provider.Anthropic, 200, "").Failure);
+            ProviderReply reply = Parse(Provider.Anthropic, 200, "");
+            Assert.Equal(Failure.Transient, reply.Failure);
+            Assert.Equal(Problem.EmptyAnswer, reply.Problem);
         }
     }
 }

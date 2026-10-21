@@ -25,7 +25,7 @@ namespace AICore.Tests
             client = new AIClient(host, transport);
         }
 
-        private bool Send(string schema = Schema) => client.Send("sys", "user", schema, reply => texts.Add(reply.Text));
+        private bool Send(string schema = Schema) => client.Send("sys", "user", schema, reply => texts.Add(reply.Text), "the test moment");
 
         private void Answer(string text = "hello") => transport.Reply(200, Replies.Anthropic(text));
 
@@ -115,16 +115,130 @@ namespace AICore.Tests
         }
 
         [Fact]
+        public void RejectedKey_SaysWhatToDo()
+        {
+            Send();
+            transport.Reply(401, "{\"error\":{\"message\":\"invalid x-api-key\"}}");
+            Assert.Equal(("Test AI Mod: Anthropic rejected the API key (HTTP 401: invalid x-api-key). Requests stopped: "
+                + "fix the key, then press Apply in Mod Settings.", true), host.Notices[0]);
+        }
+
+        [Fact]
         public void Errors_ShowAtMostOnceEvery10Minutes()
         {
+            // Refusals only cost their own request, so requests go on and each one fails again
             for (int i = 0; i < 3; i++)
             {
                 host.RealTime += 60;
                 Send();
-                transport.Reply(200, Replies.Anthropic("x", "max_tokens"));
+                transport.Reply(200, Replies.Anthropic("", "refusal"));
             }
             Assert.Single(host.Notices);
             Assert.Equal(3, TestEnv.Logs.Count);
+        }
+
+        /// <summary>
+        /// A model that runs out of room will keep doing so: requests stop, and the notice says so and what to do.
+        /// </summary>
+        [Fact]
+        public void OutOfRoom_StopsRequests_UntilApply()
+        {
+            Send();
+            transport.Reply(200, Replies.Anthropic("partial", "max_tokens"));
+            Assert.True(client.Suspended);
+            Assert.Equal(("Test AI Mod: No test answer for the test moment: claude-haiku-5-5 on Anthropic hit its 4096-token limit. "
+                + "Requests stopped: choose another model, then press Apply in Mod Settings.", true), host.Notices[0]);
+            host.RealTime += 3600;
+            Assert.Equal("requests are stopped until the settings change", client.Blocked());
+
+            client.OnApplied("s", "u");
+            Assert.False(client.Suspended);
+            Assert.Null(client.Blocked());
+            Assert.Single(host.Frames);
+        }
+
+        [Fact]
+        public void Refusal_OnlyCostsThatRequest()
+        {
+            Send();
+            transport.Reply(200, Replies.Anthropic("", "refusal"));
+            Assert.False(client.Suspended);
+            Assert.Equal(("Test AI Mod: No test answer for the test moment: claude-haiku-5-5 on Anthropic declined. "
+                + "Other tests will still run.", true), host.Notices[0]);
+            host.RealTime += 60;
+            Assert.Null(client.Blocked());
+        }
+
+        [Fact]
+        public void StopNotice_ShowsEvenRightAfterAnotherNotice()
+        {
+            Send();
+            transport.Reply(200, Replies.Anthropic("", "refusal"));
+            host.RealTime += 60;
+            Send();
+            transport.Reply(200, Replies.Anthropic("", "max_tokens"));
+            Assert.Equal(2, host.Notices.Count);
+            Assert.Contains(Notices.Stopped, host.Notices[1].Text);
+        }
+
+        [Fact]
+        public void ProviderFailureInsideA200_PausesRequests()
+        {
+            TestEnv.Configure(Provider.Compatible, model: "some/model", baseUrl: "https://openrouter.ai/api/v1");
+            Send();
+            transport.Reply(200, "{\"error\":{\"message\":\"Upstream provider timed out\",\"code\":502}}");
+            Assert.False(client.Suspended);
+            Assert.Equal("waiting after the service was unavailable", client.Blocked());
+            Assert.Equal(("Test AI Mod: No test answer for the test moment: openrouter.ai's provider failed (Upstream provider timed out). "
+                + Notices.TryNow, true), host.Notices[0]);
+        }
+
+        /// <summary>
+        /// Pressing Apply with nothing changed lifts a stop or a pause and tests the connection; with
+        /// nothing stopped it does nothing, so it costs nothing.
+        /// </summary>
+        [Fact]
+        public void Apply_LiftsAPause_AndDoesNothingOtherwise()
+        {
+            client.OnApplied("s", "u");
+            Assert.Empty(host.Frames);
+
+            Send();
+            transport.NoConnection();
+            Assert.NotNull(client.Blocked());
+            client.OnApplied("s", "u");
+            host.RealTime += 60;
+            Assert.Null(client.Blocked());
+            host.RunFrames();
+            Assert.Single(transport.Sent, r => r.Body.Contains("\"max_tokens\":" + AIClient.TestMaxTokens));
+        }
+
+        /// <summary>
+        /// A model that reasons always runs out of room on the tiny test, and a refusal still shows the
+        /// settings work: both are "connected", and neither stops requests.
+        /// </summary>
+        [Theory]
+        [InlineData("max_tokens")]
+        [InlineData("refusal")]
+        public void ConnectionTest_CutShortOrDeclined_IsConnected(string stop)
+        {
+            client.OnSettingsChanged("s", "u");
+            host.RunFrames();
+            transport.Reply(200, Replies.Anthropic("", stop));
+            Assert.Equal(("Test AI Mod connected: Anthropic with claude-haiku-5-5", false), host.Notices[0]);
+            Assert.False(client.Suspended);
+        }
+
+        [Fact]
+        public void AnswerInTheReasoningField_IsUsed_AndLogged()
+        {
+            TestEnv.Configure(Provider.Compatible, model: "some/model", baseUrl: "https://openrouter.ai/api/v1");
+            Send();
+            transport.Reply(200, "{\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"content\":null,\"refusal\":null,"
+                + "\"reasoning\":\"Let me write it. {\\\"answer\\\":\\\"42\\\"}\"}}]}");
+            Assert.Equal(new[] { "{\"answer\":\"42\"}" }, texts);
+            Assert.Contains(TestEnv.Logs, l => l.Contains("reasoning field"));
+            Assert.Empty(host.Notices);
         }
 
         [Fact]
@@ -183,11 +297,13 @@ namespace AICore.Tests
         }
 
         [Fact]
-        public void ModError_IsReportedLikeTheClientsOwn()
+        public void UnusableReply_StopsRequests_WithTheModsNotice()
         {
-            client.Send("sys", "user", Schema, reply => reply.Error("Nothing usable."));
+            client.Send("sys", "user", Schema, reply => reply.Unusable(Problem.Unreadable, "Nothing usable."), "the test moment");
             Answer();
-            Assert.Equal(("Test AI Mod: Nothing usable.", true), host.Notices[0]);
+            Assert.True(client.Suspended);
+            Assert.Equal(("Test AI Mod: No test answer for the test moment: claude-haiku-5-5 on Anthropic didn't use the reply format. "
+                + "Requests stopped: choose another model, then press Apply in Mod Settings.", true), host.Notices[0]);
         }
 
         [Fact]

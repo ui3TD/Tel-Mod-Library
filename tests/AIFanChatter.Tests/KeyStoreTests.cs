@@ -70,6 +70,37 @@ namespace AIFanChatter.Tests
             Assert.False(Directory.Exists(TestEnv.KeyFolder));
         }
 
+        /// <summary>
+        /// Apply saves every row, changed or not. Pressing it with nothing changed lifts a stop and tests
+        /// the connection, so the player can try again after fixing the cause; with nothing stopped it does
+        /// nothing, so it costs nothing.
+        /// </summary>
+        [Fact]
+        public void UnchangedApply_LiftsAStop_AndOnlyThen()
+        {
+            TestEnv.Configure();
+            FakeHost host = new();
+            FakeTransport transport = new();
+            Dispatcher.Instance = new Dispatcher(host, transport, new System.Random(1));
+
+            ApplyKeyRow("");
+            Assert.Empty(host.Frames);
+
+            Assert.True(Dispatcher.Instance.Request(new Moment("a test").Add("Title", () => "Song")));
+            transport.Reply(200, Replies.Anthropic("no posts here"));
+            Assert.True(Dispatcher.Instance.Suspended);
+
+            // Other rows saved unchanged don't count as pressing Apply
+            variables.variable.Add(new variables._variable { name = Settings.ModelVar, value = "" });
+            string model = "";
+            variables_Set.Prefix(Settings.ModelVar, ref model);
+            Assert.True(Dispatcher.Instance.Suspended);
+
+            ApplyKeyRow("");
+            Assert.False(Dispatcher.Instance.Suspended);
+            Assert.Single(host.Frames);
+        }
+
         [Fact]
         public void SettingChange_StartsAConnectionTestOnTheNextFrame()
         {

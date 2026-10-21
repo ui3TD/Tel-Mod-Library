@@ -7,7 +7,7 @@ Fans react on the Social Media tab to your singles, concerts, graduations and ev
 You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url] and an account with an AI service. In Settings, open Mod Settings and fill in:
 [list]
 [*]AI service: OpenAI (the default), Anthropic, or OpenAI-compatible (other) for services such as OpenRouter, or for a model on your own PC with Ollama or LM Studio.
-[*]Base URL: only for other services, for example https://openrouter.ai/api/v1, or http://localhost:11434 for Ollama.
+[*]Base URL: only for other services.
 [*]Model: the model's name. Left blank, it uses gpt-6-luna on OpenAI and claude-haiku-5-5 on Anthropic.
 [*]API key: your key from the service. ModMenus 3.0.0 or later hides it as you type.
 [*]Requests per week: the most requests in one in-game week.
@@ -15,7 +15,18 @@ You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314
 Then tick Turn on AI fan posts and press Apply. A notification tells you whether it worked.
 
 [h3]Cost[/h3]
-Each request is charged to your account with the AI service. A small, cheap model costs a fraction of a cent per request: with GPT-6 Luna, the default, a request costs about 0.04 US cents, so a whole in-game year at 2 requests a week costs about 4 US cents, and at the most, 7 a week, about 15 cents. Claude Haiku 5.5 costs about twice as much. Bigger models can cost ten times as much or more, so check your service's prices. The mod never sends more than 20 requests in an hour, even when fast-forwarding. To be safe, set a spending limit on your key in your service's account settings.
+Each request is charged to your account with the AI service. A small, cheap model costs a fraction of a cent per request: with GPT-6 Luna, the default, a request costs about 0.04 US cents, so a whole in-game year at 2 requests a week costs about 4 US cents, and at the most, 7 a week, about 15 cents. Claude Haiku 5.5 costs about twice as much. Bigger models can cost ten times as much or more, so check your service's prices. The mod never sends more than 20 requests in an hour, even when fast-forwarding. To be safe, set a spending limit on your key in your service's account settings. If a model's answers can't be used, for example because it reasons for too long, the mod stops sending requests and tells you to choose another model.
+
+[h3]Which model to use[/h3]
+Tested on 21 October 2026. Cost per in-game year at 2 requests a week:
+[list]
+[*]Cheapest: gpt-6-luna (OpenAI, default), 3 cents.
+[*]Best value: xiaomi/mimo-v2.6-pro:floor (OpenRouter), 15 cents.
+[*]Mid-priced, close to the facts: gpt-6-sol (OpenAI), 70 cents.
+[*]Mid-priced, lively: google/gemini-4-argon (OpenRouter), 85 cents.
+[*]Nearly the best: moonshotai/kimi-k3:floor (OpenRouter), 1.50 dollars.
+[*]Best posts: claude-opus-5-5 (Anthropic), 2.40 dollars.
+[/list]
 
 [h3]Privacy[/h3]
 Each request sends that moment's details to your AI service: the names of your group and idols, results such as sales, details of the idols in it such as their age, popularity, stamina, scandal record and trivia, earlier results, and the recent posts on the feed. Your API key is kept in a file on your PC, never in your saves. To remove it, type - in the key field and press Apply.
@@ -46,3 +57,4 @@ Your saves load normally without it. The feed then keeps its newest 20 posts.
 - 1.8.1: Fans no longer quote percentages
 - 1.8.2: Concert attendance shows seats filled out of the venue's seats, without a percentage
 - 1.9.0: Graduations name who the idol was suspected to be bullied by or to have bullied
+- 1.10.0: Unusable models stop requests, with a notice saying what to do; shorter Base URLs work

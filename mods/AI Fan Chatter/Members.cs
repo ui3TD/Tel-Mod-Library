@@ -388,7 +388,7 @@ namespace AIFanChatter
             {
                 return "Several scandals behind her";
             }
-            return "A serious scandal record";
+            return "Involved in many public scandals";
         }
 
         /// <summary>

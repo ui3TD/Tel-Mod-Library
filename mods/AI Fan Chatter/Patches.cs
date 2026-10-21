@@ -249,6 +249,95 @@ namespace AIFanChatter
     }
 
     /// <summary>
+    /// The outcomes of the dating scandal answered in Event_Templates_ConcludeEvent, as the game picks them.
+    /// </summary>
+    internal static class DatingScandal
+    {
+        public const string TemplateId = "dating_scandal";
+
+        /// <summary>
+        /// The endings that keep the scandal from the public: the photos are bought back, the police stop the
+        /// blackmailer, the blackmail was a bluff, or the editor drops the story. Every other ending is public.
+        /// </summary>
+        private static readonly HashSet<Event_Templates._dating_reactions._type> Hidden = new()
+        {
+            Event_Templates._dating_reactions._type.Pay_blackmail,
+            Event_Templates._dating_reactions._type.Pay_to_publication,
+            Event_Templates._dating_reactions._type.Report_to_police__success,
+            Event_Templates._dating_reactions._type.Report_to_police__success_2,
+            Event_Templates._dating_reactions._type.Do_nothing__blackmail__no_damage,
+            Event_Templates._dating_reactions._type.Deny_identity__success__unpublished,
+        };
+
+        /// <summary>Set while the game resolves a template's answer.</summary>
+        public static bool Capturing;
+
+        public static readonly List<Event_Templates._dating_reactions._type> Reactions = new();
+
+        public static bool IsHidden(Event_Templates._dating_reactions._type reaction) => Hidden.Contains(reaction);
+    }
+
+    /// <summary>
+    /// Dating scandals: the game's dating scandal template, answered by the player. They end here, not in
+    /// Event_Manager.ConcludeEvent, and the game posts nothing for them. Fans react only when the outcome
+    /// reached the public.
+    /// </summary>
+    [HarmonyPatch(typeof(Event_Templates), nameof(Event_Templates.ConcludeEvent))]
+    [HarmonyPriority(Priority.Last)]
+    public class Event_Templates_ConcludeEvent
+    {
+        public static void Prefix(out Event_Templates._active_template __state)
+        {
+            __state = Event_Templates.Active_Template;
+            DatingScandal.Reactions.Clear();
+            DatingScandal.Capturing = true;
+        }
+
+        public static void Postfix(Event_Templates._template._reply Reply, Event_Templates._active_template __state, bool __runOriginal)
+        {
+            DatingScandal.Capturing = false;
+            List<Event_Templates._dating_reactions._type> reactions = DatingScandal.Reactions.ToList();
+            if (ShouldPost(__state, Reply, reactions, __runOriginal))
+            {
+                Moments.Trigger(() => MomentContext.DatingScandal(__state, Reply, reactions));
+            }
+        }
+
+        public static Exception Finalizer(Exception __exception)
+        {
+            DatingScandal.Capturing = false;
+            return __exception;
+        }
+
+        /// <summary>
+        /// A dating scandal about an idol, answered with an outcome the game picked, none of which kept it
+        /// hidden. No outcome means another mod resolved it its own way, and whether it went public is unknown.
+        /// </summary>
+        internal static bool ShouldPost(Event_Templates._active_template active, Event_Templates._template._reply reply,
+            IList<Event_Templates._dating_reactions._type> reactions, bool ran)
+        {
+            return ran && reply != null && active?.Template?.ID == DatingScandal.TemplateId
+                && active.Actors.Count > 0 && active.Actors[0]?.girl != null
+                && reactions.Count > 0 && !reactions.Any(DatingScandal.IsHidden);
+        }
+    }
+
+    /// <summary>
+    /// Notes each outcome the game picks while a dating scandal is resolved. Reads only.
+    /// </summary>
+    [HarmonyPatch(typeof(Event_Templates), nameof(Event_Templates.GetDatingReaction))]
+    public class Event_Templates_GetDatingReaction
+    {
+        public static void Postfix(Event_Templates._dating_reactions._type Reaction)
+        {
+            if (DatingScandal.Capturing)
+            {
+                DatingScandal.Reactions.Add(Reaction);
+            }
+        }
+    }
+
+    /// <summary>
     /// Moves keys saved before the shared key folder into it, from the main menu on. Releases queued
     /// posts as the game clock runs, from the same tick the game's own systems use. staticVars.SetTime
     /// isn't patched: it's a one-line setter the runtime may inline.

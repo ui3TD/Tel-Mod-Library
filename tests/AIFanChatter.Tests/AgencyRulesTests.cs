@@ -63,6 +63,20 @@ namespace AIFanChatter.Tests
             Assert.Equal(expected, MomentContext.Graduation(Idol("C"), null).Fact(A, "Group concept"));
         }
 
+        /// <summary>
+        /// A graduation is about one idol, so the group's scandals stay out of it.
+        /// </summary>
+        [Fact]
+        public void Reputation_IsLeftOutOfGraduations()
+        {
+            // The agency's own scandal points, which the reputation reads
+            resources.resource.AddRange(new long[] { 0, 0, 0, 3, 0 });
+            Assert.NotNull(SingleMoment(handshake: false).Fact(A, "Group reputation"));
+            Assert.NotNull(ConcertMoment().Fact(A, "Group reputation"));
+            Assert.NotNull(EventMoment().Fact(A, "Group reputation"));
+            Assert.DoesNotContain("Group reputation", MomentContext.Graduation(Idol("C"), null).Lines(A));
+        }
+
         [Theory]
         [InlineData(policies._value.skirts_short, "short skirts without safety shorts")]
         [InlineData(policies._value.skirts_safety_shorts, "short skirts with safety shorts")]

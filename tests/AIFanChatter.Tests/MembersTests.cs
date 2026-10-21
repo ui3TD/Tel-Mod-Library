@@ -175,7 +175,7 @@ namespace AIFanChatter.Tests
         [InlineData(2, "A minor scandal in her past")]
         [InlineData(3, "Several scandals behind her")]
         [InlineData(4, "Several scandals behind her")]
-        [InlineData(5, "A serious scandal record")]
+        [InlineData(5, "Involved in many public scandals")]
         public void ScandalRecord_IsInWords(int points, string expected)
         {
             Assert.Equal(expected, Members.ScandalRecord(points));
@@ -200,7 +200,7 @@ namespace AIFanChatter.Tests
         {
             data_girls.girls aya = Idol("Aya").With(data_girls._paramType.scandalPoints, 7);
             string line = LineOf(aya);
-            Assert.Contains("A serious scandal record.", line);
+            Assert.Contains("Involved in many public scandals.", line);
             Assert.DoesNotContain("7", line);
         }
 

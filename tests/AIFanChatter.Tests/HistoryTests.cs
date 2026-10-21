@@ -225,7 +225,7 @@ namespace AIFanChatter.Tests
             leaving.Graduated(Today);
 
             string lines = MomentContext.Graduation(leaving, null).Lines(Moment.FactsSection);
-            Assert.Contains("Singles she was the center of, best-selling first:\n"
+            Assert.Contains("Singles she was the center of:\n"
                 + "- \"First\" (Pop, Love lyrics, Cute choreography)\n"
                 + "- \"Second\" (Rock, Friends lyrics, Cool choreography)", lines);
             Assert.DoesNotContain("Not hers", lines);
@@ -245,7 +245,7 @@ namespace AIFanChatter.Tests
             leaving.Graduated(Today);
 
             string lines = MomentContext.Graduation(leaving, null).Lines(Moment.FactsSection);
-            Assert.Contains("Singles she was the center of, best-selling first:\n- \"Song 7\"\n- \"Song 6\"\n- \"Song 5\"\n- \"Song 4\"\n- \"Song 3\"", lines);
+            Assert.Contains("Singles she was the center of:\n- \"Song 7\"\n- \"Song 6\"\n- \"Song 5\"\n- \"Song 4\"\n- \"Song 3\"", lines);
             Assert.DoesNotContain("Song 2", lines);
             Assert.DoesNotContain("Song 1\"", lines);
         }

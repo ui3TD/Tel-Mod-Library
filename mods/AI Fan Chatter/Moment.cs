@@ -362,7 +362,8 @@ namespace AIFanChatter
                 }
             }
             moment
-                .AddTo(section, "Group reputation", () => Members.AgencyReputation(resources.GetScandalPointsTotal()))
+                // A graduation is about one idol, so the group's scandals stay out of it
+                .AddTo(section, "Group reputation", () => graduation ? "" : Members.AgencyReputation(resources.GetScandalPointsTotal()))
                 .AddTo(section, "Group concept", AgencyRules.Concept);
             return (rules?.Invoke(moment) ?? moment)
                 .AddTo(section, "Date", () => staticVars.dateTime.ToString("dddd d MMMM yyyy", CultureInfo.InvariantCulture));
@@ -429,7 +430,7 @@ namespace AIFanChatter
                 .Add("Suspected to be bullied by", () => string.Join(", ", bulliedBy.Select(Name).ToArray()))
                 .Add("Suspected to have bullied", () => string.Join(", ", bullied.Select(Name).ToArray()));
             // Her best-selling released singles as center, best first; left out when she centered none
-            moment.AddList(Moment.FactsSection, "Singles she was the center of, best-selling first",
+            moment.AddList(Moment.FactsSection, "Singles she was the center of",
                 singles.Singles
                     .Where(s => s != null && s.status == singles._single._status.released && s.ReleaseData != null && CenterOf(s) == girl)
                     .OrderByDescending(s => s.ReleaseData.Sales)
@@ -552,6 +553,53 @@ namespace AIFanChatter
             History.Event(moment, active, log, Now);
             return Agency(moment, group, rules: m => m
                 .AddTo(Moment.AgencySection, "Group dating rule", AgencyRules.Dating));
+        }
+
+        /// <param name="reactions">The outcomes the game picked for the answer, in order.</param>
+        public static Moment DatingScandal(Event_Templates._active_template active, Event_Templates._template._reply reply,
+            IList<Event_Templates._dating_reactions._type> reactions)
+        {
+            data_girls.girls idol = active.Actors[0].girl;
+            string details = Part(() => ScandalDetails(active));
+            string response = Part(() => active.SwitchVariables(reply.Text));
+            string outcome = Part(() => active.SwitchVariables(string.Join(" ", reactions.Select(ReactionText).Where(t => t != "").ToArray())));
+            Moment moment = new Moment("an idol's dating life became a scandal")
+                .Labelled(() => Name(idol) + "'s dating scandal")
+                .Add("You", () => SpeaksToYou(details, response, outcome) ? Producer() : "")
+                .Add("What happened", () => details)
+                .Add("The agency's response", () => response)
+                .Add("Outcome", () => outcome)
+                .Add("People involved", () => string.Join(", ", active.Actors.Where(a => a != null).Select(ActorName).Where(n => n != "").ToArray()));
+            Groups._group group = GroupOf(() => idol.GetGroup());
+            Members.Add(moment, new List<data_girls.girls> { idol }, Now, group ?? MainGroup());
+            return Agency(moment, group, rules: m => m
+                .AddTo(Moment.AgencySection, "Group dating rule", AgencyRules.Dating));
+        }
+
+        /// <summary>
+        /// The scandal as the game describes it (_active_template.GetDescription), without the question to the
+        /// player that follows the last part: the formula is cut after its last [part].
+        /// </summary>
+        public static string ScandalDetails(Event_Templates._active_template active)
+        {
+            string text = active.Template.Formula ?? "";
+            int end = text.LastIndexOf(']');
+            if (end >= 0)
+            {
+                text = text.Substring(0, end + 1);
+            }
+            foreach (Event_Templates._template._part part in active.Template.Parts)
+            {
+                Event_Templates._template._part._value chosen = active.Parts.FirstOrDefault(v => v != null && v.Parent == part);
+                text = text.Replace("[" + part.ID + "]", chosen?.Text ?? "");
+            }
+            return active.SwitchVariables(text);
+        }
+
+        /// <summary>The game's text for an outcome (template_reactions.json), without its colour.</summary>
+        private static string ReactionText(Event_Templates._dating_reactions._type reaction)
+        {
+            return Event_Templates.Dating_Reactions.FirstOrDefault(r => r != null && r.Type == reaction)?.Text ?? "";
         }
     }
 }

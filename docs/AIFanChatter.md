@@ -86,7 +86,8 @@ The group these parts call "the group" is the group the moment is about:
 - for a single, the group that released it;
 - for a concert, the main group;
 - for a graduation, the graduating idol's group;
-- for a random event, the group of the idol it's mainly about, or the main group when no idol is involved.
+- for a random event, the group of the idol it's mainly about, or the main group when no idol is involved;
+- for a dating scandal, the idol's group.
 
 ### `{event}`
 
@@ -113,6 +114,7 @@ The moment's own details, one per line.
 - **A random event:**
   - what happened, the details, the agency's response, the outcome, and who was involved.
   - The game writes its events to the player. When the details, the response or the outcome say "you", a line `You: the group's producer (name)` tells the AI who that is, with the player's name as the game shows it.
+- **A dating scandal** (the game's dating scandals option): what happened, without the game's question to the player, the agency's response, the outcome, and who was involved, with the same `You` line. Fans only post when the outcome reached the public: paying off the blackmailer or the publication, the police catching the blackmailer, a blackmailer who was bluffing, and an editor who drops the story after a denial all get no posts.
 
 ### `{agency}`
 
@@ -121,17 +123,17 @@ The group and the agency, one fact per line:
 - the group's name, and the main group's name when it's a sister group;
 - the number of members, or for a graduation the members left after she graduated;
 - when the group was formed, how many singles it has released, and the three members with the most fans. For a graduation, the graduating idol's friends (the other members of her clique) take the place of the three members with the most fans, on one line per group, such as `Friends in Aozora Chapter`, her own group first. They're left out when she wasn't in a clique or the player hadn't found out about it;
-- the reputation from scandals, in words;
+- the reputation from scandals, in words, except for a graduation, which is about one idol;
 - the concept, from the agency's policies;
 - the policies that matter to this kind of moment:
   - handshake event security, for a single promoted with a handshake event;
   - stage costumes and performance style, for a concert;
-  - the dating rule, for a random event;
+  - the dating rule, for a random event or a dating scandal;
 - the date, with its day of the week.
 
 ### `{members}`
 
-One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, and the graduating idol for a graduation.
+One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation, and the idol for a dating scandal.
 
 Each line gives, in this order:
 
@@ -159,6 +161,7 @@ Earlier results to compare with. Empty when there's nothing earlier.
 - **A concert:** the previous concert's venue, attendance and date, how many concerts came before, and the biggest audience so far.
 - **A graduation:** the previous graduate from the same group and when she left, and how many of the group's idols graduated before her. When she's the group's first graduate, it says so.
 - **A random event:** how often the same event happened before, and when it last did.
+- **A dating scandal:** nothing. The game gives each idol at most one.
 
 ### `{feed}`
 

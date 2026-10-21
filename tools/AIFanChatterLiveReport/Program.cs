@@ -12,18 +12,19 @@ using System.Runtime.CompilerServices;
 namespace AIFanChatter.LiveReport
 {
     /// <summary>
-    /// Sends four moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
+    /// Sends five moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
     /// prompt, dispatcher, request and reply code, once per model, and writes every request, reply and
     /// queued post to a JSON file for tools/ai_fan_chatter_live_report.py. Runs outside the game: the
     /// game's text comes from its install folder and the key from the mod's key file. It costs money.
     ///
     ///     AIFanChatterLiveReport --game-dir DIR --provider 2 --base-url URL --model M [--model M2] --out FILE
     ///     AIFanChatterLiveReport --game-dir DIR --dry-run 1      (prints the prompts; sends nothing)
-    /// Options: --moment single|concert|event|graduation (repeat to pick several; all four by default),
+    /// Options: --moment single|concert|event|scandal|graduation (repeat to pick several; all five by default),
     /// --setlist "Signal Fire/Rin; talk: Mao, Kaede" for the concert (see Agency.SetList), and for the
     /// random event --event ID (from the game's random_events.json), --event-reply N (the player's
     /// answer, from 0; by default the first one without posts of its own) and --event-idols "Rena, Mao"
-    /// (who plays the event's idols, by first name; Rin by default).
+    /// (who plays the event's idols, by first name; Rin by default; the first also plays the dating
+    /// scandal's idol).
     /// </summary>
     internal static class Program
     {
@@ -186,13 +187,14 @@ namespace AIFanChatter.LiveReport
                 new("single", () => MomentContext.Single(agency.NewSingle)),
                 new("concert", () => MomentContext.Concert(agency.NewConcert)),
                 new("event", () => EventMoment(agency)),
+                new("scandal", () => ScandalMoment(agency)),
                 // Last, as the graduate leaves the group
                 new("graduation", () => MomentContext.Graduation(agency.Graduate, agency.GraduateNow())),
             };
             string unknown = picked?.FirstOrDefault(name => all.All(m => m.Key != name));
             if (unknown != null)
             {
-                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event and graduation");
+                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal and graduation");
             }
             return all.Where(m => picked == null || picked.Contains(m.Key))
                 .Select(m => new KeyValuePair<string, Func<Moment>>(Names[m.Key], m.Value)).ToList();
@@ -203,6 +205,7 @@ namespace AIFanChatter.LiveReport
             ["single"] = "a single release",
             ["concert"] = "a concert",
             ["event"] = "a random event",
+            ["scandal"] = "a dating scandal",
             ["graduation"] = "a graduation",
         };
 
@@ -227,6 +230,33 @@ namespace AIFanChatter.LiveReport
             }
             Event_Manager._activeEvent active = agency.Event(data, eventIdols.Split(',').Select(n => n.Trim()).Where(n => n != "").ToList());
             return MomentContext.Event(active, data.reply[reply], new List<Event_Manager._activeEvent> { active });
+        }
+
+        /// <summary>
+        /// The game's dating scandal template with one fixed set of its parts: the first --event-idols idol
+        /// seen having dinner with a male fashion designer, photos posted on a message board, her saying it
+        /// was a one-time encounter, and the agency having her apologize publicly. In the game the outcome
+        /// comes from the answer's popup, which needs the engine; the report passes the game's outcome text
+        /// for an ordinary apology straight to the mod.
+        /// </summary>
+        private static Moment ScandalMoment(Agency agency)
+        {
+            Event_Templates._template template = Event_Templates.Templates.FirstOrDefault(t => t.ID == DatingScandal.TemplateId)
+                ?? throw new ArgumentException("No dating scandal in the game's event_templates.json");
+            string name = eventIdols.Split(',').Select(n => n.Trim()).FirstOrDefault(n => n != "") ?? "";
+            Event_Templates._active_template active = new() { Template = template };
+            active.Actors.Add(agency.Event(new Event_Manager._randomEvent { id = "scandal", actor = { new Event_Manager._randomEvent._actor() } }, new[] { name }).actors[0]);
+            active.Actors.Add(new Event_Manager._activeEvent._actor { name = "Mori Takeshi", female = false });
+            foreach (KeyValuePair<string, int> part in new Dictionary<string, int>
+            {
+                ["how_spotted"] = 0, ["activity"] = 2, ["gender"] = 0, ["profession"] = 5, ["fling"] = 4,
+                ["how_photos_delivered"] = 2, ["what_girl_admits"] = 1,
+            })
+            {
+                active.Parts.Add(template.Parts.First(p => p.ID == part.Key && p.Values.Count > 0).Values[part.Value]);
+            }
+            Event_Templates._template._reply reply = template.Replies.First(r => r.Actions.Any(a => a.formula == "dating_apologize"));
+            return MomentContext.DatingScandal(active, reply, new[] { Event_Templates._dating_reactions._type.Apologize__normal });
         }
 
         /// <summary>
@@ -297,6 +327,20 @@ namespace AIFanChatter.LiveReport
                 Event_Manager._randomEvent data = new();
                 data.Set(item);
                 Events[data.id] = data;
+            }
+            Event_Templates.Templates.Clear();
+            foreach (JSONNode item in Read(Path.Combine(english, "Events", "event_templates.json")).AsArray)
+            {
+                Event_Templates._template template = new();
+                template.Set(item);
+                Event_Templates.Templates.Add(template);
+            }
+            Event_Templates.Dating_Reactions.Clear();
+            foreach (JSONNode item in Read(Path.Combine(english, "Events", "template_reactions.json")).AsArray)
+            {
+                Event_Templates._dating_reactions reaction = new();
+                reaction.Set(item);
+                Event_Templates.Dating_Reactions.Add(reaction);
             }
             traits.Traits.Clear();
             foreach (JSONNode item in Read(Path.Combine(english, "Idols", "traits.json")).AsArray)

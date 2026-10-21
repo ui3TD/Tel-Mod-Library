@@ -108,6 +108,7 @@ The moment's own details, one per line.
   - its set list, in order, one item per line. Each song comes with its genre, lyrics, choreography and the idol at its center, and each talk break with its idols.
 - **A graduation:**
   - the idol, and what she did after graduating, when the game says;
+  - the idols she was bullied by (`Suspected to be bullied by`) and the idols she bullied (`Suspected to have bullied`). Only bullying that the player had found out about is named, and idols who had stopped bullying her are left out. Each line is left out when it names no one;
   - her singles as center, up to her 5 best-selling ones, best-selling first. The list is left out when she was never a center.
 - **A random event:**
   - what happened, the details, the agency's response, the outcome, and who was involved.

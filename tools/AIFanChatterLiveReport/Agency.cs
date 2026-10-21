@@ -140,7 +140,16 @@ namespace AIFanChatter.LiveReport
             // Her clique, known to the player, which the graduation names as her friends
             Relationships._clique clique = new() { Leader = idols["Sora"], Known = true };
             clique.Members.AddRange(new[] { idols["Sora"], Graduate, idols["Ruri"] });
+            // A feud, known to the player both ways, which the graduation names as suspected bullying:
+            // her clique bullies Miyu, and Miyu's clique bullies her
+            clique.Bullied_Girls.Add(idols["Miyu"]);
+            clique.KnownBulliedGirls.Add(idols["Miyu"]);
             Relationships.Cliques.Add(clique);
+            Relationships._clique rivals = new() { Leader = idols["Hikari"], Known = true };
+            rivals.Members.AddRange(new[] { idols["Hikari"], idols["Miyu"] });
+            rivals.Bullied_Girls.Add(Graduate);
+            rivals.KnownBulliedGirls.Add(Graduate);
+            Relationships.Cliques.Add(rivals);
 
             Singles();
             Concerts();

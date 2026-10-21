@@ -152,11 +152,13 @@ namespace AIFanChatter
         {
             public Members.Rank Rank;
             public List<data_girls.girls> Friends;
+            public List<data_girls.girls> BulliedBy;
+            public List<data_girls.girls> Bullied;
         }
 
         /// <summary>
-        /// Her place by fans in her group and her clique before graduating: the game moves her fans to other
-        /// idols and takes her out of her clique as she leaves.
+        /// Her place by fans in her group, her clique and her bullying before graduating: the game moves her
+        /// fans to other idols, takes her out of her clique and ends the bullying as she leaves.
         /// </summary>
         public static void Prefix(data_girls.girls __instance, out Before __state)
         {
@@ -178,6 +180,17 @@ namespace AIFanChatter
                 // Her friends are left out
                 __state.Friends = new List<data_girls.girls>();
             }
+            try
+            {
+                __state.BulliedBy = Members.BulliedBy(__instance);
+                __state.Bullied = Members.Bullied(__instance);
+            }
+            catch (Exception)
+            {
+                // The bullying is left out
+                __state.BulliedBy = new List<data_girls.girls>();
+                __state.Bullied = new List<data_girls.girls>();
+            }
         }
 
         public static void Postfix(data_girls.girls __instance, Before __state, bool __runOriginal)
@@ -185,7 +198,8 @@ namespace AIFanChatter
             if (__runOriginal && __instance != null && __instance.status == data_girls._status.graduated
                 && Moments.FirstGraduationToday(staticVars.dateTime))
             {
-                Moments.Trigger(() => MomentContext.Graduation(__instance, __state.Rank, __state.Friends));
+                Moments.Trigger(() => MomentContext.Graduation(__instance, __state.Rank, __state.Friends,
+                    __state.BulliedBy, __state.Bullied));
             }
         }
     }

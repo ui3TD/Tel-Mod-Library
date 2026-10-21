@@ -605,6 +605,29 @@ namespace AIFanChatter
         }
 
         /// <summary>
+        /// The idols bullying her, only where the player has found the bullying out; members who stopped are
+        /// left out, as the game's tooltip does. The game ends the bullying as she graduates.
+        /// </summary>
+        public static List<data_girls.girls> BulliedBy(data_girls.girls girl)
+        {
+            return girl == null ? new List<data_girls.girls>()
+                : Relationships.GetCliquesThatBully(girl)
+                    .Where(c => c != null && c.KnownBulliedGirls.Contains(girl))
+                    .SelectMany(c => c.Members.Where(m => m != null && m != girl && c.IsBulliedBy(m, girl)))
+                    .Distinct().ToList();
+        }
+
+        /// <summary>
+        /// The idols she is bullying, only where the player has found the bullying out. The game takes her out
+        /// of her clique as she graduates.
+        /// </summary>
+        public static List<data_girls.girls> Bullied(data_girls.girls girl)
+        {
+            return girl == null ? new List<data_girls.girls>()
+                : Relationships.GetBulliedGirls(girl, ShouldBeKnown: true).Where(g => g != null && g != girl).ToList();
+        }
+
+        /// <summary>
         /// Her place by fans in a group, named when it isn't the moment's group; null when she isn't in it.
         /// </summary>
         public static Rank RankIn(data_girls.girls girl, Groups._group group, string named)

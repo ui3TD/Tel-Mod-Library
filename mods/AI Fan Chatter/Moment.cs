@@ -389,11 +389,19 @@ namespace AIFanChatter
 
         /// <param name="rankBefore">Her place by fans in her group before she left, taken before the game moved her fans.</param>
         /// <param name="friends">Her clique before she left, taken before the game took her out of it; null reads it now.</param>
-        public static Moment Graduation(data_girls.girls girl, Members.Rank rankBefore, List<data_girls.girls> friends = null)
+        /// <param name="bulliedBy">Who was bullying her before she left, taken before the game ended it; null reads it now.</param>
+        /// <param name="bullied">Who she was bullying before she left, taken before the game took her out of her clique; null reads it now.</param>
+        public static Moment Graduation(data_girls.girls girl, Members.Rank rankBefore, List<data_girls.girls> friends = null,
+            List<data_girls.girls> bulliedBy = null, List<data_girls.girls> bullied = null)
         {
+            bulliedBy ??= Members.BulliedBy(girl);
+            bullied ??= Members.Bullied(girl);
             Moment moment = new Moment("an idol graduated (left the group)")
                 .Add("Idol", () => Name(girl))
-                .Add("After graduating", () => Members.Cut(Moment.Clean(girl.Graduation_Trivia_Text), Members.GraduationTriviaLength));
+                .Add("After graduating", () => Members.Cut(Moment.Clean(girl.Graduation_Trivia_Text), Members.GraduationTriviaLength))
+                // Only bullying the player has found out; fans can only suspect it
+                .Add("Suspected to be bullied by", () => string.Join(", ", bulliedBy.Select(Name).ToArray()))
+                .Add("Suspected to have bullied", () => string.Join(", ", bullied.Select(Name).ToArray()));
             // Her best-selling released singles as center, best first; left out when she centered none
             moment.AddList(Moment.FactsSection, "Singles she was the center of, best-selling first",
                 singles.Singles

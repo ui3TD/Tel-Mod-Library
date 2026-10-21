@@ -389,6 +389,78 @@ namespace AIFanChatter.Tests
             Assert.Equal("A", moment.Fact(Moment.AgencySection, "Friends in " + Members.GroupName(stars)));
         }
 
+        /// <summary>
+        /// Known bullying names who bullied her, without members who stopped, and who she bullied.
+        /// </summary>
+        [Fact]
+        public void Graduate_NamesKnownBullying()
+        {
+            data_girls.girls leaving = Idol("Leaving");
+            data_girls.girls bully = Idol("Bully");
+            data_girls.girls stopped = Idol("Stopped");
+            data_girls.girls target = Idol("Target");
+            Group("Stars", Today.AddYears(-3), leaving, bully, stopped, target, Idol("Mate"));
+            Relationships._clique bullies = Clique(bully, stopped);
+            bullies.Bullied_Girls.Add(leaving);
+            bullies.KnownBulliedGirls.Add(leaving);
+            bullies.StoppedBullying.Add(new Relationships._clique._stopped_bullying { Target = leaving, Girls = { stopped } });
+            Relationships._clique hers = Clique(leaving, Idol("Mate2"));
+            hers.Bullied_Girls.Add(target);
+            hers.KnownBulliedGirls.Add(target);
+            leaving.Graduated(Today);
+
+            Moment moment = MomentContext.Graduation(leaving, null);
+            Assert.Equal("Bully", moment.Fact(Moment.FactsSection, "Suspected to be bullied by"));
+            Assert.Equal("Target", moment.Fact(Moment.FactsSection, "Suspected to have bullied"));
+        }
+
+        /// <summary>
+        /// Bullying the player hasn't found out about is left out, as is no bullying.
+        /// </summary>
+        [Fact]
+        public void Graduate_WithUnknownBullying_LeavesItOut()
+        {
+            data_girls.girls leaving = Idol("Leaving");
+            data_girls.girls target = Idol("Target");
+            Group("Stars", Today.AddYears(-3), leaving, target, Idol("Bully"));
+            Clique(Idol("Bully2"), Idol("Bully3")).Bullied_Girls.Add(leaving);
+            Clique(leaving, Idol("Mate")).Bullied_Girls.Add(target);
+            leaving.Graduated(Today);
+
+            Moment moment = MomentContext.Graduation(leaving, null);
+            Assert.Null(moment.Fact(Moment.FactsSection, "Suspected to be bullied by"));
+            Assert.Null(moment.Fact(Moment.FactsSection, "Suspected to have bullied"));
+        }
+
+        /// <summary>
+        /// The game ends the bullying and takes her out of her clique as she graduates, so the patch reads it beforehand.
+        /// </summary>
+        [Fact]
+        public void Graduate_KeepsHerBullyingFromBeforeSheLeft()
+        {
+            data_girls.girls leaving = Idol("Leaving");
+            data_girls.girls bully = Idol("Bully");
+            data_girls.girls target = Idol("Target");
+            Group("Stars", Today.AddYears(-3), leaving, bully, target);
+            Relationships._clique bullies = Clique(bully, Idol("Mate"));
+            bullies.Bullied_Girls.Add(leaving);
+            bullies.KnownBulliedGirls.Add(leaving);
+            Relationships._clique hers = Clique(leaving, Idol("Mate2"));
+            hers.Bullied_Girls.Add(target);
+            hers.KnownBulliedGirls.Add(target);
+
+            data_girls_girls_Graduate.Prefix(leaving, out data_girls_girls_Graduate.Before before);
+            bullies.Bullied_Girls.Clear();
+            bullies.KnownBulliedGirls.Clear();
+            hers.Members.Remove(leaving);
+            leaving.Graduated(Today);
+
+            Moment moment = MomentContext.Graduation(leaving, before.Rank, before.Friends, before.BulliedBy, before.Bullied);
+            // The whole clique bullies her
+            Assert.Equal("Bully, Mate",moment.Fact(Moment.FactsSection, "Suspected to be bullied by"));
+            Assert.Equal("Target", moment.Fact(Moment.FactsSection, "Suspected to have bullied"));
+        }
+
         [Fact]
         public void Single_StillNamesTheMostPopular_NotFriends()
         {

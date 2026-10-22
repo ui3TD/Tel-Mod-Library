@@ -1,7 +1,24 @@
 [h1]REQUIRES: IM-HarmonyIntegration[/h1]
 Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
 
-Fans react on the Social Media tab to your singles, concerts, tours, elections, awards, shows, ad and drama contracts, new members from your auditions, graduations, events, dating scandals, policy changes and staff firings, in posts and replies written by an AI service you choose. Fans start posting once your agency has 100 fans, and only the kinds of fans you have post. Each kind of fan is as happy or critical as their opinion of your group. The feed keeps 100 posts instead of 20.
+Fans react on the Social Media tab to what happens at your agency, in posts and replies written by an AI service you choose. Fans start posting once your agency has 100 fans, and only the kinds of fans you have post. Each kind of fan is as happy or critical as their opinion of your group. The feed keeps 100 posts instead of 20.
+
+[h3]What fans react to[/h3]
+[list]
+[*]Single releases, including an election's voting single and the single made from an election's results.
+[*]Concerts. A concert that ends with an election gets one set of posts about both.
+[*]Election results.
+[*]Tours, once they're over.
+[*]The yearly awards show: wins, losses and acceptance speeches.
+[*]New shows, when their first episode airs.
+[*]3-month ad and TV drama contracts.
+[*]New members from auditions you run.
+[*]Graduations, with the sister or successor who joins and any staff job she takes.
+[*]Random events whose outcome the public sees, including any contracts they cancel.
+[*]Dating scandals that become public.
+[*]Paid policy changes.
+[*]Staff fired and blamed for scandals.
+[/list]
 
 [h3]Setting it up[/h3]
 You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url] and an account with an AI service. In Settings, open Mod Settings and fill in:

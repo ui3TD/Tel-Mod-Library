@@ -101,6 +101,7 @@ The moment's own details, one per line.
 - **A single:**
   - its title, center and members, and its genre, lyrics and choreography;
   - its sales, and its quality and fan satisfaction, both as percentages;
+  - for an election's voting single, which election it's for (each CD comes with a ballot) and the concert its results follow; for the single the game makes from an election's results, which election set its lineup and who won it, plus the ranked idols who graduated since and so aren't in it;
   - its marketing: each promotion by the game's name for it, such as Group Handshake Event. The game rolls the outcome of a risky promotion (a campaign, a fake scandal or a daring PV), and that outcome follows its name in parentheses: success, great success, failure or major failure.
 - **A concert:**
   - its venue;
@@ -124,6 +125,7 @@ The moment's own details, one per line.
   - the awards it was nominated for and lost, with the winner the show announced, such as `Gravure Queen: Ogawa Rena, lost to Saito Yuna of Starlight Ribbon`;
   - each win's acceptance speech, quoted as the show gave it, with who gave it. When the words weren't recorded, it says whom she thanked instead (the producer, Fujimoto, a staffer or another idol).
   - The awards' gameplay bonuses aren't sent: fans can't see them.
+- **A concert with its election** (the game announces an election's results right after its concert): one moment, posted once the winner is revealed, with the concert's facts, then the election's. If the election never finishes, the concert goes out alone a day later.
 - **An election** (posted once the winner is revealed):
   - its number, its broadcast, the voting single and the concert it followed;
   - how many idols it ranked;

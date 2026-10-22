@@ -55,6 +55,31 @@ namespace AIFanChatter.LiveReport
         }
 
         /// <summary>
+        /// The newest single as a plain release, as the voting single of Election #2 (still to come, its results
+        /// due after the concert), or as the single the game made from Election #1's results.
+        /// </summary>
+        public singles._single SingleAs(string kind)
+        {
+            switch (kind)
+            {
+                case "plain":
+                    return NewSingle;
+                case "voting":
+                    SEvent_SSK._SSK upcoming = new() { Status = SEvent_Tour.tour._status.normal, Single = NewSingle, Concert = NewConcert };
+                    NewSingle.SSK = upcoming;
+                    NewConcert.SSK = upcoming;
+                    SEvent_SSK.Elections.Add(upcoming);
+                    return NewSingle;
+                case "election":
+                    NewSingle.IsElectionSingle = true;
+                    SEvent_SSK.Elections[0].ReleaseSingle = NewSingle;
+                    return NewSingle;
+                default:
+                    throw new ArgumentException("No single kind " + kind + "; the kinds are plain, voting and election");
+            }
+        }
+
+        /// <summary>
         /// The tour just back, with Kaede on hiatus and Mao, who announced her graduation, staying home. Set
         /// only for this moment and the ones after it, so the earlier moments' idol lines stay as they were.
         /// </summary>

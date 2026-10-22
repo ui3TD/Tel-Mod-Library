@@ -1,8 +1,8 @@
 """Record what AI Fan Chatter sends to a real AI service and what comes back, as a Markdown report.
 
 Not a test, and it doesn't start the game. It builds and runs tools/AIFanChatterLiveReport, which
-fills the game's lists with a made-up agency (Agency.cs there) and sends thirteen of its moments, a single
-release, a concert, one of the game's random events, a dating scandal, a paid policy change, a staff firing, a tour, an election's results, the awards show, a show starting, a business contract starting, new members from an audition and a graduation, through the mod's own prompt, dispatcher and reply code, once per
+fills the game's lists with a made-up agency (Agency.cs there) and sends fourteen of its moments, a single
+release, a concert, one of the game's random events, a dating scandal, a paid policy change, a staff firing, a tour, an election's results, a concert with its election's results, the awards show, a show starting, a business contract starting, new members from an audition and a graduation, through the mod's own prompt, dispatcher and reply code, once per
 model, one after another, so each model's later prompts carry its own earlier posts. It reads the
 game's English text from the install folder. Every request costs money on the key saved in the mod's
 key file for the chosen service (OpenAI-compatible by default).
@@ -69,6 +69,8 @@ def scenario(args) -> list:
         options += ["--firing-budget", "1"]
     if args.firing_role:
         options += ["--firing-role", args.firing_role]
+    if args.single:
+        options += ["--single", args.single]
     if args.graduation_successor:
         options += ["--graduation-successor", args.graduation_successor]
     if args.graduation_no_staff:
@@ -338,10 +340,11 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--game-dir", type=Path, help="the game's install folder, for its text (found through Steam if left out)")
     ap.add_argument("--dry-run", action="store_true", help="print the prompts the first model would get; sends nothing")
-    ap.add_argument("--moments", nargs="+", choices=["single", "concert", "event", "scandal", "policy", "firing", "tour", "election", "awards", "show", "contract", "audition", "graduation"], help="the moments to send, in their usual order (all thirteen if left out)")
+    ap.add_argument("--moments", nargs="+", choices=["single", "concert", "event", "scandal", "policy", "firing", "tour", "election", "concert-election", "awards", "show", "contract", "audition", "graduation"], help="the moments to send, in their usual order (all fourteen if left out)")
     ap.add_argument("--event", help="the random event's id in the game's random_events.json (default onions_30)")
     ap.add_argument("--event-reply", type=int, help="the player's answer to the event, from 0 (default: the first one without posts of its own)")
     ap.add_argument("--event-idols", help="who plays the event's idols, by first name, split by commas (default: Rin)")
+    ap.add_argument("--single", choices=["plain", "voting", "election"], help="the single as a plain release (default), an upcoming election's voting single, or the single made from Election #1's results")
     ap.add_argument("--firing-role", choices=["choreographer", "dance_coach", "sales_manager"], help="the fired staffer's role (default: choreographer, production staff)")
     ap.add_argument("--graduation-successor", choices=["sister", "successor", "none"], help="who the graduate brings in from her goodbye scene (default: sister)")
     ap.add_argument("--graduation-no-staff", action="store_true", help="the graduate doesn't stay at the agency as staff (by default she does, as a choreographer)")

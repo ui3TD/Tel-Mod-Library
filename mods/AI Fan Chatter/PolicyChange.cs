@@ -77,6 +77,51 @@ namespace AIFanChatter
     }
 
     /// <summary>
+    /// A concert whose election starts as its final screen closes, waiting for the results, so both go out as
+    /// one moment. The mod's own notes; the game's state is only read.
+    /// </summary>
+    internal static class ConcertElection
+    {
+        public static SEvent_Concerts._concert Pending;
+        public static DateTime Since;
+
+        public static void Wait(SEvent_Concerts._concert concert, DateTime now)
+        {
+            Pending = concert;
+            Since = now;
+        }
+
+        public static void Clear() => Pending = null;
+
+        /// <summary>The waiting concert when it's this election's; null otherwise, and then it keeps waiting.</summary>
+        public static SEvent_Concerts._concert TakeFor(SEvent_SSK._SSK election)
+        {
+            if (Pending == null || election == null || election.Concert != Pending)
+            {
+                return null;
+            }
+            SEvent_Concerts._concert concert = Pending;
+            Pending = null;
+            return concert;
+        }
+
+        /// <summary>
+        /// For an election that never finished: the waiting concert, once a full game day has passed. The clock
+        /// runs for a moment between the concert's screen and the results, so a shorter wait isn't enough.
+        /// </summary>
+        public static SEvent_Concerts._concert TakeOverdue(DateTime now)
+        {
+            if (Pending == null || now < Since.AddDays(1))
+            {
+                return null;
+            }
+            SEvent_Concerts._concert concert = Pending;
+            Pending = null;
+            return concert;
+        }
+    }
+
+    /// <summary>
     /// A regular graduation waiting for its goodbye scene to end: the player can still ask her for a
     /// successor or offer her a staff job there. The mod's own notes; the game's state is only read.
     /// </summary>

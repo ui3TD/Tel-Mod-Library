@@ -395,7 +395,13 @@ namespace AIFanChatter
                 // The game rounds quality to 0 to 10 and shows it as stars out of 10 (Single_Released_Button)
                 .Add("Quality", () => single.ReleaseData.Quality * 10 + "%")
                 .Add("Fan satisfaction", () => single.ReleaseData.Fan_Satisfaction + "%")
-                .Add("Marketing", () => Marketing(single));
+                .Add("Marketing", () => Marketing(single))
+                .Add("Election", () => SingleElection(single));
+            // An election single's lineup is its election's top places; a graduate since leaves her slot empty
+            SEvent_SSK._SSK parent = ParentElection(single);
+            moment.AddList(Moment.FactsSection, "Ranked but not in it", parent == null ? new List<Func<object>>()
+                : History.Ranked(parent).Take(ElectionPlaces).Where(r => r.Girl.status == data_girls._status.graduated)
+                    .Select(r => (Func<object>)(() => Name(r.Girl) + ", " + Members.Ordinal(r.Place) + ", graduated since")).ToList());
             Groups._group group = History.GroupOf(single);
             Members.Add(moment, Members.ForSingle(single), Now, group);
             History.Single(moment, single, singles.Singles, Now);
@@ -406,7 +412,25 @@ namespace AIFanChatter
         public static Moment Concert(SEvent_Concerts._concert concert)
         {
             Moment moment = new Moment("the group held a concert")
-                .Labelled(() => "the concert at " + SEvent_Concerts.GetVenueTitle(concert.Venue))
+                .Labelled(() => "the concert at " + SEvent_Concerts.GetVenueTitle(concert.Venue));
+            ConcertFacts(moment, concert);
+            // The game's concerts are the main group's
+            Groups._group group = MainGroup();
+            Members.Add(moment, Members.ForConcert(concert), Now, group);
+            History.Concert(moment, concert, SEvent_Concerts.Concerts, Now);
+            return Agency(moment, group, rules: ConcertRules);
+        }
+
+        private static Moment ConcertRules(Moment moment) => moment
+            .AddTo(Moment.AgencySection, "Stage costumes", AgencyRules.Costumes)
+            .AddTo(Moment.AgencySection, "Performance style", AgencyRules.PerformanceStyle);
+
+        /// <summary>
+        /// A concert's own facts: venue, attendance, hype, ticket price and set list.
+        /// </summary>
+        private static void ConcertFacts(Moment moment, SEvent_Concerts._concert concert)
+        {
+            moment
                 .Add("Venue", () => SEvent_Concerts.GetVenueTitle(concert.Venue))
                 .Add("Attendance", () => Attendance(concert))
                 // The game's hype runs from 0 to 200 (Concert_Popup.AddHype) and shows as a percentage
@@ -416,13 +440,62 @@ namespace AIFanChatter
             moment.AddList(Moment.FactsSection, "Set list, in order",
                 (concert.SetListItems ?? new List<SEvent_Concerts._concert.ISetlistItem>())
                 .Select(item => (Func<object>)(() => SetListItem(item))).ToList());
-            // The game's concerts are the main group's
+        }
+
+        /// <summary>
+        /// A concert and the election whose results were announced right after it, as one moment: the game
+        /// starts the election as the concert's final screen closes.
+        /// </summary>
+        public static Moment ConcertElection(SEvent_Concerts._concert concert, SEvent_SSK._SSK election)
+        {
+            string venue = Part(() => SEvent_Concerts.GetVenueTitle(concert.Venue));
+            string title = Part(() => election.GetTitle());
+            Moment moment = new Moment("the group held a concert, and the results of " + title + " were announced after it")
+                .Labelled(() => "the concert at " + venue + " and " + title);
+            ConcertFacts(moment, concert);
+            List<data_girls.girls> idols = ElectionFacts(moment, election, withConcert: false, out SEvent_SSK._SSK previous);
             Groups._group group = MainGroup();
-            Members.Add(moment, Members.ForConcert(concert), Now, group);
+            Members.Add(moment, idols, Now, group, withElection: false);
             History.Concert(moment, concert, SEvent_Concerts.Concerts, Now);
-            return Agency(moment, group, rules: m => m
-                .AddTo(Moment.AgencySection, "Stage costumes", AgencyRules.Costumes)
-                .AddTo(Moment.AgencySection, "Performance style", AgencyRules.PerformanceStyle));
+            History.Election(moment, election, previous, SEvent_SSK.Elections, Now);
+            return Agency(moment, group, rules: ConcertRules);
+        }
+
+        /// <summary>
+        /// "Voting single for Election #3: each CD comes with a ballot, and the results are announced after the
+        /// concert at Open Air Stage" for a voting single before its election; "Election single: its lineup is
+        /// the top places of Election #2, won by Rin" for the single the game makes from an election's results.
+        /// </summary>
+        private static string SingleElection(singles._single single)
+        {
+            SEvent_SSK._SSK parent = ParentElection(single);
+            if (parent != null)
+            {
+                data_girls.girls winner = History.Ranked(parent).FirstOrDefault()?.Girl;
+                return "Election single: its lineup is the top places of " + Part(() => parent.GetTitle()) + (winner == null ? "" : ", won by " + Name(winner));
+            }
+            SEvent_SSK._SSK voting = single.SSK;
+            if (voting == null || voting.Status == SEvent_Tour.tour._status.finished)
+            {
+                return "";
+            }
+            string venue = voting.Concert == null ? "" : Part(() => SEvent_Concerts.GetVenueTitle(voting.Concert.Venue));
+            // The game's own description: each CD comes packaged with a ballot (SSK__SINGLE_TIP)
+            return "Voting single for " + Part(() => voting.GetTitle()) + ": each CD comes with a ballot"
+                + (venue == "" ? "" : ", and the results are announced after the concert at " + venue);
+        }
+
+        /// <summary>The election whose results set this single's lineup; null for any other single.</summary>
+        private static SEvent_SSK._SSK ParentElection(singles._single single)
+        {
+            try
+            {
+                return single.IsElectionSingle ? single.GetParentSSK() : null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -679,28 +752,40 @@ namespace AIFanChatter
         /// </summary>
         public static Moment Election(SEvent_SSK._SSK election)
         {
+            Moment moment = new Moment("the results of the agency's idol election were announced")
+                .Labelled(() => election.GetTitle());
+            List<data_girls.girls> idols = ElectionFacts(moment, election, withConcert: true, out SEvent_SSK._SSK previous);
+            Groups._group group = MainGroup();
+            Members.Add(moment, idols, Now, group, withElection: false);
+            History.Election(moment, election, previous, SEvent_SSK.Elections, Now);
+            return Agency(moment, group);
+        }
+
+        /// <summary>
+        /// An election's own facts: its number, broadcast, voting single, results and biggest moves. Gives the
+        /// idols its moment names and the election before it.
+        /// </summary>
+        /// <param name="withConcert">Names the concert it followed; a moment that is about that concert already does.</param>
+        private static List<data_girls.girls> ElectionFacts(Moment moment, SEvent_SSK._SSK election, bool withConcert, out SEvent_SSK._SSK previous)
+        {
             List<SEvent_SSK._SSK._result> results = History.Ranked(election);
-            SEvent_SSK._SSK previous = History.PreviousElection(election, SEvent_SSK.Elections);
+            previous = History.PreviousElection(election, SEvent_SSK.Elections);
             Dictionary<data_girls.girls, int> before = previous == null ? null : History.Places(previous);
             List<SEvent_SSK._SSK._result> top = results.Take(ElectionPlaces).ToList();
             Move drop = before == null ? null : BiggestDrop(results, top, before);
             Move rise = before == null ? null : BiggestRise(results, top, before);
-            Moment moment = new Moment("the results of the agency's idol election were announced")
-                .Labelled(() => election.GetTitle())
+            moment
                 .Add("Election", () => election.GetTitle())
                 .Add("Broadcast on", () => SEvent_SSK.GetBroadcastTitle(election.Broadcast))
                 .Add("Voting single", () => election.Single == null ? "" : "\"" + Moment.Clean(election.Single.title) + "\"")
-                .Add("Held after the concert at", () => election.Concert == null ? "" : SEvent_Concerts.GetVenueTitle(election.Concert.Venue))
+                .Add("Held after the concert at", () => !withConcert || election.Concert == null ? "" : SEvent_Concerts.GetVenueTitle(election.Concert.Venue))
                 .Add("Idols ranked", () => results.Count);
             moment.AddList(Moment.FactsSection, "Results",
                 top.Select(r => (Func<object>)(() => Members.Ordinal(r.Place) + ": " + Ranked(r) + Movement(r, before) + Leaving(r.Girl))).ToList());
             moment
                 .Add("Biggest drop outside the top " + ElectionPlaces, () => drop == null ? "" : drop.Describe())
                 .Add("Biggest rise outside the top " + ElectionPlaces, () => rise == null ? "" : rise.Describe());
-            Groups._group group = MainGroup();
-            Members.Add(moment, Members.ForElection(top, drop?.Girl, rise?.Girl), Now, group, withElection: false);
-            History.Election(moment, election, previous, SEvent_SSK.Elections, Now);
-            return Agency(moment, group);
+            return Members.ForElection(top, drop?.Girl, rise?.Girl);
         }
 
         /// <summary>

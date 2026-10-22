@@ -146,7 +146,32 @@ namespace AIFanChatter
         {
             if (__runOriginal && __instance != null && __instance.Status == SEvent_Tour.tour._status.finished)
             {
+                // Its election starts as the concert's screen closes: both go out together when the results end
+                if (__instance.SSK != null && __instance.SSK.Status != SEvent_Tour.tour._status.finished)
+                {
+                    ConcertElection.Wait(__instance, staticVars.dateTime);
+                    return;
+                }
                 Moments.Trigger(() => MomentContext.Concert(__instance));
+            }
+        }
+
+        /// <summary>
+        /// A concert still waiting a day after it ended: its election never finished, so it goes out alone.
+        /// </summary>
+        public static void OnTimeTick()
+        {
+            try
+            {
+                SEvent_Concerts._concert concert = ConcertElection.TakeOverdue(staticVars.dateTime);
+                if (concert != null)
+                {
+                    Moments.Trigger(() => MomentContext.Concert(concert));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
             }
         }
     }
@@ -461,7 +486,15 @@ namespace AIFanChatter
                 if (ShouldPost(__instance, __runOriginal))
                 {
                     posted = __instance;
-                    Moments.Trigger(() => MomentContext.Election(__instance));
+                    SEvent_Concerts._concert concert = ConcertElection.TakeFor(__instance);
+                    if (concert != null)
+                    {
+                        Moments.Trigger(() => MomentContext.ConcertElection(concert, __instance));
+                    }
+                    else
+                    {
+                        Moments.Trigger(() => MomentContext.Election(__instance));
+                    }
                 }
             }
             catch (Exception)
@@ -1019,6 +1052,7 @@ namespace AIFanChatter
                 {
                     __instance.onTimeTick += FeedRelease.OnTimeTick;
                     __instance.onTimeTick += ActiveDialogueController_Hide.OnTimeTick;
+                    __instance.onTimeTick += SEvent_Concerts_concert_Finish.OnTimeTick;
                 }
             }
             catch (Exception e)

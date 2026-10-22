@@ -45,6 +45,7 @@ namespace AIFanChatter.Tests
             AwardsShow.ClearHeard();
             Shows.shows.Clear();
             Shows_ReleaseShow.Reset();
+            ConcertElection.Clear();
             staticVars.dateTime = Today;
         }
 

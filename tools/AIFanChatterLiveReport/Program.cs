@@ -12,14 +12,15 @@ using System.Runtime.CompilerServices;
 namespace AIFanChatter.LiveReport
 {
     /// <summary>
-    /// Sends thirteen moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
+    /// Sends fourteen moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
     /// prompt, dispatcher, request and reply code, once per model, and writes every request, reply and
     /// queued post to a JSON file for tools/ai_fan_chatter_live_report.py. Runs outside the game: the
     /// game's text comes from its install folder and the key from the mod's key file. It costs money.
     ///
     ///     AIFanChatterLiveReport --game-dir DIR --provider 2 --base-url URL --model M [--model M2] --out FILE
     ///     AIFanChatterLiveReport --game-dir DIR --dry-run 1      (prints the prompts; sends nothing)
-    /// Options: --moment single|concert|event|scandal|policy|firing|tour|election|awards|show|contract|audition|graduation (repeat to pick several; all thirteen by default),
+    /// Options: --moment single|concert|event|scandal|policy|firing|tour|election|concert-election|awards|show|contract|audition|graduation (repeat to pick several; all fourteen by default),
+    /// --single voting|election makes the single an upcoming election's voting single or the single made from Election #1's results,
     /// --setlist "Signal Fire/Rin; talk: Mao, Kaede" for the concert (see Agency.SetList), and for the
     /// random event --event ID (from the game's random_events.json), --event-reply N (the player's
     /// answer, from 0; by default the first one without posts of its own) and --event-idols "Rena, Mao"
@@ -43,6 +44,7 @@ namespace AIFanChatter.LiveReport
             eventIdols = Option("event-idols") ?? eventIdols;
             firingBudget = Option("firing-budget") == "1";
             firingRole = Option("firing-role") ?? firingRole;
+            singleKind = Option("single") ?? singleKind;
             graduationSuccessor = Option("graduation-successor") ?? graduationSuccessor;
             graduationStaff = Option("graduation-staff") != "0";
             if (gameDir == null || !dryRun && (outFile == null || models.Count == 0))
@@ -188,7 +190,7 @@ namespace AIFanChatter.LiveReport
             FeedQueue.Clear();
             var all = new List<KeyValuePair<string, Func<Moment>>>
             {
-                new("single", () => MomentContext.Single(agency.NewSingle)),
+                new("single", () => MomentContext.Single(agency.SingleAs(singleKind))),
                 new("concert", () => MomentContext.Concert(agency.NewConcert)),
                 new("event", () => EventMoment(agency)),
                 new("scandal", () => ScandalMoment(agency)),
@@ -197,6 +199,8 @@ namespace AIFanChatter.LiveReport
                 new("tour", () => MomentContext.Tour(agency.TourNow())),
                 // After the others: the new election becomes every idol's last one
                 new("election", () => MomentContext.Election(agency.ElectionNow())),
+                // A fresh agency: its election is the one the concert just held ends with
+                new("concert-election", () => { Agency fresh = Agency.Build(setList); return MomentContext.ConcertElection(fresh.NewConcert, fresh.ElectionNow()); }),
                 new("awards", () => MomentContext.Awards(agency.AwardsNow())),
                 new("show", () => MomentContext.ShowStart(agency.ShowNow())),
                 new("contract", () => { var contract = agency.ContractNow(); return MomentContext.ContractStart(contract, new[] { contract }, business.History); }),
@@ -207,7 +211,7 @@ namespace AIFanChatter.LiveReport
             string unknown = picked?.FirstOrDefault(name => all.All(m => m.Key != name));
             if (unknown != null)
             {
-                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing, tour, election, awards, show, contract, audition and graduation");
+                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing, tour, election, concert-election, awards, show, contract, audition and graduation");
             }
             return all.Where(m => picked == null || picked.Contains(m.Key))
                 .Select(m => new KeyValuePair<string, Func<Moment>>(Names[m.Key], m.Value)).ToList();
@@ -223,6 +227,7 @@ namespace AIFanChatter.LiveReport
             ["firing"] = "a staff firing",
             ["tour"] = "a tour",
             ["election"] = "an election's results",
+            ["concert-election"] = "a concert with its election's results",
             ["awards"] = "the awards show",
             ["show"] = "a show starting",
             ["contract"] = "a business contract starting",
@@ -323,6 +328,7 @@ namespace AIFanChatter.LiveReport
 
         private static bool firingBudget;
         private static string firingRole = "choreographer";
+        private static string singleKind = "plain";
         private static string graduationSuccessor = "sister";
         private static bool graduationStaff = true;
 

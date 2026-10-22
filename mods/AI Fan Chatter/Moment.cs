@@ -1068,8 +1068,7 @@ namespace AIFanChatter
             Moment moment = new Moment("an idol went on hiatus: a break from all idol activities")
                 .Labelled(() => Name(girl) + "'s hiatus")
                 .Add("Idol", () => Name(girl))
-                .Add("Reason announced", () => HiatusReasons.Text(reason))
-                .Add("Expected back", () => DateAhead(girl.HiatusEnd));
+                .Add("Reason announced", () => HiatusReasons.Text(reason));
             ContractsCancelled(moment, ended);
             moment.AddList(Moment.FactsSection, "Shows she leaves",
                 (shows ?? new List<Shows._show>()).Where(s => s != null).Select(s => (Func<object>)(() => History.ShowTitle(s))).ToList());
@@ -1078,18 +1077,16 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// An idol back from hiatus, on its planned date or called back early, with the reason fans heard
-        /// when it started. Her shows and contracts ended when she left, so none are sent.
+        /// An idol back from hiatus, with the reason fans heard when it started. Fans never knew when it was
+        /// planned to end, so nothing says whether she came back early. Her shows and contracts ended when she
+        /// left, so none are sent.
         /// </summary>
-        public static Moment HiatusEnd(data_girls.girls girl, HiatusReason reason, DateTime plannedEnd, bool early)
+        public static Moment HiatusEnd(data_girls.girls girl, HiatusReason reason)
         {
             Moment moment = new Moment("an idol returned from hiatus")
                 .Labelled(() => Name(girl) + "'s return from hiatus")
                 .Add("Idol", () => Name(girl))
-                .Add("Reason announced at the start", () => HiatusReasons.Text(reason))
-                .Add("Returned", () => !early ? "as planned"
-                    : History.Known(plannedEnd) ? "earlier than planned (planned date: " + plannedEnd.ToString("dddd d MMMM yyyy", CultureInfo.InvariantCulture) + ")"
-                    : "earlier than planned");
+                .Add("Reason announced at the start", () => HiatusReasons.Text(reason));
             return HiatusPeople(moment, girl);
         }
 

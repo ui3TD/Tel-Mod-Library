@@ -463,8 +463,8 @@ namespace AIFanChatter
     }
 
     /// <summary>
-    /// An idol back from hiatus: on its planned date, or called back early by the player. The reason is
-    /// the status she had before it, which the game keeps as previous_status.
+    /// An idol back from hiatus: on its planned date, or called back early by the player; both read the
+    /// same. The reason is the status she had before it, which the game keeps as previous_status.
     /// </summary>
     [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.FinishHiatus))]
     [HarmonyPriority(Priority.Last)]
@@ -474,7 +474,6 @@ namespace AIFanChatter
         {
             public bool WasOn;
             public HiatusReason Reason;
-            public DateTime PlannedEnd;
         }
 
         public static void Prefix(data_girls.girls __instance, out Before __state)
@@ -484,7 +483,6 @@ namespace AIFanChatter
             {
                 __state.WasOn = __instance != null && __instance.status == data_girls._status.hiatus;
                 __state.Reason = HiatusReasons.From(__instance.previous_status);
-                __state.PlannedEnd = __instance.HiatusEnd;
             }
             catch (Exception)
             {
@@ -499,8 +497,7 @@ namespace AIFanChatter
                 data_girls.girls girl = __instance;
                 if (ShouldPost(girl, __state, __runOriginal))
                 {
-                    bool early = History.Known(__state.PlannedEnd) && __state.PlannedEnd.Date > staticVars.dateTime.Date;
-                    Moments.Trigger(() => MomentContext.HiatusEnd(girl, __state.Reason, __state.PlannedEnd, early));
+                    Moments.Trigger(() => MomentContext.HiatusEnd(girl, __state.Reason));
                 }
             }
             catch (Exception)

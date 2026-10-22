@@ -210,7 +210,7 @@ namespace AIFanChatter.LiveReport
                 new("contract", () => { var contract = agency.ContractNow(); return MomentContext.ContractStart(contract, new[] { contract }, business.History); }),
                 new("audition", () => MomentContext.Audition(agency.AuditionNow(), Auditions.type.nationwide)),
                 new("hiatus", () => { var h = agency.HiatusNow(hiatusReason); return MomentContext.HiatusStart(h.Girl, h.Reason, h.LastEnd, h.Ended, h.Shows); }),
-                new("hiatus-end", () => { data_girls.girls back = agency.HiatusBack(hiatusReason); return MomentContext.HiatusEnd(back, HiatusReasons.From(back.previous_status), back.HiatusEnd, early: false); }),
+                new("hiatus-end", () => { data_girls.girls back = agency.HiatusBack(hiatusReason); return MomentContext.HiatusEnd(back, HiatusReasons.From(back.previous_status)); }),
                 // Last, as the graduate announces it and then leaves the group
                 new("graduation-announcement", () => { agency.AnnounceNow(); return MomentContext.GraduationAnnouncement(agency.Graduate); }),
                 new("graduation", () => GraduationMoment(agency)),

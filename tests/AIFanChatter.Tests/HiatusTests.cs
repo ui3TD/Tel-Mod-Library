@@ -116,8 +116,7 @@ namespace AIFanChatter.Tests
             {
                 return null;
             }
-            bool early = History.Known(before.PlannedEnd) && before.PlannedEnd.Date > on.Date;
-            return MomentContext.HiatusEnd(girl, before.Reason, before.PlannedEnd, early);
+            return MomentContext.HiatusEnd(girl, before.Reason);
         }
 
         [Theory]
@@ -155,7 +154,7 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// Her return date, the contracts and shows on air she leaves (read before the game removed her), her
+        /// No return date. The contracts and shows on air she leaves (read before the game removed her), her
         /// center singles, the bullying, and her friends; a show in production isn't public yet.
         /// </summary>
         [Fact]
@@ -165,7 +164,7 @@ namespace AIFanChatter.Tests
             Assert.Equal("an idol went on hiatus: a break from all idol activities", moment.Kind);
             Assert.Equal("Rin's hiatus", moment.Label);
             Assert.Equal("Rin", moment.Fact(F, "Idol"));
-            Assert.Equal("Saturday 22 June 2024, 3 months from now", moment.Fact(F, "Expected back"));
+            Assert.DoesNotContain("June", moment.Describe());
             Assert.Contains("Bepis", moment.Fact(F, "Contracts cancelled because of this"));
             Assert.Equal("\n- \"Idol Kitchen\" (Internet, Food)", moment.Fact(F, "Shows she leaves"));
             string centers = moment.Fact(F, "Singles she was the center of");
@@ -215,14 +214,13 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void End_OnItsDate_IsAsPlanned()
+        public void End_GivesTheReasonAndHerPeople()
         {
             data_girls.girls rin = Rin(Status.injured);
             Start(rin);
             Moment moment = End(rin, Today.AddDays(90));
             Assert.Equal("an idol returned from hiatus", moment.Kind);
             Assert.Equal("Rin's return from hiatus", moment.Label);
-            Assert.Equal("as planned", moment.Fact(F, "Returned"));
             Assert.Null(moment.Fact(F, "Shows she leaves"));
             Assert.Null(moment.Fact(F, "Contracts cancelled because of this"));
             Assert.Equal("Mio, Ema", moment.Fact(F, "Suspected to be bullied by"));
@@ -230,12 +228,15 @@ namespace AIFanChatter.Tests
             Assert.NotNull(moment.Fact(F, "Singles she was the center of"));
         }
 
+        /// <summary>Fans never knew the plan, so an early return reads the same as one on its date.</summary>
         [Fact]
-        public void End_CalledBackEarly_GivesThePlannedDate()
+        public void End_CalledBackEarly_SaysNothingAboutThePlan()
         {
             data_girls.girls rin = Rin();
             Start(rin);
-            Assert.Equal("earlier than planned (planned date: Saturday 22 June 2024)", End(rin, Today.AddDays(20)).Fact(F, "Returned"));
+            string text = End(rin, Today.AddDays(20)).Describe();
+            Assert.DoesNotContain("planned", text);
+            Assert.DoesNotContain("June", text);
         }
 
         /// <summary>

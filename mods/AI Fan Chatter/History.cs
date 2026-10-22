@@ -366,12 +366,17 @@ namespace AIFanChatter
         /// </summary>
         private static string ShowName(Shows._show show)
         {
-            List<string> kind = new[] { Part(() => show.medium?.GetTitle()), Part(() => show.genre?.GetTitle()) }.Where(t => t != "").ToList();
             string cast = show.castType == global::Shows._show._castType.entireGroup ? "the whole group"
                 : show.castType == global::Shows._show._castType.rotatingCast ? "a rotating cast"
                 : Part(() => MomentContext.JoinAnd(Cast(show)));
-            return "\"" + Moment.Clean(show.title) + "\"" + (kind.Count == 0 ? "" : " (" + string.Join(", ", kind.ToArray()) + ")")
-                + (cast == "" ? "" : ", with " + cast);
+            return ShowTitle(show) + (cast == "" ? "" : ", with " + cast);
+        }
+
+        /// <summary>"\"Idol Kitchen\" (Internet, Food)": its title, medium and genre as the game names them.</summary>
+        internal static string ShowTitle(Shows._show show)
+        {
+            List<string> kind = new[] { Part(() => show.medium?.GetTitle()), Part(() => show.genre?.GetTitle()) }.Where(t => t != "").ToList();
+            return "\"" + Moment.Clean(show.title) + "\"" + (kind.Count == 0 ? "" : " (" + string.Join(", ", kind.ToArray()) + ")");
         }
 
         /// <summary>A fixed cast's names, up to ShowCastNamed, then "N more" as the last item.</summary>

@@ -397,6 +397,125 @@ namespace AIFanChatter
     }
 
     /// <summary>
+    /// An idol going on hiatus, from the player's menu, a failed treatment or a dialogue. The game breaks
+    /// her contracts and refills her show slots as she leaves, so both are read before.
+    /// </summary>
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.SendOnHiatus))]
+    [HarmonyPriority(Priority.Last)]
+    public class data_girls_girls_SendOnHiatus
+    {
+        public sealed class Before
+        {
+            public bool WasOff;
+            public HiatusReason Reason;
+            public DateTime LastEnd;
+            public List<business.active_proposal> Contracts = new();
+            public List<Shows._show> Shows = new();
+        }
+
+        public static void Prefix(data_girls.girls __instance, out Before __state)
+        {
+            __state = new Before();
+            try
+            {
+                __state.WasOff = __instance != null && __instance.status != data_girls._status.hiatus;
+                __state.Reason = HiatusReasons.From(__instance.status);
+                __state.LastEnd = __instance.HiatusEnd;
+                __state.Contracts = ContractBreaks.Snapshot();
+                __state.Shows = ShowsOf(__instance, global::Shows.shows);
+            }
+            catch (Exception)
+            {
+                // Whatever couldn't be read is left out
+            }
+        }
+
+        public static void Postfix(data_girls.girls __instance, Before __state, bool __runOriginal)
+        {
+            try
+            {
+                data_girls.girls girl = __instance;
+                if (ShouldPost(girl, __state, __runOriginal))
+                {
+                    List<business.active_proposal> ended = ContractBreaks.Ended(__state.Contracts).Where(c => c.Girl == girl).ToList();
+                    Moments.Trigger(() => MomentContext.HiatusStart(girl, __state.Reason, __state.LastEnd, ended, __state.Shows));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        internal static bool ShouldPost(data_girls.girls girl, Before before, bool ran)
+        {
+            return ran && girl != null && before != null && before.WasOff && girl.status == data_girls._status.hiatus;
+        }
+
+        /// <summary>The shows on air whose cast slots hold her; one still in production isn't public yet.</summary>
+        internal static List<Shows._show> ShowsOf(data_girls.girls girl, IEnumerable<Shows._show> shows)
+        {
+            return (shows ?? Enumerable.Empty<Shows._show>())
+                .Where(s => s != null && (s.status == Shows._show._status.released || s.status == Shows._show._status.relaunching
+                    || s.status == Shows._show._status.relaunching_working) && s.girls != null && s.girls.Contains(girl))
+                .ToList();
+        }
+    }
+
+    /// <summary>
+    /// An idol back from hiatus: on its planned date, or called back early by the player. The reason is
+    /// the status she had before it, which the game keeps as previous_status.
+    /// </summary>
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.FinishHiatus))]
+    [HarmonyPriority(Priority.Last)]
+    public class data_girls_girls_FinishHiatus
+    {
+        public sealed class Before
+        {
+            public bool WasOn;
+            public HiatusReason Reason;
+            public DateTime PlannedEnd;
+        }
+
+        public static void Prefix(data_girls.girls __instance, out Before __state)
+        {
+            __state = new Before();
+            try
+            {
+                __state.WasOn = __instance != null && __instance.status == data_girls._status.hiatus;
+                __state.Reason = HiatusReasons.From(__instance.previous_status);
+                __state.PlannedEnd = __instance.HiatusEnd;
+            }
+            catch (Exception)
+            {
+                // Said to have no reason
+            }
+        }
+
+        public static void Postfix(data_girls.girls __instance, Before __state, bool __runOriginal)
+        {
+            try
+            {
+                data_girls.girls girl = __instance;
+                if (ShouldPost(girl, __state, __runOriginal))
+                {
+                    bool early = History.Known(__state.PlannedEnd) && __state.PlannedEnd.Date > staticVars.dateTime.Date;
+                    Moments.Trigger(() => MomentContext.HiatusEnd(girl, __state.Reason, __state.PlannedEnd, early));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        internal static bool ShouldPost(data_girls.girls girl, Before before, bool ran)
+        {
+            return ran && girl != null && before != null && before.WasOn && girl.status != data_girls._status.hiatus;
+        }
+    }
+
+    /// <summary>
     /// A lasting business contract (an ad or a TV drama), when the player accepts it: the game adds it to
     /// the running contracts. One-off deals never come here.
     /// </summary>

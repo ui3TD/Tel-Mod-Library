@@ -376,7 +376,7 @@ namespace AIFanChatter
                 .AddTo(section, "Singles released by the group", () => Members.ReleasedSingles(group).Count)
                 .AddTo(section, "Most popular members", () => graduation || group == null ? ""
                     : string.Join(", ", Members.ByFans(group.GetGirls(true)).Take(Members.MostPopular).Select(Name).ToArray()));
-            if (graduation)
+            if (friends != null)
             {
                 // A clique can span groups: one line per group, hers first
                 foreach (IGrouping<Groups._group, data_girls.girls> mates in (friends ?? new List<data_girls.girls>())
@@ -999,7 +999,7 @@ namespace AIFanChatter
             Moment moment = new Moment("an idol announced her graduation: she leaves the group in 3 months and stays a member until then")
                 .Labelled(() => Name(girl) + "'s graduation announcement");
             GraduateFacts(moment, girl, null, null, m => m
-                .Add("Graduation date", () => GraduationDate(girl.Graduation_Date)));
+                .Add("Graduation date", () => DateAhead(girl.Graduation_Date)));
             Groups._group group = GroupOf(() => girl.GetGroup());
             Members.Add(moment, new List<data_girls.girls> { girl }, Now, group);
             History.Graduation(moment, girl, data_girls.girl, Now);
@@ -1009,7 +1009,7 @@ namespace AIFanChatter
         /// <summary>
         /// "Sunday 21 January 2027, 3 months from now"; the date alone when it isn't ahead; "" when unknown.
         /// </summary>
-        private static string GraduationDate(DateTime date)
+        private static string DateAhead(DateTime date)
         {
             if (!History.Known(date))
             {
@@ -1027,19 +1027,80 @@ namespace AIFanChatter
         private static void GraduateFacts(Moment moment, data_girls.girls girl, List<data_girls.girls> bulliedBy,
             List<data_girls.girls> bullied, Func<Moment, Moment> leaving)
         {
+            Bullying(leaving(moment.Add("Idol", () => Name(girl))), girl, bulliedBy, bullied);
+            CenterSinglesOf(moment, girl);
+        }
+
+        /// <summary>
+        /// The bullying fans suspect around her: only bullying the player has found out. Null lists read it now.
+        /// </summary>
+        private static Moment Bullying(Moment moment, data_girls.girls girl, List<data_girls.girls> bulliedBy = null, List<data_girls.girls> bullied = null)
+        {
             bulliedBy ??= Members.BulliedBy(girl);
             bullied ??= Members.Bullied(girl);
-            leaving(moment.Add("Idol", () => Name(girl)))
-                // Only bullying the player has found out; fans can only suspect it
+            return moment
                 .Add("Suspected to be bullied by", () => string.Join(", ", bulliedBy.Select(Name).ToArray()))
                 .Add("Suspected to have bullied", () => string.Join(", ", bullied.Select(Name).ToArray()));
-            // Her best-selling released singles as center, best first; left out when she centered none
+        }
+
+        /// <summary>Her best-selling released singles as center, best first; left out when she centered none.</summary>
+        private static void CenterSinglesOf(Moment moment, data_girls.girls girl)
+        {
             moment.AddList(Moment.FactsSection, "Singles she was the center of",
                 singles.Singles
                     .Where(s => s != null && s.status == singles._single._status.released && s.ReleaseData != null && CenterOf(s) == girl)
                     .OrderByDescending(s => s.ReleaseData.Sales)
                     .Take(CenterSingles)
                     .Select(s => (Func<object>)(() => TitleWithStyle(s))).ToList());
+        }
+
+        /// <summary>
+        /// An idol going on hiatus, a break from all idol activities. Fans hear the reason by the status she
+        /// had: an injury, health reasons for depression (never named: mental health is private), or none.
+        /// Her stamina stays out of her line, so it can't hint at more than the reason says.
+        /// </summary>
+        /// <param name="lastEnd">The planned end of her previous hiatus, read before the game set the new one.</param>
+        /// <param name="ended">Her contracts the game broke as she left.</param>
+        /// <param name="shows">Her shows, read before the game refilled her slots; named without their cast, which has changed.</param>
+        public static Moment HiatusStart(data_girls.girls girl, HiatusReason reason, DateTime lastEnd,
+            IList<business.active_proposal> ended, IList<Shows._show> shows)
+        {
+            Moment moment = new Moment("an idol went on hiatus: a break from all idol activities")
+                .Labelled(() => Name(girl) + "'s hiatus")
+                .Add("Idol", () => Name(girl))
+                .Add("Reason announced", () => HiatusReasons.Text(reason))
+                .Add("Expected back", () => DateAhead(girl.HiatusEnd));
+            ContractsCancelled(moment, ended);
+            moment.AddList(Moment.FactsSection, "Shows she leaves",
+                (shows ?? new List<Shows._show>()).Where(s => s != null).Select(s => (Func<object>)(() => History.ShowTitle(s))).ToList());
+            moment.Add("Her last hiatus ended", () => History.Known(lastEnd) && lastEnd.Date < Now.Date ? History.Ago(lastEnd, Now) : "");
+            return HiatusPeople(moment, girl);
+        }
+
+        /// <summary>
+        /// An idol back from hiatus, on its planned date or called back early, with the reason fans heard
+        /// when it started. Her shows and contracts ended when she left, so none are sent.
+        /// </summary>
+        public static Moment HiatusEnd(data_girls.girls girl, HiatusReason reason, DateTime plannedEnd, bool early)
+        {
+            Moment moment = new Moment("an idol returned from hiatus")
+                .Labelled(() => Name(girl) + "'s return from hiatus")
+                .Add("Idol", () => Name(girl))
+                .Add("Reason announced at the start", () => HiatusReasons.Text(reason))
+                .Add("Returned", () => !early ? "as planned"
+                    : History.Known(plannedEnd) ? "earlier than planned (planned date: " + plannedEnd.ToString("dddd d MMMM yyyy", CultureInfo.InvariantCulture) + ")"
+                    : "earlier than planned");
+            return HiatusPeople(moment, girl);
+        }
+
+        /// <summary>Her bullying, center singles, line without stamina, and friends; the hiatus keeps them all.</summary>
+        private static Moment HiatusPeople(Moment moment, data_girls.girls girl)
+        {
+            Bullying(moment, girl);
+            CenterSinglesOf(moment, girl);
+            Groups._group group = GroupOf(() => girl.GetGroup());
+            Members.Add(moment, new List<data_girls.girls> { girl }, Now, group, withStamina: false);
+            return Agency(moment, group, friends: Members.Friends(girl));
         }
 
         /// <summary>

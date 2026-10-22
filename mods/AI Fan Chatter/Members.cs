@@ -179,10 +179,11 @@ namespace AIFanChatter
         /// ranks replace the ones worked out now: a graduating idol's is taken before the game moves her fans.
         /// Without withElection the lines leave out her election place: an election's own moment gives it.
         /// A newcomer's line leaves out her time in the group, election, place by fans and singles: on her
-        /// first day they're all empty.
+        /// first day they're all empty. Without withStamina the lines leave out low stamina: a hiatus moment
+        /// gives its own reason, and her mental stamina would hint at more.
         /// </summary>
         public static void Add(Moment moment, IList<data_girls.girls> idols, DateTime now, Groups._group eventGroup, IDictionary<data_girls.girls, Rank> knownRanks = null,
-            bool withElection = true, bool newcomer = false)
+            bool withElection = true, bool newcomer = false, bool withStamina = true)
         {
             if (idols == null)
             {
@@ -222,7 +223,7 @@ namespace AIFanChatter
                 }
                 bool withTrivia = i < TriviaIdols;
                 Rank known = knownRanks != null && knownRanks.TryGetValue(girl, out Rank rank) ? rank : null;
-                moment.AddTo(Moment.MembersSection, name, () => Line(girl, withTrivia, now, eventGroup, known, RankIn, withElection, newcomer));
+                moment.AddTo(Moment.MembersSection, name, () => Line(girl, withTrivia, now, eventGroup, known, RankIn, withElection, newcomer, withStamina));
             }
         }
 
@@ -237,7 +238,7 @@ namespace AIFanChatter
         /// in the moment's group.
         /// </summary>
         public static string Line(data_girls.girls girl, bool withTrivia, DateTime now, Groups._group eventGroup, Rank knownRank,
-            Func<data_girls.girls, Groups._group, string, Rank> rankIn, bool withElection = true, bool newcomer = false)
+            Func<data_girls.girls, Groups._group, string, Rank> rankIn, bool withElection = true, bool newcomer = false, bool withStamina = true)
         {
             Groups._group own = OwnGroup(girl);
             bool guest = eventGroup != null && own != null && own != eventGroup;
@@ -260,7 +261,7 @@ namespace AIFanChatter
                 string standing = Part(() => AgeStanding(girl, home, named));
                 return standing == "" ? age : age + ", " + standing;
             }));
-            Sentence(sentences, Join(
+            Sentence(sentences, !withStamina ? "" : Join(
                 Part(() => girl.GetMentalStamina() <= LowStamina ? "mental stamina " + OutOf100(girl.GetMentalStamina()) : ""),
                 Part(() => girl.GetPhysicalStamina() <= LowStamina ? "stamina " + OutOf100(girl.GetPhysicalStamina()) : "")));
             Sentence(sentences, Part(() => Standouts(girl, home, named)));

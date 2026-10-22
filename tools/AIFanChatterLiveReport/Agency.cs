@@ -188,6 +188,47 @@ namespace AIFanChatter.LiveReport
         /// <summary>
         /// Hina's ad for Burger Queen, using her cute image, accepted today; she did one ad before.
         /// </summary>
+        /// <summary>
+        /// Sora going on hiatus today for 3 months, with this reason's status before it. Unless injured (the
+        /// injury already took them), she leaves her radio show and her TV drama. Her last hiatus ended
+        /// 10 months ago.
+        /// </summary>
+        public (data_girls.girls Girl, HiatusReason Reason, DateTime LastEnd, List<business.active_proposal> Ended, List<Shows._show> Shows) HiatusNow(string reason)
+        {
+            data_girls.girls sora = idols["Sora"];
+            data_girls._status before = HiatusStatus(reason);
+            List<business.active_proposal> ended = new();
+            List<Shows._show> shows = new();
+            if (before != data_girls._status.injured)
+            {
+                ended.Add(new business.active_proposal { Type = business._type.tv_drama, Girl = sora, Agent_Name = "Sakura TV", Product_Name = "Summer Rain", EndDate = Today.AddMonths(2) });
+                shows.Add(Show("Sora's Night Radio", Shows._show._status.released, 24, Today.AddMonths(-6), 0, 3, 2, sora));
+            }
+            DateTime lastEnd = Today.AddMonths(-10);
+            sora.previous_status = before;
+            sora.status = data_girls._status.hiatus;
+            sora.HiatusEnd = Today.AddDays(90);
+            return (sora, HiatusReasons.From(before), lastEnd, ended, shows);
+        }
+
+        /// <summary>Sora back from a hiatus with this reason, on its planned date today.</summary>
+        public data_girls.girls HiatusBack(string reason)
+        {
+            data_girls.girls sora = idols["Sora"];
+            sora.previous_status = HiatusStatus(reason);
+            sora.HiatusEnd = Today;
+            sora.status = data_girls._status.normal;
+            return sora;
+        }
+
+        private static data_girls._status HiatusStatus(string reason) => reason switch
+        {
+            "injury" => data_girls._status.injured,
+            "health" => data_girls._status.depressed,
+            "none" => data_girls._status.normal,
+            _ => throw new ArgumentException("No hiatus reason " + reason + "; the choices are injury, health and none"),
+        };
+
         public business.active_proposal ContractNow()
         {
             business.History.Add(new business._history { Type = business._type.ad, Girl = idols["Hinata"], Date = Today.AddMonths(-9) });

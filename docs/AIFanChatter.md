@@ -85,7 +85,10 @@ The mod fills each of these in with information from your game, about the moment
 The group these parts call "the group" is the group the moment is about:
 - for a single, the group that released it;
 - for a concert, a tour, an election or new members from an audition, the main group. A tour takes every active idol and an election ranks every idol, from every group;
-- for a graduation, the graduating idol's group;
+- for a graduation or a graduation announcement, the graduating idol's group;
+- for a show starting or ending, the group of the first idol in its cast, or the main group when the whole group is the cast;
+- for a business contract or a hiatus, the idol's group;
+- for a cancelled election, the group that released its voting single;
 - for a random event, the group of the idol it's mainly about, or the main group when no idol is involved;
 - for a dating scandal, the idol's group;
 - for a policy change or a staff firing, the group of the first idol whose scandal points paid for it, or the main group.
@@ -118,7 +121,8 @@ The moment's own details, one per line.
   - the new members, up to 10 names, then how many more;
   - the audition's scale as the game names it: Local, Regional or Nationwide.
   - How rare a find each idol was (her card's colour) isn't sent: only the player sees it.
-- **A show starting** (posted when the player launches it and its first episode airs): its title, medium, genre and host as the game names them, its cast (the whole group, a rotating cast, or the idols), and the first episode's audience. Its budget, revenue and new fans aren't sent.
+- **A show starting** (posted when the player launches it and its first episode airs): its title, medium, genre and host as the game names them, and its cast (the whole group, a rotating cast, or the idols). Its viewers, budget, revenue and new fans aren't sent.
+- **A show ending** (posted only for a show that aired for a year or more, counted from its first episode, with concept updates included; posted when the cancellation really ends it: at once for an internet show, at its next 12th episode for a TV or radio show): its title, medium, genre and host, its cast (for a rotating cast, the idols in its last episode), and how long it ran, such as `Ran for: 13 months, 60 episodes`. A show whose whole cast left gets no posts. Its viewers, budget, revenue and new fans aren't sent.
 - **A business contract starting** (an ad or a TV drama, the 3-month deals; one-off photoshoots and variety appearances get no posts): the idol, the kind of contract, the brand (for an ad) or the studio or channel and the drama's title (for a TV drama), the image it uses, and its length. What it pays and costs her isn't sent.
 - **The yearly awards show** (posted when the show's dialogue ends, only in years the agency was nominated):
   - the awards it won, by the game's titles, with the idol or single each is for, such as `Best Debut Idol: Kondo Tsubasa`;
@@ -139,6 +143,19 @@ The moment's own details, one per line.
   - who joined in her place, when she brought in her younger sister or a successor she chose (`Joined in her place`), such as `Uchida Hana, her younger sister`. The game puts her in the main group, which is named when the graduate was in a sister group;
   - the idols she was bullied by (`Suspected to be bullied by`) and the idols she bullied (`Suspected to have bullied`). Only bullying that the player had found out about is named, and idols who had stopped bullying her are left out. Each line is left out when it names no one;
   - her singles as center, up to her 5 best-selling ones, best-selling first. The list is left out when she was never a center.
+- **A graduation announcement** (posted when the player confirms it; she can still be talked into staying before that): the idol, her graduation date and how far ahead it is, such as `Monday 24 June 2024, 3 months from now`, the bullying fans suspect and her singles as center, as for a graduation.
+- **A hiatus starting** (posted when an idol goes on hiatus: from her menu, after a failed treatment, or through a dialogue):
+  - the idol, and the reason announced, by her status before it: `an injury`, `health reasons, no details given` for depression (mental health is never named), or `no reason given`;
+  - the business contracts the hiatus cancelled, and the shows on air she leaves. An injured idol lost both when she got hurt, so her hiatus lists neither;
+  - when her last hiatus ended, when she had one before;
+  - the bullying fans suspect and her singles as center, as for a graduation.
+  - When she's expected back isn't sent: fans don't know.
+- **A hiatus ending** (posted when she comes back, on the planned date or called back early; both read the same): the idol, the reason announced at the start, the bullying fans suspect and her singles as center.
+- **A cancelled election** (posted only once its voting single is out: before that, fans haven't heard of it):
+  - the election's number and the broadcast it was to have;
+  - the voting single, how long ago it came out, its sales in CDs, and the money fans spent on it (the CDs sold times the price per CD);
+  - its results concert: `still on without the results`, or `also cancelled` when cancelling the concert cancelled the election.
+  - The game lowers hardcore and casual fans' opinion as it cancels, and the prompt's opinions already include that.
 - **A random event:**
   - what happened, the details, the agency's response, the outcome, and who was involved;
   - the business contracts the answer cancelled (`Contracts cancelled because of this`), each by kind, client and idol. The game cancels them when the answer brings damages, or through the event itself. Left out when none were;
@@ -154,8 +171,8 @@ The group and the agency, one fact per line:
 
 - the group's name, and the main group's name when it's a sister group;
 - the size of each group the moment changed, one line each, with its size now and before, such as `Members in Aozora Chapter: 4 now, down from 5`: after a graduation, new members from an audition, or a sister or successor joining. Moments that change no group's size leave it out;
-- when the group was formed, how many singles it has released, and the three members with the most fans. For a graduation, the graduating idol's friends (the other members of her clique) take the place of the three members with the most fans, on one line per group, such as `Friends in Aozora Chapter`, her own group first. They're left out when she wasn't in a clique or the player hadn't found out about it;
-- the reputation from scandals, in words, except for a graduation, which is about one idol;
+- when the group was formed, how many singles it has released, and the three members with the most fans. For a graduation or a graduation announcement, the graduating idol's friends (the other members of her clique) take the place of the three members with the most fans, on one line per group, such as `Friends in Aozora Chapter`, her own group first. A hiatus gives the idol's friends the same way, after the three members with the most fans. Friends are left out when she wasn't in a clique or the player hadn't found out about it;
+- the reputation from scandals, in words, except for a graduation or a graduation announcement, which are about one idol;
 - the concept, from the agency's policies;
 - the policies that matter to this kind of moment:
   - handshake event security, for a single promoted with a handshake event;
@@ -165,7 +182,7 @@ The group and the agency, one fact per line:
 
 ### `{members}`
 
-One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation (and the idol who joined in her place, with a new member's line), the idol for a dating scandal, and up to 5 idols whose scandal points paid for a policy change or a staff firing. A tour gets the 5 active idols with the most fans, from any group. New members from an audition get up to 5 lines, in the order they were hired; their lines leave out the time in the group, the election place, the place by fans and the singles, which are all empty on an idol's first day, and add her highest potential, such as `Highest potential: dance`: the skill she could grow furthest in, or every one tied for it. The awards show gets up to 5: the winners, then the idols who gave the agency's speeches, then the nominees who lost. An election gets up to 5: the first 3 places, then the idols with the biggest drop and the biggest rise outside the top 10, then the 4th and 5th places. Their lines leave out the election place, which the results give.
+One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation (and the idol who joined in her place, with a new member's line), the idol for a dating scandal, and up to 5 idols whose scandal points paid for a policy change or a staff firing. A tour gets the 5 active idols with the most fans, from any group. New members from an audition get up to 5 lines, in the order they were hired; their lines leave out the time in the group, the election place, the place by fans and the singles, which are all empty on an idol's first day, and add her highest potential, such as `Highest potential: dance`: the skill she could grow furthest in, or every one tied for it. The awards show gets up to 5: the winners, then the idols who gave the agency's speeches, then the nominees who lost. A show gets up to 5 of its cast (the 5 with the most fans when the whole group is the cast), a business contract and a hiatus the idol, and a cancelled election the voting single's lineup. An election gets up to 5: the first 3 places, then the idols with the biggest drop and the biggest rise outside the top 10, then the 4th and 5th places. Their lines leave out the election place, which the results give.
 
 Each line gives, in this order:
 
@@ -173,7 +190,7 @@ Each line gives, in this order:
 2. up to 2 trivia facts, only for the first 2 idols;
 3. her scandal record in words, when she has one;
 4. her age, and `youngest in the group` or `oldest in the group` when she alone is, by birthday, in a group of 3 or more;
-5. her mental stamina and her stamina, each only when it's 50 or lower;
+5. her mental stamina and her stamina, each only when it's 50 or lower. A hiatus leaves both out, so they can't hint at more than the announced reason;
 6. the skills where she alone is the best or the worst in her group, such as `Top dance skill in the group`;
 7. her time in the group, her place in the last election, her place by fans in the group, and how many of the group's singles she's in;
 8. `Member of sister group (name)` or `Member of main group (name)`, when she isn't in the group the moment is about.
@@ -189,15 +206,17 @@ The group's own totals are in `{agency}`, so the lines leave them out.
 
 Earlier results to compare with. Empty when there's nothing earlier.
 
-- **A single:** the group's last 3 singles, each with its genre, lyrics, choreography, sales, quality, fan satisfaction and release date, then how many singles came before and the best-selling one.
-- **A concert:** the previous concert's venue, attendance and date, how many concerts came before, and the biggest audience so far.
+- **A single:** the group's last 3 singles, each with its genre, lyrics, choreography, sales, quality, fan satisfaction and release date, then how many singles came before, and the best-selling one with how long ago it came out.
+- **A concert:** the previous concert's venue, attendance and date, how many concerts came before, and the biggest audience so far, with how long ago that concert was.
 - **A tour:** every place earlier tours went to, once each, at its latest visit, newest first, with the seats filled and how long ago, such as `Osaka: 7600 out of 8000 seats, 4 months ago`. Then how many tours there have been, this one included.
 - **New members from an audition:** the idols who joined last before them, all hired on the same day, and how long ago. Graduated idols count.
-- **A show starting:** the shows cancelled in the past year, newest first, up to 3, each with its medium, genre, cast (up to 3 names, the whole group, or a rotating cast), episodes and when its last episode aired; other shows on air now, up to 3, with their medium, genre and cast; and how many shows started before.
-- **A business contract starting:** the idol's other running contracts, and how many deals of the same kind she took before.
+- **A show starting or ending:** the shows cancelled in the past year, newest first, up to 3, each with its medium, genre, cast (up to 3 names, the whole group, or a rotating cast), episodes and when its last episode aired; other shows on air now, up to 3, with their medium, genre, cast and when each started; and, for a show starting, how many shows started before.
+- **A business contract starting:** the idol's other running contracts, and how many deals of the same kind she took before, with how long ago the latest was.
 - **The yearly awards show:** how many awards the agency won in earlier years, last year's wins by title, and how many shows it has been in, this one included.
 - **An election:** the previous election, its winner and how long ago, then how many elections there have been, this one included.
-- **A graduation:** the previous graduate from the same group and when she left, and how many of the group's idols graduated before her. When she's the group's first graduate, it says so.
+- **A cancelled election:** the previous election, its winner and how long ago. It isn't counted: it never happened.
+- **A graduation or a graduation announcement:** the previous graduate from the same group and how long ago she left, on one line, and how many of the group's idols graduated before her. When she's the group's first graduate, it says so.
+- **A hiatus:** nothing. The game keeps only the end of her last hiatus, which `{facts}` gives.
 - **A random event:** how often the same event happened before, and when it last did. For an event in a storyline, the text of the storyline's earlier events that happened, oldest first. The game doesn't keep which answer was given, so an earlier event is only included when every answer of it that leads on in the storyline had a public outcome, or the game posted about it. The answers themselves aren't included.
 - **A dating scandal:** nothing. The game gives each idol at most one.
 - **A paid policy change or a staff firing:** the latest scandal of each idol whose points paid for it, and of the group when its own points did: the text of her most recent event that can add scandal points. Dating scandals aren't in the game's event log, so they're never named.
@@ -312,7 +331,7 @@ Mori Sayaka: Trait: Perfectionist. A minor scandal in her past. Age 23. Smartest
 History, for context only (not what the posts are about):
 Previous concert: Concert Hall, attendance 1500 out of 1500 seats, held 6 months ago
 Concerts held before this one: 4
-Biggest audience at an earlier concert: 7600
+Biggest audience at an earlier concert: 7600, held 12 months ago
 
 History: earlier posts on the feed, oldest first, for context only. Don't reply to them or repeat them:
 - M_HC_YA: Handshake tickets for Midnight Platform secured. Row 3 at the open air show too, best week ever

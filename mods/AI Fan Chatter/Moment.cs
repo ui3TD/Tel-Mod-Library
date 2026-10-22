@@ -605,6 +605,71 @@ namespace AIFanChatter
             return title + ": " + Name(speech.Girl) + (thanked == "" ? " gave an acceptance speech" : " thanked " + thanked);
         }
 
+        /// <summary>
+        /// A show's first episode, aired as the player launched it. Its budget, revenue and new fans are the
+        /// agency's own numbers, so only the audience, a ratings-style figure, is sent.
+        /// </summary>
+        public static Moment ShowStart(Shows._show show)
+        {
+            List<data_girls.girls> cast = CastOf(show);
+            bool wholeGroup = show.castType == Shows._show._castType.entireGroup;
+            Moment moment = new Moment("a new show starring the agency's idols started airing")
+                .Labelled(() => "the show \"" + Moment.Clean(show.title) + "\"")
+                .Add("Title", () => "\"" + Moment.Clean(show.title) + "\"")
+                .Add("Medium", () => show.medium?.GetTitle())
+                .Add("Genre", () => show.genre?.GetTitle())
+                // The host's tier as the game names it ("Seasoned"); tier 0 is the game's "No Host"
+                .Add("Host", () => show.mc == null ? "" : show.mc.id == 0 ? show.mc.GetTitle() : Moment.Clean(show.mc.GetTitle()) + " host")
+                .Add("Cast", () => wholeGroup ? "the whole group"
+                    : show.castType == Shows._show._castType.rotatingCast ? "a rotating cast, in the first episode " + Names(cast, 7)
+                    : Names(cast, 7))
+                .Add("First episode audience", () => show.audience.Count > 0 ? show.audience[0] + " viewers" : "");
+            List<data_girls.girls> idols = (wholeGroup ? Members.ByFans(cast) : cast).Take(Members.ShowCap).ToList();
+            Groups._group group = (wholeGroup || cast.Count == 0 ? null : GroupOf(() => cast[0].GetGroup())) ?? MainGroup();
+            Members.Add(moment, idols, Now, group);
+            History.Shows(moment, show, Shows.shows, Now);
+            return Agency(moment, group);
+        }
+
+        private static List<data_girls.girls> CastOf(Shows._show show)
+        {
+            try
+            {
+                return show.GetCast().Where(g => g != null).Distinct().ToList();
+            }
+            catch (Exception)
+            {
+                return new List<data_girls.girls>();
+            }
+        }
+
+        /// <summary>
+        /// A lasting contract, as the player accepts it: an ad or a TV drama, always one idol's. What it pays
+        /// and costs her isn't public, so only who, what, for whom and how long is sent.
+        /// </summary>
+        /// <param name="running">The agency's running contracts, this one included.</param>
+        /// <param name="history">Every deal the agency accepted before (business.History); this one isn't in it yet.</param>
+        public static Moment ContractStart(business.active_proposal contract, IEnumerable<business.active_proposal> running,
+            IEnumerable<business._history> history)
+        {
+            data_girls.girls girl = contract.Girl;
+            bool tv = contract.Type == business._type.tv_drama;
+            string kind = Moment.Clean(Part(() => business.GetData(contract.Type)?.GetTitle()));
+            Moment moment = new Moment(tv ? "an idol was cast in a TV drama" : "an idol landed an advertising contract")
+                .Labelled(() => Name(girl) + (tv ? "'s TV drama" : "'s advertising contract"))
+                .Add("Idol", () => Name(girl))
+                .Add("Contract", () => kind)
+                .Add(tv ? "Studio or channel" : "Brand", () => Moment.Clean(contract.Agent_Name))
+                .Add("Drama", () => tv && !string.IsNullOrEmpty(Moment.Clean(contract.Product_Name)) ? "\"" + Moment.Clean(contract.Product_Name) + "\"" : "")
+                .Add("Image used", () => data_girls.GetParamName(contract.Skill))
+                .Add("Length", () => business.GetData(contract.Type) is business._data data && data.duration > 0
+                    ? data.duration + (data.duration == 1 ? " month" : " months") : "");
+            Groups._group group = GroupOf(() => girl.GetGroup());
+            Members.Add(moment, new List<data_girls.girls> { girl }, Now, group ?? MainGroup());
+            History.Contracts(moment, contract, running, history);
+            return Agency(moment, group);
+        }
+
         /// <summary>The most places an election's results list.</summary>
         public const int ElectionPlaces = 10;
 
@@ -1079,7 +1144,7 @@ namespace AIFanChatter
         /// "Advertisement for Sparkle Soda from Hoshi Beverages, with Takeda Rin, 8 weeks left": the kind's full
         /// title from the game's business data, or its short one.
         /// </summary>
-        private static string Contract(business.active_proposal contract)
+        internal static string Contract(business.active_proposal contract)
         {
             string kind = Moment.Clean(Part(() => business.GetData(contract.Type)?.GetTitle()));
             if (kind == "")

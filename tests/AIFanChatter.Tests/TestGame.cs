@@ -43,6 +43,8 @@ namespace AIFanChatter.Tests
             Awards.Speeches.Clear();
             Awards_Reset_After_Awards.Reset();
             AwardsShow.ClearHeard();
+            Shows.shows.Clear();
+            Shows_ReleaseShow.Reset();
             staticVars.dateTime = Today;
         }
 

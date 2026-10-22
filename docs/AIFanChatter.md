@@ -117,6 +117,8 @@ The moment's own details, one per line.
   - the new members, up to 10 names, then how many more;
   - the audition's scale as the game names it: Local, Regional or Nationwide.
   - How rare a find each idol was (her card's colour) isn't sent: only the player sees it.
+- **A show starting** (posted when the player launches it and its first episode airs): its title, medium, genre and host as the game names them, its cast (the whole group, a rotating cast, or the idols), and the first episode's audience. Its budget, revenue and new fans aren't sent.
+- **A business contract starting** (an ad or a TV drama, the 3-month deals; one-off photoshoots and variety appearances get no posts): the idol, the kind of contract, the brand (for an ad) or the studio or channel and the drama's title (for a TV drama), the image it uses, and its length. What it pays and costs her isn't sent.
 - **The yearly awards show** (posted when the show's dialogue ends, only in years the agency was nominated):
   - the awards it won, by the game's titles, with the idol or single each is for, such as `Best Debut Idol: Kondo Tsubasa`;
   - the awards it was nominated for and lost, with the winner the show announced, such as `Gravure Queen: Ogawa Rena, lost to Saito Yuna of Starlight Ribbon`;
@@ -188,6 +190,8 @@ Earlier results to compare with. Empty when there's nothing earlier.
 - **A concert:** the previous concert's venue, attendance and date, how many concerts came before, and the biggest audience so far.
 - **A tour:** every place earlier tours went to, once each, at its latest visit, newest first, with the seats filled and how long ago, such as `Osaka: 7600 out of 8000 seats, 4 months ago`. Then how many tours there have been, this one included.
 - **New members from an audition:** the idols who joined last before them, all hired on the same day, and how long ago. Graduated idols count.
+- **A show starting:** the shows cancelled in the past year, newest first, up to 3, each with its medium, genre, cast (up to 3 names, the whole group, or a rotating cast), episodes and when its last episode aired; other shows on air now, up to 3, with their medium, genre and cast; and how many shows started before.
+- **A business contract starting:** the idol's other running contracts, and how many deals of the same kind she took before.
 - **The yearly awards show:** how many awards the agency won in earlier years, last year's wins by title, and how many shows it has been in, this one included.
 - **An election:** the previous election, its winner and how long ago, then how many elections there have been, this one included.
 - **A graduation:** the previous graduate from the same group and when she left, and how many of the group's idols graduated before her. When she's the group's first graduate, it says so.

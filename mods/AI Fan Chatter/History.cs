@@ -309,6 +309,109 @@ namespace AIFanChatter
             }
         }
 
+        /// <summary>The most cancelled shows and shows on air a show's start names.</summary>
+        public const int ShowsListed = 3;
+
+        /// <summary>
+        /// For a show's start: shows cancelled in the past year, newest first, other shows on air, and how many
+        /// shows started before. The game keeps no end date: episodes air weekly from the launch date, so the
+        /// last one aired 7 days times the episodes after the first later.
+        /// </summary>
+        public static void Shows(Moment moment, Shows._show show, IEnumerable<Shows._show> all, DateTime now)
+        {
+            try
+            {
+                List<Shows._show> others = (all ?? Enumerable.Empty<Shows._show>()).Where(s => s != null && s != show).ToList();
+                moment.AddList(Section, "Recently cancelled shows", others
+                    .Where(s => s.status == global::Shows._show._status.canceled && Known(s.LaunchDate) && s.episodeCount > 0)
+                    .Select(s => new { s, last = LastAired(s) })
+                    .Where(x => x.last <= now && x.last >= now.AddMonths(-12))
+                    .OrderByDescending(x => x.last)
+                    .Take(ShowsListed)
+                    .Select(x => (Func<object>)(() =>
+                    {
+                        string ago = Ago(x.last, now);
+                        return ShowName(x.s) + ", " + x.s.episodeCount + (x.s.episodeCount == 1 ? " episode" : " episodes") + (ago == "" ? "" : ", last aired " + ago);
+                    })).ToList());
+                moment.AddList(Section, "Other shows on air now", others
+                    .Where(s => s.status == global::Shows._show._status.released || s.status == global::Shows._show._status.relaunching
+                        || s.status == global::Shows._show._status.relaunching_working)
+                    .Take(ShowsListed)
+                    .Select(s => (Func<object>)(() => ShowName(s))).ToList());
+                moment.AddTo(Section, "Shows started before this one", () => others.Count(s => s.episodeCount > 0));
+            }
+            catch (Exception)
+            {
+                // No history for this show
+            }
+        }
+
+        /// <summary>The day a show's last episode aired: weekly from its launch.</summary>
+        internal static DateTime LastAired(Shows._show show) => show.LaunchDate.AddDays(7 * (show.episodeCount - 1));
+
+        /// <summary>The most cast members a listed show names before "and N more".</summary>
+        public const int ShowCastNamed = 3;
+
+        /// <summary>
+        /// "\"Idol Kitchen\" (Internet, Food), with Rin and Aoi": its title, medium and genre as the game names
+        /// them, and its cast: the idols in its cast slots, the whole group, or a rotating cast.
+        /// </summary>
+        private static string ShowName(Shows._show show)
+        {
+            List<string> kind = new[] { Part(() => show.medium?.GetTitle()), Part(() => show.genre?.GetTitle()) }.Where(t => t != "").ToList();
+            string cast = show.castType == global::Shows._show._castType.entireGroup ? "the whole group"
+                : show.castType == global::Shows._show._castType.rotatingCast ? "a rotating cast"
+                : Part(() => MomentContext.JoinAnd(Cast(show)));
+            return "\"" + Moment.Clean(show.title) + "\"" + (kind.Count == 0 ? "" : " (" + string.Join(", ", kind.ToArray()) + ")")
+                + (cast == "" ? "" : ", with " + cast);
+        }
+
+        /// <summary>A fixed cast's names, up to ShowCastNamed, then "N more" as the last item.</summary>
+        private static List<string> Cast(Shows._show show)
+        {
+            List<data_girls.girls> girls = (show.girls ?? new data_girls.girls[0]).Where(g => g != null).Distinct().ToList();
+            List<string> names = girls.Take(ShowCastNamed).Select(MomentContext.Name).ToList();
+            if (girls.Count > ShowCastNamed)
+            {
+                names.Add((girls.Count - ShowCastNamed) + " more");
+            }
+            return names;
+        }
+
+        private static string Part(Func<string> text)
+        {
+            try
+            {
+                return Moment.Clean(text() ?? "");
+            }
+            catch (Exception)
+            {
+                return "";
+            }
+        }
+
+        /// <summary>
+        /// For a contract's start: her other running contracts, and how many deals of this kind she took before.
+        /// </summary>
+        public static void Contracts(Moment moment, business.active_proposal contract, IEnumerable<business.active_proposal> running,
+            IEnumerable<business._history> history)
+        {
+            try
+            {
+                data_girls.girls girl = contract.Girl;
+                moment.AddList(Section, "Her other running contracts", (running ?? Enumerable.Empty<business.active_proposal>())
+                    .Where(c => c != null && c != contract && c.Girl == girl)
+                    .Select(c => (Func<object>)(() => MomentContext.Contract(c))).ToList());
+                bool tv = contract.Type == business._type.tv_drama;
+                int earlier = (history ?? Enumerable.Empty<business._history>()).Count(h => h != null && h.Girl == girl && h.Type == contract.Type);
+                moment.AddTo(Section, tv ? "Her earlier TV dramas" : "Her earlier advertisements", () => earlier);
+            }
+            catch (Exception)
+            {
+                // No history for this contract
+            }
+        }
+
         /// <summary>
         /// The agency's awards before this year's show: how many it won, last year's wins by title, and how many
         /// shows it has been in (a year with a win or a nomination), this one included.

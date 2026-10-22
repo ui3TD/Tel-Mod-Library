@@ -294,6 +294,79 @@ namespace AIFanChatter
     }
 
     /// <summary>
+    /// A show, when the player launches it: its first episode airs at once.
+    /// </summary>
+    [HarmonyPatch(typeof(Shows), nameof(Shows.ReleaseShow))]
+    [HarmonyPriority(Priority.Last)]
+    public class Shows_ReleaseShow
+    {
+        // The last show posted, so a second call for it posts nothing
+        private static Shows._show posted;
+
+        internal static void Reset() => posted = null;
+
+        public static void Postfix(Shows._show __show, bool __runOriginal)
+        {
+            try
+            {
+                if (ShouldPost(__show, __runOriginal))
+                {
+                    posted = __show;
+                    Moments.Trigger(() => MomentContext.ShowStart(__show));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        internal static bool ShouldPost(Shows._show show, bool ran)
+        {
+            return ran && show != null && show.status == Shows._show._status.released && show.episodeCount == 1 && show != posted;
+        }
+    }
+
+    /// <summary>
+    /// A lasting business contract (an ad or a TV drama), when the player accepts it: the game adds it to
+    /// the running contracts. One-off deals never come here.
+    /// </summary>
+    [HarmonyPatch(typeof(business), nameof(business.AddActiveProposal))]
+    [HarmonyPriority(Priority.Last)]
+    public class business_AddActiveProposal
+    {
+        public static void Prefix(business __instance, out int __state)
+        {
+            __state = __instance?.ActiveProposals?.Count ?? -1;
+        }
+
+        public static void Postfix(business __instance, int __state, bool __runOriginal)
+        {
+            try
+            {
+                business.active_proposal added = Added(__instance?.ActiveProposals, __state, __runOriginal);
+                if (added != null)
+                {
+                    List<business.active_proposal> running = __instance.ActiveProposals.ToList();
+                    Moments.Trigger(() => MomentContext.ContractStart(added, running, business.History));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        /// <summary>The contract the game just added; null when it added none.</summary>
+        internal static business.active_proposal Added(List<business.active_proposal> running, int before, bool ran)
+        {
+            return ran && running != null && before >= 0 && running.Count > before && running[running.Count - 1]?.Girl != null
+                ? running[running.Count - 1]
+                : null;
+        }
+    }
+
+    /// <summary>
     /// A part of an award's acceptance speech, as the show builds it into the line it's about to show.
     /// </summary>
     [HarmonyPatch(typeof(vn_actions), "DoCustom")]

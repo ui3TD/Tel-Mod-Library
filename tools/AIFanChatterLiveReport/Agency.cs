@@ -99,6 +99,59 @@ namespace AIFanChatter.LiveReport
         }
 
         /// <summary>
+        /// A TV drama show launched today with a permanent cast of three, a seasoned host and its first
+        /// audience; an internet food show cancelled after 14 episodes, last aired 4 months ago; a radio music
+        /// show still on air.
+        /// </summary>
+        public Shows._show ShowNow()
+        {
+            Show("Idol Kitchen", Shows._show._status.canceled, 14, Today.AddMonths(-4).AddDays(-7 * 13), 1, 5, 2, idols["Mao"], idols["Kaede"]);
+            Show("Midnight Request Hour", Shows._show._status.released, 30, Today.AddMonths(-7), 0, 3, 3, idols["Mirai"], idols["Rin"]);
+            Shows._show show = Show("Platform 7 Mysteries", Shows._show._status.released, 1, Today, 2, 4, 2,
+                idols["Sayaka"], idols["Rena"], idols["Koharu"]);
+            show.audience.Add(412000);
+            return show;
+        }
+
+        private static Shows._show Show(string title, Shows._show._status status, int episodes, DateTime launched, int medium, int genre, int host,
+            params data_girls.girls[] cast)
+        {
+            Shows._show show = new()
+            {
+                title = title,
+                status = status,
+                episodeCount = episodes,
+                LaunchDate = launched,
+                medium = GameText.ShowParams["medium"].First(p => p.id == medium),
+                genre = GameText.ShowParams["genres"].First(p => p.id == genre),
+                mc = GameText.ShowParams["mc"].First(p => p.id == host),
+                castType = Shows._show._castType.permanentCast,
+            };
+            for (int i = 0; i < cast.Length; i++)
+            {
+                show.girls[i] = cast[i];
+            }
+            Shows.shows.Add(show);
+            return show;
+        }
+
+        /// <summary>
+        /// Hina's ad for Burger Queen, using her cute image, accepted today; she did one ad before.
+        /// </summary>
+        public business.active_proposal ContractNow()
+        {
+            business.History.Add(new business._history { Type = business._type.ad, Girl = idols["Hinata"], Date = Today.AddMonths(-9) });
+            return new business.active_proposal
+            {
+                Type = business._type.ad,
+                Girl = idols["Hinata"],
+                Agent_Name = "Burger Queen",
+                Skill = data_girls._paramType.cute,
+                EndDate = Today.AddMonths(3),
+            };
+        }
+
+        /// <summary>
         /// This year's awards show, ending today, as the game holds it before Reset_After_Awards clears it: Emi
         /// (hired this year) wins Best Debut Idol and thanks the producer, the group wins Most Performances
         /// with Mirai thanking Fujimoto (group awards can't thank another idol), and Rena loses Gravure Queen to a rival the show named. Last year the
@@ -232,6 +285,8 @@ namespace AIFanChatter.LiveReport
             Awards._Nominations.Clear();
             Awards.TempNominations.Clear();
             Awards.Speeches.Clear();
+            Shows.shows.Clear();
+            business.History.Clear();
             policies.Values.Clear();
             Relationships.Cliques.Clear();
             resources.resource.Clear();

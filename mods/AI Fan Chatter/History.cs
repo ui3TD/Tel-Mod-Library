@@ -405,17 +405,7 @@ namespace AIFanChatter
             return names;
         }
 
-        private static string Part(Func<string> text)
-        {
-            try
-            {
-                return Moment.Clean(text() ?? "");
-            }
-            catch (Exception)
-            {
-                return "";
-            }
-        }
+        private static string Part(Func<string> text) => Moment.Clean(MomentContext.Part(text));
 
         /// <summary>
         /// For a contract's start: her other running contracts, and how many deals of this kind she took before,

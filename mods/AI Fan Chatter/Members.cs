@@ -246,7 +246,7 @@ namespace AIFanChatter
             string named = guest ? GroupName(own) : null;
 
             List<string> sentences = new();
-            Sentence(sentences, Part(() => Trait(girl)));
+            Sentence(sentences, MomentContext.Part(() => Trait(girl)));
             if (withTrivia && girl.Trivia != null)
             {
                 foreach (string trivium in girl.Trivia.Take(2))
@@ -254,25 +254,25 @@ namespace AIFanChatter
                     Sentence(sentences, Cut(Moment.Clean(trivium), TriviaLength));
                 }
             }
-            Sentence(sentences, Part(() => ScandalRecord(girl.GetScandalPoints())));
-            Sentence(sentences, Part(() =>
+            Sentence(sentences, MomentContext.Part(() => ScandalRecord(girl.GetScandalPoints())));
+            Sentence(sentences, MomentContext.Part(() =>
             {
                 string age = "Age " + girl.GetAge();
-                string standing = Part(() => AgeStanding(girl, home, named));
+                string standing = MomentContext.Part(() => AgeStanding(girl, home, named));
                 return standing == "" ? age : age + ", " + standing;
             }));
             Sentence(sentences, !withStamina ? "" : Join(
-                Part(() => girl.GetMentalStamina() <= LowStamina ? "mental stamina " + OutOf100(girl.GetMentalStamina()) : ""),
-                Part(() => girl.GetPhysicalStamina() <= LowStamina ? "stamina " + OutOf100(girl.GetPhysicalStamina()) : "")));
-            Sentence(sentences, Part(() => Standouts(girl, home, named)));
-            Sentence(sentences, newcomer ? Part(() => HighestPotential(girl)) : "");
+                MomentContext.Part(() => girl.GetMentalStamina() <= LowStamina ? "mental stamina " + OutOf100(girl.GetMentalStamina()) : ""),
+                MomentContext.Part(() => girl.GetPhysicalStamina() <= LowStamina ? "stamina " + OutOf100(girl.GetPhysicalStamina()) : "")));
+            Sentence(sentences, MomentContext.Part(() => Standouts(girl, home, named)));
+            Sentence(sentences, newcomer ? MomentContext.Part(() => HighestPotential(girl)) : "");
             Sentence(sentences, newcomer ? "" : Join(
-                Part(() => Tenure(girl, now, home, named)),
-                Part(() => withElection ? Election(girl) : ""),
-                Part(() => RankText(knownRank ?? rankIn?.Invoke(girl, home, named), knownRank != null)),
-                Part(() => Singles(girl, eventGroup ?? own))));
+                MomentContext.Part(() => Tenure(girl, now, home, named)),
+                MomentContext.Part(() => withElection ? Election(girl) : ""),
+                MomentContext.Part(() => RankText(knownRank ?? rankIn?.Invoke(girl, home, named), knownRank != null)),
+                MomentContext.Part(() => Singles(girl, eventGroup ?? own))));
             // Last, so it reads as a label: she isn't in the group the moment is about
-            Sentence(sentences, guest ? Part(() => OtherGroup(own)) : "");
+            Sentence(sentences, guest ? MomentContext.Part(() => OtherGroup(own)) : "");
             return string.Join(" ", sentences.ToArray());
         }
 
@@ -308,7 +308,7 @@ namespace AIFanChatter
             }
             List<Standout> tops = new();
             List<Standout> bottoms = new();
-            bool adult = Part(() => girl.GetAge() >= AdultAge ? "adult" : "") != "";
+            bool adult = MomentContext.Part(() => girl.GetAge() >= AdultAge ? "adult" : "") != "";
             foreach (Standout stat in StandoutStats.Where(s => adult || !s.AdultsOnly))
             {
                 float? Value(data_girls.girls g)
@@ -387,7 +387,7 @@ namespace AIFanChatter
         /// </summary>
         public static string HighestPotential(data_girls.girls girl)
         {
-            bool adult = Part(() => girl.GetAge() >= AdultAge ? "adult" : "") != "";
+            bool adult = MomentContext.Part(() => girl.GetAge() >= AdultAge ? "adult" : "") != "";
             List<KeyValuePair<string, int>> potentials = new();
             foreach (Standout stat in StandoutStats.Where(s => adult || !s.AdultsOnly))
             {
@@ -796,18 +796,6 @@ namespace AIFanChatter
                 return text ?? "";
             }
             return text.Substring(0, max - 3).TrimEnd() + "...";
-        }
-
-        private static string Part(Func<string> part)
-        {
-            try
-            {
-                return part() ?? "";
-            }
-            catch (Exception)
-            {
-                return "";
-            }
         }
 
         private static string Join(params string[] parts) => string.Join(", ", parts.Where(p => p != "").ToArray());

@@ -160,5 +160,30 @@ namespace AIFanChatter.Tests
             Moment moment = MomentContext.DatingScandal(Scandal(Idol("Aya")), Reply("Say it was family"), new[] { Reaction.Family__no_damage });
             Assert.StartsWith("the group's producer", moment.Fact(F, "You"));
         }
+
+        /// <summary>
+        /// The contracts the scandal cost her, without the weeks they had left; none, no line.
+        /// </summary>
+        [Fact]
+        public void Moment_NamesTheContractsItCancelled()
+        {
+            data_girls.girls aya = Idol("Aya");
+            business.active_proposal ad = new() { Type = business._type.ad, Girl = aya, Agent_Name = "Bepis", EndDate = Today.AddMonths(2) };
+            List<business._data> dataBefore = new(business.data);
+            business.data.Clear();
+            business.data.Add(new business._data { business_type = business._type.ad, title = "Advertisement", duration = 3 });
+            try
+            {
+                Moment moment = MomentContext.DatingScandal(Scandal(aya), Reply("Deny it"), new[] { Reaction.Apologize__normal }, new[] { ad });
+                Assert.Equal("\n- Advertisement from Bepis, with Aya", moment.Fact(F, "Contracts cancelled because of this"));
+            }
+            finally
+            {
+                business.data.Clear();
+                business.data.AddRange(dataBefore);
+            }
+            Assert.Null(MomentContext.DatingScandal(Scandal(aya), Reply("Deny it"), new[] { Reaction.Apologize__normal })
+                .Fact(F, "Contracts cancelled because of this"));
+        }
     }
 }

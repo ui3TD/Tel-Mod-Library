@@ -992,7 +992,9 @@ namespace AIFanChatter
         }
 
         /// <param name="log">The game's events so far (Event_Manager.activeEvents), for how often this one happened before.</param>
-        public static Moment Event(Event_Manager._activeEvent active, Event_Manager._randomEvent._reply reply, IEnumerable<Event_Manager._activeEvent> log = null)
+        /// <param name="ended">The business contracts the answer ended.</param>
+        public static Moment Event(Event_Manager._activeEvent active, Event_Manager._randomEvent._reply reply, IEnumerable<Event_Manager._activeEvent> log = null,
+            IList<business.active_proposal> ended = null)
         {
             Moment moment = new Moment("something happened at the agency")
                 // Some of the game's events have no title
@@ -1005,6 +1007,7 @@ namespace AIFanChatter
                 .Add("The agency's response", () => active.SwitchVariables(Translate(reply.text)))
                 .Add("Outcome", () => reply.description == "-" ? "" : active.SwitchVariables(Translate(reply.description)))
                 .Add("People involved", () => string.Join(", ", active.actors.Select(ActorName).Where(n => n != "").ToArray()));
+            ContractsCancelled(moment, ended);
             // An event is about its main subject's group
             List<data_girls.girls> idols = Members.ForEvent(active);
             Groups._group group = idols.Count > 0 ? GroupOf(() => idols[0].GetGroup()) : null;
@@ -1015,8 +1018,9 @@ namespace AIFanChatter
         }
 
         /// <param name="reactions">The outcomes the game picked for the answer, in order.</param>
+        /// <param name="ended">The business contracts the answer ended.</param>
         public static Moment DatingScandal(Event_Templates._active_template active, Event_Templates._template._reply reply,
-            IList<Event_Templates._dating_reactions._type> reactions)
+            IList<Event_Templates._dating_reactions._type> reactions, IList<business.active_proposal> ended = null)
         {
             data_girls.girls idol = active.Actors[0].girl;
             string details = Part(() => ScandalDetails(active));
@@ -1029,6 +1033,7 @@ namespace AIFanChatter
                 .Add("The agency's response", () => response)
                 .Add("Outcome", () => outcome)
                 .Add("People involved", () => string.Join(", ", active.Actors.Where(a => a != null).Select(ActorName).Where(n => n != "").ToArray()));
+            ContractsCancelled(moment, ended);
             Groups._group group = GroupOf(() => idol.GetGroup());
             Members.Add(moment, new List<data_girls.girls> { idol }, Now, group ?? MainGroup());
             return Agency(moment, group, rules: m => m
@@ -1144,7 +1149,17 @@ namespace AIFanChatter
         /// "Advertisement for Sparkle Soda from Hoshi Beverages, with Takeda Rin, 8 weeks left": the kind's full
         /// title from the game's business data, or its short one.
         /// </summary>
-        internal static string Contract(business.active_proposal contract)
+        /// <summary>
+        /// The business contracts an answer ended, each by kind, client and idol, as a list; left out when it
+        /// ended none.
+        /// </summary>
+        private static void ContractsCancelled(Moment moment, IList<business.active_proposal> ended)
+        {
+            moment.AddList(Moment.FactsSection, "Contracts cancelled because of this",
+                (ended ?? new List<business.active_proposal>()).Select(c => (Func<object>)(() => Contract(c, weeksLeft: false))).ToList());
+        }
+
+        internal static string Contract(business.active_proposal contract, bool weeksLeft = true)
         {
             string kind = Moment.Clean(Part(() => business.GetData(contract.Type)?.GetTitle()));
             if (kind == "")
@@ -1154,7 +1169,7 @@ namespace AIFanChatter
             string product = Moment.Clean(contract.Product_Name);
             string client = Moment.Clean(contract.Agent_Name);
             string who = contract.isGroup ? "the whole group" : contract.Girl != null ? Name(contract.Girl) : "";
-            int weeks = Part(() => contract.GetWeeksLeft().ToString(CultureInfo.InvariantCulture)) is string w && int.TryParse(w, out int n) ? n : -1;
+            int weeks = !weeksLeft ? -1 : Part(() => contract.GetWeeksLeft().ToString(CultureInfo.InvariantCulture)) is string w && int.TryParse(w, out int n) ? n : -1;
             return kind + (product == "" ? "" : " for " + product) + (client == "" ? "" : " from " + client)
                 + (who == "" ? "" : ", with " + who) + (weeks < 0 ? "" : ", " + weeks + (weeks == 1 ? " week" : " weeks") + " left");
         }

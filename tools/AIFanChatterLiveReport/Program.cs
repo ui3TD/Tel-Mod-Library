@@ -290,7 +290,9 @@ namespace AIFanChatter.LiveReport
                 active.Parts.Add(template.Parts.First(p => p.ID == part.Key && p.Values.Count > 0).Values[part.Value]);
             }
             Event_Templates._template._reply reply = template.Replies.First(r => r.Actions.Any(a => a.formula == "dating_apologize"));
-            return MomentContext.DatingScandal(active, reply, new[] { Event_Templates._dating_reactions._type.Apologize__normal });
+            // Her running ad, cancelled over the scandal as the game's damages cancel it
+            business.active_proposal ad = new() { Type = business._type.ad, Girl = active.Actors[0].girl, Agent_Name = "Burger Queen", EndDate = Agency.Today.AddMonths(2) };
+            return MomentContext.DatingScandal(active, reply, new[] { Event_Templates._dating_reactions._type.Apologize__normal }, new[] { ad });
         }
 
         /// <summary>

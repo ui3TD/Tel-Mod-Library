@@ -305,14 +305,16 @@ namespace AIFanChatter
 
         internal static void Reset() => posted = null;
 
-        public static void Postfix(Shows._show __show, bool __runOriginal)
+        // The game names the argument __show, a name Harmony keeps for its own values, so it's taken by position
+        public static void Postfix(Shows._show __0, bool __runOriginal)
         {
             try
             {
-                if (ShouldPost(__show, __runOriginal))
+                Shows._show show = __0;
+                if (ShouldPost(show, __runOriginal))
                 {
-                    posted = __show;
-                    Moments.Trigger(() => MomentContext.ShowStart(__show));
+                    posted = show;
+                    Moments.Trigger(() => MomentContext.ShowStart(show));
                 }
             }
             catch (Exception)
@@ -681,6 +683,8 @@ namespace AIFanChatter
             /// <summary>The event being answered; the game may mark it complete during the method.</summary>
             public Event_Manager._activeEvent Active;
             public List<double> PublicState;
+            /// <summary>The contracts running before the answer, to find the ones it ended.</summary>
+            public List<business.active_proposal> Contracts;
         }
 
         public static void Prefix(Event_Manager __instance, out Before __state)
@@ -688,7 +692,7 @@ namespace AIFanChatter
             __state = null;
             try
             {
-                __state = new Before { Active = __instance.GetActiveEvent(), PublicState = EventOutcome.PublicState() };
+                __state = new Before { Active = __instance.GetActiveEvent(), PublicState = EventOutcome.PublicState(), Contracts = ContractBreaks.Snapshot() };
             }
             catch (Exception)
             {
@@ -703,7 +707,8 @@ namespace AIFanChatter
                 // Read after the other mods' postfixes, so outcomes they apply in code count
                 if (__state != null && ShouldPost(reply, __state.Active, __runOriginal, EventOutcome.Changed(__state.PublicState, EventOutcome.PublicState())))
                 {
-                    Moments.Trigger(() => MomentContext.Event(__state.Active, reply, __instance?.activeEvents));
+                    List<business.active_proposal> ended = ContractBreaks.Ended(__state.Contracts);
+                    Moments.Trigger(() => MomentContext.Event(__state.Active, reply, __instance?.activeEvents, ended));
                 }
             }
             catch (Exception)
@@ -877,7 +882,7 @@ namespace AIFanChatter
         {
             try
             {
-                return Camera.main.GetComponent<mainScript>().Data.GetComponent<business>().ActiveProposals;
+                return ContractBreaks.Running();
             }
             catch (Exception)
             {
@@ -909,6 +914,9 @@ namespace AIFanChatter
     internal static class DatingScandal
     {
         public const string TemplateId = "dating_scandal";
+
+        /// <summary>The contracts running before the answer, to find the ones it ended.</summary>
+        public static List<business.active_proposal> ContractsBefore = new();
 
         /// <summary>
         /// The endings that keep the scandal from the public: the photos are bought back, the police stop the
@@ -945,6 +953,7 @@ namespace AIFanChatter
         {
             __state = Event_Templates.Active_Template;
             DatingScandal.Reactions.Clear();
+            DatingScandal.ContractsBefore = ContractBreaks.Snapshot();
             DatingScandal.Capturing = true;
         }
 
@@ -954,7 +963,8 @@ namespace AIFanChatter
             List<Event_Templates._dating_reactions._type> reactions = DatingScandal.Reactions.ToList();
             if (ShouldPost(__state, Reply, reactions, __runOriginal))
             {
-                Moments.Trigger(() => MomentContext.DatingScandal(__state, Reply, reactions));
+                List<business.active_proposal> ended = ContractBreaks.Ended(DatingScandal.ContractsBefore);
+                Moments.Trigger(() => MomentContext.DatingScandal(__state, Reply, reactions, ended));
             }
         }
 

@@ -519,15 +519,35 @@ namespace AIFanChatter
             public List<data_girls.girls> Friends;
             public List<data_girls.girls> BulliedBy;
             public List<data_girls.girls> Bullied;
+            public GraduationNotice Notice;
+            /// <summary>The day she announced it; unknown when she didn't, or her date was unknown.</summary>
+            public DateTime AnnouncedOn;
         }
 
         /// <summary>
         /// Her place by fans in her group, her clique and her bullying before graduating: the game moves her
-        /// fans to other idols, takes her out of her clique and ends the bullying as she leaves.
+        /// fans to other idols, takes her out of her clique and ends the bullying as she leaves. Also whether
+        /// she had announced it: the game graduates an announced idol on the date it set 3 months before.
         /// </summary>
         public static void Prefix(data_girls.girls __instance, out Before __state)
         {
             __state = new Before();
+            try
+            {
+                if (__instance.status == data_girls._status.announced_graduation)
+                {
+                    __state.Notice = GraduationNotice.Announced;
+                    __state.AnnouncedOn = History.Known(__instance.Graduation_Date) ? __instance.Graduation_Date.AddMonths(-3) : default;
+                }
+                else
+                {
+                    __state.Notice = Date_Popup_OnClick_Fire_Immediately.Firing == __instance ? GraduationNotice.Fired : GraduationNotice.Sudden;
+                }
+            }
+            catch (Exception)
+            {
+                // Said to be sudden
+            }
             try
             {
                 __state.Rank = Members.RankOf(__instance);
@@ -573,7 +593,7 @@ namespace AIFanChatter
             if (scene == null)
             {
                 GraduationScene.Send(() => MomentContext.Graduation(__instance, __state.Rank, __state.Friends,
-                    __state.BulliedBy, __state.Bullied));
+                    __state.BulliedBy, __state.Bullied, notice: __state.Notice, announcedOn: __state.AnnouncedOn));
                 return;
             }
             // One still waiting is sent first, so none is lost
@@ -598,6 +618,91 @@ namespace AIFanChatter
             {
                 return null;
             }
+        }
+    }
+
+    /// <summary>
+    /// The player's "Fire now" in the date popup: the idol it graduates at once was dismissed by the agency.
+    /// The click graduates her itself, so the idol is noted only while it runs.
+    /// </summary>
+    [HarmonyPatch]
+    public class Date_Popup_OnClick_Fire_Immediately
+    {
+        internal static data_girls.girls Firing;
+
+        public static MethodBase TargetMethod() => AccessTools.Method(typeof(Date_Popup), "OnClick_Fire_Immediately");
+
+        public static bool Prepare()
+        {
+            if (TargetMethod() != null)
+            {
+                return true;
+            }
+            Log.Warn("Couldn't find the date popup's Fire now; fired idols' graduations are posted as sudden ones.");
+            return false;
+        }
+
+        public static void Prefix(Date_Popup __instance)
+        {
+            try
+            {
+                Firing = __instance.Girl;
+            }
+            catch (Exception)
+            {
+                Firing = null;
+            }
+        }
+
+        public static Exception Finalizer(Exception __exception)
+        {
+            Firing = null;
+            return __exception;
+        }
+    }
+
+    /// <summary>
+    /// An idol's graduation announcement, as the game confirms it: after her talk with the producer when he
+    /// didn't keep her, after "Let her graduate" in the date popup, or from a story. Asking her to stay
+    /// skips the confirmation.
+    /// </summary>
+    [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.Graduation_Announce_Confirm))]
+    [HarmonyPriority(Priority.Last)]
+    public class data_girls_girls_Graduation_Announce_Confirm
+    {
+        public static void Prefix(data_girls.girls __instance, out data_girls._status __state)
+        {
+            __state = data_girls._status.graduated;
+            try
+            {
+                __state = __instance.status;
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        public static void Postfix(data_girls.girls __instance, data_girls._status __state, bool __runOriginal)
+        {
+            try
+            {
+                if (ShouldPost(__state, __instance, __runOriginal))
+                {
+                    Moments.Trigger(() => MomentContext.GraduationAnnouncement(__instance));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        /// <summary>She announced it just now: she hadn't before, and she has after.</summary>
+        internal static bool ShouldPost(data_girls._status before, data_girls.girls girl, bool ran)
+        {
+            return ran && girl != null && before != data_girls._status.announced_graduation && before != data_girls._status.graduated
+                && girl.status == data_girls._status.announced_graduation;
         }
     }
 

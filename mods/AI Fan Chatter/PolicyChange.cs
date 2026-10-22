@@ -178,7 +178,7 @@ namespace AIFanChatter
             }
             data_girls_girls_Graduate.Before before = waiting.Before ?? new data_girls_girls_Graduate.Before();
             Send(() => MomentContext.Graduation(waiting.Girl, before.Rank, before.Friends, before.BulliedBy, before.Bullied,
-                waiting.Successor, waiting.Sister, waiting.Staffer));
+                waiting.Successor, waiting.Sister, waiting.Staffer, before.Notice, before.AnnouncedOn));
         }
     }
 }

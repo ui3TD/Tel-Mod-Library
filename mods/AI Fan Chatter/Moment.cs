@@ -166,6 +166,19 @@ namespace AIFanChatter
     }
 
     /// <summary>
+    /// Whether fans knew an idol was leaving before her graduation.
+    /// </summary>
+    public enum GraduationNotice
+    {
+        /// <summary>She left at once, without announcing it.</summary>
+        Sudden,
+        /// <summary>She announced it 3 months before.</summary>
+        Announced,
+        /// <summary>The producer fired her at once.</summary>
+        Fired,
+    }
+
+    /// <summary>
     /// The facts for each kind of moment, read from the game.
     /// </summary>
     public static class MomentContext
@@ -332,8 +345,8 @@ namespace AIFanChatter
         /// The agency's facts, with the moment's group as "the group": a sister group's moment names that
         /// group and the main group it belongs to. Null is the main group.
         /// </summary>
-        /// <param name="graduation">The moment is a graduation, so the member count is after she left.</param>
-        /// <param name="friends">A graduate's clique, named by group in place of the most popular members.</param>
+        /// <param name="graduation">The moment is about one idol leaving: her graduation or its announcement.</param>
+        /// <param name="friends">The leaving idol's clique, named by group in place of the most popular members.</param>
         /// <param name="rules">Adds the agency rules that matter to this kind of moment, after the concept.</param>
         /// <param name="changes">How many members each group gained (more than 0) or lost (less than 0) in the moment.
         /// Only these groups' sizes are given, one line each; a moment that changes no group gives none.</param>
@@ -904,29 +917,29 @@ namespace AIFanChatter
         /// <param name="successor">The idol who joined in her place from her goodbye scene, if any.</param>
         /// <param name="sister">The successor is her younger sister.</param>
         /// <param name="staffer">The staff job she took at the agency from her goodbye scene, if any.</param>
+        /// <param name="notice">Whether fans knew she was leaving: she announced it, or she left at once.</param>
+        /// <param name="announcedOn">The day she announced it, for an announced graduation; unknown leaves the day out.</param>
         public static Moment Graduation(data_girls.girls girl, Members.Rank rankBefore, List<data_girls.girls> friends = null,
             List<data_girls.girls> bulliedBy = null, List<data_girls.girls> bullied = null,
-            data_girls.girls successor = null, bool sister = false, staff._staff staffer = null)
+            data_girls.girls successor = null, bool sister = false, staff._staff staffer = null,
+            GraduationNotice notice = GraduationNotice.Sudden, DateTime announcedOn = default)
         {
-            bulliedBy ??= Members.BulliedBy(girl);
-            bullied ??= Members.Bullied(girl);
             Moment moment = new Moment("an idol graduated (left the group)")
-                .Labelled(() => Name(girl) + "'s graduation")
-                .Add("Idol", () => Name(girl))
+                .Labelled(() => Name(girl) + "'s graduation");
+            GraduateFacts(moment, girl, bulliedBy, bullied, m => m
+                // How she left first, so fans write a farewell they saw coming or react to a shock
+                .Add("Announced her graduation", () => notice != GraduationNotice.Announced ? ""
+                    : History.Ago(announcedOn, Now) is string ago && ago != "" ? ago : "beforehand")
+                .Add("How she left", () => notice switch
+                {
+                    GraduationNotice.Fired => "dismissed by the agency with immediate effect, with no announcement beforehand",
+                    GraduationNotice.Sudden => "with immediate effect, with no announcement beforehand",
+                    _ => "",
+                })
                 .Add("After graduating", () => Members.Cut(Moment.Clean(girl.Graduation_Trivia_Text), Members.GraduationTriviaLength))
                 // Her staff job, by title and what the staffer does, as for a firing
                 .Add("Stays at the agency as", () => staffer == null ? "" : Role(staffer))
-                .Add("Joined in her place", () => successor == null ? "" : Successor(girl, successor, sister))
-                // Only bullying the player has found out; fans can only suspect it
-                .Add("Suspected to be bullied by", () => string.Join(", ", bulliedBy.Select(Name).ToArray()))
-                .Add("Suspected to have bullied", () => string.Join(", ", bullied.Select(Name).ToArray()));
-            // Her best-selling released singles as center, best first; left out when she centered none
-            moment.AddList(Moment.FactsSection, "Singles she was the center of",
-                singles.Singles
-                    .Where(s => s != null && s.status == singles._single._status.released && s.ReleaseData != null && CenterOf(s) == girl)
-                    .OrderByDescending(s => s.ReleaseData.Sales)
-                    .Take(CenterSingles)
-                    .Select(s => (Func<object>)(() => TitleWithStyle(s))).ToList());
+                .Add("Joined in her place", () => successor == null ? "" : Successor(girl, successor, sister)));
             Dictionary<data_girls.girls, Members.Rank> ranks = new();
             if (rankBefore != null)
             {
@@ -948,6 +961,59 @@ namespace AIFanChatter
                 Change(changes, GroupOf(() => successor.GetGroup()), 1);
             }
             return Agency(moment, group, graduation: true, friends: friends ?? Members.Friends(girl), changes: changes);
+        }
+
+        /// <summary>
+        /// An idol's graduation announcement, as the game confirms it: she leaves in 3 months and is a member
+        /// until then. The graduation's own facts about her, without what only exists once she has left: what
+        /// she does after, her successor, her staff job, and the group's smaller size.
+        /// </summary>
+        public static Moment GraduationAnnouncement(data_girls.girls girl)
+        {
+            Moment moment = new Moment("an idol announced her graduation: she leaves the group in 3 months and stays a member until then")
+                .Labelled(() => Name(girl) + "'s graduation announcement");
+            GraduateFacts(moment, girl, null, null, m => m
+                .Add("Graduation date", () => GraduationDate(girl.Graduation_Date)));
+            Groups._group group = GroupOf(() => girl.GetGroup());
+            Members.Add(moment, new List<data_girls.girls> { girl }, Now, group);
+            History.Graduation(moment, girl, data_girls.girl, Now);
+            return Agency(moment, group, graduation: true, friends: Members.Friends(girl));
+        }
+
+        /// <summary>
+        /// "Sunday 21 January 2027, 3 months from now"; the date alone when it isn't ahead; "" when unknown.
+        /// </summary>
+        private static string GraduationDate(DateTime date)
+        {
+            if (!History.Known(date))
+            {
+                return "";
+            }
+            string day = date.ToString("dddd d MMMM yyyy", CultureInfo.InvariantCulture);
+            int days = (date.Date - Now.Date).Days;
+            return days > 0 ? day + ", " + History.Span(days) + " from now" : day;
+        }
+
+        /// <summary>
+        /// A leaving idol's facts, shared by her graduation and its announcement: her name, then the moment's
+        /// own lines about how she leaves, then the bullying fans suspect and the singles she was the center of.
+        /// </summary>
+        private static void GraduateFacts(Moment moment, data_girls.girls girl, List<data_girls.girls> bulliedBy,
+            List<data_girls.girls> bullied, Func<Moment, Moment> leaving)
+        {
+            bulliedBy ??= Members.BulliedBy(girl);
+            bullied ??= Members.Bullied(girl);
+            leaving(moment.Add("Idol", () => Name(girl)))
+                // Only bullying the player has found out; fans can only suspect it
+                .Add("Suspected to be bullied by", () => string.Join(", ", bulliedBy.Select(Name).ToArray()))
+                .Add("Suspected to have bullied", () => string.Join(", ", bullied.Select(Name).ToArray()));
+            // Her best-selling released singles as center, best first; left out when she centered none
+            moment.AddList(Moment.FactsSection, "Singles she was the center of",
+                singles.Singles
+                    .Where(s => s != null && s.status == singles._single._status.released && s.ReleaseData != null && CenterOf(s) == girl)
+                    .OrderByDescending(s => s.ReleaseData.Sales)
+                    .Take(CenterSingles)
+                    .Select(s => (Func<object>)(() => TitleWithStyle(s))).ToList());
         }
 
         /// <summary>

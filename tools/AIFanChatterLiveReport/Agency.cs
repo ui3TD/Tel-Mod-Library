@@ -42,6 +42,16 @@ namespace AIFanChatter.LiveReport
         }
 
         /// <summary>
+        /// The moment's idol announces her graduation, as the game confirms it: she leaves in 3 months and is
+        /// a member until then.
+        /// </summary>
+        public void AnnounceNow()
+        {
+            Graduate.status = data_girls._status.announced_graduation;
+            Graduate.Graduation_Date = Today.AddMonths(3);
+        }
+
+        /// <summary>
         /// Graduates the moment's idol as the game does: she stays in her group's list, and her place by fans
         /// is taken first, as the mod's graduation patch takes it before the game moves her fans.
         /// </summary>

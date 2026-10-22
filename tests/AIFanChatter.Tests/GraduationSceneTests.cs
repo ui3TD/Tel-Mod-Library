@@ -20,7 +20,6 @@ namespace AIFanChatter.Tests
         private readonly List<staff._staff> staffBefore = staff.Staff.ToList();
         private readonly List<Func<Moment>> sent = new();
         private readonly data_dialogues._dialogue goodbye = new();
-        private readonly string groupNameBefore = staticVars.PlayerData.GroupName;
 
         public GraduationSceneTests()
         {
@@ -41,7 +40,6 @@ namespace AIFanChatter.Tests
             staff.Staff.Clear();
             staff.Staff.AddRange(staffBefore);
             Language.Data.Remove("STAFF__CHOREO");
-            staticVars.PlayerData.GroupName = groupNameBefore;
         }
 
         /// <summary>The game's Graduate, with or without the goodbye scene.</summary>

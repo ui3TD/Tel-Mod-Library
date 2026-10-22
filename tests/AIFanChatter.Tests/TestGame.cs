@@ -29,6 +29,8 @@ namespace AIFanChatter.Tests
             Language.Variables.Clear();
             policies.Values.Clear();
             Relationships.Cliques.Clear();
+            // A fresh player, so a group name one test sets never reaches the next
+            staticVars.PlayerData = new staticVars._playerData();
             Event_Manager.RandomEvents.Clear();
             Event_Templates.Dating_Reactions.Clear();
             Event_Templates.Active_Template = null;

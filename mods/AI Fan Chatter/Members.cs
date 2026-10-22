@@ -24,6 +24,8 @@ namespace AIFanChatter
         public const int ElectionCap = 5;
         /// <summary>The election places named before the biggest moves outside the top.</summary>
         public const int ElectionTopFirst = 3;
+        /// <summary>The most idols an awards show names: winners, speakers, then nominees.</summary>
+        public const int AwardsCap = 5;
         /// <summary>The most new idols an audition names.</summary>
         public const int AuditionCap = 5;
         /// <summary>Only the idols this far up the order get their trivia, to keep the prompt short.</summary>

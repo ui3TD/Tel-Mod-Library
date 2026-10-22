@@ -310,6 +310,30 @@ namespace AIFanChatter
         }
 
         /// <summary>
+        /// The agency's awards before this year's show: how many it won, last year's wins by title, and how many
+        /// shows it has been in (a year with a win or a nomination), this one included.
+        /// </summary>
+        public static void Awards(Moment moment, AwardsShow show, IEnumerable<global::Awards._award> wins, IEnumerable<global::Awards._award> losses)
+        {
+            try
+            {
+                List<global::Awards._award> earlierWins = (wins ?? Enumerable.Empty<global::Awards._award>()).Where(a => a != null && a.Year < show.Year).ToList();
+                List<string> lastYear = earlierWins.Where(a => a.Year == show.Year - 1)
+                    .Select(a => Moment.Clean(global::Awards.GetAwardTitle(a.Type))).Where(t => t != "").ToList();
+                int shows = earlierWins.Concat((losses ?? Enumerable.Empty<global::Awards._award>()).Where(a => a != null && a.Year < show.Year))
+                    .Select(a => a.Year).Distinct().Count() + 1;
+                moment
+                    .AddTo(Section, "Awards won in earlier years", () => earlierWins.Count)
+                    .AddTo(Section, "Last year's wins", () => MomentContext.JoinAnd(lastYear))
+                    .AddTo(Section, "Awards shows the agency was in, this one included", () => shows);
+            }
+            catch (Exception)
+            {
+                // No history for this show
+            }
+        }
+
+        /// <summary>
         /// The idols who joined last before these, all hired on the same day, and how long ago: "Ishikawa Yui
         /// and Ogawa Rena, 4 months ago". Graduates count: they joined too. Left out when no one joined before.
         /// </summary>

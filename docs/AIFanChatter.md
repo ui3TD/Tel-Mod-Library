@@ -117,6 +117,11 @@ The moment's own details, one per line.
   - the new members, up to 10 names, then how many more;
   - the audition's scale as the game names it: Local, Regional or Nationwide.
   - How rare a find each idol was (her card's colour) isn't sent: only the player sees it.
+- **The yearly awards show** (posted when the show's dialogue ends, only in years the agency was nominated):
+  - the awards it won, by the game's titles, with the idol or single each is for, such as `Best Debut Idol: Kondo Tsubasa`;
+  - the awards it was nominated for and lost, with the winner the show announced, such as `Gravure Queen: Ogawa Rena, lost to Saito Yuna of Starlight Ribbon`;
+  - each win's acceptance speech, quoted as the show gave it, with who gave it. When the words weren't recorded, it says whom she thanked instead (the producer, Fujimoto, a staffer or another idol).
+  - The awards' gameplay bonuses aren't sent: fans can't see them.
 - **An election** (posted once the winner is revealed):
   - its number, its broadcast, the voting single and the concert it followed;
   - how many idols it ranked;
@@ -155,7 +160,7 @@ The group and the agency, one fact per line:
 
 ### `{members}`
 
-One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation (and the idol who joined in her place, with a new member's line), the idol for a dating scandal, and up to 5 idols whose scandal points paid for a policy change or a staff firing. A tour gets the 5 active idols with the most fans, from any group. New members from an audition get up to 5 lines, in the order they were hired; their lines leave out the time in the group, the election place, the place by fans and the singles, which are all empty on an idol's first day, and add her highest potential, such as `Highest potential: dance`: the skill she could grow furthest in, or every one tied for it. An election gets up to 5: the first 3 places, then the idols with the biggest drop and the biggest rise outside the top 10, then the 4th and 5th places. Their lines leave out the election place, which the results give.
+One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation (and the idol who joined in her place, with a new member's line), the idol for a dating scandal, and up to 5 idols whose scandal points paid for a policy change or a staff firing. A tour gets the 5 active idols with the most fans, from any group. New members from an audition get up to 5 lines, in the order they were hired; their lines leave out the time in the group, the election place, the place by fans and the singles, which are all empty on an idol's first day, and add her highest potential, such as `Highest potential: dance`: the skill she could grow furthest in, or every one tied for it. The awards show gets up to 5: the winners, then the idols who gave the agency's speeches, then the nominees who lost. An election gets up to 5: the first 3 places, then the idols with the biggest drop and the biggest rise outside the top 10, then the 4th and 5th places. Their lines leave out the election place, which the results give.
 
 Each line gives, in this order:
 
@@ -183,6 +188,7 @@ Earlier results to compare with. Empty when there's nothing earlier.
 - **A concert:** the previous concert's venue, attendance and date, how many concerts came before, and the biggest audience so far.
 - **A tour:** every place earlier tours went to, once each, at its latest visit, newest first, with the seats filled and how long ago, such as `Osaka: 7600 out of 8000 seats, 4 months ago`. Then how many tours there have been, this one included.
 - **New members from an audition:** the idols who joined last before them, all hired on the same day, and how long ago. Graduated idols count.
+- **The yearly awards show:** how many awards the agency won in earlier years, last year's wins by title, and how many shows it has been in, this one included.
 - **An election:** the previous election, its winner and how long ago, then how many elections there have been, this one included.
 - **A graduation:** the previous graduate from the same group and when she left, and how many of the group's idols graduated before her. When she's the group's first graduate, it says so.
 - **A random event:** how often the same event happened before, and when it last did. For an event in a storyline, the text of the storyline's earlier events that happened, oldest first. The game doesn't keep which answer was given, so an earlier event is only included when every answer of it that leads on in the storyline had a public outcome, or the game posted about it. The answers themselves aren't included.

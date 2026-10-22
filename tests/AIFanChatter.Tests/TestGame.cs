@@ -37,6 +37,12 @@ namespace AIFanChatter.Tests
             StaffFiring.Clear();
             AuditionHires.Clear();
             GraduationScene.Clear();
+            Awards._Awards.Clear();
+            Awards._Nominations.Clear();
+            Awards.TempNominations.Clear();
+            Awards.Speeches.Clear();
+            Awards_Reset_After_Awards.Reset();
+            AwardsShow.ClearHeard();
             staticVars.dateTime = Today;
         }
 

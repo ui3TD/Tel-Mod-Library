@@ -99,6 +99,46 @@ namespace AIFanChatter.LiveReport
         }
 
         /// <summary>
+        /// This year's awards show, ending today, as the game holds it before Reset_After_Awards clears it: Emi
+        /// (hired this year) wins Best Debut Idol and thanks the producer, the group wins Most Performances
+        /// with Mirai thanking Fujimoto (group awards can't thank another idol), and Rena loses Gravure Queen to a rival the show named. Last year the
+        /// group won Best Employer.
+        /// </summary>
+        public AwardsShow AwardsNow()
+        {
+            Awards._Awards.Add(new Awards._award { Type = Awards._type.best_employer, Year = Today.Year - 1 });
+            Awards._award debut = Award(Awards._type.best_debut_idol, idols["Emi"], won: true);
+            Award(Awards._type.most_performances, null, won: true);
+            Award(Awards._type.gravure_queen, idols["Rena"], won: false);
+            variables.variable.Add(new variables._variable { name = "gravure_queen", value = "Saito Yuna" });
+            variables.variable.Add(new variables._variable { name = "gravure_queen_group", value = "Starlight Ribbon" });
+            Awards._speech emi = new() { Type = debut.Type, Girl = idols["Emi"], Thanks = Awards._speech._thanks.you, Won = true };
+            Awards._speech mirai = new() { Type = Awards._type.most_performances, Girl = idols["Mirai"], Thanks = Awards._speech._thanks.fujimoto, Won = true };
+            Awards.Speeches.Add(emi);
+            Awards.Speeches.Add(mirai);
+            // The speeches as the show builds them from the game's parts (vn_actions.DoCustom)
+            Hear(emi, "solo", "thanks_player");
+            Hear(mirai, "group", "thanks_fujimoto");
+            Awards.Speeches.Add(new Awards._speech { Type = Awards._type.gravure_queen, Girl = idols["Rena"], Thanks = Awards._speech._thanks.fujimoto, Won = false });
+            return AwardsShow.Read();
+        }
+
+        private static void Hear(Awards._speech speech, string kind, string thanks, string girl2 = "")
+        {
+            string Part(string part) => GameText.Speeches.TryGetValue(kind + "/" + part, out string text) ? text : "";
+            AwardsShow.Heard(speech, Part("intro_1") + " " + Part("intro_2"));
+            AwardsShow.Heard(speech, Part(thanks).Replace("[girl2]", girl2) + " " + Part("thanks_2"));
+        }
+
+        private static Awards._award Award(Awards._type type, data_girls.girls girl, bool won)
+        {
+            Awards._award award = new() { Type = type, Girl = girl, Year = Today.Year, IsNomination = true };
+            Awards.TempNominations.Add(award);
+            (won ? Awards._Awards : Awards._Nominations).Add(award);
+            return award;
+        }
+
+        /// <summary>
         /// The second election's results, revealed today. Added only for its own moment: a finished election
         /// becomes every idol's "last election" in the other moments' lines. Ten places, as the game keeps:
         /// Hikari and Yui climb, Nanami holds 4th, and Rin, 3rd last time, drops out of the ranking.
@@ -188,6 +228,10 @@ namespace AIFanChatter.LiveReport
             SEvent_Concerts.Concerts.Clear();
             SEvent_SSK.Elections.Clear();
             SEvent_Tour.Tours.Clear();
+            Awards._Awards.Clear();
+            Awards._Nominations.Clear();
+            Awards.TempNominations.Clear();
+            Awards.Speeches.Clear();
             policies.Values.Clear();
             Relationships.Cliques.Clear();
             resources.resource.Clear();

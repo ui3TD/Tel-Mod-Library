@@ -43,7 +43,7 @@
 		"varID": "AIFanChatter_PerWeek",
 		"labelID": "AIFANCHATTER__MODMENU__PERWEEK",
 		"minValue": 0,
-		"maxValue": 7,
+		"maxValue": 21,
 		"defaultValue": 2
 	}
 ]

@@ -21,7 +21,7 @@ namespace AIFanChatter
         public const bool DefaultEnabled = false;
         public const Provider DefaultProvider = ConnectionSettings.DefaultProvider;
         public const int DefaultPerWeek = 2;
-        public const int MaxPerWeek = 7;
+        public const int MaxPerWeek = 21;
 
         /// <summary>
         /// The model a blank Model setting uses on OpenAI, the default service.

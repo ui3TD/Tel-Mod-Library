@@ -124,9 +124,9 @@ namespace AIFanChatter.Tests
 
         [Theory]
         [InlineData("0", 0)]
-        [InlineData("7", 7)]
+        [InlineData("21", 21)]
         [InlineData("3.0", 3)]
-        [InlineData("8", 2)]
+        [InlineData("22", 2)]
         [InlineData("-1", 2)]
         [InlineData("NaN", 2)]
         [InlineData("", 2)]

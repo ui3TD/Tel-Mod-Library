@@ -67,3 +67,4 @@ Your saves load normally without it. The feed goes back to 20 posts.
 - 1.9.0: Graduations name who the idol was suspected to be bullied by or to have bullied
 - 1.10.0: Posts for dating scandals, paid policy changes and staff firings; no posts under 100 fans
 - 1.11.0: Posts for tours, elections, awards, shows, contracts, auditions, graduates' successors
+- 1.12.0: Requests per week can go up to 21

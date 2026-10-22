@@ -397,8 +397,9 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// A model that can't take low effort gets the same request again without it, keeping the schema.
-        /// That counts as one request, and the effort isn't asked for again until the settings change.
+        /// A model that can't take low effort gets the same request again with only the standard effort
+        /// setting (some services reject only OpenRouter's), then without any, keeping the schema. That counts
+        /// as one request, and the effort isn't asked for again until the settings change.
         /// </summary>
         [Fact]
         public void RejectedEffort_SendsTheRequestAgainWithoutIt_KeepingTheSchema()
@@ -407,27 +408,34 @@ namespace AIFanChatter.Tests
             TestEnv.Vars[Settings.PerWeekVar] = "2";
             Assert.True(dispatcher.Request(Moment()));
             Assert.Contains("\"reasoning_effort\":\"low\"", transport.Sent[0].Body);
-            transport.Reply(400, "{\"error\":{\"message\":\"unknown field reasoning_effort\"}}");
+            Assert.Contains("\"reasoning\":{", transport.Sent[0].Body);
+            transport.Reply(400, "{\"error\":{\"message\":\"unknown field reasoning\"}}");
             Assert.Equal(2, transport.Sent.Count);
-            Assert.DoesNotContain("reasoning", transport.Sent[1].Body);
-            Assert.Contains("response_format", transport.Sent[1].Body);
+            Assert.DoesNotContain("\"reasoning\":{", transport.Sent[1].Body);
+            Assert.Contains("\"reasoning_effort\":\"low\"", transport.Sent[1].Body);
+            Assert.Contains(TestEnv.Logs, l => l.Contains("doesn't accept OpenRouter's reasoning setting"));
+            transport.Reply(400, "{\"error\":{\"message\":\"unknown field reasoning_effort\"}}");
+            Assert.Equal(3, transport.Sent.Count);
+            Assert.DoesNotContain("reasoning", transport.Sent[2].Body);
+            Assert.Contains("response_format", transport.Sent[2].Body);
             transport.Reply(200, Replies.OpenAI(Replies.Posts));
             Assert.Single(host.Queued);
             Assert.Empty(host.Notices);
             Assert.Contains(TestEnv.Logs, l => l.Contains("doesn't accept low reasoning effort"));
 
-            // The second try wasn't another request; the next asks for the schema but not the effort
+            // The other tries weren't other requests; the next asks for the schema but not the effort
             host.RealTime += 31;
             Assert.True(dispatcher.Request(Moment()));
-            Assert.DoesNotContain("reasoning", transport.Sent[2].Body);
-            Assert.Contains("response_format", transport.Sent[2].Body);
+            Assert.DoesNotContain("reasoning", transport.Sent[3].Body);
+            Assert.Contains("response_format", transport.Sent[3].Body);
             transport.Reply(200, Replies.OpenAI(Replies.Posts));
 
             dispatcher.OnSettingsChanged();
             host.GameTime = host.GameTime.AddDays(7);
             host.RealTime += 31;
             Assert.True(dispatcher.Request(Moment()));
-            Assert.Contains("\"reasoning_effort\":\"low\"", transport.Sent[3].Body);
+            Assert.Contains("\"reasoning_effort\":\"low\"", transport.Sent[4].Body);
+            Assert.Contains("\"reasoning\":{", transport.Sent[4].Body);
         }
 
         /// <summary>

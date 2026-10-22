@@ -75,8 +75,12 @@ namespace AICore
 
         /// <summary>
         /// The URL to post to; null with an error when there is none. A blank setting is the provider's own
-        /// address. A full endpoint is used as typed; an address ending in /v1 gets the endpoint added, and
-        /// any other gets /v1/ and the endpoint, so "http://localhost:11434" works for Ollama.
+        /// address. A full endpoint is used as typed. For an OpenAI-compatible service, an address with a path
+        /// gets /chat/completions added, as the OpenAI SDKs add it to the base URL every service documents
+        /// (openrouter.ai/api/v1, api.groq.com/openai/v1, generativelanguage.googleapis.com/v1beta/openai,
+        /// open.bigmodel.cn/api/paas/v4, models.github.ai/inference); a bare host gets /v1/ and the endpoint, so
+        /// "http://localhost:11434" works for Ollama. Anthropic's own API: an address ending in /v1 gets the
+        /// endpoint added, any other /v1/ and the endpoint.
         /// </summary>
         public static string ResolveUrl(Connection connection, out string error)
         {
@@ -105,7 +109,8 @@ namespace AICore
             {
                 return url;
             }
-            if (url.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
+            bool hasPath = uri.AbsolutePath.Trim('/') != "";
+            if (url.EndsWith("/v1", StringComparison.OrdinalIgnoreCase) || connection.Provider != Provider.Anthropic && hasPath)
             {
                 return url + "/" + endpoint;
             }
@@ -145,9 +150,11 @@ namespace AICore
         /// <param name="lowEffort">Asks a model that reasons before it answers to reason only a little: Anthropic's
         /// effort, OpenAI's reasoning_effort, and for compatible services both the top-level reasoning_effort that
         /// most of them read (OpenRouter, Ollama, LM Studio, Gemini, Groq) and OpenRouter's own reasoning setting;
-        /// a service ignores the one it doesn't know. A model that can't take it may reject the request.</param>
+        /// most services ignore the one they don't know. A model that can't take it may reject the request.</param>
+        /// <param name="routerEffort">With lowEffort, also sends OpenRouter's reasoning setting to a compatible service.
+        /// Some services reject a field they don't know (Google's), so it can be left out and the top-level one kept.</param>
         public static HttpRequestSpec BuildRequest(Connection connection, string system, string user, int maxTokens, out string error, string schema = null,
-            bool lowEffort = false)
+            bool lowEffort = false, bool routerEffort = true)
         {
             string url = ResolveUrl(connection, out error);
             if (url == null)
@@ -210,7 +217,7 @@ namespace AICore
                 if (lowEffort)
                 {
                     body.Append(",\"reasoning_effort\":\"low\"");
-                    if (connection.Provider == Provider.Compatible)
+                    if (connection.Provider == Provider.Compatible && routerEffort)
                     {
                         body.Append(",\"reasoning\":{\"effort\":\"low\"}");
                     }
@@ -438,10 +445,14 @@ namespace AICore
 
         /// <summary>
         /// The message in an error reply: Anthropic's and OpenAI's are both error.message; some services
-        /// send a plain string or a top-level message.
+        /// send a plain string or a top-level message. Google wraps its error in a list: [{"error": {...}}].
         /// </summary>
         private static string ErrorMessage(JSONNode root)
         {
+            if (root is JSONArray list && list.Count > 0)
+            {
+                root = list[0];
+            }
             if (root is not JSONClass)
             {
                 return "";

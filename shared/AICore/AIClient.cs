@@ -93,6 +93,7 @@ namespace AICore
         private bool testPending;
         private bool noSchema;
         private bool noEffort;
+        private bool noRouterEffort;
 
         public AIClient(IAIHost host, IHttpTransport transport)
         {
@@ -154,8 +155,10 @@ namespace AICore
             Connection connection = host.ReadConnection();
             bool withSchema = schema != null && !noSchema;
             bool withEffort = !noEffort;
+            // OpenRouter's own effort setting goes only to compatible services, and only until one rejects it
+            bool withRouter = withEffort && !noRouterEffort && connection.Provider == Provider.Compatible;
             HttpRequestSpec request = Providers.BuildRequest(connection, system, user, Providers.MaxOutputTokens, out string error,
-                withSchema ? schema : null, lowEffort: withEffort);
+                withSchema ? schema : null, lowEffort: withEffort, routerEffort: withRouter);
             if (request == null)
             {
                 suspended = true;
@@ -175,21 +178,25 @@ namespace AICore
             sentThisWeek++;
             inFlight = true;
 
-            void Handle(HttpRequestSpec sent, HttpResult result, bool schemaSent, bool effortSent, Action<Reply> then)
+            void Handle(HttpRequestSpec sent, HttpResult result, bool schemaSent, bool effortSent, bool routerSent, Action<Reply> then)
             {
                 if ((schemaSent || effortSent) && (result.Status == 400 || result.Status == 422))
                 {
-                    // The service or model won't take the request: again without the effort, then without the
-                    // schema too, which counts as the same request
-                    bool schemaNext = effortSent && schemaSent;
+                    // The service or model won't take the request: again without OpenRouter's effort setting (a
+                    // field some services don't know), then without any effort, then without the schema too, which
+                    // counts as the same request
+                    bool effortNext = routerSent;
+                    bool schemaNext = schemaSent && effortSent;
                     HttpRequestSpec smaller = Providers.BuildRequest(connection, system, user, Providers.MaxOutputTokens, out _,
-                        schemaNext ? schema : null);
+                        schemaNext ? schema : null, lowEffort: effortNext, routerEffort: false);
                     if (smaller != null)
                     {
-                        Log.Warn(effortSent
-                            ? "The service doesn't accept low reasoning effort (HTTP " + result.Status + "); sending the request without it."
-                            : "The service doesn't accept a reply schema (HTTP " + result.Status + "); sending the request without one.");
-                        Transmit(smaller, retry => Handle(smaller, retry, schemaNext, false, then), connection, label);
+                        Log.Warn(routerSent
+                            ? "The service doesn't accept OpenRouter's reasoning setting (HTTP " + result.Status + "); sending the request with only the standard one."
+                            : effortSent
+                                ? "The service doesn't accept low reasoning effort (HTTP " + result.Status + "); sending the request without it."
+                                : "The service doesn't accept a reply schema (HTTP " + result.Status + "); sending the request without one.");
+                        Transmit(smaller, retry => Handle(smaller, retry, schemaNext, effortNext, false, then), connection, label);
                         return;
                     }
                 }
@@ -197,6 +204,7 @@ namespace AICore
                 if (result.Status >= 200 && result.Status < 300)
                 {
                     // Only what was dropped on the way to this answer stays dropped
+                    noRouterEffort |= withRouter && !routerSent;
                     noEffort |= withEffort && !effortSent;
                     noSchema |= withSchema && !schemaSent;
                 }
@@ -210,11 +218,11 @@ namespace AICore
                 {
                     Log.Warn("The service sent the answer in the reasoning field, with no content; the answer there is used.");
                 }
-                then(new Reply(this, reply.Text, next => Transmit(sent, again => Handle(sent, again, schemaSent, effortSent, next), connection, label),
+                then(new Reply(this, reply.Text, next => Transmit(sent, again => Handle(sent, again, schemaSent, effortSent, routerSent, next), connection, label),
                     connection, label));
             }
 
-            Transmit(request, result => Handle(request, result, withSchema, withEffort, done), connection, label);
+            Transmit(request, result => Handle(request, result, withSchema, withEffort, withRouter, done), connection, label);
             return true;
         }
 
@@ -228,6 +236,7 @@ namespace AICore
             suspended = false;
             noSchema = false;
             noEffort = false;
+            noRouterEffort = false;
             backoffUntil = double.NegativeInfinity;
             showNextError = true;
             SettingsChanged?.Invoke();

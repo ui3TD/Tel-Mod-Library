@@ -266,6 +266,64 @@ namespace AICore.Tests
             Assert.Contains("\"effort\"", transport.Sent[4].Body);
         }
 
+        /// <summary>
+        /// A compatible service that rejects OpenRouter's reasoning setting (Google's) gets the request again
+        /// with only the standard reasoning_effort and the schema, and keeps getting it that way until the
+        /// settings change.
+        /// </summary>
+        [Fact]
+        public void RejectedRouterEffort_KeepsTheStandardEffort()
+        {
+            TestEnv.Configure(Provider.Compatible, model: "gemini-4-argon", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai");
+            Send();
+            Assert.Contains("\"reasoning\":{", transport.Sent[0].Body);
+            transport.Reply(400, "[{\"error\":{\"code\":400,\"message\":\"Unknown name \\\"reasoning\\\": Cannot find field.\"}}]");
+            Assert.Equal(2, transport.Sent.Count);
+            Assert.DoesNotContain("\"reasoning\":{", transport.Sent[1].Body);
+            Assert.Contains("\"reasoning_effort\":\"low\"", transport.Sent[1].Body);
+            Assert.Contains("json_schema", transport.Sent[1].Body);
+            transport.Reply(200, Replies.OpenAI("hello"));
+            Assert.Single(texts);
+            Assert.Empty(host.Notices);
+
+            // The next request goes straight through with the standard effort
+            host.RealTime += 60;
+            Send();
+            Assert.Equal(3, transport.Sent.Count);
+            Assert.DoesNotContain("\"reasoning\":{", transport.Sent[2].Body);
+            Assert.Contains("\"reasoning_effort\":\"low\"", transport.Sent[2].Body);
+            transport.Reply(200, Replies.OpenAI("again"));
+
+            client.OnSettingsChanged("s", "u");
+            host.RealTime += 60;
+            Send();
+            Assert.Contains("\"reasoning\":{", transport.Sent[transport.Sent.Count - 1].Body);
+        }
+
+        /// <summary>
+        /// A compatible service that takes no effort setting and no schema: OpenRouter's setting goes first,
+        /// then the standard effort, then the schema, all as the same request.
+        /// </summary>
+        [Fact]
+        public void CompatibleFallback_DropsOneThingAtATime()
+        {
+            TestEnv.Configure(Provider.Compatible, model: "some/model", baseUrl: "https://example.com/v1");
+            host.PerWeek = 1;
+            Send();
+            transport.Reply(400, "{\"error\":{\"message\":\"no reasoning\"}}");
+            Assert.Contains("\"reasoning_effort\"", transport.Sent[1].Body);
+            transport.Reply(400, "{\"error\":{\"message\":\"no reasoning_effort\"}}");
+            Assert.DoesNotContain("reasoning_effort", transport.Sent[2].Body);
+            Assert.Contains("json_schema", transport.Sent[2].Body);
+            transport.Reply(422, "{\"error\":{\"message\":\"no schema\"}}");
+            Assert.DoesNotContain("json_schema", transport.Sent[3].Body);
+            transport.Reply(200, Replies.OpenAI("hello"));
+            Assert.Single(texts);
+            // The four attempts counted as one request
+            host.RealTime += 60;
+            Assert.Equal("this week's requests are used up", client.Blocked());
+        }
+
         [Fact]
         public void NoSchema_IsNeverAskedFor()
         {

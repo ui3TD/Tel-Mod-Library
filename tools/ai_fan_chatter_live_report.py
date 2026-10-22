@@ -177,6 +177,9 @@ def analyse(moment: dict) -> dict:
     for i, call in enumerate(calls):
         body = loads(call.get("request", "")) or {}
         response = loads(call.get("response", "")) or {}
+        # Google wraps an error in a list: [{"error": {...}}]
+        if isinstance(response, list):
+            response = response[0] if response and isinstance(response[0], dict) else {}
         if i == 0:
             info["system"], info["user"] = prompts(body)
         info["requests"] += 1
@@ -198,12 +201,17 @@ def analyse(moment: dict) -> dict:
                 for item in [post] + list(post.get("replies") or []):
                     info["texts"] += 1
                     info["cut"] += len(item.get("text") or "") > MAX_SHOWN
-    sent_schema = any("response_format" in (c.get("request") or "") or "output_config" in (c.get("request") or "") for c in calls[:1])
+    def has_schema(call: dict) -> bool:
+        request = call.get("request") or ""
+        return "response_format" in request or '"format"' in request
+
+    # A 400 can be about the effort setting only, so the schema counts as rejected only when the last
+    # request went without it
     if not calls:
         info["schema"] = ""
-    elif not sent_schema:
+    elif not has_schema(calls[0]):
         info["schema"] = "not asked"
-    elif any(s in (400, 422) for s in info["statuses"]):
+    elif not has_schema(calls[-1]):
         info["schema"] = "rejected, sent without"
     else:
         info["schema"] = "accepted"

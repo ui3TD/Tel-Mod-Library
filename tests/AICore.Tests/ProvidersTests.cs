@@ -18,6 +18,34 @@ namespace AICore.Tests
         [InlineData(Provider.Compatible, "http://localhost:1234/v1/", "http://localhost:1234/v1/chat/completions")]
         [InlineData(Provider.Compatible, "https://openrouter.ai/api/v1", "https://openrouter.ai/api/v1/chat/completions")]
         [InlineData(Provider.Compatible, "https://example.com/custom/chat/completions", "https://example.com/custom/chat/completions")]
+        // Each service's base URL as its docs give it for the OpenAI SDKs, which add /chat/completions to it
+        [InlineData(Provider.Compatible, "https://generativelanguage.googleapis.com/v1beta/openai/", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")]
+        [InlineData(Provider.Compatible, "generativelanguage.googleapis.com/v1beta/openai", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")]
+        [InlineData(Provider.Compatible, "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.groq.com/openai/v1", "https://api.groq.com/openai/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.fireworks.ai/inference/v1", "https://api.fireworks.ai/inference/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.deepinfra.com/v1/openai", "https://api.deepinfra.com/v1/openai/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.novita.ai/openai", "https://api.novita.ai/openai/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.novita.ai/v3/openai", "https://api.novita.ai/v3/openai/chat/completions")]
+        [InlineData(Provider.Compatible, "https://dashscope-intl.aliyuncs.com/compatible-mode/v1", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://open.bigmodel.cn/api/paas/v4", "https://open.bigmodel.cn/api/paas/v4/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.z.ai/api/paas/v4", "https://api.z.ai/api/paas/v4/chat/completions")]
+        [InlineData(Provider.Compatible, "https://ark.cn-beijing.volces.com/api/v3", "https://ark.cn-beijing.volces.com/api/v3/chat/completions")]
+        [InlineData(Provider.Compatible, "https://models.github.ai/inference", "https://models.github.ai/inference/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.perplexity.ai/v2", "https://api.perplexity.ai/v2/chat/completions")]
+        [InlineData(Provider.Compatible, "https://YOUR-RESOURCE.openai.azure.com/openai/v1/", "https://YOUR-RESOURCE.openai.azure.com/openai/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.cloudflare.com/client/v4/accounts/abc123/ai/v1", "https://api.cloudflare.com/client/v4/accounts/abc123/ai/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.anthropic.com/v1/", "https://api.anthropic.com/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.mistral.ai/v1", "https://api.mistral.ai/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.x.ai/v1", "https://api.x.ai/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.moonshot.ai/v1", "https://api.moonshot.ai/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.xiaomimimo.com/v1", "https://api.xiaomimimo.com/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://api.minimax.io/v1", "https://api.minimax.io/v1/chat/completions")]
+        [InlineData(Provider.Compatible, "https://integrate.api.nvidia.com/v1", "https://integrate.api.nvidia.com/v1/chat/completions")]
+        // A bare host: DeepSeek documents both api.deepseek.com and api.deepseek.com/v1
+        [InlineData(Provider.Compatible, "https://api.deepseek.com", "https://api.deepseek.com/v1/chat/completions")]
+        // Any other address with a path is a base URL, as the OpenAI SDKs take it
+        [InlineData(Provider.Compatible, "https://example.com/custom", "https://example.com/custom/chat/completions")]
         [InlineData(Provider.Anthropic, "https://proxy.example.com", "https://proxy.example.com/v1/messages")]
         [InlineData(Provider.Anthropic, "https://proxy.example.com/v1/messages", "https://proxy.example.com/v1/messages")]
         // Typed without http:// or https://: http for this PC and the local network, https for the rest
@@ -176,6 +204,12 @@ namespace AICore.Tests
             Assert.Equal("low", compatible["reasoning"]["effort"].Value);
             Assert.Equal("low", compatible["reasoning_effort"].Value);
             Assert.Equal("json_schema", compatible["response_format"]["type"].Value);
+
+            // Without OpenRouter's own setting, for a service that rejects fields it doesn't know (Google's)
+            JSONNode standard = JSON.Parse(Providers.BuildRequest(Of(Provider.Compatible), "s", "u", 1, out _, TestSchema, lowEffort: true, routerEffort: false).Body);
+            Assert.Equal("low", standard["reasoning_effort"].Value);
+            Assert.DoesNotContain("\"reasoning\"", standard.ToString());
+            Assert.Equal("json_schema", standard["response_format"]["type"].Value);
         }
     }
 
@@ -347,6 +381,18 @@ namespace AICore.Tests
             Assert.Equal(expected, reply.Failure);
             Assert.Equal(problem, reply.Problem);
             Assert.Equal(status, reply.Status);
+        }
+
+        /// <summary>
+        /// Google wraps its error in a list; the notice still gets its message.
+        /// </summary>
+        [Fact]
+        public void GooglesErrorList_GivesItsMessage()
+        {
+            ProviderReply reply = Parse(Provider.Compatible, 400,
+                "[{\"error\":{\"code\":400,\"message\":\"Invalid JSON payload received. Unknown name \\\"reasoning\\\": Cannot find field.\",\"status\":\"INVALID_ARGUMENT\"}}]");
+            Assert.Equal(Problem.Rejected, reply.Problem);
+            Assert.Contains("Unknown name \"reasoning\"", reply.Error);
         }
 
         /// <summary>

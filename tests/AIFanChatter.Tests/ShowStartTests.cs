@@ -77,8 +77,7 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// The show by the game's names, its cast and its first audience; its budget, revenue and new fans
-        /// aren't public.
+        /// The show by the game's names and its cast; its viewers, budget, revenue and new fans aren't public.
         /// </summary>
         [Fact]
         public void Show_GivesItsFacts()
@@ -94,8 +93,9 @@ namespace AIFanChatter.Tests
             show.mc = new Shows._param { id = 0, title = "No Host" };
             Assert.Equal("No Host", MomentContext.ShowStart(show).Fact(F, "Host"));
             Assert.Equal("Rin, Aoi", moment.Fact(F, "Cast"));
-            Assert.Equal("480000 viewers", moment.Fact(F, "First episode audience"));
             string text = moment.Describe();
+            Assert.DoesNotContain("480000", text);
+            Assert.DoesNotContain("viewers", text);
             Assert.DoesNotContain("12345678", text);
             Assert.DoesNotContain("9876", text);
             Assert.Equal(new[] { "Rin", "Aoi" }, moment.Facts(M).Select(f => f.Key));
@@ -119,7 +119,7 @@ namespace AIFanChatter.Tests
 
         /// <summary>
         /// Shows cancelled in the past year by their last episode (weekly from the launch), newest first, at
-        /// most 3; other shows on air; how many started before.
+        /// most 3; other shows on air and when they started; how many started before.
         /// </summary>
         [Fact]
         public void History_ListsRecentlyCancelledShows()
@@ -139,7 +139,7 @@ namespace AIFanChatter.Tests
                 + "\n- \"Morning Talk\" (Radio, Interviews), 1 episode, last aired 4 months ago"
                 + "\n- \"Road Trip\" (Internet, Travel), with a rotating cast, 2 episodes, last aired 4 months ago",
                 moment.Fact(H, "Recently cancelled shows"));
-            Assert.Equal("\n- \"Live Now\" (TV, Music), with the whole group", moment.Fact(H, "Other shows on air now"));
+            Assert.Equal("\n- \"Live Now\" (TV, Music), with the whole group, started 6 months ago", moment.Fact(H, "Other shows on air now"));
             Assert.Equal("6", moment.Fact(H, "Shows started before this one"));
         }
 
@@ -152,7 +152,7 @@ namespace AIFanChatter.Tests
             Shows._show big = Show("Big Cast", Status.released, 5, Today.AddMonths(-1));
             big.girls = new[] { Idol("A1"), Idol("B1"), Idol("C1"), Idol("D1") };
             Moment moment = MomentContext.ShowStart(Launched(Cast.permanentCast, Idol("Rin")));
-            Assert.Equal("\n- \"Big Cast\" (TV, Drama), with A1, B1, C1 and 1 more", moment.Fact(H, "Other shows on air now"));
+            Assert.Equal("\n- \"Big Cast\" (TV, Drama), with A1, B1, C1 and 1 more, started 29 days ago", moment.Fact(H, "Other shows on air now"));
         }
 
         [Fact]

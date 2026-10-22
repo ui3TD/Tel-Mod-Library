@@ -134,35 +134,24 @@ namespace AIFanChatter.LiveReport
         }
 
         /// <summary>
-        /// A TV drama show launched today with a permanent cast of three, a seasoned host and its first
-        /// audience; an internet food show cancelled after 14 episodes, last aired 4 months ago; a radio music
-        /// show still on air.
+        /// A TV drama show launched today with a permanent cast of three and a seasoned host; an internet food
+        /// show cancelled after 14 episodes, last aired 4 months ago; a radio music show still on air.
         /// </summary>
         public Shows._show ShowNow()
         {
             OtherShows();
-            Shows._show show = Show("Platform 7 Mysteries", Shows._show._status.released, 1, Today, 2, 4, 2,
+            return Show("Platform 7 Mysteries", Shows._show._status.released, 1, Today, 2, 4, 2,
                 idols["Sayaka"], idols["Rena"], idols["Koharu"]);
-            show.audience.Add(412000);
-            return show;
         }
 
         /// <summary>
-        /// An internet music show with Rin and Hinata, cancelled today after 60 weekly episodes (13 months), its
-        /// concept updated once; the cancelled food show and the radio show of ShowNow around it.
+        /// An internet music show with Rin and Hinata, cancelled today after 60 weekly episodes (13 months);
+        /// the cancelled food show and the radio show of ShowNow around it.
         /// </summary>
         public Shows._show ShowEndNow()
         {
             OtherShows();
-            Shows._show show = Show("Backstage Diaries", Shows._show._status.canceled, 60, Today.AddDays(-7 * 59), 1, 3, 3, idols["Rin"], idols["Hinata"]);
-            for (int i = 0; i < 60; i++)
-            {
-                // Grows to its peak in the middle, then fades
-                show.audience.Add(180000 + 4000 * Math.Min(i, 60 - i));
-            }
-            show.peakAudience = show.audience.Max();
-            show.NumberOfRelaunches = 1;
-            return show;
+            return Show("Backstage Diaries", Shows._show._status.canceled, 60, Today.AddDays(-7 * 59), 1, 3, 3, idols["Rin"], idols["Hinata"]);
         }
 
         private void OtherShows()

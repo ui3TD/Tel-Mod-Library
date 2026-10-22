@@ -313,9 +313,10 @@ namespace AIFanChatter
         public const int ShowsListed = 3;
 
         /// <summary>
-        /// For a show's start or end: shows cancelled in the past year, newest first, other shows on air, and,
-        /// at a start, how many shows started before. The game keeps no end date: episodes air weekly from the
-        /// launch date, so the last one aired 7 days times the episodes after the first later.
+        /// For a show's start or end: shows cancelled in the past year, newest first, other shows on air and
+        /// when they started, and, at a start, how many shows started before. The game keeps no end date:
+        /// episodes air weekly from the launch date, so the last one aired 7 days times the episodes after the
+        /// first later.
         /// </summary>
         public static void Shows(Moment moment, Shows._show show, IEnumerable<Shows._show> all, DateTime now, bool started = true)
         {
@@ -337,7 +338,11 @@ namespace AIFanChatter
                     .Where(s => s.status == global::Shows._show._status.released || s.status == global::Shows._show._status.relaunching
                         || s.status == global::Shows._show._status.relaunching_working)
                     .Take(ShowsListed)
-                    .Select(s => (Func<object>)(() => ShowName(s))).ToList());
+                    .Select(s => (Func<object>)(() =>
+                    {
+                        string ago = s.episodeCount > 0 ? Ago(s.LaunchDate, now) : "";
+                        return ShowName(s) + (ago == "" ? "" : ", started " + ago);
+                    })).ToList());
                 if (started)
                 {
                     moment.AddTo(Section, "Shows started before this one", () => others.Count(s => s.episodeCount > 0));

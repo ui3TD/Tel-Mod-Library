@@ -124,8 +124,8 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// The show by the game's names and its cast, how long it ran, and its audience; its budget, revenue
-        /// and new fans aren't public.
+        /// The show by the game's names, its cast and how long it ran. Its viewers, budget, revenue and new
+        /// fans aren't public, and concept updates say little, so none of them is sent.
         /// </summary>
         [Fact]
         public void Show_GivesItsFacts()
@@ -141,12 +141,13 @@ namespace AIFanChatter.Tests
             Assert.Equal("Seasoned host", moment.Fact(F, "Host"));
             Assert.Equal("Rin, Aoi", moment.Fact(F, "Cast"));
             Assert.Equal("14 months, 61 episodes", moment.Fact(F, "Ran for"));
-            Assert.Equal("260000 viewers", moment.Fact(F, "Last episode audience"));
-            Assert.Equal("350000 viewers", moment.Fact(F, "Best episode audience"));
-            Assert.Null(moment.Fact(F, "Concept updated"));
             show.NumberOfRelaunches = 2;
-            Assert.Equal("2 times", MomentContext.ShowEnd(show).Fact(F, "Concept updated"));
-            string text = moment.Describe();
+            string text = MomentContext.ShowEnd(show).Describe();
+            Assert.DoesNotContain("audience", text);
+            Assert.DoesNotContain("Concept", text);
+            Assert.DoesNotContain("350000", text);
+            Assert.DoesNotContain("260000", text);
+            Assert.DoesNotContain("viewers", text);
             Assert.DoesNotContain("12345678", text);
             Assert.DoesNotContain("9876", text);
             Assert.Equal(new[] { "Rin", "Aoi" }, moment.Facts(M).Select(f => f.Key));
@@ -173,7 +174,7 @@ namespace AIFanChatter.Tests
 
             Moment moment = MomentContext.ShowEnd(show);
             Assert.Equal("\n- \"Idol Kitchen\" (Internet, Music), with Mio, 14 episodes, last aired 2 months ago", moment.Fact(H, "Recently cancelled shows"));
-            Assert.Equal("\n- \"Live Now\" (Internet, Music), with the whole group", moment.Fact(H, "Other shows on air now"));
+            Assert.Equal("\n- \"Live Now\" (Internet, Music), with the whole group, started 6 months ago", moment.Fact(H, "Other shows on air now"));
             Assert.Null(moment.Fact(H, "Shows started before this one"));
         }
     }

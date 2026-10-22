@@ -692,21 +692,20 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// A show's first episode, aired as the player launched it. Its budget, revenue and new fans are the
-        /// agency's own numbers, so only the audience, a ratings-style figure, is sent.
+        /// A show's first episode, aired as the player launched it. Its viewers, budget, revenue and new fans
+        /// aren't public, so none of them is sent.
         /// </summary>
         public static Moment ShowStart(Shows._show show)
         {
             List<data_girls.girls> cast = CastOf(show);
             Moment moment = ShowFacts(new Moment("a new show starring the agency's idols started airing")
-                    .Labelled(() => "the show \"" + Moment.Clean(show.title) + "\""), show, cast, "first")
-                .Add("First episode audience", () => show.audience.Count > 0 ? show.audience[0] + " viewers" : "");
+                .Labelled(() => "the show \"" + Moment.Clean(show.title) + "\""), show, cast, "first");
             return ShowPeople(moment, show, cast, started: true);
         }
 
         /// <summary>
         /// A show that aired for a year or more, as the player's cancellation ends it. The year runs from its
-        /// first episode, through any concept updates. Like its start, only audience figures are sent.
+        /// first episode, through any concept updates. As at its start, no viewer or money figures are sent.
         /// </summary>
         public static Moment ShowEnd(Shows._show show)
         {
@@ -715,11 +714,7 @@ namespace AIFanChatter
                     .Labelled(() => "the end of the show \"" + Moment.Clean(show.title) + "\""), show, cast, "last")
                 .Add("Ran for", () => History.Known(show.LaunchDate)
                     ? History.Span((Now.Date - show.LaunchDate.Date).Days) + ", " + show.episodeCount + (show.episodeCount == 1 ? " episode" : " episodes")
-                    : "")
-                .Add("Last episode audience", () => show.audience.Count > 0 ? show.audience[show.audience.Count - 1] + " viewers" : "")
-                .Add("Best episode audience", () => show.peakAudience > 0 ? show.peakAudience + " viewers" : "")
-                .Add("Concept updated", () => show.NumberOfRelaunches <= 0 ? ""
-                    : show.NumberOfRelaunches + (show.NumberOfRelaunches == 1 ? " time" : " times"));
+                    : "");
             return ShowPeople(moment, show, cast, started: false);
         }
 

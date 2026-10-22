@@ -205,6 +205,95 @@ namespace AIFanChatter
     }
 
     /// <summary>
+    /// An audition the player launched and paid for, as its candidates are shown. The copycat story audition
+    /// comes through here unpaid; the game's other story auditions open the popup without it.
+    /// </summary>
+    [HarmonyPatch(typeof(Auditions), nameof(Auditions.GenerateAudition))]
+    public class Auditions_GenerateAudition
+    {
+        public static void Prefix(Auditions.data _data, bool ShouldPay)
+        {
+            try
+            {
+                if (ShouldPay && _data != null)
+                {
+                    AuditionHires.Start(_data.Type);
+                }
+                else
+                {
+                    AuditionHires.Clear();
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+    }
+
+    /// <summary>
+    /// An idol hired while a player's audition is open: every hire goes through Hire.
+    /// </summary>
+    [HarmonyPatch(typeof(data_girls), nameof(data_girls.Hire))]
+    public class data_girls_Hire
+    {
+        public static void Postfix(data_girls.girls _girl, bool __runOriginal)
+        {
+            try
+            {
+                AuditionHires.Audition pending = AuditionHires.Pending;
+                if (__runOriginal && pending != null && _girl != null && data_girls.girl.Contains(_girl) && !pending.Hired.Contains(_girl))
+                {
+                    pending.Hired.Add(_girl);
+                }
+            }
+            catch (Exception)
+            {
+                // Not counted
+            }
+        }
+    }
+
+    /// <summary>
+    /// A player's audition, once its popup closes: every hire from it is final then.
+    /// </summary>
+    [HarmonyPatch(typeof(Popup_Audition), nameof(Popup_Audition.Close))]
+    [HarmonyPriority(Priority.Last)]
+    public class Popup_Audition_Close
+    {
+        public static void Postfix(bool __runOriginal)
+        {
+            try
+            {
+                // Taken whatever happens, so a later close can't post this audition again
+                AuditionHires.Audition audition = AuditionHires.Take();
+                if (ShouldPost(audition, __runOriginal))
+                {
+                    List<data_girls.girls> hired = Joined(audition);
+                    Moments.Trigger(() => MomentContext.Audition(hired, audition.Scale));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        internal static bool ShouldPost(AuditionHires.Audition audition, bool ran)
+        {
+            return ran && audition != null
+                && (audition.Scale == Auditions.type.local || audition.Scale == Auditions.type.regional || audition.Scale == Auditions.type.nationwide)
+                && Joined(audition).Count > 0;
+        }
+
+        /// <summary>The idols hired from the audition who are still at the agency.</summary>
+        private static List<data_girls.girls> Joined(AuditionHires.Audition audition)
+        {
+            return audition.Hired.Where(g => g != null && data_girls.girl.Contains(g) && g.status != data_girls._status.graduated).ToList();
+        }
+    }
+
+    /// <summary>
     /// An election, when its last place (the winner) has been revealed and its results are final.
     /// </summary>
     [HarmonyPatch(typeof(SEvent_SSK._SSK), nameof(SEvent_SSK._SSK.Finish))]
@@ -287,13 +376,147 @@ namespace AIFanChatter
             }
         }
 
-        public static void Postfix(data_girls.girls __instance, Before __state, bool __runOriginal)
+        /// <summary>
+        /// A graduation without a goodbye scene posts at once. A regular one waits for its goodbye scene to
+        /// end, where the player can ask for a successor or offer her a staff job; the game is paused meanwhile.
+        /// </summary>
+        public static void Postfix(data_girls.girls __instance, bool dialogue, Before __state, bool __runOriginal)
         {
-            if (__runOriginal && __instance != null && __instance.status == data_girls._status.graduated
-                && Moments.FirstGraduationToday(staticVars.dateTime))
+            if (!__runOriginal || __instance == null || __instance.status != data_girls._status.graduated
+                || !Moments.FirstGraduationToday(staticVars.dateTime))
             {
-                Moments.Trigger(() => MomentContext.Graduation(__instance, __state.Rank, __state.Friends,
+                return;
+            }
+            data_dialogues._dialogue scene = dialogue ? GoodbyeScene() : null;
+            if (scene == null)
+            {
+                GraduationScene.Send(() => MomentContext.Graduation(__instance, __state.Rank, __state.Friends,
                     __state.BulliedBy, __state.Bullied));
+                return;
+            }
+            // One still waiting is sent first, so none is lost
+            if (GraduationScene.Pending != null)
+            {
+                GraduationScene.Post(GraduationScene.Take());
+            }
+            GraduationScene.Start(__instance, __state, scene);
+        }
+
+        /// <summary>
+        /// The dialogue the game just started for her goodbye; null when it couldn't show one.
+        /// </summary>
+        private static data_dialogues._dialogue GoodbyeScene()
+        {
+            try
+            {
+                // Graduation_Goodbye hands the scene to the controller (Set), which keeps it until the next one
+                return GraduationScene.CurrentDialogue();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The sister or successor a graduate brings in from her goodbye scene: the idol the game adds.
+    /// </summary>
+    [HarmonyPatch(typeof(Date_Graduation), nameof(Date_Graduation.Find_Successor))]
+    public class Date_Graduation_Find_Successor
+    {
+        public static void Prefix(out int __state)
+        {
+            __state = data_girls.girl.Count;
+        }
+
+        public static void Postfix(data_girls.girls Girl, bool Sister, int __state, bool __runOriginal)
+        {
+            try
+            {
+                GraduationScene.Waiting waiting = GraduationScene.For(Girl);
+                data_girls.girls added = __runOriginal && __state < data_girls.girl.Count ? data_girls.girl[data_girls.girl.Count - 1] : null;
+                if (waiting != null && added != null && added != Girl)
+                {
+                    waiting.Successor = added;
+                    waiting.Sister = Sister;
+                }
+            }
+            catch (Exception)
+            {
+                // Posted without her
+            }
+        }
+    }
+
+    /// <summary>
+    /// A graduate staying at the agency as staff, from her goodbye scene: the staffer the game adds.
+    /// </summary>
+    [HarmonyPatch(typeof(Date_Graduation), nameof(Date_Graduation.Hire_As_Staffer))]
+    public class Date_Graduation_Hire_As_Staffer
+    {
+        public static void Prefix(out int __state)
+        {
+            __state = staff.Staff.Count;
+        }
+
+        public static void Postfix(data_girls.girls Girl, int __state, bool __runOriginal)
+        {
+            try
+            {
+                GraduationScene.Waiting waiting = GraduationScene.For(Girl);
+                if (waiting != null && __runOriginal && __state < staff.Staff.Count)
+                {
+                    waiting.Staffer = staff.Staff[staff.Staff.Count - 1];
+                }
+            }
+            catch (Exception)
+            {
+                // Posted without it
+            }
+        }
+    }
+
+    /// <summary>
+    /// The end of a dialogue: a waiting graduation posts when its goodbye scene ends.
+    /// </summary>
+    [HarmonyPatch(typeof(ActiveDialogueController), nameof(ActiveDialogueController.Hide))]
+    [HarmonyPriority(Priority.Last)]
+    public class ActiveDialogueController_Hide
+    {
+        public static void Postfix(ActiveDialogueController __instance)
+        {
+            try
+            {
+                GraduationScene.Waiting waiting = GraduationScene.Pending;
+                // A reference check: Unity's == on its objects asks the engine
+                if (waiting != null && !ReferenceEquals(__instance, null) && __instance.dialogue == waiting.Dialogue)
+                {
+                    GraduationScene.Post(GraduationScene.Take());
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        /// <summary>
+        /// For a goodbye scene that ended some other way (another mod, a scene that couldn't load): the first
+        /// time the game clock moves with no dialogue showing, the waiting graduation posts.
+        /// </summary>
+        public static void OnTimeTick()
+        {
+            try
+            {
+                if (GraduationScene.Pending != null && !ActiveDialogueController.ShowingDialogue)
+                {
+                    GraduationScene.Post(GraduationScene.Take());
+                }
+            }
+            catch (Exception)
+            {
+                // No request
             }
         }
     }
@@ -638,6 +861,7 @@ namespace AIFanChatter
                 if (!mainScript.IsMainMenu())
                 {
                     __instance.onTimeTick += FeedRelease.OnTimeTick;
+                    __instance.onTimeTick += ActiveDialogueController_Hide.OnTimeTick;
                 }
             }
             catch (Exception e)

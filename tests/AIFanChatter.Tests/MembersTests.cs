@@ -298,9 +298,8 @@ namespace AIFanChatter.Tests
             Moment moment = MomentContext.Graduation(leaving, before);
             Assert.Contains("had the most fans of 2 in the group", moment.Fact(M, "Leaving"));
             Assert.Equal("Got a job as a broadcast anchor", moment.Fact(Moment.FactsSection, "After graduating"));
-            // After she left, and labelled so, where other moments say "Members in the group"
-            Assert.Equal("1", moment.Fact(Moment.AgencySection, "Members left in the group"));
-            Assert.Null(moment.Fact(Moment.AgencySection, "Members in the group"));
+            // Her group lost a member, so its size is given, after she left
+            Assert.Equal("1 now, down from 2", moment.Fact(Moment.AgencySection, "Members in " + Members.GroupName(Groups.Groups_[0])));
             Assert.DoesNotContain(moment.Facts, f => f.Key == "Her fans" || f.Key == "Her fame level" || f.Key == "Years in the group");
         }
 
@@ -534,7 +533,6 @@ namespace AIFanChatter.Tests
             Moment moment = MomentContext.Single(single);
             Assert.Equal("Moons", moment.Fact(Moment.AgencySection, "Group"));
             Assert.Equal(Members.GroupName(main), moment.Fact(Moment.AgencySection, "Sister group of"));
-            Assert.Equal("2", moment.Fact(Moment.AgencySection, "Members in the group"));
             Assert.Equal("B, A", moment.Fact(Moment.AgencySection, "Most popular members"));
             Assert.Contains("the fewest fans in the group", moment.Fact(M, "A"));
         }
@@ -570,15 +568,18 @@ namespace AIFanChatter.Tests
             Assert.Equal("Idol0, Idol1", MomentContext.Names(idols.Take(2), 3));
         }
 
+        /// <summary>
+        /// A moment that changes no group's size gives no sizes; the most popular are its non-graduated members.
+        /// </summary>
         [Fact]
-        public void Agency_GivesTheGroupsSize_AndItsMostPopular()
+        public void Agency_GivesNoSize_WithoutAChange_AndItsMostPopular()
         {
             data_girls.girls[] idols = Enumerable.Range(0, 5).Select(i => Idol("Idol" + i, fans: i * 100)).ToArray();
             Group("Stars", Today.AddYears(-3), idols);
             idols[0].Graduated(Today.AddDays(-5));
             singles._single single = Single("Song", Today, 1, idols[1]);
             Moment moment = MomentContext.Single(single);
-            Assert.Equal("4", moment.Fact(Moment.AgencySection, "Members in the group"));
+            Assert.DoesNotContain(moment.Facts(Moment.AgencySection), f => f.Key.StartsWith("Members in", StringComparison.Ordinal));
             Assert.Equal("Idol4, Idol3, Idol2", moment.Fact(Moment.AgencySection, "Most popular members"));
         }
 
@@ -686,6 +687,63 @@ namespace AIFanChatter.Tests
             Assert.Contains("the most fans in the group", moment.Fact(M, "Most"));
             Assert.DoesNotContain("fans in the group", moment.Fact(M, "Middle"));
             Assert.Contains("the fewest fans in the group", moment.Fact(M, "Fewest"));
+        }
+
+        /// <summary>
+        /// The youngest and the oldest are named after their age, by birthday, so two idols of the same age
+        /// aren't a tie; the one in the middle isn't named.
+        /// </summary>
+        [Fact]
+        public void AgeLine_NamesTheYoungestAndOldest()
+        {
+            data_girls.girls young = Idol("Young", age: 19);
+            young.birthday = Today.Date.AddYears(-19).AddDays(-5);
+            data_girls.girls middle = Idol("Middle", age: 19);
+            middle.birthday = Today.Date.AddYears(-19).AddDays(-100);
+            data_girls.girls old = Idol("Old", age: 24);
+            Group("Stars", Today.AddYears(-2), young, middle, old);
+
+            Assert.Contains("Age 19, youngest in the group.", LineOf(young));
+            Assert.Contains("Age 24, oldest in the group.", LineOf(old));
+            Assert.Contains("Age 19.", LineOf(middle));
+            Assert.DoesNotContain("est in", Regex.Replace(LineOf(middle), "Trait: [^.]*\\.", ""));
+        }
+
+        /// <summary>
+        /// A shared birthday, a group under 3, or an unknown birthday names no one. Graduates aren't
+        /// compared, but a graduate is compared with the members she left.
+        /// </summary>
+        [Fact]
+        public void AgeStanding_OnlyWhenSheAloneIs()
+        {
+            data_girls.girls a = Idol("A", age: 18), b = Idol("B", age: 18), c = Idol("C", age: 22);
+            b.birthday = a.birthday;
+            Groups._group group = Group("Stars", Today.AddYears(-2), a, b, c);
+            Assert.Equal("", Members.AgeStanding(a, group, null));
+            Assert.Equal("oldest in the group", Members.AgeStanding(c, group, null));
+
+            data_girls.girls x = Idol("X", age: 16), y = Idol("Y", age: 20);
+            Groups._group pair = Group("Pair", Today.AddYears(-1), x, y);
+            Assert.Equal("", Members.AgeStanding(x, pair, null));
+
+            data_girls.girls elder = Idol("Elder", age: 30).Graduated(Today);
+            group.Girls.Add(elder);
+            Assert.Equal("oldest in the group", Members.AgeStanding(c, group, null));
+            Assert.Equal("oldest in the group", Members.AgeStanding(elder, group, null));
+
+            c.birthday = new DateTime(1900, 1, 1);
+            Assert.Equal("", Members.AgeStanding(a, group, null));
+        }
+
+        /// <summary>
+        /// For an idol from another group, her own group is named.
+        /// </summary>
+        [Fact]
+        public void AgeStanding_NamesHerOwnGroup_ForAGuest()
+        {
+            data_girls.girls kid = Idol("Kid", age: 14);
+            Groups._group moons = Group("Moons", Today.AddYears(-1), kid, Idol("P", age: 18), Idol("Q", age: 19));
+            Assert.Equal("youngest in Moons", Members.AgeStanding(kid, moons, "Moons"));
         }
     }
 }

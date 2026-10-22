@@ -84,7 +84,7 @@ The mod fills each of these in with information from your game, about the moment
 
 The group these parts call "the group" is the group the moment is about:
 - for a single, the group that released it;
-- for a concert, a tour or an election, the main group. A tour takes every active idol and an election ranks every idol, from every group;
+- for a concert, a tour, an election or new members from an audition, the main group. A tour takes every active idol and an election ranks every idol, from every group;
 - for a graduation, the graduating idol's group;
 - for a random event, the group of the idol it's mainly about, or the main group when no idol is involved;
 - for a dating scandal, the idol's group;
@@ -113,6 +113,10 @@ The moment's own details, one per line.
   - the idols who stayed home, each with the reason: `on hiatus`, `injured` or `announced her graduation`. Left out when everyone went;
   - its stops, in order, each with the place's name as the game shows it and the people who came out of the venue's seats, such as `Osaka: 7600 out of 8000 seats`. A place no earlier tour went to ends with `first visit`.
   - Places come from the game's text, so a mod that renames them (such as National Tour) changes them here too. New fans and money aren't sent: fans can't see them.
+- **New members from an audition** (posted when the audition's window closes, only for auditions you launch and pay for; story auditions get no posts):
+  - the new members, up to 10 names, then how many more;
+  - the audition's scale as the game names it: Local, Regional or Nationwide.
+  - How rare a find each idol was (her card's colour) isn't sent: only the player sees it.
 - **An election** (posted once the winner is revealed):
   - its number, its broadcast, the voting single and the concert it followed;
   - how many idols it ranked;
@@ -120,8 +124,10 @@ The moment's own details, one per line.
   - **The biggest drop outside the top 10:** the idol ranked last time who fell furthest and isn't in the first 10, such as `Aoi, no longer ranked (was 3rd)`. The game keeps only the first 10 places, so an idol below them is no longer ranked. Graduated idols are left out.
   - **The biggest rise outside the top 10:** the idol below the first 10 who climbed furthest since last time. Only a mod that keeps more than 10 places (such as Extended SSK) makes this possible.
   - The first election has no movement and neither of these lines.
-- **A graduation:**
+- **A graduation** (a regular graduation, on her graduation date, posts when her goodbye scene ends, so the choices made there are included; other graduations post at once):
   - the idol, and what she did after graduating, when the game says;
+  - her staff job, when she stays at the agency as staff (`Stays at the agency as`), by title and what she does, as for a staff firing, such as `Choreographer (production staff)`;
+  - who joined in her place, when she brought in her younger sister or a successor she chose (`Joined in her place`), such as `Uchida Hana, her younger sister`. The game puts her in the main group, which is named when the graduate was in a sister group;
   - the idols she was bullied by (`Suspected to be bullied by`) and the idols she bullied (`Suspected to have bullied`). Only bullying that the player had found out about is named, and idols who had stopped bullying her are left out. Each line is left out when it names no one;
   - her singles as center, up to her 5 best-selling ones, best-selling first. The list is left out when she was never a center.
 - **A random event:**
@@ -137,7 +143,7 @@ The moment's own details, one per line.
 The group and the agency, one fact per line:
 
 - the group's name, and the main group's name when it's a sister group;
-- the number of members, or for a graduation the members left after she graduated;
+- the size of each group the moment changed, one line each, with its size now and before, such as `Members in Aozora Chapter: 4 now, down from 5`: after a graduation, new members from an audition, or a sister or successor joining. Moments that change no group's size leave it out;
 - when the group was formed, how many singles it has released, and the three members with the most fans. For a graduation, the graduating idol's friends (the other members of her clique) take the place of the three members with the most fans, on one line per group, such as `Friends in Aozora Chapter`, her own group first. They're left out when she wasn't in a clique or the player hadn't found out about it;
 - the reputation from scandals, in words, except for a graduation, which is about one idol;
 - the concept, from the agency's policies;
@@ -149,14 +155,14 @@ The group and the agency, one fact per line:
 
 ### `{members}`
 
-One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation, the idol for a dating scandal, and up to 5 idols whose scandal points paid for a policy change or a staff firing. A tour gets the 5 active idols with the most fans, from any group. An election gets up to 5: the first 3 places, then the idols with the biggest drop and the biggest rise outside the top 10, then the 4th and 5th places. Their lines leave out the election place, which the results give.
+One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation (and the idol who joined in her place, with a new member's line), the idol for a dating scandal, and up to 5 idols whose scandal points paid for a policy change or a staff firing. A tour gets the 5 active idols with the most fans, from any group. New members from an audition get up to 5 lines, in the order they were hired; their lines leave out the time in the group, the election place, the place by fans and the singles, which are all empty on an idol's first day, and add her highest potential, such as `Highest potential: dance`: the skill she could grow furthest in, or every one tied for it. An election gets up to 5: the first 3 places, then the idols with the biggest drop and the biggest rise outside the top 10, then the 4th and 5th places. Their lines leave out the election place, which the results give.
 
 Each line gives, in this order:
 
 1. her trait;
 2. up to 2 trivia facts, only for the first 2 idols;
 3. her scandal record in words, when she has one;
-4. her age;
+4. her age, and `youngest in the group` or `oldest in the group` when she alone is, by birthday, in a group of 3 or more;
 5. her mental stamina and her stamina, each only when it's 50 or lower;
 6. the skills where she alone is the best or the worst in her group, such as `Top dance skill in the group`;
 7. her time in the group, her place in the last election, her place by fans in the group, and how many of the group's singles she's in;
@@ -176,6 +182,7 @@ Earlier results to compare with. Empty when there's nothing earlier.
 - **A single:** the group's last 3 singles, each with its genre, lyrics, choreography, sales, quality, fan satisfaction and release date, then how many singles came before and the best-selling one.
 - **A concert:** the previous concert's venue, attendance and date, how many concerts came before, and the biggest audience so far.
 - **A tour:** every place earlier tours went to, once each, at its latest visit, newest first, with the seats filled and how long ago, such as `Osaka: 7600 out of 8000 seats, 4 months ago`. Then how many tours there have been, this one included.
+- **New members from an audition:** the idols who joined last before them, all hired on the same day, and how long ago. Graduated idols count.
 - **An election:** the previous election, its winner and how long ago, then how many elections there have been, this one included.
 - **A graduation:** the previous graduate from the same group and when she left, and how many of the group's idols graduated before her. When she's the group's first graduate, it says so.
 - **A random event:** how often the same event happened before, and when it last did. For an event in a storyline, the text of the storyline's earlier events that happened, oldest first. The game doesn't keep which answer was given, so an earlier event is only included when every answer of it that leads on in the storyline had a public outcome, or the game posted about it. The answers themselves aren't included.
@@ -273,7 +280,6 @@ Set list, in order:
 - "Midnight Platform" (Pop, Loneliness lyrics, Elegant choreography), center Hoshino Mirai
 - "Departure Bell" (Pop, Friends lyrics, Cute choreography), center Hoshino Mirai
 Group: Kirameki Station
-Members in the group: 14
 Group formed: 2 years ago
 Singles released by the group: 12
 Most popular members: Hoshino Mirai, Hina (Aoki Hinata), Takeda Rin

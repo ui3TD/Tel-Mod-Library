@@ -310,6 +310,32 @@ namespace AIFanChatter
         }
 
         /// <summary>
+        /// The idols who joined last before these, all hired on the same day, and how long ago: "Ishikawa Yui
+        /// and Ogawa Rena, 4 months ago". Graduates count: they joined too. Left out when no one joined before.
+        /// </summary>
+        public static void Joined(Moment moment, IList<data_girls.girls> hired, IEnumerable<data_girls.girls> all, DateTime now)
+        {
+            try
+            {
+                List<data_girls.girls> earlier = (all ?? Enumerable.Empty<data_girls.girls>())
+                    .Where(g => g != null && !hired.Contains(g) && Known(g.Hiring_Date) && g.Hiring_Date.Date <= now.Date)
+                    .ToList();
+                if (earlier.Count == 0)
+                {
+                    return;
+                }
+                DateTime last = earlier.Max(g => g.Hiring_Date.Date);
+                List<string> names = earlier.Where(g => g.Hiring_Date.Date == last).Select(MomentContext.Name).ToList();
+                string ago = Ago(last, now);
+                moment.AddTo(Section, names.Count == 1 ? "Previous new member" : "Previous new members", () => MomentContext.JoinAnd(names) + (ago == "" ? "" : ", " + ago));
+            }
+            catch (Exception)
+            {
+                // No history for these idols
+            }
+        }
+
+        /// <summary>
         /// The previous graduation and how many idols graduated before her, from her own group: a graduate
         /// stays in her group's list. Without a group, every graduate counts. The first graduate is said to
         /// be. An unknown graduation date (old saves) counts towards the number but is never the previous one.

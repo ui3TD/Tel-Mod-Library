@@ -347,6 +347,78 @@ namespace InGameTests.TelMods
             Game.Main.Data.GetComponent<SNS_Manager>().RenderMessages();
         }
 
+        private static readonly List<object> graduationsPosted = new();
+
+        /// <summary>
+        /// The real goodbye scene, played by the game's dialogue controller: the successor the player asks
+        /// for is hired before the scene ends, and the graduation is sent once, when it ends, with her. Only
+        /// the engine plays a dialogue; the facts and every other case are unit-tested.
+        /// </summary>
+        [InGameTest(Suite = ModTest.GraduationSuite, Order = 10)]
+        private static IEnumerator GoodbyeScene_SendsTheGraduationWithHerSuccessor(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+            yield return Game.CloseAllPopups(ctx);
+
+            AccessTools.Method(mod.GetType("AIFanChatter.Moments", true), "ResetGraduations").Invoke(null, null);
+            graduationsPosted.Clear();
+            data_girls.girls leaving = data_girls.GetActiveGirls().Last();
+            var dialogue = Game.Main.Data.GetComponent<ActiveDialogueController>();
+            string successorChoice = Language.Data["DATE__SUCCESSOR"];
+            // She always agrees to bring in a successor: the game asks for high satisfaction
+            using (TestTools.Spy(AccessTools.Method(typeof(Date_Graduation), nameof(Date_Graduation.GetSatisfactionCoeff)),
+                       postfix: AccessTools.Method(typeof(AIFanChatterTests), nameof(Satisfied))))
+            using (TestTools.Spy(AccessTools.Method(mod.GetType("AIFanChatter.GraduationScene", true), "Post"),
+                       postfix: AccessTools.Method(typeof(AIFanChatterTests), nameof(RecordGraduation))))
+            {
+                leaving.Graduate(dialogue: true);
+                yield return TestTools.WaitFor(ctx, () => ActiveDialogueController.ShowingDialogue, 10f, "the goodbye scene");
+                ctx.Assert(graduationsPosted.Count == 0, "The graduation was sent before its goodbye scene ended");
+
+                float start = Time.realtimeSinceStartup;
+                while (ActiveDialogueController.ShowingDialogue && Time.realtimeSinceStartup - start < 60f)
+                {
+                    vnButton successor = dialogue.buttonsContainer.GetComponentsInChildren<vnButton>()
+                        .FirstOrDefault(b => b.GetComponentInChildren<TextMeshProUGUI>()?.text.Contains(successorChoice) == true);
+                    if (successor != null)
+                    {
+                        successor.onClick();
+                    }
+                    else
+                    {
+                        Game.ClickDialogue(dialogue);
+                    }
+                    yield return new WaitForSecondsRealtime(0.2f);
+                }
+            }
+
+            ctx.Record("graduationsSent", graduationsPosted.Count);
+            ctx.Assert(graduationsPosted.Count == 1, $"The graduation was sent {graduationsPosted.Count} times; expected once, when the scene ended");
+            object hired = graduationsPosted.Count == 1 ? graduationsPosted[0]?.GetType().GetField("Successor")?.GetValue(graduationsPosted[0]) : null;
+            ctx.Assert(hired is data_girls.girls, "The graduation was sent without the successor the scene hired");
+
+            // The game shows the new idol's introduction a few seconds later; click through it as a player would
+            yield return TestTools.WaitFor(ctx, () => ActiveDialogueController.ShowingDialogue, 15f, "the successor's introduction");
+            float introStart = Time.realtimeSinceStartup;
+            while (ActiveDialogueController.ShowingDialogue && Time.realtimeSinceStartup - introStart < 60f)
+            {
+                Game.ClickDialogue(dialogue);
+                yield return new WaitForSecondsRealtime(0.2f);
+            }
+            yield return Game.CloseAllPopups(ctx);
+        }
+
+        private static void Satisfied(ref float __result) => __result = 1f;
+
+        private static void RecordGraduation(object[] __args)
+        {
+            if (__args[0] != null)
+            {
+                graduationsPosted.Add(__args[0]);
+            }
+        }
+
         /// <summary>
         /// Answers every request with the same OpenAI-style reply over plain http, and counts them.
         /// </summary>

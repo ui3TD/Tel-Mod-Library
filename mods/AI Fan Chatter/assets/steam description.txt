@@ -1,7 +1,7 @@
 [h1]REQUIRES: IM-HarmonyIntegration[/h1]
 Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
 
-Fans react on the Social Media tab to your singles, concerts, tours, elections, graduations, events, dating scandals, policy changes and staff firings, in posts and replies written by an AI service you choose. Fans start posting once your agency has 100 fans, and only the kinds of fans you have post. Each kind of fan is as happy or critical as their opinion of your group. The feed keeps 100 posts instead of 20.
+Fans react on the Social Media tab to your singles, concerts, tours, elections, new members from your auditions, graduations, events, dating scandals, policy changes and staff firings, in posts and replies written by an AI service you choose. Fans start posting once your agency has 100 fans, and only the kinds of fans you have post. Each kind of fan is as happy or critical as their opinion of your group. The feed keeps 100 posts instead of 20.
 
 [h3]Setting it up[/h3]
 You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url] and an account with an AI service. In Settings, open Mod Settings and fill in:
@@ -56,4 +56,4 @@ Your saves load normally without it. The feed goes back to 20 posts.
 - 1.8.2: Concert attendance shows seats filled out of the venue's seats, without a percentage
 - 1.9.0: Graduations name who the idol was suspected to be bullied by or to have bullied
 - 1.10.0: Posts for dating scandals, paid policy changes and staff firings; no posts under 100 fans
-- 1.11.0: Posts for tour and election results
+- 1.11.0: Posts for tours, elections, auditions; graduates' successors; youngest/oldest noted

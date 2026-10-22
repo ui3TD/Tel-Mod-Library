@@ -24,6 +24,8 @@ namespace AIFanChatter
         public const int ElectionCap = 5;
         /// <summary>The election places named before the biggest moves outside the top.</summary>
         public const int ElectionTopFirst = 3;
+        /// <summary>The most new idols an audition names.</summary>
+        public const int AuditionCap = 5;
         /// <summary>Only the idols this far up the order get their trivia, to keep the prompt short.</summary>
         public const int TriviaIdols = 2;
         public const int TriviaLength = 120;
@@ -172,9 +174,11 @@ namespace AIFanChatter
         /// (eventGroup): the single's group, the main group for a concert, the graduating idol's group. Known
         /// ranks replace the ones worked out now: a graduating idol's is taken before the game moves her fans.
         /// Without withElection the lines leave out her election place: an election's own moment gives it.
+        /// A newcomer's line leaves out her time in the group, election, place by fans and singles: on her
+        /// first day they're all empty.
         /// </summary>
         public static void Add(Moment moment, IList<data_girls.girls> idols, DateTime now, Groups._group eventGroup, IDictionary<data_girls.girls, Rank> knownRanks = null,
-            bool withElection = true)
+            bool withElection = true, bool newcomer = false)
         {
             if (idols == null)
             {
@@ -214,7 +218,7 @@ namespace AIFanChatter
                 }
                 bool withTrivia = i < TriviaIdols;
                 Rank known = knownRanks != null && knownRanks.TryGetValue(girl, out Rank rank) ? rank : null;
-                moment.AddTo(Moment.MembersSection, name, () => Line(girl, withTrivia, now, eventGroup, known, RankIn, withElection));
+                moment.AddTo(Moment.MembersSection, name, () => Line(girl, withTrivia, now, eventGroup, known, RankIn, withElection, newcomer));
             }
         }
 
@@ -229,7 +233,7 @@ namespace AIFanChatter
         /// in the moment's group.
         /// </summary>
         public static string Line(data_girls.girls girl, bool withTrivia, DateTime now, Groups._group eventGroup, Rank knownRank,
-            Func<data_girls.girls, Groups._group, string, Rank> rankIn, bool withElection = true)
+            Func<data_girls.girls, Groups._group, string, Rank> rankIn, bool withElection = true, bool newcomer = false)
         {
             Groups._group own = OwnGroup(girl);
             bool guest = eventGroup != null && own != null && own != eventGroup;
@@ -246,12 +250,18 @@ namespace AIFanChatter
                 }
             }
             Sentence(sentences, Part(() => ScandalRecord(girl.GetScandalPoints())));
-            Sentence(sentences, Part(() => "Age " + girl.GetAge()));
+            Sentence(sentences, Part(() =>
+            {
+                string age = "Age " + girl.GetAge();
+                string standing = Part(() => AgeStanding(girl, home, named));
+                return standing == "" ? age : age + ", " + standing;
+            }));
             Sentence(sentences, Join(
                 Part(() => girl.GetMentalStamina() <= LowStamina ? "mental stamina " + OutOf100(girl.GetMentalStamina()) : ""),
                 Part(() => girl.GetPhysicalStamina() <= LowStamina ? "stamina " + OutOf100(girl.GetPhysicalStamina()) : "")));
             Sentence(sentences, Part(() => Standouts(girl, home, named)));
-            Sentence(sentences, Join(
+            Sentence(sentences, newcomer ? Part(() => HighestPotential(girl)) : "");
+            Sentence(sentences, newcomer ? "" : Join(
                 Part(() => Tenure(girl, now, home, named)),
                 Part(() => withElection ? Election(girl) : ""),
                 Part(() => RankText(knownRank ?? rankIn?.Invoke(girl, home, named), knownRank != null)),
@@ -334,6 +344,68 @@ namespace AIFanChatter
                 : top != "" ? top + " " + where
                 : bottom != "" ? bottom + " " + where
                 : "";
+        }
+
+        /// <summary>
+        /// "youngest in the group" or "oldest in Moons" when she alone is, by birthday, among the group's
+        /// members, herself included even after she graduates; groups of 3 or more, as for the standouts. ""
+        /// otherwise, or when a birthday is unknown.
+        /// </summary>
+        public static string AgeStanding(data_girls.girls girl, Groups._group group, string named)
+        {
+            if (girl == null || group == null || !History.Known(girl.birthday))
+            {
+                return "";
+            }
+            List<data_girls.girls> members = group.GetGirls(true).Where(g => g != null).ToList();
+            if (!members.Contains(girl))
+            {
+                members.Add(girl);
+            }
+            List<DateTime> others = members.Where(g => g != girl).Select(g => g.birthday).ToList();
+            if (members.Count < StandoutGroupSize || others.Any(b => !History.Known(b)))
+            {
+                return "";
+            }
+            string where = " in " + (string.IsNullOrEmpty(named) ? "the group" : named);
+            // The latest birthday is the youngest
+            return girl.birthday > others.Max() ? "youngest" + where
+                : girl.birthday < others.Min() ? "oldest" + where
+                : "";
+        }
+
+        /// <summary>
+        /// "Highest potential: dance", or every stat tied for it ("vocal and dance"): how far she could grow,
+        /// for a newcomer. The potential the game rolled when it made her; its GetPotential would roll one
+        /// for a stat without, so it isn't called. Sexy counts only for adults, as in the standouts. "" when
+        /// the game has none.
+        /// </summary>
+        public static string HighestPotential(data_girls.girls girl)
+        {
+            bool adult = Part(() => girl.GetAge() >= AdultAge ? "adult" : "") != "";
+            List<KeyValuePair<string, int>> potentials = new();
+            foreach (Standout stat in StandoutStats.Where(s => adult || !s.AdultsOnly))
+            {
+                int potential = 0;
+                try
+                {
+                    potential = girl.getParam(stat.Type)?.potential ?? 0;
+                }
+                catch (Exception)
+                {
+                    // Left out
+                }
+                if (potential > 0)
+                {
+                    potentials.Add(new KeyValuePair<string, int>(stat.Skill ?? stat.Bottom, potential));
+                }
+            }
+            if (potentials.Count == 0)
+            {
+                return "";
+            }
+            int best = potentials.Max(p => p.Value);
+            return "Highest potential: " + AndList(potentials.Where(p => p.Value == best).Select(p => p.Key).ToList());
         }
 
         /// <summary>"top vocal skill", "poorest vocal and dance skills"; "" without skills.</summary>

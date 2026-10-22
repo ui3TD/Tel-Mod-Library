@@ -12,14 +12,14 @@ using System.Runtime.CompilerServices;
 namespace AIFanChatter.LiveReport
 {
     /// <summary>
-    /// Sends nine moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
+    /// Sends ten moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
     /// prompt, dispatcher, request and reply code, once per model, and writes every request, reply and
     /// queued post to a JSON file for tools/ai_fan_chatter_live_report.py. Runs outside the game: the
     /// game's text comes from its install folder and the key from the mod's key file. It costs money.
     ///
     ///     AIFanChatterLiveReport --game-dir DIR --provider 2 --base-url URL --model M [--model M2] --out FILE
     ///     AIFanChatterLiveReport --game-dir DIR --dry-run 1      (prints the prompts; sends nothing)
-    /// Options: --moment single|concert|event|scandal|policy|firing|tour|election|graduation (repeat to pick several; all nine by default),
+    /// Options: --moment single|concert|event|scandal|policy|firing|tour|election|audition|graduation (repeat to pick several; all ten by default),
     /// --setlist "Signal Fire/Rin; talk: Mao, Kaede" for the concert (see Agency.SetList), and for the
     /// random event --event ID (from the game's random_events.json), --event-reply N (the player's
     /// answer, from 0; by default the first one without posts of its own) and --event-idols "Rena, Mao"
@@ -43,6 +43,8 @@ namespace AIFanChatter.LiveReport
             eventIdols = Option("event-idols") ?? eventIdols;
             firingBudget = Option("firing-budget") == "1";
             firingRole = Option("firing-role") ?? firingRole;
+            graduationSuccessor = Option("graduation-successor") ?? graduationSuccessor;
+            graduationStaff = Option("graduation-staff") != "0";
             if (gameDir == null || !dryRun && (outFile == null || models.Count == 0))
             {
                 Console.Error.WriteLine("Usage: AIFanChatterLiveReport --game-dir DIR --provider N --base-url URL --model M [--model M2] --out FILE");
@@ -195,13 +197,14 @@ namespace AIFanChatter.LiveReport
                 new("tour", () => MomentContext.Tour(agency.TourNow())),
                 // After the others: the new election becomes every idol's last one
                 new("election", () => MomentContext.Election(agency.ElectionNow())),
+                new("audition", () => MomentContext.Audition(agency.AuditionNow(), Auditions.type.nationwide)),
                 // Last, as the graduate leaves the group
-                new("graduation", () => MomentContext.Graduation(agency.Graduate, agency.GraduateNow())),
+                new("graduation", () => GraduationMoment(agency)),
             };
             string unknown = picked?.FirstOrDefault(name => all.All(m => m.Key != name));
             if (unknown != null)
             {
-                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing, tour, election and graduation");
+                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing, tour, election, audition and graduation");
             }
             return all.Where(m => picked == null || picked.Contains(m.Key))
                 .Select(m => new KeyValuePair<string, Func<Moment>>(Names[m.Key], m.Value)).ToList();
@@ -217,6 +220,7 @@ namespace AIFanChatter.LiveReport
             ["firing"] = "a staff firing",
             ["tour"] = "a tour",
             ["election"] = "an election's results",
+            ["audition"] = "new members from an audition",
             ["graduation"] = "a graduation",
         };
 
@@ -311,6 +315,27 @@ namespace AIFanChatter.LiveReport
 
         private static bool firingBudget;
         private static string firingRole = "choreographer";
+        private static string graduationSuccessor = "sister";
+        private static bool graduationStaff = true;
+
+        /// <summary>
+        /// The graduation after its goodbye scene: by default she brings in her younger sister and stays on as
+        /// staff. --graduation-successor sister|successor|none picks who joins, --graduation-staff 0 drops the
+        /// staff job.
+        /// </summary>
+        private static Moment GraduationMoment(Agency agency)
+        {
+            Members.Rank rank = agency.GraduateNow();
+            data_girls.girls successor = graduationSuccessor switch
+            {
+                "sister" => agency.SuccessorNow(sister: true),
+                "successor" => agency.SuccessorNow(sister: false),
+                "none" => null,
+                _ => throw new ArgumentException("No graduation successor " + graduationSuccessor + "; the choices are sister, successor and none"),
+            };
+            staff._staff staffer = graduationStaff ? agency.GraduateStafferNow() : null;
+            return MomentContext.Graduation(agency.Graduate, rank, successor: successor, sister: graduationSuccessor == "sister", staffer: staffer);
+        }
 
         /// <summary>
         /// A choreographer hired 18 months before, fired with 1 of the first --event-idols idol's scandal points blamed

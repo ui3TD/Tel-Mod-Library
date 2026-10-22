@@ -66,6 +66,39 @@ namespace AIFanChatter.LiveReport
         }
 
         /// <summary>
+        /// Two idols hired today from a nationwide audition, as the game's Hire adds them: to the main group,
+        /// with no fans and full stamina. Added only for this moment and the ones after it.
+        /// </summary>
+        public List<data_girls.girls> AuditionNow()
+        {
+            Idol(main, "Kondo", "Tsubasa", 14, Today, 0, traits._trait._type.Prodigy, 58, 90, 62, 55, 60, 21, 47, 52)
+                .Stamina(physical: 100, mental: 100);
+            Idol(main, "Arai", "Shiori", 19, Today, 0, traits._trait._type.Shameless, 49, 52, 45, 66, 63, 58, 72, 44)
+                .Stamina(physical: 100, mental: 100);
+            // The potentials the game rolls when it makes a candidate: Tsubasa could become a great singer
+            // too, Shiori the group's comedian
+            Potentials(idols["Tsubasa"], 81, 97, 70, 66, 72, 40, 58, 63);
+            Potentials(idols["Shiori"], 62, 64, 55, 78, 74, 70, 93, 59);
+            return new List<data_girls.girls> { idols["Tsubasa"], idols["Shiori"] };
+        }
+
+        /// <summary>
+        /// Her potentials, in the order vocal, dance, cute, cool, pretty, sexy, funny, smart.
+        /// </summary>
+        private static void Potentials(data_girls.girls girl, params int[] potentials)
+        {
+            data_girls._paramType[] types =
+            {
+                data_girls._paramType.vocal, data_girls._paramType.dance, data_girls._paramType.cute, data_girls._paramType.cool,
+                data_girls._paramType.pretty, data_girls._paramType.sexy, data_girls._paramType.funny, data_girls._paramType.smart,
+            };
+            for (int i = 0; i < types.Length; i++)
+            {
+                girl.getParam(types[i]).potential = potentials[i];
+            }
+        }
+
+        /// <summary>
         /// The second election's results, revealed today. Added only for its own moment: a finished election
         /// becomes every idol's "last election" in the other moments' lines. Ten places, as the game keeps:
         /// Hikari and Yui climb, Nanami holds 4th, and Rin, 3rd last time, drops out of the ranking.
@@ -91,6 +124,39 @@ namespace AIFanChatter.LiveReport
             }
             SEvent_SSK.Elections.Add(election);
             return election;
+        }
+
+        /// <summary>
+        /// The idol the graduate brings in from her goodbye scene, as the game's Find_Successor makes her: 14,
+        /// her surname when she's her sister, in the main group, with no fans and full stamina.
+        /// </summary>
+        public data_girls.girls SuccessorNow(bool sister)
+        {
+            Idol(main, sister ? Graduate.lastName : "Hirano", "Hana", 14, Today, 0, traits._trait._type.Underdog, 41, 47, 63, 38, 55, 15, 52, 44)
+                .Stamina(physical: 100, mental: 100);
+            data_girls.girls hana = idols["Hana"];
+            Potentials(hana, 70, 76, 92, 58, 80, 30, 66, 61);
+            return hana;
+        }
+
+        /// <summary>
+        /// The graduate's staff job from her goodbye scene, as the game's Hire_As_Staffer makes it: her dance is
+        /// her best stat, so a choreographer, under her own name.
+        /// </summary>
+        public staff._staff GraduateStafferNow()
+        {
+            // The game clears what she did after graduating: she's still at the agency
+            Graduate.Graduation_Trivia_Text = "";
+            staff._staff staffer = new()
+            {
+                firstName = Graduate.firstName,
+                lastName = Graduate.lastName,
+                type = staff._type.choreographer,
+                HireDate = Today,
+                skills = new List<staff._staff._skill> { new() { skill_type = staff._skill_type.production, level = 2, primary = true } },
+            };
+            staff.Staff.Add(staffer);
+            return staffer;
         }
 
         /// <summary>

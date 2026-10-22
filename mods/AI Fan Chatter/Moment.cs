@@ -335,8 +335,10 @@ namespace AIFanChatter
         /// <param name="graduation">The moment is a graduation, so the member count is after she left.</param>
         /// <param name="friends">A graduate's clique, named by group in place of the most popular members.</param>
         /// <param name="rules">Adds the agency rules that matter to this kind of moment, after the concept.</param>
+        /// <param name="changes">How many members each group gained (more than 0) or lost (less than 0) in the moment.
+        /// Only these groups' sizes are given, one line each; a moment that changes no group gives none.</param>
         private static Moment Agency(Moment moment, Groups._group group, bool graduation = false,
-            List<data_girls.girls> friends = null, Func<Moment, Moment> rules = null)
+            List<data_girls.girls> friends = null, Func<Moment, Moment> rules = null, IDictionary<Groups._group, int> changes = null)
         {
             const string section = Moment.AgencySection;
             Groups._group main = MainGroup();
@@ -344,8 +346,18 @@ namespace AIFanChatter
             bool sister = group != null && !group.IsMain();
             moment
                 .AddTo(section, "Group", () => group != null ? Members.GroupName(group) : staticVars.PlayerData.GetGroupName())
-                .AddTo(section, "Sister group of", () => !sister ? "" : main != null ? Members.GroupName(main) : staticVars.PlayerData.GetGroupName())
-                .AddTo(section, graduation ? "Members left in the group" : "Members in the group", () => group?.GetNumberOfNonGraduatedGirls())
+                .AddTo(section, "Sister group of", () => !sister ? "" : main != null ? Members.GroupName(main) : staticVars.PlayerData.GetGroupName());
+            // Group sizes only where the moment changed them, before and after: "Members in Moons: 4 now, down from 5"
+            foreach (KeyValuePair<Groups._group, int> change in (changes ?? new Dictionary<Groups._group, int>())
+                .Where(c => c.Key != null && c.Value != 0).OrderBy(c => c.Key == group ? -1 : Groups.Groups_.IndexOf(c.Key)))
+            {
+                moment.AddTo(section, "Members in " + Members.GroupName(change.Key), () =>
+                {
+                    int now = change.Key.GetNumberOfNonGraduatedGirls();
+                    return now + " now, " + (change.Value > 0 ? "up" : "down") + " from " + (now - change.Value);
+                });
+            }
+            moment
                 // The group's totals, once here rather than in every idol's line
                 .AddTo(section, "Group formed", () => group != null ? History.Ago(group.Date_Created, Now) : "")
                 .AddTo(section, "Singles released by the group", () => Members.ReleasedSingles(group).Count)
@@ -467,6 +479,39 @@ namespace AIFanChatter
             data_girls._status.hiatus => "on hiatus",
             data_girls._status.injured => "injured",
             data_girls._status.announced_graduation => "announced her graduation",
+            _ => "",
+        };
+
+        /// <summary>The most new idols an audition's list names before "and N more".</summary>
+        public const int AuditionNames = 10;
+
+        /// <summary>
+        /// The idols hired from an audition the player launched, once its popup closes. Hires join the main
+        /// group. Their audition rarity is the player's card colour, not something fans see, so it isn't sent.
+        /// </summary>
+        public static Moment Audition(IList<data_girls.girls> hired, Auditions.type scale)
+        {
+            bool one = hired.Count == 1;
+            Moment moment = new Moment(one ? "a new idol joined the group" : "new idols joined the group")
+                .Labelled(() => one ? Name(hired[0]) + " joining" : "the new members")
+                .Add("New members", () => Names(hired, AuditionNames))
+                .Add("Audition", () => Moment.Clean(Translate(ScaleKey(scale))));
+            Groups._group group = MainGroup();
+            Members.Add(moment, hired.Take(Members.AuditionCap).ToList(), Now, group, newcomer: true);
+            History.Joined(moment, hired, data_girls.girl, Now);
+            Dictionary<Groups._group, int> changes = new();
+            foreach (data_girls.girls girl in hired)
+            {
+                Change(changes, GroupOf(() => girl.GetGroup()), 1);
+            }
+            return Agency(moment, group, changes: changes);
+        }
+
+        private static string ScaleKey(Auditions.type scale) => scale switch
+        {
+            Auditions.type.local => "AUDITION__LOCAL",
+            Auditions.type.regional => "AUDITION__REGIONAL",
+            Auditions.type.nationwide => "AUDITION__NATIONWIDE",
             _ => "",
         };
 
@@ -616,8 +661,12 @@ namespace AIFanChatter
         /// <param name="friends">Her clique before she left, taken before the game took her out of it; null reads it now.</param>
         /// <param name="bulliedBy">Who was bullying her before she left, taken before the game ended it; null reads it now.</param>
         /// <param name="bullied">Who she was bullying before she left, taken before the game took her out of her clique; null reads it now.</param>
+        /// <param name="successor">The idol who joined in her place from her goodbye scene, if any.</param>
+        /// <param name="sister">The successor is her younger sister.</param>
+        /// <param name="staffer">The staff job she took at the agency from her goodbye scene, if any.</param>
         public static Moment Graduation(data_girls.girls girl, Members.Rank rankBefore, List<data_girls.girls> friends = null,
-            List<data_girls.girls> bulliedBy = null, List<data_girls.girls> bullied = null)
+            List<data_girls.girls> bulliedBy = null, List<data_girls.girls> bullied = null,
+            data_girls.girls successor = null, bool sister = false, staff._staff staffer = null)
         {
             bulliedBy ??= Members.BulliedBy(girl);
             bullied ??= Members.Bullied(girl);
@@ -625,6 +674,9 @@ namespace AIFanChatter
                 .Labelled(() => Name(girl) + "'s graduation")
                 .Add("Idol", () => Name(girl))
                 .Add("After graduating", () => Members.Cut(Moment.Clean(girl.Graduation_Trivia_Text), Members.GraduationTriviaLength))
+                // Her staff job, by title and what the staffer does, as for a firing
+                .Add("Stays at the agency as", () => staffer == null ? "" : Role(staffer))
+                .Add("Joined in her place", () => successor == null ? "" : Successor(girl, successor, sister))
                 // Only bullying the player has found out; fans can only suspect it
                 .Add("Suspected to be bullied by", () => string.Join(", ", bulliedBy.Select(Name).ToArray()))
                 .Add("Suspected to have bullied", () => string.Join(", ", bullied.Select(Name).ToArray()));
@@ -643,8 +695,44 @@ namespace AIFanChatter
             // A graduated idol stays in her group's list, so the group is still hers
             Groups._group group = GroupOf(() => girl.GetGroup());
             Members.Add(moment, new List<data_girls.girls> { girl }, Now, group, ranks);
+            if (successor != null)
+            {
+                Members.Add(moment, new List<data_girls.girls> { successor }, Now, group, newcomer: true);
+            }
             History.Graduation(moment, girl, data_girls.girl, Now);
-            return Agency(moment, group, graduation: true, friends: friends ?? Members.Friends(girl));
+            // She left her group; her successor joined the group the game put her in, often another one
+            Dictionary<Groups._group, int> changes = new();
+            Change(changes, group, -1);
+            if (successor != null)
+            {
+                Change(changes, GroupOf(() => successor.GetGroup()), 1);
+            }
+            return Agency(moment, group, graduation: true, friends: friends ?? Members.Friends(girl), changes: changes);
+        }
+
+        /// <summary>
+        /// Adds a gain or loss of members to a group's change; a null group is left out.
+        /// </summary>
+        private static void Change(Dictionary<Groups._group, int> changes, Groups._group group, int members)
+        {
+            if (group != null)
+            {
+                changes[group] = (changes.TryGetValue(group, out int before) ? before : 0) + members;
+            }
+        }
+
+        /// <summary>
+        /// "Uchida Hana, her younger sister" or "Sato Mio, the successor she chose", with the group she joined
+        /// when it isn't the graduate's: the game puts every new idol in the main group.
+        /// </summary>
+        private static string Successor(data_girls.girls girl, data_girls.girls successor, bool sister)
+        {
+            string text = Name(successor) + (sister ? ", her younger sister" : ", the successor she chose");
+            Groups._group hers = GroupOf(() => girl.GetGroup());
+            Groups._group joined = GroupOf(() => successor.GetGroup());
+            return joined != null && hers != null && joined != hers
+                ? text + ", in " + (joined.IsMain() ? "the main group " : "") + Members.GroupName(joined)
+                : text;
         }
 
         /// <summary>

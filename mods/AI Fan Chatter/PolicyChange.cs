@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using UnityEngine;
 
 namespace AIFanChatter
 {
@@ -73,5 +74,66 @@ namespace AIFanChatter
         }
 
         public static void Clear() => Start(null, false);
+    }
+
+    /// <summary>
+    /// A regular graduation waiting for its goodbye scene to end: the player can still ask her for a
+    /// successor or offer her a staff job there. The mod's own notes; the game's state is only read.
+    /// </summary>
+    internal static class GraduationScene
+    {
+        public sealed class Waiting
+        {
+            public data_girls.girls Girl;
+            public data_girls_girls_Graduate.Before Before;
+            /// <summary>The goodbye scene, as the dialogue controller holds it.</summary>
+            public data_dialogues._dialogue Dialogue;
+            public data_girls.girls Successor;
+            public bool Sister;
+            public staff._staff Staffer;
+        }
+
+        public static Waiting Pending;
+
+        /// <summary>Sends a graduation's request; tests replace it to see what's sent.</summary>
+        internal static Action<Func<Moment>> Send = Moments.Trigger;
+
+        /// <summary>The dialogue the game has open; tests replace it, as they have no dialogue controller.</summary>
+        internal static Func<data_dialogues._dialogue> CurrentDialogue = () =>
+            Camera.main.GetComponent<mainScript>().Data.GetComponent<ActiveDialogueController>().dialogue;
+
+        public static void Start(data_girls.girls girl, data_girls_girls_Graduate.Before before, data_dialogues._dialogue dialogue) =>
+            Pending = new Waiting { Girl = girl, Before = before, Dialogue = dialogue };
+
+        public static void Clear() => Pending = null;
+
+        /// <summary>
+        /// The waiting graduation, now posted; null when there was none.
+        /// </summary>
+        public static Waiting Take()
+        {
+            Waiting waiting = Pending;
+            Pending = null;
+            return waiting;
+        }
+
+        /// <summary>
+        /// The graduation waiting for this idol's goodbye scene; null for another idol or none.
+        /// </summary>
+        public static Waiting For(data_girls.girls girl) => Pending != null && girl != null && Pending.Girl == girl ? Pending : null;
+
+        /// <summary>
+        /// Sends the waiting graduation's request, with what the scene added.
+        /// </summary>
+        public static void Post(Waiting waiting)
+        {
+            if (waiting == null)
+            {
+                return;
+            }
+            data_girls_girls_Graduate.Before before = waiting.Before ?? new data_girls_girls_Graduate.Before();
+            Send(() => MomentContext.Graduation(waiting.Girl, before.Rank, before.Friends, before.BulliedBy, before.Bullied,
+                waiting.Successor, waiting.Sister, waiting.Staffer));
+        }
     }
 }

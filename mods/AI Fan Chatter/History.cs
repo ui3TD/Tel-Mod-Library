@@ -286,8 +286,10 @@ namespace AIFanChatter
 
         /// <summary>
         /// "Election #2, won by Rin, 6 months ago", and how many elections there have been, this one included.
+        /// Without counted, the count is left out: a cancelled election never happened.
         /// </summary>
-        public static void Election(Moment moment, SEvent_SSK._SSK election, SEvent_SSK._SSK previous, IEnumerable<SEvent_SSK._SSK> all, DateTime now)
+        public static void Election(Moment moment, SEvent_SSK._SSK election, SEvent_SSK._SSK previous, IEnumerable<SEvent_SSK._SSK> all, DateTime now,
+            bool counted = true)
         {
             try
             {
@@ -300,8 +302,11 @@ namespace AIFanChatter
                         return previous.GetTitle() + (winner == null ? "" : ", won by " + MomentContext.Name(winner)) + (ago == "" ? "" : ", " + ago);
                     });
                 }
-                moment.AddTo(Section, "Elections so far, this one included", () =>
-                    (all ?? Enumerable.Empty<SEvent_SSK._SSK>()).Count(e => e != null && e != election && e.Status == SEvent_Tour.tour._status.finished) + 1);
+                if (counted)
+                {
+                    moment.AddTo(Section, "Elections so far, this one included", () =>
+                        (all ?? Enumerable.Empty<SEvent_SSK._SSK>()).Count(e => e != null && e != election && e.Status == SEvent_Tour.tour._status.finished) + 1);
+                }
             }
             catch (Exception)
             {

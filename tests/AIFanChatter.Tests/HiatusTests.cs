@@ -55,6 +55,9 @@ namespace AIFanChatter.Tests
             return rin;
         }
 
+        /// <summary>Her friends' line for Stars, by the name the game gives the group (the main group goes by the player's group name).</summary>
+        private static string FriendsInStars => "Friends in " + Members.GroupName(Groups.Groups_.Last());
+
         private static Shows._show Show(string title, Shows._show._status status, params data_girls.girls[] girls)
         {
             Shows._show show = new()
@@ -171,7 +174,7 @@ namespace AIFanChatter.Tests
             Assert.True(centers.IndexOf("Ember") < centers.IndexOf("Bloom"), centers);
             Assert.DoesNotContain("Not Hers", centers);
             Assert.Equal("Mio, Ema", moment.Fact(F, "Suspected to be bullied by"));
-            Assert.Equal("Aoi", moment.Fact(A, "Friends in Stars"));
+            Assert.Equal("Aoi", moment.Fact(A, FriendsInStars));
             Assert.NotNull(moment.Fact(A, "Most popular members"));
         }
 
@@ -224,7 +227,7 @@ namespace AIFanChatter.Tests
             Assert.Null(moment.Fact(F, "Shows she leaves"));
             Assert.Null(moment.Fact(F, "Contracts cancelled because of this"));
             Assert.Equal("Mio, Ema", moment.Fact(F, "Suspected to be bullied by"));
-            Assert.Equal("Aoi", moment.Fact(A, "Friends in Stars"));
+            Assert.Equal("Aoi", moment.Fact(A, FriendsInStars));
             Assert.NotNull(moment.Fact(F, "Singles she was the center of"));
         }
 
@@ -268,7 +271,7 @@ namespace AIFanChatter.Tests
             data_girls.girls rin = Rin();
             Moment moment = MomentContext.Graduation(rin, null);
             Assert.Equal("Mio, Ema", moment.Fact(F, "Suspected to be bullied by"));
-            Assert.Equal("Aoi", moment.Fact(A, "Friends in Stars"));
+            Assert.Equal("Aoi", moment.Fact(A, FriendsInStars));
             Assert.Null(moment.Fact(A, "Most popular members"));
             Assert.NotNull(moment.Fact(F, "Singles she was the center of"));
         }

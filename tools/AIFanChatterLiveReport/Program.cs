@@ -12,14 +12,14 @@ using System.Runtime.CompilerServices;
 namespace AIFanChatter.LiveReport
 {
     /// <summary>
-    /// Sends eighteen moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
+    /// Sends nineteen moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
     /// prompt, dispatcher, request and reply code, once per model, and writes every request, reply and
     /// queued post to a JSON file for tools/ai_fan_chatter_live_report.py. Runs outside the game: the
     /// game's text comes from its install folder and the key from the mod's key file. It costs money.
     ///
     ///     AIFanChatterLiveReport --game-dir DIR --provider 2 --base-url URL --model M [--model M2] --out FILE
     ///     AIFanChatterLiveReport --game-dir DIR --dry-run 1      (prints the prompts; sends nothing)
-    /// Options: --moment single|concert|event|scandal|policy|firing|tour|election|concert-election|awards|show|show-end|contract|audition|hiatus|hiatus-end|graduation-announcement|graduation (repeat to pick several; all eighteen by default),
+    /// Options: --moment single|concert|event|scandal|policy|firing|tour|election|concert-election|election-cancel|awards|show|show-end|contract|audition|hiatus|hiatus-end|graduation-announcement|graduation (repeat to pick several; all nineteen by default),
     /// --hiatus-reason injury|health|none (the hiatus's reason; health by default),
     /// --single voting|election makes the single an upcoming election's voting single or the single made from Election #1's results,
     /// --setlist "Signal Fire/Rin; talk: Mao, Kaede" for the concert (see Agency.SetList), and for the
@@ -204,6 +204,7 @@ namespace AIFanChatter.LiveReport
                 new("election", () => MomentContext.Election(agency.ElectionNow())),
                 // A fresh agency: its election is the one the concert just held ends with
                 new("concert-election", () => { Agency fresh = Agency.Build(setList); return MomentContext.ConcertElection(fresh.NewConcert, fresh.ElectionNow()); }),
+                new("election-cancel", () => MomentContext.ElectionCancelled(agency.ElectionCancelNow())),
                 new("awards", () => MomentContext.Awards(agency.AwardsNow())),
                 new("show", () => MomentContext.ShowStart(agency.ShowNow())),
                 new("show-end", () => MomentContext.ShowEnd(agency.ShowEndNow())),
@@ -218,7 +219,7 @@ namespace AIFanChatter.LiveReport
             string unknown = picked?.FirstOrDefault(name => all.All(m => m.Key != name));
             if (unknown != null)
             {
-                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing, tour, election, concert-election, awards, show, show-end, contract, audition, hiatus, hiatus-end, graduation-announcement and graduation");
+                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing, tour, election, concert-election, election-cancel, awards, show, show-end, contract, audition, hiatus, hiatus-end, graduation-announcement and graduation");
             }
             return all.Where(m => picked == null || picked.Contains(m.Key))
                 .Select(m => new KeyValuePair<string, Func<Moment>>(Names[m.Key], m.Value)).ToList();
@@ -235,6 +236,7 @@ namespace AIFanChatter.LiveReport
             ["tour"] = "a tour",
             ["election"] = "an election's results",
             ["concert-election"] = "a concert with its election's results",
+            ["election-cancel"] = "a cancelled election",
             ["awards"] = "the awards show",
             ["show"] = "a show starting",
             ["show-end"] = "a long-running show cancelled",

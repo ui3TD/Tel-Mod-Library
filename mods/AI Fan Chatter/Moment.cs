@@ -498,6 +498,33 @@ namespace AIFanChatter
                 + (venue == "" ? "" : ", and the results are announced after the concert at " + venue);
         }
 
+        /// <summary>
+        /// An election cancelled after its voting single came out, so its ballots no longer count: the single,
+        /// what fans spent on it, and its results concert. The game lowers hardcore and casual fans' opinion as
+        /// it cancels, before this moment's prompt reads the opinions.
+        /// </summary>
+        public static Moment ElectionCancelled(SEvent_SSK_CancelSSK.Before cancelled)
+        {
+            singles._single single = cancelled.Single;
+            Moment moment = new Moment("an election was cancelled after its voting single came out: the ballot that came with each CD no longer counts")
+                .Labelled(() => cancelled.Title + "'s cancellation")
+                .Add("Election", () => cancelled.Title)
+                .Add("Was to be broadcast on", () => SEvent_SSK.GetBroadcastTitle(cancelled.Broadcast))
+                .Add("Voting single", () => "\"" + Moment.Clean(single.title) + "\""
+                    + (History.Ago(single.ReleaseData.ReleaseDate, Now) is string ago && ago != "" ? ", released " + ago : ""))
+                .Add("Voting single sales", () => single.ReleaseData.Sales + (single.ReleaseData.Sales == 1 ? " CD" : " CDs"))
+                // What fans paid: CDs sold times the price per CD, as the game counts it at release
+                .Add("Money fans spent on it", () => single.GetMoney() + " yen")
+                .Add("Results concert", () => cancelled.Concert == null ? ""
+                    : Part(() => SEvent_Concerts.GetVenueTitle(cancelled.Concert.Venue)) is string venue && venue != ""
+                        ? "at " + venue + (cancelled.ConcertCancelled ? ", also cancelled" : ", still on without the results")
+                        : cancelled.ConcertCancelled ? "also cancelled" : "still on without the results");
+            Groups._group group = History.GroupOf(single);
+            Members.Add(moment, Members.ForSingle(single), Now, group);
+            History.Election(moment, cancelled.Election, Members.LatestElection(), SEvent_SSK.Elections, Now, counted: false);
+            return Agency(moment, group);
+        }
+
         /// <summary>The election whose results set this single's lineup; null for any other single.</summary>
         private static SEvent_SSK._SSK ParentElection(singles._single single)
         {

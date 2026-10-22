@@ -229,6 +229,37 @@ namespace AIFanChatter.LiveReport
             _ => throw new ArgumentException("No hiatus reason " + reason + "; the choices are injury, health and none"),
         };
 
+        /// <summary>
+        /// The new single as the voting single of the next election, broadcast on web stream, cancelled today
+        /// by the player: what the patch reads before the game's CancelSSK, then what CancelSSK does. Its
+        /// results concert stays on.
+        /// </summary>
+        public SEvent_SSK_CancelSSK.Before ElectionCancelNow()
+        {
+            singles._single single = SingleAs("voting");
+            if (single.sales.Count == 0)
+            {
+                // The game counts revenue from the per-segment sales; one entry holds the single's total
+                single.sales.Add(new singles._single._sales { sales = single.ReleaseData.Sales });
+            }
+            SEvent_SSK._SSK election = single.SSK;
+            election.Broadcast = SEvent_SSK._broadcast.webStream;
+            SEvent_SSK_CancelSSK.Before cancelled = new()
+            {
+                Election = election,
+                Title = Moment.Clean(election.GetTitle()),
+                Single = single,
+                Released = true,
+                Concert = election.Concert,
+                ConcertCancelled = false,
+                Broadcast = election.Broadcast,
+            };
+            single.SSK = null;
+            election.Concert.SSK = null;
+            SEvent_SSK.Elections.Remove(election);
+            return cancelled;
+        }
+
         public business.active_proposal ContractNow()
         {
             business.History.Add(new business._history { Type = business._type.ad, Girl = idols["Hinata"], Date = Today.AddMonths(-9) });

@@ -667,6 +667,77 @@ namespace AIFanChatter
         }
     }
 
+    /// <summary>
+    /// An election cancelled after its voting single came out: by the player, or with its results concert.
+    /// The game unlinks the single and the concert and drops the election, so all of it is read before. Its
+    /// fans' opinions fall inside the call, before the postfix builds the prompt.
+    /// </summary>
+    [HarmonyPatch(typeof(SEvent_SSK), nameof(SEvent_SSK.CancelSSK))]
+    [HarmonyPriority(Priority.Last)]
+    public class SEvent_SSK_CancelSSK
+    {
+        public sealed class Before
+        {
+            public SEvent_SSK._SSK Election;
+            public string Title = "";
+            public singles._single Single;
+            public bool Released;
+            public SEvent_Concerts._concert Concert;
+            /// <summary>Its concert is being cancelled too: the game's CancelConcert unlinks the election first.</summary>
+            public bool ConcertCancelled;
+            public SEvent_SSK._broadcast Broadcast;
+        }
+
+        public static void Prefix(SEvent_SSK __instance, out Before __state)
+        {
+            __state = new Before();
+            try
+            {
+                SEvent_SSK._SSK election = __instance?.SSK;
+                if (election == null)
+                {
+                    return;
+                }
+                __state.Election = election;
+                __state.Single = election.Single;
+                __state.Released = election.Single != null && election.Single.status == singles._single._status.released;
+                __state.Concert = election.Concert;
+                __state.ConcertCancelled = election.Concert != null && election.Concert.SSK == null;
+                __state.Broadcast = election.Broadcast;
+                __state.Title = Moment.Clean(election.GetTitle());
+            }
+            catch (Exception)
+            {
+                // Whatever couldn't be read is left out
+            }
+        }
+
+        public static void Postfix(Before __state, bool __runOriginal)
+        {
+            try
+            {
+                if (ShouldPost(__state, __runOriginal, SEvent_SSK.Elections))
+                {
+                    Before cancelled = __state;
+                    Moments.Trigger(() => MomentContext.ElectionCancelled(cancelled));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        /// <summary>
+        /// The call dropped an election whose voting single fans could buy; before that, fans never heard of it.
+        /// </summary>
+        internal static bool ShouldPost(Before before, bool ran, IEnumerable<SEvent_SSK._SSK> elections)
+        {
+            return ran && before?.Election != null && before.Released && before.Single != null
+                && !(elections ?? Enumerable.Empty<SEvent_SSK._SSK>()).Contains(before.Election);
+        }
+    }
+
     [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.Graduate))]
     [HarmonyPriority(Priority.Last)]
     public class data_girls_girls_Graduate

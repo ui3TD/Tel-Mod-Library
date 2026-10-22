@@ -5,19 +5,12 @@ Fans react on the Social Media tab to what happens at your agency, in posts and 
 
 [h3]What fans react to[/h3]
 [list]
-[*]Single releases, including an election's voting single and the single made from an election's results.
-[*]Concerts. A concert that ends with an election gets one set of posts about both.
-[*]Election results.
-[*]Tours, once they're over.
-[*]The yearly awards show: wins, losses and acceptance speeches.
-[*]New shows, when their first episode airs.
-[*]3-month ad and TV drama contracts.
-[*]New members from auditions you run.
-[*]Graduations, with the sister or successor who joins and any staff job she takes.
-[*]Random events whose outcome the public sees, including any contracts they cancel.
-[*]Dating scandals that become public.
-[*]Paid policy changes.
-[*]Staff fired and blamed for scandals.
+[*]Singles, concerts, tours and elections
+[*]The yearly awards show
+[*]New shows and ad or TV drama contracts
+[*]New members and graduations
+[*]Public events and dating scandals
+[*]Paid policy changes and staff firings
 [/list]
 
 [h3]Setting it up[/h3]

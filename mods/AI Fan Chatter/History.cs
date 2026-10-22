@@ -197,6 +197,119 @@ namespace AIFanChatter
         }
 
         /// <summary>
+        /// The finished tours other than this one. The game removes a tour cancelled before launch from its list,
+        /// and a launched tour always finishes.
+        /// </summary>
+        internal static List<SEvent_Tour.tour> EarlierTours(SEvent_Tour.tour tour, IEnumerable<SEvent_Tour.tour> all)
+        {
+            return (all ?? Enumerable.Empty<SEvent_Tour.tour>())
+                .Where(t => t != null && t != tour && t.Status == SEvent_Tour.tour._status.finished)
+                .ToList();
+        }
+
+        /// <summary>
+        /// A tour's stops in the order played, without any the game can't place.
+        /// </summary>
+        internal static IEnumerable<SEvent_Tour.tour.selectedCountry> Stops(SEvent_Tour.tour tour)
+        {
+            return (tour?.SelectedCountries ?? new List<SEvent_Tour.tour.selectedCountry>()).Where(s => s?.Country != null);
+        }
+
+        /// <summary>
+        /// Every place earlier tours went to, at its latest visit, newest first: "Osaka: 7600 out of 8000 seats,
+        /// 4 months ago". Then how many tours there have been, this one included.
+        /// </summary>
+        public static void Tour(Moment moment, SEvent_Tour.tour tour, IEnumerable<SEvent_Tour.tour> all, DateTime now)
+        {
+            try
+            {
+                List<SEvent_Tour.tour> earlier = EarlierTours(tour, all);
+                // Tours finish one at a time; of two on the same day, the one later in the list is later, as in Latest
+                var visits = earlier
+                    .Select((t, index) => new { t, index })
+                    .SelectMany(x => Stops(x.t).Select(stop => new { stop, x.t.FinishDate, x.index }))
+                    .GroupBy(v => v.stop.Country.Type)
+                    .Select(g => g.OrderByDescending(v => v.FinishDate).ThenByDescending(v => v.index).First())
+                    .OrderByDescending(v => v.FinishDate).ThenByDescending(v => v.index)
+                    .ToList();
+                moment.AddList(Section, "Places visited on earlier tours", visits.Select(v => (Func<object>)(() =>
+                {
+                    string stop = MomentContext.TourStop(v.stop);
+                    string ago = Ago(v.FinishDate, now);
+                    return stop == "" || ago == "" ? stop : stop + ", " + ago;
+                })).ToList());
+                moment.AddTo(Section, "Tours so far, this one included", () => earlier.Count + 1);
+            }
+            catch (Exception)
+            {
+                // No history for this tour
+            }
+        }
+
+        /// <summary>
+        /// An election's results in place order, without places the game left empty.
+        /// </summary>
+        internal static List<SEvent_SSK._SSK._result> Ranked(SEvent_SSK._SSK election)
+        {
+            return (election?.Results ?? new List<SEvent_SSK._SSK._result>())
+                .Where(r => r?.Girl != null && r.Place > 0)
+                .OrderBy(r => r.Place)
+                .ToList();
+        }
+
+        /// <summary>
+        /// The places in an election, by idol: her best one, should a mod have ranked her twice.
+        /// </summary>
+        internal static Dictionary<data_girls.girls, int> Places(SEvent_SSK._SSK election)
+        {
+            Dictionary<data_girls.girls, int> places = new();
+            foreach (SEvent_SSK._SSK._result result in Ranked(election))
+            {
+                if (!places.ContainsKey(result.Girl))
+                {
+                    places[result.Girl] = result.Place;
+                }
+            }
+            return places;
+        }
+
+        /// <summary>
+        /// The finished election before this one, or null for the first.
+        /// </summary>
+        internal static SEvent_SSK._SSK PreviousElection(SEvent_SSK._SSK election, IEnumerable<SEvent_SSK._SSK> all)
+        {
+            List<SEvent_SSK._SSK> earlier = (all ?? Enumerable.Empty<SEvent_SSK._SSK>())
+                .Where(e => e != null && e != election && e.Status == SEvent_Tour.tour._status.finished && e.FinishDate <= election.FinishDate)
+                .ToList();
+            return earlier.Count == 0 ? null : Latest(earlier, e => e.FinishDate);
+        }
+
+        /// <summary>
+        /// "Election #2, won by Rin, 6 months ago", and how many elections there have been, this one included.
+        /// </summary>
+        public static void Election(Moment moment, SEvent_SSK._SSK election, SEvent_SSK._SSK previous, IEnumerable<SEvent_SSK._SSK> all, DateTime now)
+        {
+            try
+            {
+                if (previous != null)
+                {
+                    moment.AddTo(Section, "Previous election", () =>
+                    {
+                        data_girls.girls winner = Ranked(previous).FirstOrDefault()?.Girl;
+                        string ago = Ago(previous.FinishDate, now);
+                        return previous.GetTitle() + (winner == null ? "" : ", won by " + MomentContext.Name(winner)) + (ago == "" ? "" : ", " + ago);
+                    });
+                }
+                moment.AddTo(Section, "Elections so far, this one included", () =>
+                    (all ?? Enumerable.Empty<SEvent_SSK._SSK>()).Count(e => e != null && e != election && e.Status == SEvent_Tour.tour._status.finished) + 1);
+            }
+            catch (Exception)
+            {
+                // No history for this election
+            }
+        }
+
+        /// <summary>
         /// The previous graduation and how many idols graduated before her, from her own group: a graduate
         /// stays in her group's list. Without a group, every graduate counts. The first graduate is said to
         /// be. An unknown graduation date (old saves) counts towards the number but is never the previous one.

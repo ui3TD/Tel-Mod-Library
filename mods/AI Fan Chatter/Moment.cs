@@ -413,6 +413,205 @@ namespace AIFanChatter
                 .AddTo(Moment.AgencySection, "Performance style", AgencyRules.PerformanceStyle));
         }
 
+        /// <summary>
+        /// A tour, once it's over: the game plays every stop in one popup and finishes the tour when the
+        /// player closes it. It has no group or cast of its own: every active idol goes, from every group.
+        /// </summary>
+        public static Moment Tour(SEvent_Tour.tour tour)
+        {
+            // The game's name for its tours (a location mod can rename it), as the special events tab shows it
+            string title = Moment.Clean(Translate("SEVENT__WORLD_TOUR"));
+            HashSet<SEvent_Tour._country> visited = new(History.EarlierTours(tour, SEvent_Tour.Tours)
+                .SelectMany(History.Stops).Select(stop => stop.Country.Type));
+            Moment moment = new Moment("the agency's idols came back from their " + title)
+                .Labelled(() => "the " + title)
+                .Add("Groups on tour", () => JoinAnd(ToursGroups()));
+            moment.AddList(Moment.FactsSection, "Stops, in order",
+                History.Stops(tour).Select(stop => (Func<object>)(() =>
+                {
+                    string text = TourStop(stop);
+                    return text == "" || visited.Contains(stop.Country.Type) ? text : text + ", first visit";
+                })).ToList());
+            // The game sends every active idol; the others stay home, which fans notice
+            moment.AddList(Moment.FactsSection, "Stayed home",
+                data_girls.girl.Where(g => g != null && g.status != data_girls._status.graduated && !g.IsActive())
+                    .Select(g => (Func<object>)(() => Name(g) + (Absence(g) is string why && why != "" ? ": " + why : ""))).ToList());
+            // Tours aren't a group's, so the main group, as for concerts
+            Groups._group group = MainGroup();
+            Members.Add(moment, Members.ForTour(), Now, group);
+            History.Tour(moment, tour, SEvent_Tour.Tours, Now);
+            return Agency(moment, group, rules: m => m
+                .AddTo(Moment.AgencySection, "Stage costumes", AgencyRules.Costumes)
+                .AddTo(Moment.AgencySection, "Performance style", AgencyRules.PerformanceStyle));
+        }
+
+        /// <summary>
+        /// The groups with an idol on the tour, main group first, by the names the game shows; the agency's
+        /// group name when the game has no groups.
+        /// </summary>
+        private static List<string> ToursGroups()
+        {
+            List<string> names = Groups.Groups_
+                .Where(g => g != null && g.Status != Groups._group._status.disbanded && g.GetGirls(true).Any(girl => girl != null && girl.IsActive()))
+                .OrderBy(g => g.IsMain() ? 0 : 1)
+                .Select(Members.GroupName).Where(n => n != "").ToList();
+            return names.Count > 0 ? names : new List<string> { Moment.Clean(staticVars.PlayerData.GetGroupName()) };
+        }
+
+        /// <summary>
+        /// Why an idol who isn't graduated stays out of the agency's work, as the game's status says: "on
+        /// hiatus", "injured", "announced her graduation"; "" for a status the game doesn't name here.
+        /// </summary>
+        private static string Absence(data_girls.girls girl) => girl.status switch
+        {
+            data_girls._status.hiatus => "on hiatus",
+            data_girls._status.injured => "injured",
+            data_girls._status.announced_graduation => "announced her graduation",
+            _ => "",
+        };
+
+        /// <summary>The most places an election's results list.</summary>
+        public const int ElectionPlaces = 10;
+
+        /// <summary>
+        /// An election's results, once the player has revealed every place. Every idol of every group takes
+        /// part, so the moment is the main group's; idols of other groups are named with their group.
+        /// </summary>
+        public static Moment Election(SEvent_SSK._SSK election)
+        {
+            List<SEvent_SSK._SSK._result> results = History.Ranked(election);
+            SEvent_SSK._SSK previous = History.PreviousElection(election, SEvent_SSK.Elections);
+            Dictionary<data_girls.girls, int> before = previous == null ? null : History.Places(previous);
+            List<SEvent_SSK._SSK._result> top = results.Take(ElectionPlaces).ToList();
+            Move drop = before == null ? null : BiggestDrop(results, top, before);
+            Move rise = before == null ? null : BiggestRise(results, top, before);
+            Moment moment = new Moment("the results of the agency's idol election were announced")
+                .Labelled(() => election.GetTitle())
+                .Add("Election", () => election.GetTitle())
+                .Add("Broadcast on", () => SEvent_SSK.GetBroadcastTitle(election.Broadcast))
+                .Add("Voting single", () => election.Single == null ? "" : "\"" + Moment.Clean(election.Single.title) + "\"")
+                .Add("Held after the concert at", () => election.Concert == null ? "" : SEvent_Concerts.GetVenueTitle(election.Concert.Venue))
+                .Add("Idols ranked", () => results.Count);
+            moment.AddList(Moment.FactsSection, "Results",
+                top.Select(r => (Func<object>)(() => Members.Ordinal(r.Place) + ": " + Ranked(r) + Movement(r, before) + Leaving(r.Girl))).ToList());
+            moment
+                .Add("Biggest drop outside the top " + ElectionPlaces, () => drop == null ? "" : drop.Describe())
+                .Add("Biggest rise outside the top " + ElectionPlaces, () => rise == null ? "" : rise.Describe());
+            Groups._group group = MainGroup();
+            Members.Add(moment, Members.ForElection(top, drop?.Girl, rise?.Girl), Now, group, withElection: false);
+            History.Election(moment, election, previous, SEvent_SSK.Elections, Now);
+            return Agency(moment, group);
+        }
+
+        /// <summary>
+        /// "Rin, 48200 votes"; "Mio of Moons, 900 votes" for an idol of a sister group.
+        /// </summary>
+        private static string Ranked(SEvent_SSK._SSK._result result)
+        {
+            return Named(result.Girl) + ", " + result.Votes + (result.Votes == 1 ? " vote" : " votes");
+        }
+
+        /// <summary>
+        /// Her name, with her group's after it when it isn't the main group: "Momo (Yasuda Momone) of Moons".
+        /// </summary>
+        private static string Named(data_girls.girls girl)
+        {
+            Groups._group own = GroupOf(() => girl.GetGroup());
+            string group = own == null || own.IsMain() ? "" : Members.GroupName(own);
+            return Name(girl) + (group == "" ? "" : " of " + group);
+        }
+
+        /// <summary>
+        /// ", announced her graduation" for an idol in her last months: she still takes part in elections.
+        /// </summary>
+        private static string Leaving(data_girls.girls girl)
+        {
+            return girl.status == data_girls._status.announced_graduation ? ", announced her graduation" : "";
+        }
+
+        /// <summary>
+        /// " (up from 3rd)", " (down from 1st)", " (same place as last time)", " (not ranked last time)"; ""
+        /// for the first election.
+        /// </summary>
+        private static string Movement(SEvent_SSK._SSK._result result, Dictionary<data_girls.girls, int> before)
+        {
+            if (before == null)
+            {
+                return "";
+            }
+            if (!before.TryGetValue(result.Girl, out int was))
+            {
+                return " (not ranked last time)";
+            }
+            return was == result.Place ? " (same place as last time)"
+                : " (" + (result.Place < was ? "up" : "down") + " from " + Members.Ordinal(was) + ")";
+        }
+
+        /// <summary>
+        /// An idol's move between two elections, outside the listed places: her result now, or none when the
+        /// game didn't keep her place (it keeps the top 10).
+        /// </summary>
+        private sealed class Move
+        {
+            public data_girls.girls Girl;
+            public SEvent_SSK._SSK._result Now;
+            public int Was;
+
+            public string Describe()
+            {
+                return Now == null
+                    ? Named(Girl) + ", no longer ranked (was " + Members.Ordinal(Was) + ")" + Leaving(Girl)
+                    : Members.Ordinal(Now.Place) + ": " + Ranked(Now) + " (" + (Now.Place < Was ? "up" : "down") + " from " + Members.Ordinal(Was) + ")" + Leaving(Girl);
+            }
+        }
+
+        /// <summary>
+        /// The idol ranked last time who fell furthest and isn't in the listed places. An idol the game no
+        /// longer ranks counts as one place below the last one ranked. Graduates are left out: they didn't
+        /// take part. Of equal falls, the one who was higher.
+        /// </summary>
+        private static Move BiggestDrop(List<SEvent_SSK._SSK._result> results, List<SEvent_SSK._SSK._result> top, Dictionary<data_girls.girls, int> before)
+        {
+            Move best = null;
+            int bestFall = 0;
+            foreach (KeyValuePair<data_girls.girls, int> was in before.OrderBy(p => p.Value))
+            {
+                data_girls.girls girl = was.Key;
+                if (top.Any(r => r.Girl == girl) || girl.status == data_girls._status.graduated)
+                {
+                    continue;
+                }
+                SEvent_SSK._SSK._result now = results.FirstOrDefault(r => r.Girl == girl);
+                int fall = (now?.Place ?? results.Count + 1) - was.Value;
+                if (fall > bestFall)
+                {
+                    best = new Move { Girl = girl, Now = now, Was = was.Value };
+                    bestFall = fall;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// The idol below the listed places who climbed furthest since last time. Only places past the top 10
+        /// can show this, which the game keeps only with a mod. An idol ranked for the first time has no
+        /// earlier place to climb from. Of equal climbs, the one placed higher now.
+        /// </summary>
+        private static Move BiggestRise(List<SEvent_SSK._SSK._result> results, List<SEvent_SSK._SSK._result> top, Dictionary<data_girls.girls, int> before)
+        {
+            Move best = null;
+            int bestClimb = 0;
+            foreach (SEvent_SSK._SSK._result now in results.Skip(top.Count))
+            {
+                if (before.TryGetValue(now.Girl, out int was) && was - now.Place > bestClimb)
+                {
+                    best = new Move { Girl = now.Girl, Now = now, Was = was };
+                    bestClimb = was - now.Place;
+                }
+            }
+            return best;
+        }
+
         /// <param name="rankBefore">Her place by fans in her group before she left, taken before the game moved her fans.</param>
         /// <param name="friends">Her clique before she left, taken before the game took her out of it; null reads it now.</param>
         /// <param name="bulliedBy">Who was bullying her before she left, taken before the game ended it; null reads it now.</param>
@@ -491,8 +690,25 @@ namespace AIFanChatter
         /// </summary>
         public static string Attendance(SEvent_Concerts._concert concert)
         {
-            string capacity = Part(() => concert.GetCapacity().ToString(CultureInfo.InvariantCulture));
-            return concert.ProjectedValues.Actual_Audience + (capacity == "" ? " people" : " out of " + capacity + " seats");
+            return Seats(concert.ProjectedValues.Actual_Audience, Part(() => concert.GetCapacity().ToString(CultureInfo.InvariantCulture)));
+        }
+
+        /// <summary>
+        /// "4600 out of 5000 seats"; "4600 people" without a capacity.
+        /// </summary>
+        public static string Seats(long audience, string capacity)
+        {
+            return audience + (capacity == "" || capacity == "0" ? " people" : " out of " + capacity + " seats");
+        }
+
+        /// <summary>
+        /// A tour stop's place as the game names it (a location mod's names come through) and its audience:
+        /// "Osaka: 7600 out of 8000 seats". "" when the game can't name the place.
+        /// </summary>
+        public static string TourStop(SEvent_Tour.tour.selectedCountry stop)
+        {
+            string place = Moment.Clean(Part(() => stop.Country.GetTitle()));
+            return place == "" ? "" : place + ": " + Seats(stop.Audience, Part(() => SEvent_Tour.GetCapacity(stop.Level).ToString(CultureInfo.InvariantCulture)));
         }
 
         /// <summary>The most singles a graduate's list of center singles holds.</summary>

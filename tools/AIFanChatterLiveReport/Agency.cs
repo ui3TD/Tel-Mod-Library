@@ -7,9 +7,10 @@ namespace AIFanChatter.LiveReport
     /// <summary>
     /// A made-up agency two and a half years into a normal game, held in the game's own static lists the way
     /// a loaded save holds it: a main group of 14 with two graduates, a sister group of 5, 15 singles, five
-    /// concerts, one election, the agency's policies, its fans' opinions and a few earlier posts on the feed.
-    /// Every idol has every stat, so each line the mod writes about her is filled in. The three moments are
-    /// the main group's newest single, the concert just held, and a sister-group idol graduating.
+    /// concerts, two tours, one election, the agency's policies, its fans' opinions and a few earlier posts on
+    /// the feed. Every idol has every stat, so each line the mod writes about her is filled in. The moments
+    /// include the main group's newest single, the concert just held, the tour just back, the second
+    /// election's results, and a sister-group idol graduating.
     /// </summary>
     internal sealed class Agency
     {
@@ -19,6 +20,7 @@ namespace AIFanChatter.LiveReport
 
         public singles._single NewSingle;
         public SEvent_Concerts._concert NewConcert;
+        public SEvent_Tour.tour NewTour;
         public data_girls.girls Graduate;
 
         private readonly Dictionary<string, data_girls.girls> idols = new();
@@ -53,6 +55,45 @@ namespace AIFanChatter.LiveReport
         }
 
         /// <summary>
+        /// The tour just back, with Kaede on hiatus and Mao, who announced her graduation, staying home. Set
+        /// only for this moment and the ones after it, so the earlier moments' idol lines stay as they were.
+        /// </summary>
+        public SEvent_Tour.tour TourNow()
+        {
+            idols["Kaede"].status = data_girls._status.hiatus;
+            idols["Mao"].status = data_girls._status.announced_graduation;
+            return NewTour;
+        }
+
+        /// <summary>
+        /// The second election's results, revealed today. Added only for its own moment: a finished election
+        /// becomes every idol's "last election" in the other moments' lines. Ten places, as the game keeps:
+        /// Hikari and Yui climb, Nanami holds 4th, and Rin, 3rd last time, drops out of the ranking.
+        /// </summary>
+        public SEvent_SSK._SSK ElectionNow()
+        {
+            SEvent_SSK._SSK election = new()
+            {
+                Status = SEvent_Tour.tour._status.finished,
+                FinishDate = Today,
+                Count = 2,
+                Broadcast = SEvent_SSK._broadcast.localTV,
+                Single = singles.Singles.First(s => s.title == "Under the Overpass"),
+                Concert = NewConcert,
+            };
+            string[] order = { "Hinata", "Mirai", "Hikari", "Nanami", "Sayaka", "Mao", "Sora", "Yui", "Kaede", "Rena" };
+            long[] votes = { 48200, 45100, 31800, 29400, 27700, 21300, 20900, 18600, 17200, 15800 };
+            for (int i = 0; i < order.Length; i++)
+            {
+                data_girls.girls girl = idols[order[i]];
+                election.Results.Add(new SEvent_SSK._SSK._result { Girl = girl, Place = i + 1, Votes = votes[i] });
+                girl.SSK_History.Add(i + 1);
+            }
+            SEvent_SSK.Elections.Add(election);
+            return election;
+        }
+
+        /// <summary>
         /// The random event happening today, its idol parts played by these idols in order.
         /// </summary>
         public Event_Manager._activeEvent Event(Event_Manager._randomEvent data, IList<string> names)
@@ -80,6 +121,7 @@ namespace AIFanChatter.LiveReport
             singles.Singles.Clear();
             SEvent_Concerts.Concerts.Clear();
             SEvent_SSK.Elections.Clear();
+            SEvent_Tour.Tours.Clear();
             policies.Values.Clear();
             Relationships.Cliques.Clear();
             resources.resource.Clear();
@@ -153,6 +195,7 @@ namespace AIFanChatter.LiveReport
 
             Singles();
             Concerts();
+            Tours();
             Election();
             Policies();
             Fans();
@@ -225,11 +268,36 @@ namespace AIFanChatter.LiveReport
         }
 
         /// <summary>
+        /// Two earlier tours and the one just back: France is a first visit, China and Australia return
+        /// visits, China visited on both earlier tours.
+        /// </summary>
+        private void Tours()
+        {
+            Tour(new DateTime(2024, 5, 26), (SEvent_Tour._country.china, 2, 2350), (SEvent_Tour._country.southKorea, 1, 480), (SEvent_Tour._country.thailand, 1, 455));
+            Tour(new DateTime(2025, 1, 12), (SEvent_Tour._country.china, 3, 7900), (SEvent_Tour._country.australia, 2, 2100), (SEvent_Tour._country.canada, 2, 1650));
+            NewTour = Tour(Today, (SEvent_Tour._country.china, 4, 14200), (SEvent_Tour._country.australia, 3, 6400), (SEvent_Tour._country.france, 2, 1900));
+        }
+
+        /// <summary>
+        /// A finished tour: (place, venue level, audience) per stop, in order.
+        /// </summary>
+        private static SEvent_Tour.tour Tour(DateTime finished, params (SEvent_Tour._country place, int level, int audience)[] stops)
+        {
+            SEvent_Tour.tour tour = new() { Status = SEvent_Tour.tour._status.finished, FinishDate = finished };
+            foreach ((SEvent_Tour._country place, int level, int audience) in stops)
+            {
+                tour.SelectedCountries.Add(new SEvent_Tour.tour.selectedCountry { Country = new SEvent_Tour.country { Type = place }, Level = level, Audience = audience });
+            }
+            SEvent_Tour.Tours.Add(tour);
+            return tour;
+        }
+
+        /// <summary>
         /// The general election in June, before Uchida Noa graduated, across both groups.
         /// </summary>
         private void Election()
         {
-            SEvent_SSK._SSK election = new() { Status = SEvent_Tour.tour._status.finished, FinishDate = new DateTime(2025, 6, 21) };
+            SEvent_SSK._SSK election = new() { Status = SEvent_Tour.tour._status.finished, FinishDate = new DateTime(2025, 6, 21), Count = 1 };
             string[] order = { "Mirai", "Hinata", "Rin", "Nanami", "Sayaka", "Hikari", "Mao", "Sora", "Kaede", "Noa", "Kaho", "Yui", "Rena", "Koharu", "Miyu", "Ayaka", "Ruri", "Emi", "Chiyo", "Momoka" };
             for (int i = 0; i < order.Length; i++)
             {

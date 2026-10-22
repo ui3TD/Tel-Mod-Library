@@ -84,7 +84,7 @@ The mod fills each of these in with information from your game, about the moment
 
 The group these parts call "the group" is the group the moment is about:
 - for a single, the group that released it;
-- for a concert, the main group;
+- for a concert, a tour or an election, the main group. A tour takes every active idol and an election ranks every idol, from every group;
 - for a graduation, the graduating idol's group;
 - for a random event, the group of the idol it's mainly about, or the main group when no idol is involved;
 - for a dating scandal, the idol's group;
@@ -108,6 +108,18 @@ The moment's own details, one per line.
   - its hype, as a percentage that can go up to 200%;
   - its ticket price;
   - its set list, in order, one item per line. Each song comes with its genre, lyrics, choreography and the idol at its center, and each talk break with its idols.
+- **A tour** (posted once, after the player closes the tour's results):
+  - the groups that went, main group first. The game sends every idol who isn't on hiatus, injured or leaving;
+  - the idols who stayed home, each with the reason: `on hiatus`, `injured` or `announced her graduation`. Left out when everyone went;
+  - its stops, in order, each with the place's name as the game shows it and the people who came out of the venue's seats, such as `Osaka: 7600 out of 8000 seats`. A place no earlier tour went to ends with `first visit`.
+  - Places come from the game's text, so a mod that renames them (such as National Tour) changes them here too. New fans and money aren't sent: fans can't see them.
+- **An election** (posted once the winner is revealed):
+  - its number, its broadcast, the voting single and the concert it followed;
+  - how many idols it ranked;
+  - its results, up to the first 10 places, one per line, each with the idol, her votes and how she moved since the last election (`up from 3rd`, `down from 1st`, `same place as last time` or `not ranked last time`). An idol from a sister group has her group's name after hers, such as `Kato Hikari of Aozora Chapter`. An idol who announced her graduation still takes part, and her line ends with `announced her graduation`.
+  - **The biggest drop outside the top 10:** the idol ranked last time who fell furthest and isn't in the first 10, such as `Aoi, no longer ranked (was 3rd)`. The game keeps only the first 10 places, so an idol below them is no longer ranked. Graduated idols are left out.
+  - **The biggest rise outside the top 10:** the idol below the first 10 who climbed furthest since last time. Only a mod that keeps more than 10 places (such as Extended SSK) makes this possible.
+  - The first election has no movement and neither of these lines.
 - **A graduation:**
   - the idol, and what she did after graduating, when the game says;
   - the idols she was bullied by (`Suspected to be bullied by`) and the idols she bullied (`Suspected to have bullied`). Only bullying that the player had found out about is named, and idols who had stopped bullying her are left out. Each line is left out when it names no one;
@@ -131,13 +143,13 @@ The group and the agency, one fact per line:
 - the concept, from the agency's policies;
 - the policies that matter to this kind of moment:
   - handshake event security, for a single promoted with a handshake event;
-  - stage costumes and performance style, for a concert;
+  - stage costumes and performance style, for a concert or a tour;
   - the dating rule, for a random event or a dating scandal;
 - the date, with its day of the week.
 
 ### `{members}`
 
-One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation, the idol for a dating scandal, and up to 5 idols whose scandal points paid for a policy change or a staff firing.
+One line for each idol the moment is about, most involved first: up to 5 for a single, 5 for a concert and 3 for a random event, the graduating idol for a graduation, the idol for a dating scandal, and up to 5 idols whose scandal points paid for a policy change or a staff firing. A tour gets the 5 active idols with the most fans, from any group. An election gets up to 5: the first 3 places, then the idols with the biggest drop and the biggest rise outside the top 10, then the 4th and 5th places. Their lines leave out the election place, which the results give.
 
 Each line gives, in this order:
 
@@ -163,6 +175,8 @@ Earlier results to compare with. Empty when there's nothing earlier.
 
 - **A single:** the group's last 3 singles, each with its genre, lyrics, choreography, sales, quality, fan satisfaction and release date, then how many singles came before and the best-selling one.
 - **A concert:** the previous concert's venue, attendance and date, how many concerts came before, and the biggest audience so far.
+- **A tour:** every place earlier tours went to, once each, at its latest visit, newest first, with the seats filled and how long ago, such as `Osaka: 7600 out of 8000 seats, 4 months ago`. Then how many tours there have been, this one included.
+- **An election:** the previous election, its winner and how long ago, then how many elections there have been, this one included.
 - **A graduation:** the previous graduate from the same group and when she left, and how many of the group's idols graduated before her. When she's the group's first graduate, it says so.
 - **A random event:** how often the same event happened before, and when it last did. For an event in a storyline, the text of the storyline's earlier events that happened, oldest first. The game doesn't keep which answer was given, so an earlier event is only included when every answer of it that leads on in the storyline had a public outcome, or the game posted about it. The answers themselves aren't included.
 - **A dating scandal:** nothing. The game gives each idol at most one.

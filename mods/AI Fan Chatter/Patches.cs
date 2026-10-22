@@ -151,6 +151,93 @@ namespace AIFanChatter
         }
     }
 
+    /// <summary>
+    /// A tour, when the player closes its results: every stop has played by then. The game clears its
+    /// current tour on the way out, so the prefix keeps it.
+    /// </summary>
+    [HarmonyPatch(typeof(SEvent_Tour), nameof(SEvent_Tour.FinishTour))]
+    [HarmonyPriority(Priority.Last)]
+    public class SEvent_Tour_FinishTour
+    {
+        // The last tour posted, so a second call for the same tour posts nothing. The tour itself rather than its
+        // ID: a reloaded save can reuse an ID for a different tour.
+        private static SEvent_Tour.tour posted;
+
+        internal static void Reset() => posted = null;
+
+        public static void Prefix(SEvent_Tour __instance, out SEvent_Tour.tour __state)
+        {
+            __state = null;
+            try
+            {
+                __state = __instance?.Tour;
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        public static void Postfix(SEvent_Tour.tour __state, bool __runOriginal)
+        {
+            try
+            {
+                if (__runOriginal && __state == null)
+                {
+                    Log.Warn("A tour finished, but the game had no current tour to read; no posts for it.");
+                }
+                if (ShouldPost(__state, __runOriginal))
+                {
+                    posted = __state;
+                    Moments.Trigger(() => MomentContext.Tour(__state));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        internal static bool ShouldPost(SEvent_Tour.tour tour, bool ran)
+        {
+            return ran && tour != null && tour.Status == SEvent_Tour.tour._status.finished && tour != posted;
+        }
+    }
+
+    /// <summary>
+    /// An election, when its last place (the winner) has been revealed and its results are final.
+    /// </summary>
+    [HarmonyPatch(typeof(SEvent_SSK._SSK), nameof(SEvent_SSK._SSK.Finish))]
+    [HarmonyPriority(Priority.Last)]
+    public class SEvent_SSK_SSK_Finish
+    {
+        // The last election posted, as for tours
+        private static SEvent_SSK._SSK posted;
+
+        internal static void Reset() => posted = null;
+
+        public static void Postfix(SEvent_SSK._SSK __instance, bool __runOriginal)
+        {
+            try
+            {
+                if (ShouldPost(__instance, __runOriginal))
+                {
+                    posted = __instance;
+                    Moments.Trigger(() => MomentContext.Election(__instance));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        internal static bool ShouldPost(SEvent_SSK._SSK election, bool ran)
+        {
+            return ran && election != null && election.Status == SEvent_Tour.tour._status.finished && election != posted;
+        }
+    }
+
     [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.Graduate))]
     [HarmonyPriority(Priority.Last)]
     public class data_girls_girls_Graduate

@@ -19,6 +19,9 @@ namespace AIFanChatter.Tests
             singles.Singles.Clear();
             SEvent_Concerts.Concerts.Clear();
             SEvent_SSK.Elections.Clear();
+            SEvent_Tour.Tours.Clear();
+            SEvent_Tour_FinishTour.Reset();
+            SEvent_SSK_SSK_Finish.Reset();
             traits.Traits.Clear();
             resources.resource.Clear();
             resources.Fans.Clear();
@@ -140,10 +143,31 @@ namespace AIFanChatter.Tests
             SEvent_SSK._SSK election = new() { Status = SEvent_Tour.tour._status.finished, FinishDate = finished };
             for (int i = 0; i < results; i++)
             {
-                election.Results.Add(new SEvent_SSK._SSK._result { Girl = i < top.Length ? top[i] : null, Place = i + 1 });
+                // The game's votes fall with each place
+                election.Results.Add(new SEvent_SSK._SSK._result { Girl = i < top.Length ? top[i] : null, Place = i + 1, Votes = (results - i) * 1000 });
             }
             SEvent_SSK.Elections.Add(election);
             return election;
+        }
+
+        /// <summary>
+        /// A tour with these stops, each played at a venue level with this audience, in the game's list of
+        /// tours: (country, level, audience).
+        /// </summary>
+        public static SEvent_Tour.tour Tour(DateTime finished, bool done, params (SEvent_Tour._country country, int level, int audience)[] stops)
+        {
+            SEvent_Tour.tour tour = new() { Status = done ? SEvent_Tour.tour._status.finished : SEvent_Tour.tour._status.normal, FinishDate = finished };
+            foreach ((SEvent_Tour._country country, int level, int audience) in stops)
+            {
+                tour.SelectedCountries.Add(new SEvent_Tour.tour.selectedCountry
+                {
+                    Country = new SEvent_Tour.country { Type = country },
+                    Level = level,
+                    Audience = audience,
+                });
+            }
+            SEvent_Tour.Tours.Add(tour);
+            return tour;
         }
 
         /// <summary>

@@ -12,14 +12,14 @@ using System.Runtime.CompilerServices;
 namespace AIFanChatter.LiveReport
 {
     /// <summary>
-    /// Sends seven moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
+    /// Sends nine moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
     /// prompt, dispatcher, request and reply code, once per model, and writes every request, reply and
     /// queued post to a JSON file for tools/ai_fan_chatter_live_report.py. Runs outside the game: the
     /// game's text comes from its install folder and the key from the mod's key file. It costs money.
     ///
     ///     AIFanChatterLiveReport --game-dir DIR --provider 2 --base-url URL --model M [--model M2] --out FILE
     ///     AIFanChatterLiveReport --game-dir DIR --dry-run 1      (prints the prompts; sends nothing)
-    /// Options: --moment single|concert|event|scandal|policy|firing|graduation (repeat to pick several; all seven by default),
+    /// Options: --moment single|concert|event|scandal|policy|firing|tour|election|graduation (repeat to pick several; all nine by default),
     /// --setlist "Signal Fire/Rin; talk: Mao, Kaede" for the concert (see Agency.SetList), and for the
     /// random event --event ID (from the game's random_events.json), --event-reply N (the player's
     /// answer, from 0; by default the first one without posts of its own) and --event-idols "Rena, Mao"
@@ -192,13 +192,16 @@ namespace AIFanChatter.LiveReport
                 new("scandal", () => ScandalMoment(agency)),
                 new("policy", () => PolicyMoment(agency)),
                 new("firing", () => FiringMoment(agency)),
+                new("tour", () => MomentContext.Tour(agency.TourNow())),
+                // After the others: the new election becomes every idol's last one
+                new("election", () => MomentContext.Election(agency.ElectionNow())),
                 // Last, as the graduate leaves the group
                 new("graduation", () => MomentContext.Graduation(agency.Graduate, agency.GraduateNow())),
             };
             string unknown = picked?.FirstOrDefault(name => all.All(m => m.Key != name));
             if (unknown != null)
             {
-                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing and graduation");
+                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing, tour, election and graduation");
             }
             return all.Where(m => picked == null || picked.Contains(m.Key))
                 .Select(m => new KeyValuePair<string, Func<Moment>>(Names[m.Key], m.Value)).ToList();
@@ -212,6 +215,8 @@ namespace AIFanChatter.LiveReport
             ["scandal"] = "a dating scandal",
             ["policy"] = "a paid policy change",
             ["firing"] = "a staff firing",
+            ["tour"] = "a tour",
+            ["election"] = "an election's results",
             ["graduation"] = "a graduation",
         };
 
@@ -420,6 +425,12 @@ namespace AIFanChatter.LiveReport
                     Group_Handshake = item["group_handshake"].AsBool,
                     Individual_Handshake = item["individual_handshake"].AsBool,
                 });
+            }
+            // The tour venues' sizes, as SEvent_Tour reads them
+            SEvent_Tour.Const_Capacity.Clear();
+            foreach (JSONNode size in Read(Path.Combine(english, "SpecialEvents", "WorldTour", "constants.json"))["capacity"].AsArray)
+            {
+                SEvent_Tour.Const_Capacity.Add(size.AsInt);
             }
             Events.Clear();
             foreach (JSONNode item in Read(Path.Combine(english, "Events", "random_events.json")).AsArray)

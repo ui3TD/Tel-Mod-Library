@@ -18,6 +18,12 @@ namespace AIFanChatter
         public const int EventCap = 3;
         /// <summary>The most idols a policy change names, from the ones whose scandal points paid for it.</summary>
         public const int PolicyCap = 5;
+        /// <summary>The most idols a tour names: every active idol goes, so the most popular ones.</summary>
+        public const int TourCap = 5;
+        /// <summary>The most idols an election names: the top places, and the biggest moves outside the top.</summary>
+        public const int ElectionCap = 5;
+        /// <summary>The election places named before the biggest moves outside the top.</summary>
+        public const int ElectionTopFirst = 3;
         /// <summary>Only the idols this far up the order get their trivia, to keep the prompt short.</summary>
         public const int TriviaIdols = 2;
         public const int TriviaLength = 120;
@@ -131,6 +137,29 @@ namespace AIFanChatter
         }
 
         /// <summary>
+        /// A tour's idols: the game sends every active idol, from every group, so the ones with the most fans.
+        /// </summary>
+        public static List<data_girls.girls> ForTour()
+        {
+            return ByFans(data_girls.GetActiveGirls()).Take(TourCap).ToList();
+        }
+
+        /// <summary>
+        /// An election's idols: the top places, then the biggest drop and rise outside the top, then the next
+        /// places, up to ElectionCap. results is in place order.
+        /// </summary>
+        public static List<data_girls.girls> ForElection(IList<SEvent_SSK._SSK._result> results, data_girls.girls drop, data_girls.girls rise)
+        {
+            List<data_girls.girls> top = results.Where(r => r?.Girl != null).Select(r => r.Girl).ToList();
+            return top.Take(ElectionTopFirst)
+                .Concat(new[] { drop, rise }.Where(g => g != null))
+                .Concat(top.Skip(ElectionTopFirst))
+                .Distinct()
+                .Take(ElectionCap)
+                .ToList();
+        }
+
+        /// <summary>
         /// The idols in an event, in the event's own actor order: the first is its main subject.
         /// </summary>
         public static List<data_girls.girls> ForEvent(Event_Manager._activeEvent active)
@@ -142,8 +171,10 @@ namespace AIFanChatter
         /// Adds a line for each idol, in the order given. "The group" in the lines is the moment's group
         /// (eventGroup): the single's group, the main group for a concert, the graduating idol's group. Known
         /// ranks replace the ones worked out now: a graduating idol's is taken before the game moves her fans.
+        /// Without withElection the lines leave out her election place: an election's own moment gives it.
         /// </summary>
-        public static void Add(Moment moment, IList<data_girls.girls> idols, DateTime now, Groups._group eventGroup, IDictionary<data_girls.girls, Rank> knownRanks = null)
+        public static void Add(Moment moment, IList<data_girls.girls> idols, DateTime now, Groups._group eventGroup, IDictionary<data_girls.girls, Rank> knownRanks = null,
+            bool withElection = true)
         {
             if (idols == null)
             {
@@ -183,7 +214,7 @@ namespace AIFanChatter
                 }
                 bool withTrivia = i < TriviaIdols;
                 Rank known = knownRanks != null && knownRanks.TryGetValue(girl, out Rank rank) ? rank : null;
-                moment.AddTo(Moment.MembersSection, name, () => Line(girl, withTrivia, now, eventGroup, known, RankIn));
+                moment.AddTo(Moment.MembersSection, name, () => Line(girl, withTrivia, now, eventGroup, known, RankIn, withElection));
             }
         }
 
@@ -198,7 +229,7 @@ namespace AIFanChatter
         /// in the moment's group.
         /// </summary>
         public static string Line(data_girls.girls girl, bool withTrivia, DateTime now, Groups._group eventGroup, Rank knownRank,
-            Func<data_girls.girls, Groups._group, string, Rank> rankIn)
+            Func<data_girls.girls, Groups._group, string, Rank> rankIn, bool withElection = true)
         {
             Groups._group own = OwnGroup(girl);
             bool guest = eventGroup != null && own != null && own != eventGroup;
@@ -222,7 +253,7 @@ namespace AIFanChatter
             Sentence(sentences, Part(() => Standouts(girl, home, named)));
             Sentence(sentences, Join(
                 Part(() => Tenure(girl, now, home, named)),
-                Part(() => Election(girl)),
+                Part(() => withElection ? Election(girl) : ""),
                 Part(() => RankText(knownRank ?? rankIn?.Invoke(girl, home, named), knownRank != null)),
                 Part(() => Singles(girl, eventGroup ?? own))));
             // Last, so it reads as a label: she isn't in the group the moment is about
@@ -472,6 +503,16 @@ namespace AIFanChatter
             Second,
             SecondLast,
             Last
+        }
+
+        /// <summary>
+        /// "1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st".
+        /// </summary>
+        public static string Ordinal(int place)
+        {
+            int tens = place % 100;
+            string suffix = tens >= 11 && tens <= 13 ? "th" : (place % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" };
+            return place.ToString(CultureInfo.InvariantCulture) + suffix;
         }
 
         /// <summary>

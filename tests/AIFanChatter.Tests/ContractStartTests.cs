@@ -114,7 +114,7 @@ namespace AIFanChatter.Tests
 
             Moment moment = MomentContext.ContractStart(drama, new[] { hers, other, drama }, business.History);
             Assert.Equal("\n- " + MomentContext.Contract(hers), moment.Fact(H, "Her other running contracts"));
-            Assert.Equal("1", moment.Fact(H, "Her earlier TV dramas"));
+            Assert.Equal("1, the latest 8 months ago", moment.Fact(H, "Her earlier TV dramas"));
             Assert.Equal("Moons", moment.Fact(Moment.AgencySection, "Group"));
         }
     }

@@ -805,7 +805,7 @@ namespace AIFanChatter
                     ? data.duration + (data.duration == 1 ? " month" : " months") : "");
             Groups._group group = GroupOf(() => girl.GetGroup());
             Members.Add(moment, new List<data_girls.girls> { girl }, Now, group ?? MainGroup());
-            History.Contracts(moment, contract, running, history);
+            History.Contracts(moment, contract, running, history, Now);
             return Agency(moment, group);
         }
 

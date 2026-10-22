@@ -92,7 +92,7 @@ namespace AIFanChatter.Tests
             Assert.Equal("Rin", announced.Fact(A, "Friends in " + Members.GroupName(kaho.GetGroup())));
             Assert.Null(announced.Fact(A, "Most popular members"));
             Assert.Equal(graduated.Lines(H), announced.Lines(H));
-            Assert.Equal("Mio", announced.Fact(H, "Previous graduate"));
+            Assert.Equal("Mio, 5 months ago", announced.Fact(H, "Previous graduate"));
             Assert.Contains("Kaho", announced.Lines(M));
         }
 

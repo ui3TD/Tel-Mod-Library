@@ -54,7 +54,7 @@ namespace AIFanChatter.Tests
             Assert.StartsWith("\"First\" (Pop, Love lyrics, Cool choreography): 50000 sales", moment.Fact(H, "3rd previous single"));
             Assert.DoesNotContain(moment.Facts(H), f => f.Value.Contains("Oldest"));
             Assert.Equal("4", moment.Fact(H, "Singles released before this one"));
-            Assert.Equal("\"First\" (Pop, Love lyrics, Cool choreography), 50000 sales", moment.Fact(H, "Best-selling earlier single"));
+            Assert.Equal("\"First\" (Pop, Love lyrics, Cool choreography), 50000 sales, released 6 months ago", moment.Fact(H, "Best-selling earlier single"));
         }
 
         [Fact]
@@ -162,7 +162,7 @@ namespace AIFanChatter.Tests
             Assert.Equal(new[] { "Previous concert", "Concerts held before this one", "Biggest audience at an earlier concert" },
                 moment.Facts(H).Select(f => f.Key));
             Assert.Equal("2", moment.Fact(H, "Concerts held before this one"));
-            Assert.Equal("5000", moment.Fact(H, "Biggest audience at an earlier concert"));
+            Assert.Equal("5000, held 3 months ago", moment.Fact(H, "Biggest audience at an earlier concert"));
         }
 
         [Fact]
@@ -188,8 +188,8 @@ namespace AIFanChatter.Tests
 
             Moment moment = new("x");
             History.Graduation(moment, leaving, data_girls.girl, Today);
-            Assert.Equal("Sister graduate", moment.Fact(H, "Previous graduate"));
-            Assert.Equal("6 months ago", moment.Fact(H, "Previous graduation"));
+            Assert.Equal("Sister graduate, 6 months ago", moment.Fact(H, "Previous graduate"));
+            Assert.Null(moment.Fact(H, "Previous graduation"));
             Assert.Equal("1", moment.Fact(H, "Idols who graduated from the group before her"));
             Assert.Null(moment.Fact(H, "Idols who graduated before her"));
         }
@@ -261,8 +261,7 @@ namespace AIFanChatter.Tests
 
             Moment moment = new("x");
             History.Graduation(moment, leaving, data_girls.girl, Today);
-            Assert.Equal("Recent", moment.Fact(H, "Previous graduate"));
-            Assert.Equal("3 months ago", moment.Fact(H, "Previous graduation"));
+            Assert.Equal("Recent, 3 months ago", moment.Fact(H, "Previous graduate"));
             Assert.Equal("3", moment.Fact(H, "Idols who graduated before her"));
         }
 

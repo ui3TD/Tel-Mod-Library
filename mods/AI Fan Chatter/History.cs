@@ -130,7 +130,11 @@ namespace AIFanChatter
                 singles._single best = earlier.OrderByDescending(s => s.ReleaseData.Sales).First();
                 moment
                     .AddTo(Section, "Singles released before this one", () => earlier.Count)
-                    .AddTo(Section, "Best-selling earlier single", () => MomentContext.TitleWithStyle(best) + ", " + best.ReleaseData.Sales + " sales");
+                    .AddTo(Section, "Best-selling earlier single", () =>
+                    {
+                        string ago = Ago(best.ReleaseData.ReleaseDate, now);
+                        return MomentContext.TitleWithStyle(best) + ", " + best.ReleaseData.Sales + " sales" + (ago == "" ? "" : ", released " + ago);
+                    });
             }
             catch (Exception)
             {
@@ -169,7 +173,12 @@ namespace AIFanChatter
                 moment
                     .AddTo(Section, "Previous concert", () => ConcertSummary(previous, now))
                     .AddTo(Section, "Concerts held before this one", () => earlier.Count)
-                    .AddTo(Section, "Biggest audience at an earlier concert", () => earlier.Max(c => c.ProjectedValues.Actual_Audience));
+                    .AddTo(Section, "Biggest audience at an earlier concert", () =>
+                    {
+                        SEvent_Concerts._concert biggest = earlier.OrderByDescending(c => c.ProjectedValues.Actual_Audience).First();
+                        string ago = Ago(biggest.FinishDate, now);
+                        return biggest.ProjectedValues.Actual_Audience + (ago == "" ? "" : ", held " + ago);
+                    });
             }
             catch (Exception)
             {
@@ -409,10 +418,11 @@ namespace AIFanChatter
         }
 
         /// <summary>
-        /// For a contract's start: her other running contracts, and how many deals of this kind she took before.
+        /// For a contract's start: her other running contracts, and how many deals of this kind she took before,
+        /// with how long ago the latest was.
         /// </summary>
         public static void Contracts(Moment moment, business.active_proposal contract, IEnumerable<business.active_proposal> running,
-            IEnumerable<business._history> history)
+            IEnumerable<business._history> history, DateTime now)
         {
             try
             {
@@ -421,8 +431,13 @@ namespace AIFanChatter
                     .Where(c => c != null && c != contract && c.Girl == girl)
                     .Select(c => (Func<object>)(() => MomentContext.Contract(c))).ToList());
                 bool tv = contract.Type == business._type.tv_drama;
-                int earlier = (history ?? Enumerable.Empty<business._history>()).Count(h => h != null && h.Girl == girl && h.Type == contract.Type);
-                moment.AddTo(Section, tv ? "Her earlier TV dramas" : "Her earlier advertisements", () => earlier);
+                List<business._history> earlier = (history ?? Enumerable.Empty<business._history>()).Where(h => h != null && h.Girl == girl && h.Type == contract.Type).ToList();
+                moment.AddTo(Section, tv ? "Her earlier TV dramas" : "Her earlier advertisements", () =>
+                {
+                    List<business._history> dated = earlier.Where(h => Known(h.Date) && h.Date <= now).ToList();
+                    string ago = dated.Count == 0 ? "" : Ago(Latest(dated, h => h.Date).Date, now);
+                    return earlier.Count + (ago == "" ? "" : ", the latest " + ago);
+                });
             }
             catch (Exception)
             {
@@ -505,8 +520,11 @@ namespace AIFanChatter
                 if (previous != null)
                 {
                     moment
-                        .AddTo(Section, "Previous graduate", () => MomentContext.Name(previous))
-                        .AddTo(Section, "Previous graduation", () => Ago(previous.Graduation_Date, now));
+                        .AddTo(Section, "Previous graduate", () =>
+                        {
+                            string ago = Ago(previous.Graduation_Date, now);
+                            return MomentContext.Name(previous) + (ago == "" ? "" : ", " + ago);
+                        });
                 }
                 moment.AddTo(Section, countKey, () => earlier.Count);
             }

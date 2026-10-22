@@ -202,8 +202,9 @@ namespace AIFanChatter.LiveReport
                 new("tour", () => MomentContext.Tour(agency.TourNow())),
                 // After the others: the new election becomes every idol's last one
                 new("election", () => MomentContext.Election(agency.ElectionNow())),
-                // A fresh agency: its election is the one the concert just held ends with
-                new("concert-election", () => { Agency fresh = Agency.Build(setList); return MomentContext.ConcertElection(fresh.NewConcert, fresh.ElectionNow()); }),
+                // A fresh agency: its election is the one the concert just held ends with. Building it replaces
+                // the game's lists, so the later moments use it too: the earlier agency's idols are no longer in them
+                new("concert-election", () => { Agency fresh = Agency.Build(setList); agency = fresh; return MomentContext.ConcertElection(fresh.NewConcert, fresh.ElectionNow()); }),
                 new("election-cancel", () => MomentContext.ElectionCancelled(agency.ElectionCancelNow())),
                 new("awards", () => MomentContext.Awards(agency.AwardsNow())),
                 new("show", () => MomentContext.ShowStart(agency.ShowNow())),

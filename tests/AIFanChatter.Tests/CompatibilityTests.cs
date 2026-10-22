@@ -183,7 +183,7 @@ namespace AIFanChatter.Tests
         [Fact]
         public void MomentPatches_RunLast()
         {
-            foreach (Type patch in new[] { typeof(singles_ReleaseSingle), typeof(SEvent_Concerts_concert_Finish), typeof(data_girls_girls_Graduate), typeof(Event_Manager_ConcludeEvent), typeof(Event_Templates_ConcludeEvent), typeof(policies_value_Select), typeof(staff_staff_Fire), typeof(SEvent_Tour_FinishTour), typeof(SEvent_SSK_SSK_Finish), typeof(Popup_Audition_Close), typeof(ActiveDialogueController_Hide), typeof(Awards_Reset_After_Awards), typeof(Shows_ReleaseShow), typeof(business_AddActiveProposal) })
+            foreach (Type patch in new[] { typeof(singles_ReleaseSingle), typeof(SEvent_Concerts_concert_Finish), typeof(data_girls_girls_Graduate), typeof(Event_Manager_ConcludeEvent), typeof(Event_Templates_ConcludeEvent), typeof(policies_value_Select), typeof(staff_staff_Fire), typeof(SEvent_Tour_FinishTour), typeof(SEvent_SSK_SSK_Finish), typeof(Popup_Audition_Close), typeof(ActiveDialogueController_Hide), typeof(Awards_Reset_After_Awards), typeof(Shows_ReleaseShow), typeof(Shows__show_Cancel), typeof(business_AddActiveProposal) })
             {
                 Assert.Equal(Priority.Last, patch.GetCustomAttribute<HarmonyPriority>().info.priority);
             }

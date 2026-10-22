@@ -355,6 +355,48 @@ namespace AIFanChatter
     }
 
     /// <summary>
+    /// A show that aired for a year or more, when it really ends: the call that cancels it, at once or at its
+    /// 12th episode, not the one that only marks a TV or radio show to end later. A show whose whole cast
+    /// left ends here too, with no one to post about.
+    /// </summary>
+    [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.Cancel))]
+    [HarmonyPriority(Priority.Last)]
+    public class Shows__show_Cancel
+    {
+        public static void Prefix(Shows._show __instance, out bool __state)
+        {
+            __state = __instance != null && __instance.status != Shows._show._status.canceled;
+        }
+
+        public static void Postfix(Shows._show __instance, bool __state, bool __runOriginal)
+        {
+            try
+            {
+                Shows._show show = __instance;
+                if (ShouldPost(show, __state, __runOriginal, staticVars.dateTime))
+                {
+                    Moments.Trigger(() => MomentContext.ShowEnd(show));
+                }
+            }
+            catch (Exception)
+            {
+                // No request
+            }
+        }
+
+        /// <summary>
+        /// The call ended a show that was on air, with a cast, a year or more after its first episode.
+        /// A cancelled show is final, so each show passes once.
+        /// </summary>
+        internal static bool ShouldPost(Shows._show show, bool wasOn, bool ran, DateTime now)
+        {
+            return ran && wasOn && show != null && show.status == Shows._show._status.canceled
+                && History.Known(show.LaunchDate) && now >= show.LaunchDate.AddYears(1)
+                && show.GetCast().Any(g => g != null);
+        }
+    }
+
+    /// <summary>
     /// A lasting business contract (an ad or a TV drama), when the player accepts it: the game adds it to
     /// the running contracts. One-off deals never come here.
     /// </summary>

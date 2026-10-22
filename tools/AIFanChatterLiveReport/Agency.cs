@@ -140,12 +140,38 @@ namespace AIFanChatter.LiveReport
         /// </summary>
         public Shows._show ShowNow()
         {
-            Show("Idol Kitchen", Shows._show._status.canceled, 14, Today.AddMonths(-4).AddDays(-7 * 13), 1, 5, 2, idols["Mao"], idols["Kaede"]);
-            Show("Midnight Request Hour", Shows._show._status.released, 30, Today.AddMonths(-7), 0, 3, 3, idols["Mirai"], idols["Rin"]);
+            OtherShows();
             Shows._show show = Show("Platform 7 Mysteries", Shows._show._status.released, 1, Today, 2, 4, 2,
                 idols["Sayaka"], idols["Rena"], idols["Koharu"]);
             show.audience.Add(412000);
             return show;
+        }
+
+        /// <summary>
+        /// An internet music show with Rin and Hinata, cancelled today after 60 weekly episodes (13 months), its
+        /// concept updated once; the cancelled food show and the radio show of ShowNow around it.
+        /// </summary>
+        public Shows._show ShowEndNow()
+        {
+            OtherShows();
+            Shows._show show = Show("Backstage Diaries", Shows._show._status.canceled, 60, Today.AddDays(-7 * 59), 1, 3, 3, idols["Rin"], idols["Hinata"]);
+            for (int i = 0; i < 60; i++)
+            {
+                // Grows to its peak in the middle, then fades
+                show.audience.Add(180000 + 4000 * Math.Min(i, 60 - i));
+            }
+            show.peakAudience = show.audience.Max();
+            show.NumberOfRelaunches = 1;
+            return show;
+        }
+
+        private void OtherShows()
+        {
+            if (!Shows.shows.Any(s => s.title == "Idol Kitchen"))
+            {
+                Show("Idol Kitchen", Shows._show._status.canceled, 14, Today.AddMonths(-4).AddDays(-7 * 13), 1, 5, 2, idols["Mao"], idols["Kaede"]);
+                Show("Midnight Request Hour", Shows._show._status.released, 30, Today.AddMonths(-7), 0, 3, 3, idols["Mirai"], idols["Rin"]);
+            }
         }
 
         private static Shows._show Show(string title, Shows._show._status status, int episodes, DateTime launched, int medium, int genre, int host,

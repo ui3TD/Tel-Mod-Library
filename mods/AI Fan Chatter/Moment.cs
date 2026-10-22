@@ -698,22 +698,53 @@ namespace AIFanChatter
         public static Moment ShowStart(Shows._show show)
         {
             List<data_girls.girls> cast = CastOf(show);
-            bool wholeGroup = show.castType == Shows._show._castType.entireGroup;
-            Moment moment = new Moment("a new show starring the agency's idols started airing")
-                .Labelled(() => "the show \"" + Moment.Clean(show.title) + "\"")
+            Moment moment = ShowFacts(new Moment("a new show starring the agency's idols started airing")
+                    .Labelled(() => "the show \"" + Moment.Clean(show.title) + "\""), show, cast, "first")
+                .Add("First episode audience", () => show.audience.Count > 0 ? show.audience[0] + " viewers" : "");
+            return ShowPeople(moment, show, cast, started: true);
+        }
+
+        /// <summary>
+        /// A show that aired for a year or more, as the player's cancellation ends it. The year runs from its
+        /// first episode, through any concept updates. Like its start, only audience figures are sent.
+        /// </summary>
+        public static Moment ShowEnd(Shows._show show)
+        {
+            List<data_girls.girls> cast = CastOf(show);
+            Moment moment = ShowFacts(new Moment("a long-running show starring the agency's idols was cancelled")
+                    .Labelled(() => "the end of the show \"" + Moment.Clean(show.title) + "\""), show, cast, "last")
+                .Add("Ran for", () => History.Known(show.LaunchDate)
+                    ? History.Span((Now.Date - show.LaunchDate.Date).Days) + ", " + show.episodeCount + (show.episodeCount == 1 ? " episode" : " episodes")
+                    : "")
+                .Add("Last episode audience", () => show.audience.Count > 0 ? show.audience[show.audience.Count - 1] + " viewers" : "")
+                .Add("Best episode audience", () => show.peakAudience > 0 ? show.peakAudience + " viewers" : "")
+                .Add("Concept updated", () => show.NumberOfRelaunches <= 0 ? ""
+                    : show.NumberOfRelaunches + (show.NumberOfRelaunches == 1 ? " time" : " times"));
+            return ShowPeople(moment, show, cast, started: false);
+        }
+
+        /// <summary>The show by the game's names, and its cast, as of its first or last episode.</summary>
+        private static Moment ShowFacts(Moment moment, Shows._show show, List<data_girls.girls> cast, string episode)
+        {
+            return moment
                 .Add("Title", () => "\"" + Moment.Clean(show.title) + "\"")
                 .Add("Medium", () => show.medium?.GetTitle())
                 .Add("Genre", () => show.genre?.GetTitle())
                 // The host's tier as the game names it ("Seasoned"); tier 0 is the game's "No Host"
                 .Add("Host", () => show.mc == null ? "" : show.mc.id == 0 ? show.mc.GetTitle() : Moment.Clean(show.mc.GetTitle()) + " host")
-                .Add("Cast", () => wholeGroup ? "the whole group"
-                    : show.castType == Shows._show._castType.rotatingCast ? "a rotating cast, in the first episode " + Names(cast, 7)
-                    : Names(cast, 7))
-                .Add("First episode audience", () => show.audience.Count > 0 ? show.audience[0] + " viewers" : "");
+                .Add("Cast", () => show.castType == Shows._show._castType.entireGroup ? "the whole group"
+                    : show.castType == Shows._show._castType.rotatingCast ? "a rotating cast, in the " + episode + " episode " + Names(cast, 7)
+                    : Names(cast, 7));
+        }
+
+        /// <summary>The cast's lines, the agency's other shows, and the agency, for the cast's group.</summary>
+        private static Moment ShowPeople(Moment moment, Shows._show show, List<data_girls.girls> cast, bool started)
+        {
+            bool wholeGroup = show.castType == Shows._show._castType.entireGroup;
             List<data_girls.girls> idols = (wholeGroup ? Members.ByFans(cast) : cast).Take(Members.ShowCap).ToList();
             Groups._group group = (wholeGroup || cast.Count == 0 ? null : GroupOf(() => cast[0].GetGroup())) ?? MainGroup();
             Members.Add(moment, idols, Now, group);
-            History.Shows(moment, show, Shows.shows, Now);
+            History.Shows(moment, show, Shows.shows, Now, started);
             return Agency(moment, group);
         }
 

@@ -33,7 +33,7 @@
 	},
 	{
 		id: "AIFANCHATTER__MODMENU__APIKEY",
-		text: "API key (blank keeps it, - removes it)"
+		text: "API key (clear to remove)"
 	},
 	{
 		id: "AIFANCHATTER__MODMENU__PERWEEK",

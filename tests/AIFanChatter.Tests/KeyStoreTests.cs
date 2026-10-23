@@ -37,12 +37,50 @@ namespace AIFanChatter.Tests
             Assert.Equal("kept-key", KeyStore.Get(Provider.OpenAI));
         }
 
+        /// <summary>
+        /// ModMenus fills the field from variables.Get: the key row reads as the placeholder while the chosen
+        /// service has a key, and as the game's own value otherwise. No other variable changes.
+        /// </summary>
         [Fact]
-        public void Dash_RemovesTheKey()
+        public void KeyRow_ReadsAsThePlaceholder_OnlyWithAKey()
+        {
+            string Read(string name, string stored)
+            {
+                string result = stored;
+                variables_Get.Postfix(name, ref result);
+                return result;
+            }
+
+            Assert.Null(Read(Settings.ApiKeyVar, null));
+            Assert.Equal("", Read(Settings.ApiKeyVar, ""));
+            Assert.False(variables_Get.Shown);
+
+            KeyStore.Set(Provider.OpenAI, "sk-saved");
+            Assert.Equal(KeyStore.SavedPlaceholder, Read(Settings.ApiKeyVar, ""));
+            Assert.Equal(KeyStore.SavedPlaceholder, Read(Settings.ApiKeyVar, null));
+            Assert.True(variables_Get.Shown);
+            Assert.Null(Read("SomeOtherMod_Name", null));
+            Assert.Equal("1", Read(Settings.EnabledVar, "1"));
+        }
+
+        /// <summary>
+        /// The menu showed the placeholder: left alone, Apply keeps the key; cleared, Apply removes it. The save
+        /// gets "" either way.
+        /// </summary>
+        [Fact]
+        public void ShownPlaceholder_KeepsTheKey_ClearedFieldRemovesIt()
         {
             Dispatcher.Instance = new Dispatcher(new FakeHost(), new FakeTransport(), new System.Random(1));
-            KeyStore.Set(Provider.OpenAI, "old-key");
-            Assert.Equal("", ApplyKeyRow("-"));
+            KeyStore.Set(Provider.OpenAI, "sk-saved");
+            string shown = "";
+            variables_Get.Postfix(Settings.ApiKeyVar, ref shown);
+            Assert.Equal("", ApplyKeyRow(shown));
+            Assert.Equal("sk-saved", KeyStore.Get(Provider.OpenAI));
+            Assert.False(variables_Get.Shown);
+
+            shown = "";
+            variables_Get.Postfix(Settings.ApiKeyVar, ref shown);
+            Assert.Equal("", ApplyKeyRow(""));
             Assert.Null(KeyStore.Get(Provider.OpenAI));
             Assert.False(File.Exists(Path.Combine(TestEnv.KeyFolder, "openai.key")));
         }

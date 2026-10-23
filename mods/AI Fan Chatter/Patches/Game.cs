@@ -34,7 +34,8 @@ namespace AIFanChatter
                 if (name == Settings.ApiKeyVar)
                 {
                     // The provider row comes before the key row, so Apply has already saved the provider
-                    changed = KeyStore.Apply(Settings.Provider, value);
+                    changed = KeyStore.Apply(Settings.Provider, value, variables_Get.Shown);
+                    variables_Get.Shown = false;
                     value = "";
                 }
                 else
@@ -59,6 +60,39 @@ namespace AIFanChatter
                     value = "";
                 }
                 Log.Warn("Couldn't apply setting " + name + ": " + e.Message);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Shows that a key is saved without the key ever being in the variables: ModMenus fills each field from
+    /// variables.Get, so while the chosen service has a key, the key row reads as the placeholder, which the
+    /// masked field shows as asterisks. Only what Get returns changes; the save still holds "".
+    /// </summary>
+    [HarmonyPatch(typeof(variables), nameof(variables.Get))]
+    [HarmonyPriority(Priority.Last)]
+    public class variables_Get
+    {
+        /// <summary>The placeholder was handed out since the last Apply, so a blank key field was cleared on purpose.</summary>
+        internal static bool Shown;
+
+        public static void Postfix(string name, ref string __result)
+        {
+            if (name != Settings.ApiKeyVar || !string.IsNullOrEmpty(__result))
+            {
+                return;
+            }
+            try
+            {
+                if (KeyStore.Has(Settings.Provider))
+                {
+                    __result = KeyStore.SavedPlaceholder;
+                    Shown = true;
+                }
+            }
+            catch (Exception)
+            {
+                // The field shows nothing, as without the mod's help
             }
         }
     }

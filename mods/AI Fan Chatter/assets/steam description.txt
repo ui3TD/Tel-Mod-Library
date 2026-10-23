@@ -37,7 +37,7 @@ Each request is charged to your AI service account. Tested on 21 October 2026, c
 The mod sends at most 20 requests an hour, even when fast-forwarding. To be safe, set a spending limit on your key.
 
 [h3]Privacy[/h3]
-Requests send the moment's details to your AI service: group and idol names, results, idol details such as age, popularity and trivia, and recent feed posts. Your API key stays in a file on your PC, never in your saves. To remove it, type - in the key field and press Apply.
+Requests send the moment's details to your AI service: group and idol names, results, idol details such as age, popularity and trivia, and recent feed posts. Your API key stays in a file on your PC, never in your saves. To remove it, clear the key field and press Apply.
 
 [h3]Changing the AI's instructions (advanced)[/h3]
 See the [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/AIFanChatter.md]AI Fan Chatter prompt guide[/url].
@@ -69,3 +69,4 @@ Your saves load normally without it. The feed goes back to 20 posts.
 - 1.11.0: Posts for tours, elections, awards, shows, contracts, auditions, graduates' successors
 - 1.12.0: Up to 21 requests a week; new: hiatuses, cancelled elections, graduation news, show ends
 - 1.12.1: Base URLs work as each service documents them; Gemini keeps low reasoning effort
+- 1.13.0: The key field shows a saved key; clear it to remove the key

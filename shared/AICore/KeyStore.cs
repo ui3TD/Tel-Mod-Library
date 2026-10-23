@@ -257,20 +257,40 @@ namespace AICore
         }
 
         /// <summary>
-        /// Handles a value typed into the key field, as ModMenus' Apply saves it: a key is saved for the
-        /// provider, "-" removes that provider's key, and blank keeps it. Returns whether anything changed.
-        /// The caller saves "" in the key's variable, so the key never reaches the save.
+        /// What the key field shows while a key is saved, in place of the key: as long as a real key, so the
+        /// masked field shows a key-length row of asterisks, and with spaces, which no service's keys contain,
+        /// so it can never be taken for one.
         /// </summary>
-        public static bool Apply(Provider provider, string typed)
+        public const string SavedPlaceholder = "a saved key is kept in its own file outside your saves";
+
+        public static bool Has(Provider provider) => Get(provider) != null;
+
+        /// <summary>
+        /// Handles a value typed into the key field, as ModMenus' Apply saves it: a key is saved for the
+        /// provider. The placeholder keeps the key; text typed after it is the new key. Blank removes the key when the field was showing the placeholder (the player
+        /// cleared it), and otherwise keeps it, so a field that arrived empty never wipes a key. Returns
+        /// whether anything changed. The caller saves "" in the key's variable, so the key never reaches the save.
+        /// </summary>
+        /// <param name="shownSaved">The field was given the placeholder since the last Apply.</param>
+        public static bool Apply(Provider provider, string typed, bool shownSaved = false)
         {
             string value = (typed ?? "").Trim();
-            if (value == "")
+            if (value == SavedPlaceholder)
             {
                 return false;
             }
-            if (value == "-")
+            // Typed after the placeholder without selecting it first
+            if (value.StartsWith(SavedPlaceholder, StringComparison.Ordinal))
             {
-                bool had = Get(provider) != null;
+                value = value.Substring(SavedPlaceholder.Length).Trim();
+            }
+            if (value == "")
+            {
+                if (!shownSaved)
+                {
+                    return false;
+                }
+                bool had = Has(provider);
                 Delete(provider);
                 return had;
             }

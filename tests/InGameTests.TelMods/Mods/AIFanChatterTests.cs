@@ -67,18 +67,44 @@ namespace InGameTests.TelMods
                 // Typing goes through the field's own event, as a player's typing does
                 field.text = typed;
                 yield return Apply(ctx, row);
-                ctx.Assert(variables.Get(KeyVar) == "", "Apply saved the key in the save: " + (variables.Get(KeyVar) ?? "null"));
+                // Read the save's own list: Get shows the placeholder for a saved key
+                string stored = variables.variable.FirstOrDefault(v => v.name == KeyVar)?.value;
+                ctx.Assert(stored == "", "Apply saved the key in the save: " + (stored == null ? "null" : stored.Length + " characters"));
                 // The key file of the service the menu has selected
+                Type store = mod.GetType("AICore.KeyStore", true);
                 Type settings = mod.GetType("AICore.ConnectionSettings", true);
-                string file = (string)AccessTools.Method(mod.GetType("AICore.KeyStore", true), "FileFor")
+                string file = (string)AccessTools.Method(store, "FileFor")
                     .Invoke(null, new[] { AccessTools.Property(settings, "Provider").GetValue(null, null) });
                 ctx.Assert(File.Exists(file) && File.ReadAllText(file) == typed, "Apply didn't write the key file");
 
+                // ModMenus' own fill shows the placeholder, masked
+                string placeholder = (string)AccessTools.Field(store, "SavedPlaceholder").GetRawConstantValue();
                 yield return OpenMenu(ctx, _ => { });
-                ctx.Assert(field.text == "", "The reopened field shows text: " + field.text.Length + " characters");
+                ctx.Assert(field.text == placeholder, "The reopened field doesn't show the placeholder: " + field.text.Length + " characters");
+                ctx.Assert(field.contentType == TMP_InputField.ContentType.Password, "The key field isn't masked");
+
+                // A click into the field selects all of it, so typing replaces the placeholder
+                ctx.Record("onFocusSelectAll", field.onFocusSelectAll);
+                ClickField(field.gameObject);
+                yield return null;
+                yield return null;
+                int from = Math.Min(field.selectionStringAnchorPosition, field.selectionStringFocusPosition);
+                int to = Math.Max(field.selectionStringAnchorPosition, field.selectionStringFocusPosition);
+                ctx.Record("selected", from + " to " + to + " of " + field.text.Length);
+                ctx.Assert(from == 0 && to == field.text.Length, "A click doesn't select the whole placeholder: " + from + " to " + to + " of " + field.text.Length);
+                field.DeactivateInputField();
 
                 yield return Apply(ctx, row);
-                ctx.Assert(File.Exists(file) && File.ReadAllText(file) == typed, "A blank Apply removed the key");
+                ctx.Assert(File.Exists(file) && File.ReadAllText(file) == typed, "Applying the placeholder changed the key");
+
+                // Cleared and applied: the key is gone
+                yield return OpenMenu(ctx, _ => { });
+                field.text = "";
+                yield return Apply(ctx, row);
+                ctx.Assert(!File.Exists(file), "Clearing the field didn't remove the key file");
+                yield return OpenMenu(ctx, _ => { });
+                ctx.Assert(field.text == "", "The field still shows a key after it was removed");
+                Game.Main.Data.GetComponent<PopupManager>().Close();
             }
             yield return Game.CloseAllPopups(ctx);
             Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
@@ -290,6 +316,22 @@ namespace InGameTests.TelMods
             GameObject popup = Game.Main.Data.GetComponent<PopupManager>().GetByType(ModMenuPopup)?.obj;
             if (popup != null)
                 found(popup);
+        }
+
+        /// <summary>A left click on the middle of a field, as the event system sends it.</summary>
+        private static void ClickField(GameObject target)
+        {
+            UnityEngine.EventSystems.EventSystem system = UnityEngine.EventSystems.EventSystem.current;
+            RectTransform rect = (RectTransform)target.transform;
+            Canvas canvas = rect.GetComponentInParent<Canvas>().rootCanvas;
+            Camera camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            Vector2 middle = (RectTransformUtility.WorldToScreenPoint(camera, corners[0]) + RectTransformUtility.WorldToScreenPoint(camera, corners[2])) / 2f;
+            var data = new UnityEngine.EventSystems.PointerEventData(system) { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, position = middle };
+            UnityEngine.EventSystems.ExecuteEvents.Execute(target, data, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
+            UnityEngine.EventSystems.ExecuteEvents.Execute(target, data, UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);
+            UnityEngine.EventSystems.ExecuteEvents.Execute(target, data, UnityEngine.EventSystems.ExecuteEvents.pointerClickHandler);
         }
 
         /// <summary>

@@ -180,6 +180,13 @@ namespace AIFanChatter.Tests
             Assert.Equal(Priority.First, priority.info.priority);
         }
 
+        /// <summary>The placeholder is the last word on the key row's value, after any other mod's postfix.</summary>
+        [Fact]
+        public void KeyRowPostfix_RunsLast()
+        {
+            Assert.Equal(Priority.Last, typeof(variables_Get).GetCustomAttribute<HarmonyPriority>().info.priority);
+        }
+
         [Fact]
         public void MomentPatches_RunLast()
         {

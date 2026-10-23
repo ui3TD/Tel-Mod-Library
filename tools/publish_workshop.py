@@ -18,12 +18,14 @@ Publishing is refused unless the mod's files (and the shared build files) are
 committed and HEAD is pushed, so the Workshop always matches GitHub.
 
 The Workshop item is the csproj's <WorkshopID>. Tags and visibility are left as
-they are on Steam. After uploading, the item is read back from the public Steam
-Web API and its description compared with the local one.
+they are on Steam: SteamCMD can't set tags, so tools/workshop_tags.py sets them
+from the csproj's <Tags>. After uploading, the item is read back from the public
+Steam Web API, its description compared with the local one, and its tags with the
+csproj's.
 
 With --new, a mod with no <WorkshopID> yet is published as a new item, unlisted,
-and the new item's id is written into its csproj (commit that change). SteamCMD
-can't set tags, so add the mod's tags on the item's page.
+and the new item's id is written into its csproj (commit that change). Then set
+its tags with `python tools/workshop_tags.py --apply "<Mod Name>"`.
 
 One-time setup: install SteamCMD (default C:\\steamcmd\\steamcmd.exe, or set
 STEAMCMD) and log in once with `steamcmd +login <user> +quit` to cache the
@@ -35,6 +37,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -43,6 +46,7 @@ import tempfile
 import time
 
 from _common import MODS, REPO, build, check_built, check_pushed, clean_dir, fetch_details, read_csproj
+from workshop_tags import DIFFERS, compare, steam_tags
 
 APP_ID = "821880"
 STAGING = os.path.join(tempfile.gettempdir(), "Tel-Mod-Library-workshop")
@@ -60,7 +64,7 @@ UNLISTED = "3"
 
 
 def read_props(mod_dir, new=False):
-    csproj, props = read_csproj(mod_dir, optional=("WorkshopID",))
+    csproj, props = read_csproj(mod_dir, optional=("WorkshopID", "Tags"))
     if new and props["WorkshopID"]:
         sys.exit("{} already has <WorkshopID> {}; publish without --new.".format(csproj, props["WorkshopID"]))
     if not new and not props["WorkshopID"]:
@@ -154,23 +158,36 @@ def upload(steamcmd, user, vdf_path):
         sys.exit("SteamCMD did not report success; the Workshop item may not have been updated.")
 
 
+def apply_command(mod):
+    return 'python tools/workshop_tags.py --apply "{}"'.format(mod)
+
+
+def tag_hint(mod, tags, details):
+    """What to run when the item's tags on Steam differ from the csproj's; None if they match or can't be read."""
+    if compare(tags, steam_tags(details)) != DIFFERS:
+        return None
+    return "Tags differ from the csproj; run " + apply_command(mod)
+
+
 def verify(workshop_id, title, description):
+    """Reads the item back and compares its title and description. Returns its details, or None if unreadable."""
     # The public API can lag the upload by a few seconds.
     for attempt in range(3):
         try:
             details = fetch_details(workshop_id)
         except Exception as e:
             print("Could not read the item back from Steam ({}); check the page manually.".format(e))
-            return
+            return None
         remote = details.get("description", "").replace("\r\n", "\n").strip()
         if remote == description and details.get("title") == title:
             print("Verified: Steam shows the new title and description.")
-            return
+            return details
         time.sleep(5)
     if details.get("result") != 1:
         print("Steam did not return the item (it may be private); check the page manually.")
     else:
         print("WARNING: Steam's title or description differs from the local one; check the page.")
+    return details
 
 
 def main():
@@ -245,10 +262,14 @@ def main():
             write_workshop_id(csproj, workshop_id)
             props["WorkshopID"] = workshop_id
             print("Created https://steamcommunity.com/sharedfiles/filedetails/?id={} (unlisted); "
-                  "wrote <WorkshopID> into {}. Commit it, and add the tags on the item's page.".format(workshop_id, csproj))
+                  "wrote <WorkshopID> into {}. Commit and push it, then set its tags with: {}".format(
+                      workshop_id, csproj, apply_command(args.mod)))
     finally:
         os.remove(vdf_path)
-    verify(props["WorkshopID"], props["ModName"], description)
+    details = verify(props["WorkshopID"], props["ModName"], description)
+    hint = tag_hint(args.mod, json.loads(props["Tags"] or "[]"), details)
+    if hint:
+        print(hint)
 
 
 if __name__ == "__main__":

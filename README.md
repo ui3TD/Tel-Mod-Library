@@ -59,3 +59,12 @@ Check out [IM-FastForward](https://github.com/ui3TD/IM-FastForward) for a tutori
 3. Run `python tools/publish_workshop.py "<Mod Name>" --user <user>` (or set `STEAM_USER`). Add `--dry-run` to preview the upload.
 
 To change only the Workshop page text, commit and push the edited `assets/steam description.txt` and run with `--description-only`: it updates the title and description without a build, a new version or a change note.
+
+### Workshop tags
+
+A mod's tags are set in its csproj, as `<Tags>["gameplay"]</Tags>`. SteamCMD can't send tags, so `publish_workshop.py` leaves the tags on Steam as they are and tells you when they differ from the csproj.
+
+- `python tools/workshop_tags.py` compares every mod's csproj tags with the tags on Steam. It changes nothing.
+- `python tools/workshop_tags.py --apply "<Mod Name>"` sets that mod's tags on Steam. `--apply-all` does this for every mod whose tags differ. Add `--dry-run` to see what would be sent.
+
+`--apply` starts the game on the main menu with no mods and no save (through [IM-InGameTests](https://github.com/ui3TD/IM-InGameTests) probe sessions), and sets the tags from inside the game, which is logged in to Steam. Only the tags change: the title, description, files, preview, visibility and version on Steam stay as they are. It refuses a mod whose csproj isn't committed and pushed. Unlisted and private items can't be read from the public Steam API, so `--apply-all` skips them; name them with `--apply` and check the item's page afterwards.

@@ -100,6 +100,13 @@ def check_pushed(paths=()):
 
 def fetch_details(workshop_id):
     """The Workshop item's details from the public Steam Web API (result 1 = found)."""
-    data = urllib.parse.urlencode({"itemcount": 1, "publishedfileids[0]": workshop_id}).encode()
-    with urllib.request.urlopen(DETAILS_API, data, timeout=30) as response:
-        return json.load(response)["response"]["publishedfiledetails"][0]
+    return fetch_details_many([workshop_id])[workshop_id]
+
+
+def fetch_details_many(workshop_ids):
+    """Each Workshop item's details from the public Steam Web API in one call, by id (result 1 = found)."""
+    fields = {"itemcount": len(workshop_ids)}
+    fields.update({"publishedfileids[{}]".format(i): wid for i, wid in enumerate(workshop_ids)})
+    with urllib.request.urlopen(DETAILS_API, urllib.parse.urlencode(fields).encode(), timeout=30) as response:
+        items = json.load(response)["response"]["publishedfiledetails"]
+    return {item["publishedfileid"]: item for item in items}

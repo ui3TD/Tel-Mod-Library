@@ -4,6 +4,10 @@ Unofficial Patch fixes bugs in Idol Manager. This page lists every fix, grouped 
 
 A fix marked **(changes gameplay)** changes the balance of the game, not just a display or a rare error.
 
+## Calendar
+
+- An error during the day change no longer stops the calendar for good. The game called every daily, weekly and per-tick update in one go, so one failing update skipped the rest and stopped the date until a save was loaded. Now each update runs on its own: one that fails is skipped for that day, the game keeps running, and a red notification names it. The full error is in Player.log.
+
 ## Theater
 
 - Theater shows now use stamina. In the game they cost the idols nothing. **(changes gameplay)**

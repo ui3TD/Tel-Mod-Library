@@ -2723,6 +2723,145 @@ namespace UnofficialPatch
     }
 
     // Base game bugfix:
+    // The game's clock is one coroutine, mainScript.TimeProgress, which raises onNewDay, onNewWeek and onTimeTick.
+    // When any subscriber throws (a game bug, bad save data or a mod's patch on a subscriber), the subscribers after
+    // it are skipped and the exception ends the coroutine, so the date never moves again until a save is loaded.
+    //
+    // Fix:
+    // Each subscriber is called on its own. One that throws is logged and named in a red notification, and the
+    // other subscribers and the clock carry on. Nothing changes while no subscriber throws: the same handlers run
+    // in the same order, from the same snapshot a multicast call uses.
+    // Compatible without knowing other mods: runs after other transpilers and wraps whatever event calls are left;
+    // if another mod already replaced them, there's nothing to wrap and the game is left as that mod made it.
+    [HarmonyPatch(typeof(mainScript), nameof(mainScript.TimeProgress), MethodType.Enumerator)]
+    public class mainScript_TimeProgress
+    {
+        public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<mainScript_TimeProgress>(ex);
+
+        // Handler + exception type pairs whose full exception was logged.
+        private static readonly HashSet<string> Logged = new HashSet<string>();
+        // The in-game day each failing tick handler was last reported on.
+        private static readonly Dictionary<string, DateTime> TickReported = new Dictionary<string, DateTime>();
+
+        [HarmonyPriority(Priority.Low)]
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            List<CodeInstruction> codes = instructions.ToList();
+            foreach (Type eventType in new[] { typeof(mainScript.newDay), typeof(mainScript.newWeek), typeof(mainScript.timeTick) })
+            {
+                MethodInfo invoke = AccessTools.Method(eventType, nameof(Action.Invoke));
+                MethodInfo raise = AccessTools.Method(typeof(mainScript_TimeProgress), nameof(Raise), new[] { eventType });
+                int replaced = 0;
+                foreach (CodeInstruction code in codes)
+                {
+                    if ((code.opcode == OpCodes.Call || code.opcode == OpCodes.Callvirt) && ReferenceEquals(code.operand, invoke))
+                    {
+                        code.opcode = OpCodes.Call;
+                        code.operand = raise;
+                        replaced++;
+                    }
+                }
+                if (replaced == 0)
+                    PatchLog.WarnOnce<mainScript_TimeProgress>("no " + eventType.Name + " call left to guard (another mod may have changed it).");
+            }
+            return codes;
+        }
+
+        public static void Raise(mainScript.newDay handlers)
+        {
+            if (handlers is null)
+                return;
+            foreach (Delegate handler in handlers.GetInvocationList())
+            {
+                try
+                {
+                    ((mainScript.newDay)handler)();
+                }
+                catch (Exception e)
+                {
+                    Failed(handler, e, false);
+                }
+            }
+        }
+
+        public static void Raise(mainScript.newWeek handlers)
+        {
+            if (handlers is null)
+                return;
+            foreach (Delegate handler in handlers.GetInvocationList())
+            {
+                try
+                {
+                    ((mainScript.newWeek)handler)();
+                }
+                catch (Exception e)
+                {
+                    Failed(handler, e, false);
+                }
+            }
+        }
+
+        public static void Raise(mainScript.timeTick handlers)
+        {
+            if (handlers is null)
+                return;
+            foreach (Delegate handler in handlers.GetInvocationList())
+            {
+                try
+                {
+                    ((mainScript.timeTick)handler)();
+                }
+                catch (Exception e)
+                {
+                    Failed(handler, e, true);
+                }
+            }
+        }
+
+        // Day and week failures are reported every time. A tick handler runs several times a second, so its
+        // failures are reported once per in-game day.
+        internal static void Failed(Delegate handler, Exception e, bool tick)
+        {
+            try
+            {
+                string name = HandlerName(handler);
+                if (tick)
+                {
+                    DateTime today = staticVars.dateTime.Date;
+                    if (TickReported.TryGetValue(name, out DateTime reported) && reported == today)
+                        return;
+                    TickReported[name] = today;
+                }
+
+                if (Logged.Add(name + "|" + e.GetType().FullName))
+                    PatchLog.Error<mainScript_TimeProgress>(name + " failed; the game kept running: " + e);
+                else
+                    PatchLog.Error<mainScript_TimeProgress>(name + " failed again: " + e.GetType().Name + ": " + e.Message);
+
+                Report(name);
+            }
+            catch (Exception reportError)
+            {
+                Debug.LogError("[UnofficialPatch] couldn't report a failed time handler: " + reportError);
+            }
+        }
+
+        internal static void Report(string name)
+        {
+            NotificationManager.AddNotification("Unofficial Patch: error in " + name + ". The game kept running. Details in Player.log.",
+                mainScript.red32, NotificationManager._notification._type.other);
+        }
+
+        internal static string HandlerName(Delegate handler) => handler.Method.DeclaringType?.Name + "." + handler.Method.Name;
+
+        internal static void ResetReports()
+        {
+            Logged.Clear();
+            TickReported.Clear();
+        }
+    }
+
+    // Base game bugfix:
     // SaveManager.LoadData(...) assigns SaveManager.Data = null when the target file is missing/corrupt,
     // then returns early ("huh"). Autosave later calls SaveEvent, and staticVars.SaveFunction crashes
     // because Camera.main.GetComponent<mainScript>().GetSavedData() is null.

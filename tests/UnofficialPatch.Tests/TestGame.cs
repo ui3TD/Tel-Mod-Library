@@ -66,6 +66,8 @@ namespace UnofficialPatch.Tests
             _ = Patched.Value;
             Seams.Reset();
             Log.Messages.Clear();
+            // The mod logs some warnings once per session, and PatchTargetTests applies a second copy of every patch
+            ((HashSet<string>)AccessTools.Field(typeof(PatchLog), "OnceKeys").GetValue(null)).Clear();
 
             staticVars.dateTime = Today;
             staticVars.PlayerData.Difficulty = staticVars._playerData._difficulty.normal;
@@ -250,6 +252,7 @@ namespace UnofficialPatch.Tests
         public static readonly List<Floats.type> FloatsShown = new();
         public static readonly List<(data_girls.girls girl, data_girls._paramType type, float val)> ParamsAdded = new();
         public static readonly List<string> Notifications = new();
+        public static bool NotificationsFail;
         public static readonly List<(GameObject obj, Color32 color)> ColorsSet = new();
 
         /// <summary>
@@ -318,6 +321,7 @@ namespace UnofficialPatch.Tests
             AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.AddFans), new[] { typeof(resources.fanType?), typeof(float), typeof(bool) }),
             AccessTools.Method(typeof(data_girls), nameof(data_girls.AddFans), new[] { typeof(long), typeof(resources.fanType?), typeof(List<data_girls.girls>), typeof(data_girls.girls) }),
             AccessTools.Method(typeof(Event_Templates._active_template), "AddMentalStamina"),
+            AccessTools.Method(typeof(mainScript_TimeProgress), nameof(mainScript_TimeProgress.Report)),
         };
 
         /// <summary>
@@ -362,6 +366,7 @@ namespace UnofficialPatch.Tests
             FloatsShown.Clear();
             ParamsAdded.Clear();
             Notifications.Clear();
+            NotificationsFail = false;
             ColorsSet.Clear();
             Images.Clear();
             Fills.Clear();
@@ -479,7 +484,12 @@ namespace UnofficialPatch.Tests
             }
         }
         private static void StubAddParam(data_girls.girls girl, data_girls._paramType type, float val, bool ignorePotential) => ParamsAdded.Add((girl, type, val));
-        private static void StubNotification(string text, Color32 color, NotificationManager._notification._type type) => Notifications.Add(text);
+        private static void StubNotification(string text, Color32 color, NotificationManager._notification._type type)
+        {
+            if (NotificationsFail)
+                throw new InvalidOperationException("notification failed");
+            Notifications.Add(text);
+        }
         private static void StubSetColor(GameObject obj, Color32 color) => ColorsSet.Add((obj, color));
 
         // The dragged idol is read from the scene; no idol is being dragged in the tests.

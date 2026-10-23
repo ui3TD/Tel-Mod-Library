@@ -11,7 +11,6 @@ Library of mods for Idol Manager
 * Extended SSK
 * Fan Attrition
 * FastForward
-* Going Viral (work in progress - buggy)
 * Growing Distant
 * IM-HarmonyIntegration Plugin
 * JSON Load Order

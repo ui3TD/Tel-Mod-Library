@@ -25,7 +25,6 @@ import sys
 
 from _common import CHANGELOG_HEADING, MODS, changelog_version, read_csproj, trim_changelog
 
-EXCLUDED = {"Going Viral"}  # abandoned
 CHANGELOG_LIMIT = 100  # the Workshop change-note box cuts off after this many characters
 
 
@@ -72,7 +71,7 @@ def main():
     failed = False
     for name in sorted(os.listdir(MODS)):
         mod_dir = os.path.join(MODS, name)
-        if name in EXCLUDED or not os.path.isdir(os.path.join(mod_dir, "assets")):
+        if not os.path.isdir(os.path.join(mod_dir, "assets")):
             continue
         for problem in check_mod(mod_dir):
             print("{}: {}".format(name, problem))

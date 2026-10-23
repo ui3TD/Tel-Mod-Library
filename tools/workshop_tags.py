@@ -31,7 +31,6 @@ import tempfile
 
 from _common import MODS, REPO, fetch_details_many, git, read_csproj
 
-EXCLUDED = {"Going Viral"}  # abandoned
 INGAMETESTS = os.environ.get("IM_INGAMETESTS", os.path.join(os.path.dirname(REPO), "IM-InGameTests"))
 PROBE_DIR = os.path.join(tempfile.gettempdir(), "Tel-Mod-Library-workshop-tags")
 PROBE_METHOD = "WorkshopTags.Run"
@@ -56,7 +55,7 @@ def read_mods():
     mods = []
     for name in sorted(os.listdir(MODS)):
         mod_dir = os.path.join(MODS, name)
-        if name in EXCLUDED or not os.path.isdir(mod_dir):
+        if not os.path.isdir(mod_dir):
             continue
         csproj, props = read_csproj(mod_dir, optional=("WorkshopID", "Tags"))
         if props["WorkshopID"]:

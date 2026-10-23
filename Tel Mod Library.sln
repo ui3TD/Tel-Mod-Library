@@ -21,8 +21,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fan Attrition", "mods\Fan A
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FastForward", "mods\FastForward\FastForward.csproj", "{263D87E9-469C-43D2-BD83-D7B4CD5793AA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Going Viral", "mods\Going Viral\Going Viral.csproj", "{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Growing Distant", "mods\Growing Distant\Growing Distant.csproj", "{A5CC6962-D24E-448A-B022-9DD0237C6AB9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Harmony Checker", "mods\Harmony Checker\Harmony Checker.csproj", "{50864971-7298-409A-9ACB-39A9830D5AC1}"
@@ -191,17 +189,6 @@ Global
 		{263D87E9-469C-43D2-BD83-D7B4CD5793AA}.Release|x64.Build.0 = Release|Any CPU
 		{263D87E9-469C-43D2-BD83-D7B4CD5793AA}.Release|x86.ActiveCfg = Release|Any CPU
 		{263D87E9-469C-43D2-BD83-D7B4CD5793AA}.Release|x86.Build.0 = Release|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Debug|x64.Build.0 = Debug|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Debug|x86.Build.0 = Debug|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Release|x64.ActiveCfg = Release|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Release|x64.Build.0 = Release|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Release|x86.ActiveCfg = Release|Any CPU
-		{EBB2FEB0-B2BD-4202-AFA3-C7C011A9599B}.Release|x86.Build.0 = Release|Any CPU
 		{A5CC6962-D24E-448A-B022-9DD0237C6AB9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A5CC6962-D24E-448A-B022-9DD0237C6AB9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A5CC6962-D24E-448A-B022-9DD0237C6AB9}.Debug|x64.ActiveCfg = Debug|Any CPU

@@ -5,8 +5,6 @@ folder), so the zip holds exactly what a fresh build deploys: the DLL, info.json
 and the mod's assets. The zip has one top-level folder per mod, named after its
 <ModName>, ready to drop into the game's Mods folder.
 
-Mods in EXCLUDED (abandoned ones) are left out.
-
 Output: releases/Tel.Mod.Library.<yyyy.mm.dd>.zip (releases/ is git-ignored).
 
 With --upload, also creates the GitHub release "<yyyy.mm.dd> Release" (tag
@@ -33,7 +31,6 @@ from _common import MODS, REPO, build, check_built, check_pushed, clean_dir, rea
 OUT_DIR = os.path.join(REPO, "releases")
 # Outside the repo: OneDrive holds synced folders open, so they can't be deleted between runs.
 STAGING = os.path.join(tempfile.gettempdir(), "Tel-Mod-Library-release")
-EXCLUDED = {"Going Viral"}
 GH_FALLBACK = r"C:\Program Files\GitHub CLI\gh.exe"
 
 
@@ -100,7 +97,7 @@ def main():
     mods = []
     for name in sorted(os.listdir(MODS)):
         mod_dir = os.path.join(MODS, name)
-        if name in EXCLUDED or not os.path.isdir(os.path.join(mod_dir, "assets")):
+        if not os.path.isdir(os.path.join(mod_dir, "assets")):
             continue
         csproj, props = read_csproj(mod_dir)
         mods.append((mod_dir, csproj, props))

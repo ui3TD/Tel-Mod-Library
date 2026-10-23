@@ -6,8 +6,8 @@ You must install the IM-HI plugin manually. Follow the instructions at this link
 - [b][url=https://github.com/ui3TD/IM-HarmonyIntegration]IM-HarmonyIntegration GitHub page[/url][/b]
 
 [h2]For Modders[/h2]
-See [b][url=https://github.com/ui3TD/IM-FastForward]IM-FastForward[/url][/b] for an example and tutorial for creating compatible mods.
-And don't forget to set this mod as a 'Required Item' in Steam Workshop.
+- [b][url=https://github.com/ui3TD/IM-HarmonyIntegration/blob/main/docs/ModdingWithAI.md]Make mods with an AI coding assistant[/url][/b]
+- Set this mod as a Required Item on your Workshop mod.
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 

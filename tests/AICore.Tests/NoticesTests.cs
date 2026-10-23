@@ -76,6 +76,8 @@ namespace AICore.Tests
                 string text = Notices.Text(problem, "", 404, connection, null);
                 Assert.True(mentioned == text.Contains("Base URL"), problem + ": " + text);
             }
+            string notFound = Notices.Text(Problem.NotFound, "", 404, connection, null);
+            Assert.True(mentioned == notFound.Contains("address"), notFound);
             string error = Providers.ParseResponse(provider, new HttpResult { Status = 200, Body = "<html>login</html>" }).Error;
             Assert.True(mentioned == error.Contains("Base URL"), error);
         }

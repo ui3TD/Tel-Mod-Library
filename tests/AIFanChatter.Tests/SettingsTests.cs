@@ -106,21 +106,22 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// The settings show once the mod is turned on, and Base URL only while UsesBaseUrlVar is on, which the
-        /// mod answers itself. No row has UsesBaseUrlVar, so ModMenus never saves it.
+        /// Only Base URL is hidden at times: it shows while UsesBaseUrlVar is on, which the mod answers itself.
+        /// Every other setting shows whether or not the mod is on, so the service and key can be set up first.
+        /// No row has UsesBaseUrlVar, so ModMenus never saves it.
         /// </summary>
         [Fact]
-        public void SettingRows_ShowOnlyWhenTheyApply()
+        public void OnlyBaseUrlRow_IsHiddenAtTimes()
         {
             Dictionary<string, string> conditions = Items().Where(i => i["type"].Value != "text").ToDictionary(i => i["varID"].Value, i => i["enabledIf"].Value);
             Assert.Equal(new Dictionary<string, string>
             {
                 [Settings.EnabledVar] = "",
-                [Settings.ProviderVar] = Settings.EnabledVar,
+                [Settings.ProviderVar] = "",
                 [Settings.BaseUrlVar] = Settings.UsesBaseUrlVar,
-                [Settings.ModelVar] = Settings.EnabledVar,
-                [Settings.ApiKeyVar] = Settings.EnabledVar,
-                [Settings.PerWeekVar] = Settings.EnabledVar,
+                [Settings.ModelVar] = "",
+                [Settings.ApiKeyVar] = "",
+                [Settings.PerWeekVar] = "",
             }, conditions);
             Assert.All(Items().Where(i => i["type"].Value == "text"), i => Assert.Equal("", i["enabledIf"].Value));
         }
@@ -201,39 +202,34 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// The Base URL row's enabledIf: on only while the mod is on and OpenAI-compatible is picked, read as
-        /// Enabled and Provider are read.
+        /// The Base URL row's enabledIf: on only while OpenAI-compatible is picked, read as Provider is read,
+        /// whether or not the mod is on.
         /// </summary>
         [Theory]
-        [InlineData(null, null, false)]
-        [InlineData(null, "2", false)]
-        [InlineData("0", "2", false)]
-        [InlineData("2", "2", false)]
-        [InlineData("1", null, false)]
-        [InlineData("1", "0", false)]
-        [InlineData("1", "1", false)]
-        [InlineData("1", "5", false)]
-        [InlineData("1", "2", true)]
-        [InlineData("1.0", "2.0", true)]
-        public void UsesBaseUrl_OnlyWhenOnWithOpenAICompatible(string enabled, string provider, bool expected)
+        [InlineData(null, false)]
+        [InlineData("0", false)]
+        [InlineData("1", false)]
+        [InlineData("5", false)]
+        [InlineData("2", true)]
+        [InlineData("2.0", true)]
+        public void UsesBaseUrl_OnlyWithOpenAICompatible(string provider, bool expected)
         {
-            if (enabled != null)
-                TestEnv.Vars[Settings.EnabledVar] = enabled;
             if (provider != null)
                 TestEnv.Vars[Settings.ProviderVar] = provider;
+            Assert.Equal(expected, Settings.UsesBaseUrl);
+            TestEnv.Vars[Settings.EnabledVar] = "1";
             Assert.Equal(expected, Settings.UsesBaseUrl);
         }
 
         /// <summary>
         /// While ModMenus' menu is open, what it shows wins over the saved settings, so the Base URL row follows
-        /// the player's choices before Apply. Settings it has no row for are read as saved.
+        /// the player's pick before Apply. Without a Provider row in the menu, the saved setting decides.
         /// </summary>
         [Fact]
         public void UsesBaseUrl_FollowsTheOpenMenu()
         {
-            TestEnv.Vars[Settings.EnabledVar] = "0";
             TestEnv.Vars[Settings.ProviderVar] = "1";
-            Dictionary<string, string> menu = new() { [Settings.EnabledVar] = "1", [Settings.ProviderVar] = "2" };
+            Dictionary<string, string> menu = new() { [Settings.ProviderVar] = "2" };
             Settings.MenuValue = varID => menu.TryGetValue(varID, out string value) ? value : null;
             Assert.True(Settings.UsesBaseUrl);
 
@@ -263,7 +259,7 @@ namespace AIFanChatter.Tests
             TestEnv.Configure(Provider.Compatible, baseUrl: "http://localhost:11434");
             Assert.Equal("1", Get(null));
             Assert.Equal("1", Get("0"));
-            TestEnv.Vars[Settings.EnabledVar] = "0";
+            TestEnv.Vars[Settings.ProviderVar] = ((int)Provider.OpenAI).ToString();
             Assert.Equal("0", Get("1"));
 
             Settings.MenuValue = _ => throw new System.InvalidOperationException();

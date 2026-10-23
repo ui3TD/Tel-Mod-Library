@@ -17,7 +17,7 @@ Fans react on the Social Media tab to what happens at your agency, in posts and 
 The Refresh feed bar at the top of the Social Media tab shows the next 5 waiting posts at once, and says how many are waiting. When none are, it says AI request: a press asks your AI service for everyday chatter about your group, shown as soon as it arrives. Refreshing doesn't count toward requests per week, and works even at 0.
 
 [h3]Setting it up[/h3]
-You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url] and an account with an AI service. In Settings, open Mod Settings, tick Turn on AI fan posts, and fill in:
+You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus mod[/url] and an account with an AI service. In Settings, open Mod Settings and fill in:
 [list]
 [*]AI service: OpenAI (default), Anthropic, or OpenAI-compatible for OpenRouter, Google, Ollama, LM Studio and others.
 [*]Base URL: shown for OpenAI-compatible services; the service's address.
@@ -25,7 +25,7 @@ You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314
 [*]API key: your key from the service.
 [*]Requests per week: the most per in-game week.
 [/list]
-Then press Apply. A notification tells you whether it worked. Later problems, such as a rejected key or a busy service, show at the top of the Social Media tab.
+Then tick Turn on AI fan posts and press Apply. A notification tells you whether it worked. Later problems, such as a rejected key or a busy service, show at the top of the Social Media tab.
 
 [h3]Which model to use[/h3]
 Each request is charged to your AI service account. Tested on 21 October 2026, cost per in-game year at 2 requests a week:
@@ -75,4 +75,4 @@ Your saves load normally without it. The feed goes back to 20 posts.
 - 1.13.0: The key field shows a saved key; clear it to remove the key
 - 1.14.0: Refresh feed bar; the mod's messages show at the top of the Social Media tab
 - 1.14.1: ModMenus' Reset to Defaults keeps your saved API key
-- 1.15.0: Settings show once turned on; Base URL shows only for OpenAI-compatible services
+- 1.15.0: Base URL shows only for OpenAI-compatible services, the only ones that use it

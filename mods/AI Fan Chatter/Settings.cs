@@ -50,12 +50,7 @@ namespace AIFanChatter
             set => ConnectionSettings.Read = value;
         }
 
-        public static bool Enabled => EnabledOf(Read(EnabledVar));
-
-        /// <summary>
-        /// Whether an Enabled setting's value turns the mod on; missing or anything but 0 or 1 gives the default.
-        /// </summary>
-        internal static bool EnabledOf(string value) => ConnectionSettings.ParseInt(value, DefaultEnabled ? 1 : 0, 0, 1) != 0;
+        public static bool Enabled => ReadInt(EnabledVar, DefaultEnabled ? 1 : 0, 0, 1) != 0;
 
         public static Provider Provider => ConnectionSettings.Provider;
 
@@ -75,18 +70,10 @@ namespace AIFanChatter
         });
 
         /// <summary>
-        /// Whether the Base URL row is shown: while the mod is on and OpenAI-compatible is picked, as the open
-        /// mod menu shows them, so the row follows the player's choices before Apply; while the menu is closed,
-        /// as saved.
+        /// Whether the Base URL row is shown: while OpenAI-compatible is picked, as the open mod menu shows it, so
+        /// the row follows the player's pick before Apply; while the menu is closed, as saved.
         /// </summary>
-        public static bool UsesBaseUrl
-        {
-            get
-            {
-                string Shown(string varID) => MenuValue(varID) ?? Read(varID);
-                return EnabledOf(Shown(EnabledVar)) && ConnectionSettings.ProviderOf(Shown(ProviderVar)) == Provider.Compatible;
-            }
-        }
+        public static bool UsesBaseUrl => ConnectionSettings.ProviderOf(MenuValue(ProviderVar) ?? Read(ProviderVar)) == Provider.Compatible;
 
         public static int PerWeek => ReadInt(PerWeekVar, DefaultPerWeek, 0, MaxPerWeek);
 

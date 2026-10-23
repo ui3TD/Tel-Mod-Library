@@ -116,7 +116,7 @@ namespace AICore
                 case Problem.NoCredit:
                     return service + ": out of credit (" + http + "). " + Stopped + "add credit" + StartAgain;
                 case Problem.NotFound:
-                    return service + " doesn't know model " + connection.ResolvedModel + " or the address (" + http + "). " + Stopped
+                    return service + " doesn't know model " + connection.ResolvedModel + (usesBaseUrl ? " or the address" : "") + " (" + http + "). " + Stopped
                         + (usesBaseUrl ? "fix the model or Base URL" : "fix the model") + StartAgain;
                 case Problem.Rejected:
                     return service + " rejected the request (" + http + "). " + Stopped + "check the settings" + StartAgain;

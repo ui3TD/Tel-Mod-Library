@@ -49,14 +49,8 @@ namespace InGameTests.TelMods
             }
             yield return Game.CloseAllPopups(ctx);
 
-            // The key row shows only while the mod is on, so each change of the key tests the connection, here on this PC
-            const string reply = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}";
-            using (LocalServer server = new(reply))
             using (TempKeyFolder(mod, out _))
-            using (Game.Variable(Prefix + "Provider", "2"))
-            using (Game.Variable(Prefix + "BaseURL", server.Url))
-            using (Game.Variable(Prefix + "Model", "test-model"))
-            using (Game.Variable(Prefix + "Enabled", "1"))
+            using (Game.Variable(Prefix + "Enabled", "0"))
             using (RestoreVariables())
             {
                 const string typed = "sk-ingame-test-WXYZ";
@@ -112,8 +106,6 @@ namespace InGameTests.TelMods
                 yield return OpenMenu(ctx, _ => { });
                 ctx.Assert(field.text == "", "The field still shows a key after it was removed");
                 Game.Main.Data.GetComponent<PopupManager>().Close();
-                // Turning the mod on, the typed key and the removed key: answered before the server stops
-                yield return TestTools.WaitFor(ctx, () => server.Requests >= 3, 10f, "the connection tests");
             }
             yield return Game.CloseAllPopups(ctx);
             Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
@@ -135,17 +127,12 @@ namespace InGameTests.TelMods
             }
             yield return Game.CloseAllPopups(ctx);
 
-            // Saved as OpenAI-compatible, so turning the mod on tests the connection here on this PC
-            const string reply = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}";
-            using (LocalServer server = new(reply))
+            // The mod is off, so nothing is sent; the Base URL row doesn't depend on it
             using (TempKeyFolder(mod, out _))
+            using (Game.Variable(Prefix + "Enabled", "0"))
             using (Game.Variable(Prefix + "Provider", "2"))
-            using (Game.Variable(Prefix + "BaseURL", server.Url))
-            using (Game.Variable(Prefix + "Model", "test-model"))
-            using (Game.Variable(Prefix + "Enabled", "1"))
             using (RestoreVariables())
             {
-                yield return TestTools.WaitFor(ctx, () => server.Requests >= 1, 10f, "the connection test");
                 GameObject popup = null;
                 yield return OpenMenu(ctx, found => popup = found);
                 Transform[] rows = popup != null ? popup.GetComponentsInChildren<Transform>(true) : new Transform[0];

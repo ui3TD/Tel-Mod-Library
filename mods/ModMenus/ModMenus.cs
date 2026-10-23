@@ -791,6 +791,29 @@ namespace ModMenus
         }
 
         /// <summary>
+        /// What the open mod menu shows for a variable, applied or not, on any tab: the text Apply would save,
+        /// so a checkbox's 1 or 0 and a dropdown's item counted from 0. Null while the menu isn't open, or if no
+        /// row has the variable. A mod can read the player's choices before Apply with it, for example to work
+        /// out a variable that a row's enabledIf names.
+        /// </summary>
+        public static string MenuValue(string varID)
+        {
+            ModMenuManager menu = ModMenuManager.open;
+            if (menu == null || varID == null)
+            {
+                return null;
+            }
+            foreach (ModMenuItem item in menu.GetComponentsInChildren<ModMenuItem>(true))
+            {
+                if (item.varID == varID)
+                {
+                    return item.CurrentValue;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
         /// A mod with a menu: its settings, and the name its tab shows.
         /// </summary>
         public class MenuSource
@@ -1843,6 +1866,9 @@ namespace ModMenus
             /// </summary>
             public static string lastModName;
 
+            /// <summary>The menu while it's open, for MenuValue; null while it's closed.</summary>
+            internal static ModMenuManager open;
+
             public ScrollRect scroll;
             public ScrollRect tabScroll;
             public List<ModMenuTab> tabs;
@@ -1868,6 +1894,8 @@ namespace ModMenus
             /// </summary>
             public void OnEnable()
             {
+                // Set first: the rows' enabledIf variables are read below, and a mod may answer one from MenuValue
+                open = this;
                 // A list left open when the menu closed would sit where it was, apart from its row,
                 // after the menu reopens scrolled to the top
                 CloseDropdownLists();
@@ -1884,6 +1912,17 @@ namespace ModMenus
                 }
                 RenderTabs();
                 framesToShowTab = 2;
+            }
+
+            /// <summary>
+            /// Called when the menu closes: MenuValue has nothing to read until it opens again.
+            /// </summary>
+            public void OnDisable()
+            {
+                if (open == this)
+                {
+                    open = null;
+                }
             }
 
             public void LateUpdate()

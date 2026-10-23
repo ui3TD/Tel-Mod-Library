@@ -29,3 +29,4 @@ Format, examples and tips: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/ma
 - 3.1.0: Long setting labels wrap onto more lines instead of being cut off.
 - 4.0.0: Each mod's settings get their own tab, sorted A to Z; the menu fits every screen shape.
 - 4.1.0: Reset to Defaults button; slider steps; settings shown only when needed; number fields.
+- 4.2.0: Mods can read the open menu's values before Apply, to show or hide their own settings.

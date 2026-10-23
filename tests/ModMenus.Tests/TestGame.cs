@@ -479,6 +479,17 @@ namespace ModMenus.Tests
         public static int PopupsClosed;
 
         /// <summary>
+        /// The menu MenuValue reads (ModMenuManager.open): set while a menu is open.
+        /// </summary>
+        public static ModMenuManager OpenMenu
+        {
+            get => (ModMenuManager)OpenField.GetValue(null);
+            set => OpenField.SetValue(null, value);
+        }
+
+        private static readonly FieldInfo OpenField = AccessTools.Field(typeof(ModMenuManager), "open");
+
+        /// <summary>
         /// The entries each dropdown was set up with, when SetupDropdown last built its list.
         /// </summary>
         public static readonly Dictionary<object, List<string>> DropdownSetups = new(new SameObject());
@@ -543,6 +554,7 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddLabelWrap))] = Stub(nameof(AddLabelWrap)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddRowOptions))] = Stub(nameof(AddRowOptions)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.MakeNumberField))] = Stub(nameof(MakeNumberField)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.MenuValue))] = Stub(nameof(MenuValue)),
             [AccessTools.FirstMethod(AccessTools.Inner(typeof(ModMenusUtils), "<>c"), m => m.Name.Contains(nameof(ModMenusUtils.AddMenuDropdown)))] = Stub(nameof(IsScreenTab)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.ShowSaved))] = Stub(nameof(ItemShowSaved)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.ShowDefault))] = Stub(nameof(ItemShowDefault)),
@@ -562,6 +574,7 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onUpdateSlider))] = Stub(nameof(ItemOnUpdateSlider)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onUpdateDropdown))] = Stub(nameof(ItemOnUpdateDropdown)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnEnable))] = Stub(nameof(ManagerOnEnable)),
+            [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnDisable))] = Stub(nameof(ManagerOnDisable)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnApply))] = Stub(nameof(ManagerOnApply)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnCancel))] = Stub(nameof(ManagerOnCancel)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnReset))] = Stub(nameof(ManagerOnReset)),
@@ -695,6 +708,9 @@ namespace ModMenus.Tests
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void MakeNumberField(ModMenuItem menuItem, string inputType, float? min, float? max) => throw NotInstalled();
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static string MenuValue(string varID) => throw NotInstalled();
+
         /// <summary>
         /// AddMenuDropdown's lambda that finds the settings popup's Screen tab by name.
         /// </summary>
@@ -756,6 +772,9 @@ namespace ModMenus.Tests
         public static void ManagerOnEnable(ModMenuManager instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerOnDisable(ModMenuManager instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ManagerOnApply(ModMenuManager instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -814,6 +833,7 @@ namespace ModMenus.Tests
             SettingsPopup = null;
             TextField = null;
             PopupsClosed = 0;
+            OpenMenu = null;
             DropdownSetups.Clear();
             ScrollPositions.Clear();
             Alignments.Clear();
@@ -1144,7 +1164,15 @@ namespace ModMenus.Tests
             return SettingsPopup;
         }
 
-        private static void StubClosePopup(Action onComplete) => PopupsClosed++;
+        /// <summary>
+        /// The game turns a closed popup off, so the open menu's OnDisable runs.
+        /// </summary>
+        private static void StubClosePopup(Action onComplete)
+        {
+            PopupsClosed++;
+            if (OpenMenu is not null)
+                ManagerOnDisable(OpenMenu);
+        }
 
         private static GameObject StubTextField() => TextField;
 

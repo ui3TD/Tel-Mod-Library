@@ -1,3 +1,4 @@
+using HarmonyLib;
 using System.Linq;
 using Xunit;
 using static ModMenus.ModMenusUtils;
@@ -255,6 +256,104 @@ namespace ModMenus.Tests
             Menu menu = OpenMenu(MenuJson.Replace("\"enabledIf\"", "\"notUsed\""));
 
             Assert.Equal(AllRows, menu.VisibleRowNames);
+        }
+
+        /// <summary>
+        /// Added in 4.2.0: MenuValue gives what the open menu shows, as Apply would save it, before Apply.
+        /// </summary>
+        [Fact]
+        public void MenuValueGivesWhatTheOpenMenuShows()
+        {
+            TestGame.Save(Pick, "1");
+            Menu menu = OpenMenu();
+            Assert.Equal("1", Seams.MenuValue(Pick));
+
+            menu.Click(On);
+            menu.Select(Pick, 2);
+            menu.Type(Url, "openrouter.ai/api/v1");
+
+            Assert.Equal(("1", "2", "openrouter.ai/api/v1"), (Seams.MenuValue(On), Seams.MenuValue(Pick), Seams.MenuValue(Url)));
+            Assert.Equal("1", TestGame.Saved(Pick));
+        }
+
+        [Fact]
+        public void MenuValueReadsEveryTab()
+        {
+            TestGame.AddMod("Mod A", """[ { "type": "checkbox", "varID": "A_On", "labelID": "TEST__LOUD" } ]""");
+            TestGame.AddMod("Mod B", """[ { "type": "checkbox", "varID": "B_On", "labelID": "TEST__LOUD" } ]""");
+            Menu menu = TestGame.BuildMenu();
+            menu.Open();
+            menu.Click(On);
+
+            menu.ClickTab("Mod B");
+
+            Assert.Equal("1", Seams.MenuValue(On));
+        }
+
+        /// <summary>
+        /// Null while no menu is open, so a mod reads the saved value then, and for a variable no row has.
+        /// </summary>
+        [Fact]
+        public void MenuValueIsNullWhileClosedAndWithoutARow()
+        {
+            TestGame.Save(On, "1");
+            TestGame.Save("Other_Unlocked", "1");
+            Assert.Null(Seams.MenuValue(On));
+
+            Menu menu = OpenMenu();
+            Assert.Null(Seams.MenuValue("Other_Unlocked"));
+            Assert.Null(Seams.MenuValue(null));
+
+            menu.Cancel();
+            Assert.Null(Seams.MenuValue(On));
+
+            menu.Open();
+            menu.Apply();
+            Assert.Null(Seams.MenuValue(On));
+        }
+
+        /// <summary>
+        /// A mod can show a row for one dropdown item: the row's enabledIf names a variable no row has, which
+        /// the mod answers in a variables.Get postfix from MenuValue. The row follows the dropdown before Apply,
+        /// and the variable is never saved.
+        /// </summary>
+        [Fact]
+        public void AModCanAnswerAnEnabledIfFromMenuValue()
+        {
+            Harmony otherMod = new("tests.modmenus.othermod");
+            otherMod.Patch(AccessTools.Method(typeof(variables), nameof(variables.Get)), postfix: new HarmonyMethod(typeof(EnabledIfTests), nameof(AnswerOnThird)));
+            try
+            {
+                Menu menu = OpenMenu("""
+                    [
+                        { "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND", "TEST__THIRD"] },
+                        { "type": "input", "varID": "A_Url", "labelID": "TEST__MOTTO", "enabledIf": "A_OnThird" }
+                    ]
+                    """);
+                Assert.False(menu.IsShown(Url));
+
+                menu.Select(Pick, 1);
+                Assert.False(menu.IsShown(Url));
+
+                menu.Select(Pick, 2);
+                Assert.True(menu.IsShown(Url));
+                Assert.DoesNotContain(variables.variable, v => v.name == Pick);
+
+                menu.Apply();
+                Assert.Equal("2", variables.variable.Single(v => v.name == Pick).value);
+                Assert.DoesNotContain(variables.variable, v => v.name == "A_OnThird");
+            }
+            finally
+            {
+                otherMod.UnpatchSelf();
+            }
+        }
+
+        /// <summary>The other mod's answer: on while the dropdown shows its third item.</summary>
+        private static void AnswerOnThird(string name, ref string __result)
+        {
+            if (name == "A_OnThird")
+                __result = (Seams.MenuValue(Pick) ?? variables.Get(Pick)) == "2" ? "1" : "0";
         }
     }
 }

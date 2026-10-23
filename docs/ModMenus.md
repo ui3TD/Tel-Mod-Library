@@ -173,10 +173,61 @@ The slider is shown only while the checkbox is ticked. When a row is hidden, the
 
 - A setting is on when its value isn't empty and isn't 0. So a checkbox is on when ticked, a slider when above 0, a dropdown on any item but the first, and a text field when it has text in it.
 - The menu uses the value shown, even before the player presses Apply.
-- `enabledIf` can name a setting on another mod's tab. If no row in the menu has that varID, ModMenus reads its saved value, so your mod can show a row from its own code by setting that variable.
+- `enabledIf` can name a setting on another mod's tab. If no row in the menu has that varID, ModMenus reads it with `variables.Get`, so your mod can show a row from its own code by setting that variable, or by working it out (see below).
 - A row that depends on a hidden row is hidden too, whatever the hidden row's value.
 - Rows whose settings lead back to themselves (A depends on B, and B on A) are always shown, and a warning is logged.
 - A hidden row keeps its value, and Apply still saves it. Its default is saved when a game starts, like every other setting's. Your mod decides what a hidden setting means: for example, it can ignore the count while the checkbox is unticked.
+
+### Showing a setting for a value your mod works out (`MenuValue`)
+
+`enabledIf` only checks whether a setting is on. To show a row for anything else, such as one item of a dropdown, give `enabledIf` a varID that no row has, and answer it in a Harmony postfix on `variables.Get`. ModMenus reads it each time the player changes something in the menu. No row has that varID, so it's never saved.
+
+To follow the player's choices before they press Apply, read them with `ModMenusUtils.MenuValue(varID)`. It returns what the open menu shows for that varID, on any tab, as Apply would save it: a checkbox's `"1"` or `"0"`, a dropdown's item counted from 0, a slider's number, a text field's text. It returns null while the menu is closed, if no row has that varID, and on ModMenus versions that don't have it; read the saved value with `variables.Get` then.
+
+Example: an address field shown only while the dropdown is on its third item.
+
+```json
+[
+	{
+		"type": "dropdown",
+		"varID": "MyMod_Service",
+		"labelID": "MYMOD__MODMENU__SERVICE",
+		"itemIDList": ["MYMOD__MODMENU__FIRST", "MYMOD__MODMENU__SECOND", "MYMOD__MODMENU__OTHER"]
+	},
+	{
+		"type": "input",
+		"varID": "MyMod_Address",
+		"labelID": "MYMOD__MODMENU__ADDRESS",
+		"enabledIf": "MyMod_UsesAddress"
+	}
+]
+```
+
+```csharp
+[HarmonyPatch(typeof(variables), nameof(variables.Get))]
+public class variables_Get
+{
+    public static void Postfix(string name, ref string __result)
+    {
+        if (name == "MyMod_UsesAddress")
+        {
+            string service = MenuValue("MyMod_Service") ?? variables.Get("MyMod_Service");
+            __result = service == "2" ? "1" : "0";
+        }
+    }
+
+    /// <summary>ModMenus' MenuValue, found by name so the mod also runs without ModMenus.</summary>
+    private static string MenuValue(string varID)
+    {
+        MethodInfo method = AppDomain.CurrentDomain.GetAssemblies()
+            .Select(assembly => assembly.GetType("ModMenus.ModMenusUtils"))
+            .FirstOrDefault(type => type != null)?.GetMethod("MenuValue");
+        return method?.Invoke(null, new object[] { varID }) as string;
+    }
+}
+```
+
+If your mod references ModMenus' DLL, call `ModMenus.ModMenusUtils.MenuValue` directly instead.
 
 ## How settings are stored
 
@@ -200,6 +251,7 @@ ModMenus skips what it can't use and writes a warning to the BepInEx log, starti
 ## Tips
 
 - Retrieve values using `variables.Get(varID)`, where `varID` is the element's varID.
+- While the menu is open, `ModMenusUtils.MenuValue(varID)` gives what it shows, applied or not (see [Showing a setting for a value your mod works out](#showing-a-setting-for-a-value-your-mod-works-out-menuvalue)).
 - Implement null checks for `variables.Get(varID)` to handle cases where ModMenus is not installed, or the value was edited by hand.
 - To add vertical spacing, use a text element with an empty labelID (`""`).
 - Always define text in `constants.json` for translation support. If absolutely necessary, ModMenus can handle raw text from labelID or itemIDList fields.

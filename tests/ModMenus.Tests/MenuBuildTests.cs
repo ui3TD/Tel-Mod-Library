@@ -321,7 +321,8 @@ namespace ModMenus.Tests
                 ]
                 """);
 
-            Assert.Equal(new[] { 12f, 1f, 0f, 1f }, menu.Items.Take(4).Select(i => i.defValue));
+            // Since 4.1.0 the default is the menu file's, which Reset shows
+            Assert.Equal(new[] { 5f, 0f, 1f, 0f }, menu.Items.Take(4).Select(i => i.defValue));
             Assert.Equal(new[] { 12f, 1f, 0f, 1f }, menu.Items.Take(4).Select(i => i.tempValue));
             Assert.Equal(("Default motto", "Saved motto"), (menu.Item("A_Motto").defText, menu.Item("A_Motto").tempText));
         }

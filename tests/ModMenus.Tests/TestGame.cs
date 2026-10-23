@@ -327,6 +327,21 @@ namespace ModMenus.Tests
 
         public void Cancel() => Seams.ManagerOnCancel(Manager);
 
+        /// <summary>
+        /// Clicks Reset to Defaults.
+        /// </summary>
+        public void Reset() => Seams.ManagerOnReset(Manager);
+
+        /// <summary>
+        /// The rows of the shown page the player sees: those not hidden by enabledIf.
+        /// </summary>
+        public List<string> VisibleRowNames => Seams.ChildrenOf(ShownPage).Where(Seams.IsActive).Select(Seams.NameOf).ToList();
+
+        /// <summary>
+        /// Whether a setting's row is shown, rather than hidden by enabledIf.
+        /// </summary>
+        public bool IsShown(string varID) => Seams.IsActive(Row(varID));
+
         public Slider Slider(string varID) => Seams.GetComponentInChildren<Slider>(Row(varID));
 
         public Settings_Slider SliderSettings(string varID) => Seams.GetComponent<Settings_Slider>(Row(varID));
@@ -383,6 +398,18 @@ namespace ModMenus.Tests
             TMP_InputField field = Field(varID);
             Seams.SetInputText(field, text);
             Seams.Fire(field.onValueChanged, text);
+        }
+
+        /// <summary>
+        /// Types into a text field and leaves it, as clicking elsewhere does.
+        /// </summary>
+        public void TypeAndLeave(string varID, string text)
+        {
+            Type(varID, text);
+
+            // The copied game field has no end-of-typing event unless ModMenus gave it one
+            if (Field(varID).onEndEdit is not null)
+                Seams.Fire(Field(varID).onEndEdit, Field(varID).text);
         }
     }
 
@@ -514,8 +541,18 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.PlaceDropdownInRow))] = Stub(nameof(PlaceDropdownInRow)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuInput))] = Stub(nameof(AddMenuInput)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddLabelWrap))] = Stub(nameof(AddLabelWrap)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddRowOptions))] = Stub(nameof(AddRowOptions)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.MakeNumberField))] = Stub(nameof(MakeNumberField)),
             [AccessTools.FirstMethod(AccessTools.Inner(typeof(ModMenusUtils), "<>c"), m => m.Name.Contains(nameof(ModMenusUtils.AddMenuDropdown)))] = Stub(nameof(IsScreenTab)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.ShowSaved))] = Stub(nameof(ItemShowSaved)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.ShowDefault))] = Stub(nameof(ItemShowDefault)),
+            [AccessTools.Method(typeof(ModMenuItem), "ShowSliderAt")] = Stub(nameof(ItemShowSliderAt)),
+            [AccessTools.Method(typeof(ModMenuItem), "ShowDropdownAt")] = Stub(nameof(ItemShowDropdownAt)),
+            [AccessTools.Method(typeof(ModMenuItem), "ShowInputText")] = Stub(nameof(ItemShowInputText)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.Validate))] = Stub(nameof(ItemValidate)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onUpdateInput))] = Stub(nameof(ItemOnUpdateInput)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onEndInput))] = Stub(nameof(ItemOnEndInput)),
+            [AccessTools.Method(typeof(ModMenuItem), "Changed")] = Stub(nameof(ItemChanged)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.CloseList))] = Stub(nameof(ItemCloseList)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderSlider))] = Stub(nameof(ItemRenderSlider)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderCheckbox))] = Stub(nameof(ItemRenderCheckbox)),
@@ -527,6 +564,9 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnEnable))] = Stub(nameof(ManagerOnEnable)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnApply))] = Stub(nameof(ManagerOnApply)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnCancel))] = Stub(nameof(ManagerOnCancel)),
+            [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnReset))] = Stub(nameof(ManagerOnReset)),
+            [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnSettingChanged))] = Stub(nameof(ManagerOnSettingChanged)),
+            [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.RefreshConditions))] = Stub(nameof(ManagerRefreshConditions)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.ShowPage))] = Stub(nameof(ManagerShowPage)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.RenderTabs))] = Stub(nameof(ManagerRenderTabs)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.CloseDropdownLists))] = Stub(nameof(ManagerCloseDropdownLists)),
@@ -582,6 +622,7 @@ namespace ModMenus.Tests
             // UI controls
             [AccessTools.PropertyGetter(typeof(Slider), nameof(Slider.value))] = Stub(nameof(SliderValueOf)),
             [AccessTools.PropertySetter(typeof(Slider), nameof(Slider.value))] = Stub(nameof(StubSetSliderValue)),
+            [AccessTools.Method(typeof(Slider), nameof(Slider.SetValueWithoutNotify))] = Stub(nameof(StubSetSliderValueWithoutNotify)),
             [AccessTools.PropertySetter(typeof(ScrollRect), nameof(ScrollRect.verticalNormalizedPosition))] = Stub(nameof(StubSetScroll)),
             [AccessTools.Method(typeof(ScrollRect), nameof(ScrollRect.StopMovement))] = Stub(nameof(StubStopMovement)),
             [AccessTools.Method(typeof(CustomDropdown), nameof(CustomDropdown.Animate))] = Stub(nameof(Animate)),
@@ -648,6 +689,12 @@ namespace ModMenus.Tests
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void AddLabelWrap(GameObject row, TextMeshProUGUI label, RectTransform box, RectTransform[] below) => throw NotInstalled();
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void AddRowOptions(SimpleJSON.JSONNode item, GameObject row) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void MakeNumberField(ModMenuItem menuItem, string inputType, float? min, float? max) => throw NotInstalled();
+
         /// <summary>
         /// AddMenuDropdown's lambda that finds the settings popup's Screen tab by name.
         /// </summary>
@@ -656,6 +703,30 @@ namespace ModMenus.Tests
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ItemShowSaved(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemShowDefault(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemShowSliderAt(ModMenuItem instance, float value) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemShowDropdownAt(ModMenuItem instance, float value) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemShowInputText(ModMenuItem instance, string text) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemValidate(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemOnUpdateInput(ModMenuItem instance, string val) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemOnEndInput(ModMenuItem instance, string val) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemChanged(ModMenuItem instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ItemCloseList(ModMenuItem instance) => throw NotInstalled();
@@ -689,6 +760,15 @@ namespace ModMenus.Tests
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ManagerOnCancel(ModMenuManager instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerOnReset(ModMenuManager instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerOnSettingChanged(ModMenuManager instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerRefreshConditions(ModMenuManager instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ManagerShowPage(ModMenuManager instance, ModMenuTab tab) => throw NotInstalled();
@@ -1052,6 +1132,7 @@ namespace ModMenus.Tests
         }
 
         private static void StubSetSliderValue(Slider slider, float value) => SetSliderValue(slider, value);
+        private static void StubSetSliderValueWithoutNotify(Slider slider, float value) => SetSliderValue(slider, value, notify: false);
         private static void StubSetScroll(ScrollRect scrollRect, float value) => ScrollPositions[scrollRect] = value;
 
         private static void StubSetupDropdown(CustomDropdown dropdown) =>

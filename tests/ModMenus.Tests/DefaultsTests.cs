@@ -25,7 +25,11 @@ namespace ModMenus.Tests
                 { "type": "dropdown", "varID": "A_First", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND"] },
                 { "type": "dropdown", "varID": "A_Past", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND"], "defaultValue": 7 },
                 { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO", "defaultValue": "Hello world" },
-                { "type": "input", "varID": "A_Blank", "labelID": "TEST__MOTTO" }
+                { "type": "input", "varID": "A_Blank", "labelID": "TEST__MOTTO" },
+                { "type": "slider", "varID": "A_Stepped", "labelID": "TEST__VOLUME", "minValue": 0, "maxValue": 100, "defaultValue": 12, "step": 5 },
+                { "type": "input", "varID": "A_Seats", "labelID": "TEST__MOTTO", "inputType": "integer", "minValue": 1, "maxValue": 99, "defaultValue": "250" },
+                { "type": "input", "varID": "A_Rate", "labelID": "TEST__MOTTO", "inputType": "decimal", "minValue": 0.5 },
+                { "type": "checkbox", "varID": "A_Hidden", "labelID": "TEST__LOUD", "defaultValue": true, "enabledIf": "A_Quiet", "reset": false }
             ]
             """;
 
@@ -50,6 +54,12 @@ namespace ModMenus.Tests
                 ["A_Past"] = "1",
                 ["A_Motto"] = "Hello world",
                 ["A_Blank"] = "",
+                // A stepped slider's default moves to its nearest step, and a number field's is checked as typing is
+                ["A_Stepped"] = "10",
+                ["A_Seats"] = "99",
+                ["A_Rate"] = "0.5",
+                // A row hidden by enabledIf still has its default
+                ["A_Hidden"] = "1",
             }, AllSaved());
         }
 

@@ -1022,6 +1022,118 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
+        /// A checkbox that shows a slider and a text row (enabledIf), a whole-number field from 1 to 99, and a last row.
+        /// </summary>
+        private const string RowOptionsMenu = @"[
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check1"", ""labelID"": ""Show the rows below"" },
+            { ""type"": ""slider"", ""varID"": ""ModMenusTest_Slider1"", ""labelID"": ""Shown while ticked"", ""minValue"": 0, ""maxValue"": 100, ""defaultValue"": 50, ""step"": 10, ""enabledIf"": ""ModMenusTest_Check1"" },
+            { ""type"": ""text"", ""labelID"": ""A text row shown while ticked, long enough to wrap onto a second line of the menu so that its height is measured when it shows."", ""enabledIf"": ""ModMenusTest_Check1"" },
+            { ""type"": ""input"", ""varID"": ""ModMenusTest_Seats"", ""labelID"": ""Seats"", ""inputType"": ""integer"", ""minValue"": 1, ""maxValue"": 99, ""defaultValue"": ""10"" },
+            { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check2"", ""labelID"": ""Last row"" }
+        ]";
+
+        /// <summary>
+        /// Added in 4.1.0; only what the engine does is checked here, the rest is in the unit tests. Reset to
+        /// Defaults, a copy of the game's Cancel button, draws its label inside itself, and a click on each of the
+        /// three buttons reaches it; a real click on Reset resets the tab. Rows hidden by enabledIf leave no gap
+        /// in the game's layout, and rows shown again (a wrapped text row too) are spaced like the others. The
+        /// game's number field won't take a letter, and leaving it checks the number.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator RowOptionsWorkInTheGame(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out _))
+                yield break;
+
+            using (AddTestMod(RowOptionsMenu))
+            {
+                var opened = new List<GameObject>();
+                yield return OpenModSettings(ctx, opened);
+                if (opened.Count == 0)
+                {
+                    Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                    yield break;
+                }
+                GameObject popup = opened[0];
+                yield return new WaitForSecondsRealtime(0.5f);
+                yield return ShowTab(ctx, popup, TestModName);
+                yield return new WaitForSecondsRealtime(0.5f);
+                Canvas.ForceUpdateCanvases();
+                float unit = popup.GetComponentInParent<Canvas>().rootCanvas.scaleFactor;
+                Transform page = PageOf(popup, TestModName);
+                float spacing = page.GetComponent<VerticalLayoutGroup>().spacing;
+
+                // The three buttons: Reset's label is drawn inside it, and a click on each reaches it
+                RectTransform reset = (RectTransform)popup.transform.Find("ModMenuReset");
+                ctx.Assert(reset != null && reset.gameObject.activeInHierarchy, "There's no Reset to Defaults button");
+                if (reset == null)
+                {
+                    yield return Game.CloseAllPopups(ctx);
+                    Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                    yield break;
+                }
+                TextMeshProUGUI resetLabel = reset.Find("Text").GetComponent<TextMeshProUGUI>();
+                ctx.Assert(resetLabel.text == "Reset to Defaults", "The Reset button says '" + resetLabel.text + "'");
+                Rect labelDrawn = TextRect(resetLabel);
+                ctx.Record("resetLabel", labelDrawn + " in " + ScreenRect(reset) + ", size " + resetLabel.fontSize);
+                ctx.Assert(Inside(labelDrawn, ScreenRect(reset)), "Reset to Defaults is drawn outside its button: " + labelDrawn + ", the button is " + ScreenRect(reset));
+                foreach (string button in new[] { "ModMenuCancel", "ModMenuReset", "ModMenuApply" })
+                {
+                    RectTransform rect = (RectTransform)popup.transform.Find(button);
+                    GameObject hit = TopHit(ScreenRect(rect).center);
+                    ctx.Assert(hit != null && hit.transform.IsChildOf(rect), button + ": a click on it would hit " + (hit != null ? hit.name : "nothing"));
+                }
+
+                // Hidden rows leave no gap; ticking shows them, spaced like the others
+                AssertVisibleRowsEvenlySpaced(ctx, page, spacing, unit, "with the box unticked");
+                ctx.Assert(page.Cast<Transform>().Count(t => t.gameObject.activeSelf) == 4, "Expected the title and 3 rows shown with the box unticked");
+                Button tick = page.Find("ModMenuCheckbox_ModMenusTest_Check1").GetComponentInChildren<Button>();
+                Click(tick.gameObject);
+                yield return new WaitForSecondsRealtime(0.5f);
+                Canvas.ForceUpdateCanvases();
+                ctx.Assert(page.Cast<Transform>().All(t => t.gameObject.activeSelf), "Ticking the box didn't show every row");
+                AssertVisibleRowsEvenlySpaced(ctx, page, spacing, unit, "with the box ticked");
+                RectTransform textRow = (RectTransform)page.Cast<Transform>().First(t => t.name.StartsWith("ModMenuText_A text row", StringComparison.Ordinal));
+                ctx.Assert(textRow.rect.height > 30, "The wrapped text row shown again is " + textRow.rect.height + " tall, as if on one line");
+
+                // The game's number field won't take a letter, and leaving it moves the number inside its limits
+                TMP_InputField seats = page.Find("ModMenuInput_ModMenusTest_Seats").GetComponentInChildren<TMP_InputField>(true);
+                yield return TypeInto(seats, "", "1a2");
+                ctx.Assert(seats.text == "12", "Typing 1a2 into the whole-number field gave '" + seats.text + "'");
+                yield return TypeInto(seats, "", "250");
+                EventSystem.current.SetSelectedGameObject(null);
+                yield return null;
+                ctx.Assert(seats.text == "99", "Leaving the field with 250 typed shows '" + seats.text + "', expected its maximum 99");
+
+                // A real click on Reset resets the tab
+                Click(reset.gameObject);
+                yield return new WaitForSecondsRealtime(0.5f);
+                ctx.Assert(seats.text == "10", "After clicking Reset the field shows '" + seats.text + "', expected its default 10");
+                ctx.Assert(!page.Find("ModMenuSlider_ModMenusTest_Slider1").gameObject.activeSelf, "After clicking Reset the slider is still shown");
+
+                yield return Game.CloseAllPopups(ctx);
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+            }
+        }
+
+        /// <summary>
+        /// The shown rows of a page sit one under another with the page's spacing between them, so a hidden row
+        /// leaves no gap.
+        /// </summary>
+        private static void AssertVisibleRowsEvenlySpaced(TestContext ctx, Transform page, float spacing, float unit, string when)
+        {
+            List<RectTransform> shown = page.Cast<Transform>().Where(t => t.gameObject.activeSelf).Cast<RectTransform>().ToList();
+            var gaps = new List<string>();
+            for (int i = 1; i < shown.Count; i++)
+            {
+                float gap = (ScreenRect(shown[i - 1]).yMin - ScreenRect(shown[i]).yMax) / unit;
+                gaps.Add(gap.ToString("0.0"));
+                ctx.Assert(Mathf.Abs(gap - spacing) <= 1, when + ", the gap between " + shown[i - 1].name + " and " + shown[i].name + " is " + gap.ToString("0.0") + ", expected " + spacing);
+            }
+            ctx.Record("gaps " + when, string.Join(", ", gaps));
+        }
+
+        /// <summary>
         /// The panel is the size ModMenus works out for the popup's size now.
         /// </summary>
         private static void AssertPanelFits(TestContext ctx, Assembly mod, GameObject popup, string when)

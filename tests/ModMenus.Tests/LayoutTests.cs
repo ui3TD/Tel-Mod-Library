@@ -39,12 +39,14 @@ namespace ModMenus.Tests
             MenuLayout layout = LayoutFor(new Vector2(width, height), ButtonHeight);
             Rect popup = new(-width / 2, -height / 2, width, height);
 
-            foreach (Rect part in new[] { layout.Panel, layout.Apply, layout.Cancel })
+            foreach (Rect part in new[] { layout.Panel, layout.Apply, layout.Cancel, layout.Reset })
             {
                 Assert.True(part.xMin >= popup.xMin + POPUP_MARGIN_MIN - 0.01f && part.xMax <= popup.xMax - POPUP_MARGIN_MIN + 0.01f, $"{part} is wider than {popup}");
                 Assert.True(part.yMin >= popup.yMin + POPUP_MARGIN_MIN - 0.01f && part.yMax <= popup.yMax - POPUP_MARGIN_MIN + 0.01f, $"{part} is taller than {popup}");
             }
             Assert.False(layout.Apply.Overlaps(layout.Cancel));
+            Assert.False(layout.Reset.Overlaps(layout.Cancel));
+            Assert.False(layout.Reset.Overlaps(layout.Apply));
             Assert.True(layout.Panel.height > 0);
         }
 
@@ -72,34 +74,39 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
-        /// Apply on the right and Cancel on the left, as in the game's own popup, and never past the panel's sides.
+        /// Added in 4.1.0: Cancel on the left, Reset in the middle and Apply on the right, all the same size, in a
+        /// row under the panel and never past its sides.
         /// </summary>
         [Theory]
         [MemberData(nameof(PopupSizes))]
-        public void ButtonsSitUnderThePanelEitherSideOfItsCentre(float width, float height)
+        public void ButtonsSitInARowUnderThePanel(float width, float height)
         {
             MenuLayout layout = LayoutFor(new Vector2(width, height), ButtonHeight);
 
-            foreach (Rect button in new[] { layout.Apply, layout.Cancel })
+            foreach (Rect button in new[] { layout.Apply, layout.Cancel, layout.Reset })
             {
                 Assert.Equal(layout.Panel.yMin - BUTTON_GAP, button.yMax, 3);
                 Assert.Equal(ButtonHeight, button.height);
+                Assert.Equal(layout.Apply.width, button.width, 3);
                 Assert.True(button.xMin >= layout.Panel.xMin - 0.01f && button.xMax <= layout.Panel.xMax + 0.01f, $"{button} is wider than the panel");
             }
-            Assert.True(layout.Apply.center.x > 0);
+            Assert.Equal(0, layout.Reset.center.x, 3);
+            Assert.True(layout.Cancel.xMax < layout.Reset.xMin && layout.Reset.xMax < layout.Apply.xMin, "The buttons aren't Cancel, Reset, Apply from left to right");
             Assert.Equal(-layout.Apply.center.x, layout.Cancel.center.x, 3);
         }
 
         /// <summary>
-        /// Wherever there's room, the buttons are the game's size and spacing.
+        /// Wherever there's room, the buttons are the game's size, BUTTON_ROW_GAP apart.
         /// </summary>
         [Fact]
         public void ButtonsAreTheGamesSizeWhenTheyFit()
         {
             MenuLayout layout = LayoutFor(new Vector2(1024, 576), ButtonHeight);
 
-            Assert.Equal(new Vector2(BUTTON_WIDTH, ButtonHeight), layout.Apply.size);
-            Assert.Equal(BUTTON_SPREAD, layout.Apply.center.x, 3);
+            foreach (Rect button in new[] { layout.Apply, layout.Cancel, layout.Reset })
+                Assert.Equal(new Vector2(BUTTON_WIDTH, ButtonHeight), button.size);
+            Assert.Equal(BUTTON_ROW_GAP, layout.Reset.xMin - layout.Cancel.xMax, 3);
+            Assert.Equal(BUTTON_ROW_GAP, layout.Apply.xMin - layout.Reset.xMax, 3);
         }
 
         /// <summary>
@@ -155,6 +162,7 @@ namespace ModMenus.Tests
             layout.panel = (RectTransform)Seams.TransformOf(panel);
             layout.apply = (RectTransform)Seams.TransformOf(Seams.NewObject("Apply", root));
             layout.cancel = (RectTransform)Seams.TransformOf(Seams.NewObject("Cancel", root));
+            layout.reset = (RectTransform)Seams.TransformOf(Seams.NewObject("Reset", root));
             layout.tabColumn = (RectTransform)Seams.TransformOf(Seams.NewObject(TABS_SCROLLRECT_OBJ_NAME, panel));
             layout.divider = (RectTransform)Seams.TransformOf(Seams.NewObject(DIVIDER_OBJ_NAME, panel));
             layout.settingsArea = (RectTransform)Seams.TransformOf(Seams.NewObject(SCROLLRECT_OBJ_NAME, panel));
@@ -167,6 +175,7 @@ namespace ModMenus.Tests
             Assert.Equal(expected.Panel, Seams.Placements[layout.panel]);
             Assert.Equal(expected.Apply, Seams.Placements[layout.apply]);
             Assert.Equal(expected.Cancel, Seams.Placements[layout.cancel]);
+            Assert.Equal(expected.Reset, Seams.Placements[layout.reset]);
 
             var tabs = Seams.Rects[layout.tabColumn];
             var line = Seams.Rects[layout.divider];

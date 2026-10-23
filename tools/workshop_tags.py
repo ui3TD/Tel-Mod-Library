@@ -12,7 +12,8 @@ so their tags can't be compared. --apply-all leaves them out; name them with --a
 check the item's page afterwards.
 
 Needs IM-InGameTests next to this repo, or its folder in the IM_INGAMETESTS environment
-variable. --apply refuses a mod whose csproj isn't committed and pushed.
+variable. --apply refuses a mod whose csproj isn't committed and pushed (the rest of
+the repo may have unpushed commits).
 
 Usage:
     python tools/workshop_tags.py                          # compare every mod with Steam; changes nothing
@@ -28,7 +29,7 @@ import subprocess
 import sys
 import tempfile
 
-from _common import MODS, REPO, check_pushed, fetch_details_many, read_csproj
+from _common import MODS, REPO, fetch_details_many, git, read_csproj
 
 EXCLUDED = {"Going Viral"}  # abandoned
 INGAMETESTS = os.environ.get("IM_INGAMETESTS", os.path.join(os.path.dirname(REPO), "IM-InGameTests"))
@@ -217,6 +218,17 @@ def run_probe():
     return result.stdout
 
 
+def check_csproj_pushed(paths):
+    """Exits unless each csproj is committed and the same as on GitHub. The tags come only from the
+    csproj, so the rest of the repo may have unpushed commits."""
+    if git("status", "--porcelain", "--", *paths):
+        sys.exit("Uncommitted changes in {}; commit and push them first.".format(", ".join(paths)))
+    git("fetch", "--quiet", "origin")
+    changed = git("diff", "--name-only", "@{u}", "--", *paths)
+    if changed:
+        sys.exit("Not pushed yet: {}; push it first.".format(changed.replace("\n", ", ")))
+
+
 def apply(mods, before, dry_run):
     for mod in mods:
         print("{}: set tags to {} (item {})".format(mod.name, show_tags(mod.tags), mod.workshop_id))
@@ -225,7 +237,7 @@ def apply(mods, before, dry_run):
         return
     if not os.path.isfile(os.path.join(INGAMETESTS, "probe_session.py")):
         sys.exit("IM-InGameTests not found at {}; set IM_INGAMETESTS to its folder.".format(INGAMETESTS))
-    check_pushed([os.path.relpath(m.csproj, REPO) for m in mods])
+    check_csproj_pushed([os.path.relpath(m.csproj, REPO) for m in mods])
     write_probe(mods)
     answers = parse_answers(run_probe())
 

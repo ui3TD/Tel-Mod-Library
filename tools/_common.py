@@ -32,6 +32,28 @@ def read_csproj(mod_dir, optional=()):
     return projects[0], props
 
 
+CHANGELOG_HEADING = "[h3]Changelog[/h3]"
+CHANGELOG_RECENT = 5  # the changelog keeps this many newest entries, plus every major version
+CHANGELOG_LINE_RE = re.compile(r"^- (\d+)\.(\d+)\.(\d+): ")
+
+
+def changelog_version(line):
+    """Returns (major, minor, patch) of a "- <version>: ..." changelog line, or None."""
+    match = CHANGELOG_LINE_RE.match(line)
+    return tuple(int(g) for g in match.groups()) if match else None
+
+
+def is_major(version):
+    """1.0.0, 2.0.0, ...; 0.x versions are pre-release, not major versions."""
+    return version[0] >= 1 and version[1:] == (0, 0)
+
+
+def trim_changelog(lines):
+    """Sorts changelog lines newest first and keeps the newest CHANGELOG_RECENT plus every major version."""
+    ordered = sorted(lines, key=changelog_version, reverse=True)
+    return [line for i, line in enumerate(ordered) if i < CHANGELOG_RECENT or is_major(changelog_version(line))]
+
+
 def clean_dir(path):
     if os.path.exists(path):
         shutil.rmtree(path)

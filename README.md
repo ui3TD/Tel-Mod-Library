@@ -55,7 +55,7 @@ Check out [IM-FastForward](https://github.com/ui3TD/IM-FastForward) for a tutori
 `tools/publish_workshop.py` builds a mod and updates its Workshop item in one step: content, title, full description (`assets/steam description.txt`) and change note (the changelog line for the csproj `<Version>`). The item is the csproj's `<WorkshopID>`. It uploads a fresh Release build from a clean staging folder, not the game's Mods folder, and refuses to publish until the mod's changes are committed and pushed.
 
 1. One-time: install [SteamCMD](https://developer.valvesoftware.com/wiki/SteamCMD) to `C:\steamcmd` (or set `STEAMCMD`) and run `steamcmd +login <user> +quit` to approve Steam Guard.
-2. Bump `<Version>` and add a `- <version>: ...` line under `[h3]Changelog[/h3]` in the steam description.
+2. Bump `<Version>` and add a `- <version>: ...` line under `[h3]Changelog[/h3]` in the steam description. The changelog lists the newest version first and keeps only the 5 newest versions plus every major version (1.0.0, 2.0.0 and so on), so remove the oldest line that is no longer one of those. `tools/check_repo.py` checks this.
 3. Run `python tools/publish_workshop.py "<Mod Name>" --user <user>` (or set `STEAM_USER`). Add `--dry-run` to preview the upload.
 
 To change only the Workshop page text, commit and push the edited `assets/steam description.txt` and run with `--description-only`: it updates the title and description without a build, a new version or a change note.

@@ -205,14 +205,14 @@ namespace TraitsFixTests
         }
 
         /// <summary>
-        /// The Steam changelog ends with an entry for the version in the project file.
+        /// The Steam changelog starts with an entry for the version in the project file.
         /// </summary>
         [Fact]
         public void SteamChangelog_ListsCurrentVersion()
         {
             string version = Regex.Match(File.ReadAllText(TestGame.ModFile("Traits Fix.csproj")), "<Version>(.+)</Version>").Groups[1].Value;
             string[] lines = File.ReadAllLines(TestGame.ModAsset("steam description.txt"));
-            Assert.StartsWith($"- {version}: ", lines.Last());
+            Assert.StartsWith($"- {version}: ", lines.SkipWhile(l => l != "[h3]Changelog[/h3]").ElementAt(1));
         }
     }
 }

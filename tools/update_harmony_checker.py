@@ -22,7 +22,7 @@ import re
 import subprocess
 import sys
 
-from _common import REPO, fetch_details, git
+from _common import CHANGELOG_HEADING, REPO, fetch_details, git, trim_changelog
 
 MOD_DIR = os.path.join(REPO, "mods", "Harmony Checker")
 SOURCE = os.path.join(MOD_DIR, "Harmony Checker.cs")
@@ -77,7 +77,12 @@ def update_changelog(description, mod_version, imhi, released):
         line = "- {}: {}".format(mod_version, note)
         if len(line) - 2 > CHANGELOG_LIMIT:
             sys.exit("Changelog line is over {} characters: {}".format(CHANGELOG_LIMIT, line))
-        return description.rstrip("\r\n") + "\n" + line + "\n"
+        head, found, changelog = description.partition(CHANGELOG_HEADING)
+        if not found:
+            sys.exit("No {} in the steam description.".format(CHANGELOG_HEADING))
+        newline = "\r\n" if "\r\n" in description else "\n"
+        lines = [l for l in changelog.replace("\r\n", "\n").split("\n") if l.strip()]
+        return head + found + newline + newline.join(trim_changelog([line] + lines))
     # Unreleased: fold the new IM-HI version into the existing line.
     pattern = re.compile(r"^- " + re.escape(mod_version) + r": (.*?)\r?$", re.M)
     match = pattern.search(description)
@@ -148,7 +153,7 @@ def main():
     print("Harmony Checker {} -> {} ({}), MIN_VERSION {} -> {}".format(
         fmt(mod_version), fmt(new_version), "on Steam, bumping" if released else "not on Steam yet, kept",
         fmt(current_min), fmt(imhi)))
-    print("Changelog: " + normalize(new_description).splitlines()[-1])
+    print("Changelog: " + normalize(new_description).partition(CHANGELOG_HEADING)[2].split("\n")[1])
     if args.dry_run:
         return
 

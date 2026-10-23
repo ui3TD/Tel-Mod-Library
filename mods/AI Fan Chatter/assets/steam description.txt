@@ -54,29 +54,9 @@ Your saves load normally without it. The feed goes back to 20 posts.
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 0.1.0: First test version
-- 0.2.0: Fans see recent posts, earlier results and the idols in each event
-- 0.3.0: Concert set lists, last 3 singles, longer posts, retry when only one post comes back
-- 0.3.1: Cheaper requests, set list as a list, clearer graduation member count, weekday in dates
-- 1.0.0: Public release; low reasoning effort now reaches more AI services
-- 1.1.0: Fans know the agency's concept, concert costumes and style, dating rule, handshake security
-- 1.2.0: Fans know which idols have the top or poorest skills in their group
-- 1.3.0: Shorter prompts: ranks only for the top and bottom two, concerts without names or performers
-- 1.4.0: Events name the producer; graduations list centers; other groups labelled; no self-replies
-- 1.5.0: Singles name their promotion and outcome, concerts the ticket price; self-replies dropped
-- 1.6.0: Concert attendance gives the venue's capacity; singles no longer give their new fans
-- 1.7.0: Posts arrive over the two days after the moment; OpenAI with gpt-6-luna is the default
-- 1.7.1: The saved API key moves to a folder named Tel AI Mods in ModConfig
-- 1.8.0: Graduations name the idol's known clique friends instead of the most popular members
-- 1.8.1: Fans no longer quote percentages
-- 1.8.2: Concert attendance shows seats filled out of the venue's seats, without a percentage
-- 1.9.0: Graduations name who the idol was suspected to be bullied by or to have bullied
-- 1.10.0: Posts for dating scandals, paid policy changes and staff firings; no posts under 100 fans
-- 1.11.0: Posts for tours, elections, awards, shows, contracts, auditions, graduates' successors
-- 1.12.0: Up to 21 requests a week; new: hiatuses, cancelled elections, graduation news, show ends
-- 1.12.1: Base URLs work as each service documents them; Gemini keeps low reasoning effort
-- 1.13.0: The key field shows a saved key; clear it to remove the key
-- 1.14.0: Refresh feed bar; the mod's messages show at the top of the Social Media tab
-- 1.14.1: ModMenus' Reset to Defaults keeps your saved API key
-- 1.15.0: Base URL shows only for OpenAI-compatible services, the only ones that use it
 - 1.16.0: Other mods can ask for fan posts about their own events
+- 1.15.0: Base URL shows only for OpenAI-compatible services, the only ones that use it
+- 1.14.1: ModMenus' Reset to Defaults keeps your saved API key
+- 1.14.0: Refresh feed bar; the mod's messages show at the top of the Social Media tab
+- 1.13.0: The key field shows a saved key; clear it to remove the key
+- 1.0.0: Public release; low reasoning effort now reaches more AI services

@@ -14,6 +14,13 @@
    (`Feed/`) or save code change.
 4. Run `python tools/check_repo.py` (changelog line, description, info.json values).
 
+## Steam changelog
+
+Each version bump adds `- <version>: <statement>` (at most 100 characters after `- `) as the first line
+under `[h3]Changelog[/h3]` in `assets/steam description.txt`. The changelog is newest first and keeps
+only the 5 newest versions plus every major version (1.0.0, 2.0.0, ...; 0.x versions are not major);
+drop the line that falls out. `tools/check_repo.py` enforces this.
+
 ## Shared code
 
 `shared/<Name>/` is compiled into every mod that imports its `.projitems`; each mod ships its own copy.

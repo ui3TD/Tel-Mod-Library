@@ -12,8 +12,8 @@ Rebalances the theater. Theater shows go stale over time. Release a single every
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.1.0: Attendance changes now apply; staleness levels off at 10%; fixed negative subscription income at very high revenue.
-- 1.1.1: Theater attendance changes are applied in a way that works alongside other mods.
-- 1.2.0: Unfair streaming revenue cut by 95% (was 90%); manzai attendance cut to 30% (was 50%).
-- 1.3.0: Every theater audience pays once built: casual, gender and age targets now compete.
 - 1.4.0: Manzai attendance 18% of a performance (was 30%): performances earn more per stamina.
+- 1.3.0: Every theater audience pays once built: casual, gender and age targets now compete.
+- 1.2.0: Unfair streaming revenue cut by 95% (was 90%); manzai attendance cut to 30% (was 50%).
+- 1.1.1: Theater attendance changes are applied in a way that works alongside other mods.
+- 1.1.0: Attendance changes now apply; staleness levels off at 10%; fixed negative subscription income at very high revenue.

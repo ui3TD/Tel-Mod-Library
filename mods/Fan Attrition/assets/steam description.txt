@@ -30,11 +30,8 @@ Here are the rebalancing tweaks to give you more viable ways of attracting fans 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.1.0: Fixed the MC fame bonus and the fan tooltip total.
-- 1.2.0: Fatigue no longer cuts the audience of internet shows, as described.
-- 1.2.1: Airing shows with no episodes no longer stop the daily fan count.
-- 1.3.0: Loading a save no longer changes the idols' fan appeal.
-- 1.4.0: Loading another save no longer carries its fan churn over, and the fan tooltip is up to date.
-- 1.5.0: Daily fan churn is split across idols by fame instead of hitting one random idol.
-- 1.6.0: Relaunches wear out at the first's rate. Re-released to undo 2.0.0's fan loss change.
 - 2.0.0: Fan types lose and gain fans by their size, opinion and appeal. Hardcore fans join slower.
+- 1.6.0: Relaunches wear out at the first's rate. Re-released to undo 2.0.0's fan loss change.
+- 1.5.0: Daily fan churn is split across idols by fame instead of hitting one random idol.
+- 1.4.0: Loading another save no longer carries its fan churn over, and the fan tooltip is up to date.
+- 1.3.0: Loading a save no longer changes the idols' fan appeal.

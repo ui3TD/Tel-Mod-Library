@@ -30,9 +30,8 @@ Let me know of any bugs.
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.2.0: Fixes for the Perfectionist, Meme Queen, Defeatist, Underdog and Indiscreet traits.
-- 1.3.0: Indiscreet now gives every secret idol couple its weekly chance to leak.
-- 1.4.0: Indiscreet leaks are illustrated events with the game's dating scandal consequences.
-- 1.4.1: Fixed the wording of an Indiscreet leak result that depended on the idol's name.
-- 1.4.2: Indiscreet leaks show every story before repeating one, never one of the last two.
 - 1.5.0: Indiscreet leaks happen about once a year per indiscreet idol, whatever the group size.
+- 1.4.2: Indiscreet leaks show every story before repeating one, never one of the last two.
+- 1.4.1: Fixed the wording of an Indiscreet leak result that depended on the idol's name.
+- 1.4.0: Indiscreet leaks are illustrated events with the game's dating scandal consequences.
+- 1.3.0: Indiscreet now gives every secret idol couple its weekly chance to leak.

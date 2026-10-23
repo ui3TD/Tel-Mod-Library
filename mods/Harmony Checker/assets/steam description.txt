@@ -12,8 +12,8 @@ You must install the IM-HI plugin manually. Follow the instructions at this link
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.1.0: The IM-HI installed label now shows when Workshop mods finish loading after the main menu.
-- 1.2.0: When IM-HI is out of date, the label says so and a yellow button links to the update.
-- 1.2.1: Internal tidy-up; no change in game.
-- 1.3.0: The Update IM-HI button now has the game's button shape, white text and a pulsing glow.
 - 1.4.0: The Update IM-HI button's glow turns fully bright and stops pulsing while hovered.
+- 1.3.0: The Update IM-HI button now has the game's button shape, white text and a pulsing glow.
+- 1.2.1: Internal tidy-up; no change in game.
+- 1.2.0: When IM-HI is out of date, the label says so and a yellow button links to the update.
+- 1.1.0: The IM-HI installed label now shows when Workshop mods finish loading after the main menu.

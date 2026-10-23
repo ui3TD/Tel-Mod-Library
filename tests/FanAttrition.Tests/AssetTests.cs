@@ -210,16 +210,16 @@ namespace FanAttrition.Tests
         }
 
         /// <summary>
-        /// The Steam changelog ends with an entry for the version in the project file, short enough for
+        /// The Steam changelog starts with an entry for the version in the project file, short enough for
         /// the game's 100-character change notes box.
         /// </summary>
         [Fact]
         public void SteamChangelog_ListsCurrentVersion()
         {
             string version = Regex.Match(File.ReadAllText(TestGame.ModFile("Fan Attrition.csproj")), "<Version>(.+)</Version>").Groups[1].Value;
-            string last = File.ReadAllLines(TestGame.ModAsset("steam description.txt")).Last();
-            Assert.StartsWith($"- {version}: ", last);
-            Assert.InRange(last.Length - "- ".Length, 1, 100);
+            string first = File.ReadAllLines(TestGame.ModAsset("steam description.txt")).SkipWhile(l => l != "[h3]Changelog[/h3]").ElementAt(1);
+            Assert.StartsWith($"- {version}: ", first);
+            Assert.InRange(first.Length - "- ".Length, 1, 100);
         }
     }
 }

@@ -22,5 +22,5 @@ The base game works out each week how an idol's graduation date should move, but
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
-- 1.1.0: The low-salary graduation penalty now works; the 10-fame floor no longer lowers expectations.
 - 2.0.0: Graduation dates now move each week with how idols are treated and used.
+- 1.1.0: The low-salary graduation penalty now works; the 10-fame floor no longer lowers expectations.

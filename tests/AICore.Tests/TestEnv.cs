@@ -75,11 +75,11 @@ namespace AICore.Tests
         public bool Enabled { get; set; } = true;
         public int PerWeek { get; set; } = 7;
 
-        public readonly List<(string Text, bool Error)> Notices = new();
+        public readonly List<TestNotice> Notices = new();
         public readonly List<Action> Frames = new();
 
         public Connection ReadConnection() => ConnectionSettings.Current();
-        public void Notify(string text, bool error) => Notices.Add((text, error));
+        public void Notify(string text, NoticeKind kind, bool fromApply) => Notices.Add(new TestNotice(text, kind, fromApply));
         public void NextFrame(Action action) => Frames.Add(action);
 
         public void RunFrames()
@@ -97,5 +97,22 @@ namespace AICore.Tests
 
         public static string OpenAI(string text, string finish = "stop") =>
             "{\"id\":\"c1\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":" + Json.Quote(text) + "},\"finish_reason\":\"" + finish + "\"}]}";
+    }
+
+    /// <summary>A notice the mod gave its host.</summary>
+    public sealed class TestNotice
+    {
+        public TestNotice(string text, NoticeKind kind, bool fromApply)
+        {
+            Text = text;
+            Kind = kind;
+            FromApply = fromApply;
+        }
+
+        public string Text { get; }
+        public NoticeKind Kind { get; }
+        public bool FromApply { get; }
+        /// <summary>Anything but a connection that works.</summary>
+        public bool Error => Kind != NoticeKind.Connected;
     }
 }

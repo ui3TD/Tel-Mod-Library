@@ -121,19 +121,21 @@ namespace AIFanChatter.Tests
         public Func<IList<SNS_Manager._message>> ReadPosts;
         public IList<SNS_Manager._message> RecentPosts => ReadPosts != null ? ReadPosts() : Posts;
 
-        public readonly List<(string Text, bool Error)> Notices = new();
+        public readonly List<TestNotice> Notices = new();
         public readonly List<Action> Frames = new();
         public readonly List<List<SNS_Manager._message>> Queued = new();
         public readonly List<DateTime> QueuedFor = new();
+        public readonly List<List<SNS_Manager._message>> Shown = new();
 
         public Connection ReadConnection() => Settings.Current();
-        public void Notify(string text, bool error) => Notices.Add((text, error));
+        public void Notify(string text, NoticeKind kind, bool fromApply) => Notices.Add(new TestNotice(text, kind, fromApply));
         public void NextFrame(Action action) => Frames.Add(action);
         public void Queue(List<SNS_Manager._message> posts, DateTime moment)
         {
             Queued.Add(posts);
             QueuedFor.Add(moment);
         }
+        public void ShowNow(List<SNS_Manager._message> posts) => Shown.Add(posts);
 
         public void RunFrames()
         {
@@ -152,5 +154,22 @@ namespace AIFanChatter.Tests
             "{\"id\":\"c1\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":" + Json.Quote(text) + "},\"finish_reason\":\"" + finish + "\"}]}";
 
         public const string Posts = "{\"posts\":[{\"user\":\"F_HC_T\",\"text\":\"Best single yet!\",\"replies\":[{\"user\":\"M_C_A\",\"text\":\"Agreed\"}]},{\"user\":\"M_C_YA\",\"text\":\"The center was great\"},{\"user\":\"F_C_A\",\"text\":\"Bought two copies\"}]}";
+    }
+
+    /// <summary>A notice the mod gave its host.</summary>
+    public sealed class TestNotice
+    {
+        public TestNotice(string text, NoticeKind kind, bool fromApply)
+        {
+            Text = text;
+            Kind = kind;
+            FromApply = fromApply;
+        }
+
+        public string Text { get; }
+        public NoticeKind Kind { get; }
+        public bool FromApply { get; }
+        /// <summary>Anything but a connection that works.</summary>
+        public bool Error => Kind != NoticeKind.Connected;
     }
 }

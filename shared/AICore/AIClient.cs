@@ -16,8 +16,25 @@ namespace AICore
         Connection ReadConnection();
         bool Enabled { get; }
         int PerWeek { get; }
-        void Notify(string text, bool error);
+        /// <summary>
+        /// Tells the player something, without the mod's name: the host adds it where it shows the text.
+        /// </summary>
+        /// <param name="fromApply">The result of the connection test that pressing Apply runs.</param>
+        void Notify(string text, NoticeKind kind, bool fromApply);
         void NextFrame(Action action);
+    }
+
+    /// <summary>What a notice is about.</summary>
+    public enum NoticeKind
+    {
+        /// <summary>The connection test worked; the text is the service and model.</summary>
+        Connected,
+        /// <summary>One request got nothing; requests go on.</summary>
+        Missed,
+        /// <summary>Requests are paused for 10 minutes.</summary>
+        Paused,
+        /// <summary>Requests are stopped until the settings change or Apply is pressed.</summary>
+        Stopped
     }
 
     /// <summary>
@@ -26,16 +43,17 @@ namespace AICore
     /// key, model or address, and a model whose reply can't be used (out of room, empty, the wrong
     /// format), stop requests until the player presses Apply; a busy or unreachable service pauses them
     /// for 10 minutes; a refusal or a content filter only costs that one request. Nothing is retried.
+    /// Every error is reported to the host, with what it does to requests.
     /// Requests ask for the reply schema and for low reasoning effort; a service or model that rejects the
     /// request gets it again without the effort, and if it rejects that too, without the schema, and what
-    /// it rejected isn't asked for again until the settings change.
+    /// it rejected isn't asked for again until the settings change. A request the player asks for by hand
+    /// (manual) skips the weekly setting, the 30 seconds and the hourly limit, and doesn't count toward them.
     /// </summary>
     public sealed class AIClient
     {
         public const double MinGapSeconds = 30;
         public const int MaxPerHour = 20;
         public const double BackoffSeconds = 600;
-        public const double ErrorNoticeSeconds = 600;
         public const int TestMaxTokens = 256;
 
         /// <summary>
@@ -88,8 +106,6 @@ namespace AICore
         private int sentThisWeek;
         private bool suspended;
         private double backoffUntil = double.NegativeInfinity;
-        private double lastErrorNotice = double.NegativeInfinity;
-        private bool showNextError = true;
         private bool testPending;
         private bool noSchema;
         private bool noEffort;
@@ -103,6 +119,8 @@ namespace AICore
 
         public bool InFlight => inFlight;
         public bool Suspended => suspended;
+        /// <summary>Requests are paused after the service was busy or unreachable.</summary>
+        public bool Paused => host.RealTime < backoffUntil;
 
         /// <summary>
         /// Called when the settings change, after the client clears what it held back.
@@ -117,11 +135,12 @@ namespace AICore
         /// <summary>
         /// Why a request can't be sent now, or null when it can.
         /// </summary>
-        public string Blocked()
+        /// <param name="manual">The player asked for it by hand: only off, stopped, paused and one at a time apply.</param>
+        public string Blocked(bool manual = false)
         {
             if (!host.Enabled)
                 return "the mod is off";
-            if (host.PerWeek <= 0)
+            if (host.PerWeek <= 0 && !manual)
                 return "requests per week is 0";
             if (suspended)
                 return "requests are stopped until the settings change";
@@ -130,6 +149,8 @@ namespace AICore
             double now = host.RealTime;
             if (now < backoffUntil)
                 return "waiting after the service was unavailable";
+            if (manual)
+                return null;
             if (now - lastSend < MinGapSeconds)
                 return "the last request was under 30 seconds ago";
             sentThisHour.RemoveAll(t => now - t >= 3600);
@@ -146,9 +167,10 @@ namespace AICore
         /// </summary>
         /// <param name="schema">A JSON schema the reply must follow, for services that support one; null for none.</param>
         /// <param name="label">What the request is for, as the player knows it ("Kaho's graduation"), for the notices.</param>
-        public bool Send(string system, string user, string schema, Action<Reply> done, string label = null)
+        /// <param name="manual">The player asked for it by hand: see Blocked. It isn't counted.</param>
+        public bool Send(string system, string user, string schema, Action<Reply> done, string label = null, bool manual = false)
         {
-            if (Blocked() != null)
+            if (Blocked(manual) != null)
             {
                 return false;
             }
@@ -162,20 +184,23 @@ namespace AICore
             if (request == null)
             {
                 suspended = true;
-                ReportError(error, always: true);
+                ReportError(error, NoticeKind.Stopped, fromApply: false);
                 return false;
             }
 
-            double now = host.RealTime;
-            lastSend = now;
-            sentThisHour.Add(now);
-            DateTime thisWeek = WeekOf(host.GameTime);
-            if (thisWeek != week)
+            if (!manual)
             {
-                week = thisWeek;
-                sentThisWeek = 0;
+                double now = host.RealTime;
+                lastSend = now;
+                sentThisHour.Add(now);
+                DateTime thisWeek = WeekOf(host.GameTime);
+                if (thisWeek != week)
+                {
+                    week = thisWeek;
+                    sentThisWeek = 0;
+                }
+                sentThisWeek++;
             }
-            sentThisWeek++;
             inFlight = true;
 
             void Handle(HttpRequestSpec sent, HttpResult result, bool schemaSent, bool effortSent, bool routerSent, Action<Reply> then)
@@ -238,7 +263,6 @@ namespace AICore
             noEffort = false;
             noRouterEffort = false;
             backoffUntil = double.NegativeInfinity;
-            showNextError = true;
             SettingsChanged?.Invoke();
             TestNextFrame(testSystem, testUser);
         }
@@ -256,7 +280,6 @@ namespace AICore
             }
             suspended = false;
             backoffUntil = double.NegativeInfinity;
-            showNextError = true;
             TestNextFrame(testSystem, testUser);
         }
 
@@ -287,7 +310,7 @@ namespace AICore
             if (request == null)
             {
                 suspended = true;
-                ReportError(error, always: true);
+                ReportError(error, NoticeKind.Stopped, fromApply: true);
                 return;
             }
             Transmit(request, result =>
@@ -299,11 +322,11 @@ namespace AICore
                     && (reply.Failure == Failure.BadReply || reply.Failure == Failure.Declined);
                 if (reply.Ok || answered)
                 {
-                    host.Notify(AIMod.Name + " connected: " + connection.Describe(), error: false);
+                    host.Notify(connection.Describe(), NoticeKind.Connected, fromApply: true);
                 }
                 else
                 {
-                    HandleFailure(reply, connection, null);
+                    HandleFailure(reply, connection, null, fromApply: true);
                 }
             }, connection, null);
         }
@@ -335,42 +358,36 @@ namespace AICore
         /// <summary>
         /// Stops requests for the settings or a model whose replies can't be used, pauses them for a busy
         /// or unreachable service, and only reports a failure that affects one request. The notice says
-        /// what happened, for what, and what the player can do; one that stops requests always shows.
+        /// what happened, for what, and what the player can do.
         /// </summary>
-        internal void HandleFailure(ProviderReply reply, Connection connection, string label)
+        /// <param name="fromApply">The failure is the connection test's, after Apply.</param>
+        internal void HandleFailure(ProviderReply reply, Connection connection, string label, bool fromApply = false)
         {
-            string notice =Notices.Text(reply.Problem, reply.Detail, reply.Status, connection, label);
+            string notice = Notices.Text(reply.Problem, reply.Detail, reply.Status, connection, label);
             switch (reply.Failure)
             {
                 case Failure.Settings:
                 case Failure.BadReply:
                     suspended = true;
-                    ReportError(notice, always: true);
+                    ReportError(notice, NoticeKind.Stopped, fromApply);
                     break;
                 case Failure.Transient:
                     backoffUntil = host.RealTime + BackoffSeconds;
-                    ReportError(notice);
+                    ReportError(notice, NoticeKind.Paused, fromApply);
                     break;
                 default:
-                    ReportError(notice);
+                    ReportError(notice, NoticeKind.Missed, fromApply);
                     break;
             }
         }
 
         /// <summary>
-        /// Logs every error and shows it in game at most once every 10 minutes, apart from the first one
-        /// after the settings change and one that stops requests, which always show.
+        /// Logs every error and reports it to the host, without the key.
         /// </summary>
-        private void ReportError(string error, bool always = false)
+        private void ReportError(string error, NoticeKind kind, bool fromApply)
         {
             Log.Warn(error);
-            double now = host.RealTime;
-            if (always || showNextError || now - lastErrorNotice >= ErrorNoticeSeconds)
-            {
-                showNextError = false;
-                lastErrorNotice = now;
-                host.Notify(AIMod.Name + ": " + KeyStore.Redact(error), error: true);
-            }
+            host.Notify(KeyStore.Redact(error), kind, fromApply);
         }
     }
 }

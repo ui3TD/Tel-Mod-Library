@@ -92,7 +92,10 @@ namespace AICore.Tests
             Assert.False(Send());
             Assert.True(client.Suspended);
             Assert.Contains("API key", host.Notices[0].Text);
-            Assert.StartsWith("Test AI Mod: ", host.Notices[0].Text);
+            // The host adds the mod's name where it shows the notice
+            Assert.DoesNotContain("Test AI Mod", host.Notices[0].Text);
+            Assert.Equal(NoticeKind.Stopped, host.Notices[0].Kind);
+            Assert.False(host.Notices[0].FromApply);
             client.OnSettingsChanged("s", "u");
             Assert.False(client.Suspended);
         }
@@ -119,12 +122,13 @@ namespace AICore.Tests
         {
             Send();
             transport.Reply(401, "{\"error\":{\"message\":\"invalid x-api-key\"}}");
-            Assert.Equal(("Test AI Mod: Anthropic rejected the API key (HTTP 401: invalid x-api-key). Requests stopped: "
-                + "fix the key, then press Apply in Mod Settings.", true), host.Notices[0]);
+            Assert.Equal("Anthropic rejected the API key (HTTP 401: invalid x-api-key). Requests stopped: "
+                + "fix the key, then press Apply in Mod Settings.", host.Notices[0].Text);
+            Assert.Equal(NoticeKind.Stopped, host.Notices[0].Kind);
         }
 
         [Fact]
-        public void Errors_ShowAtMostOnceEvery10Minutes()
+        public void EveryError_IsReported()
         {
             // Refusals only cost their own request, so requests go on and each one fails again
             for (int i = 0; i < 3; i++)
@@ -133,7 +137,8 @@ namespace AICore.Tests
                 Send();
                 transport.Reply(200, Replies.Anthropic("", "refusal"));
             }
-            Assert.Single(host.Notices);
+            Assert.Equal(3, host.Notices.Count);
+            Assert.All(host.Notices, n => Assert.Equal(NoticeKind.Missed, n.Kind));
             Assert.Equal(3, TestEnv.Logs.Count);
         }
 
@@ -146,8 +151,9 @@ namespace AICore.Tests
             Send();
             transport.Reply(200, Replies.Anthropic("partial", "max_tokens"));
             Assert.True(client.Suspended);
-            Assert.Equal(("Test AI Mod: No test answer for the test moment: claude-haiku-5-5 on Anthropic hit its 4096-token limit. "
-                + "Requests stopped: choose another model, then press Apply in Mod Settings.", true), host.Notices[0]);
+            Assert.Equal("No test answer for the test moment: claude-haiku-5-5 on Anthropic hit its 4096-token limit. "
+                + "Requests stopped: choose another model, then press Apply in Mod Settings.", host.Notices[0].Text);
+            Assert.Equal(NoticeKind.Stopped, host.Notices[0].Kind);
             host.RealTime += 3600;
             Assert.Equal("requests are stopped until the settings change", client.Blocked());
 
@@ -163,8 +169,9 @@ namespace AICore.Tests
             Send();
             transport.Reply(200, Replies.Anthropic("", "refusal"));
             Assert.False(client.Suspended);
-            Assert.Equal(("Test AI Mod: No test answer for the test moment: claude-haiku-5-5 on Anthropic declined. "
-                + "Other tests will still run.", true), host.Notices[0]);
+            Assert.Equal("No test answer for the test moment: claude-haiku-5-5 on Anthropic declined. "
+                + "Other tests will still run.", host.Notices[0].Text);
+            Assert.Equal(NoticeKind.Missed, host.Notices[0].Kind);
             host.RealTime += 60;
             Assert.Null(client.Blocked());
         }
@@ -189,8 +196,10 @@ namespace AICore.Tests
             transport.Reply(200, "{\"error\":{\"message\":\"Upstream provider timed out\",\"code\":502}}");
             Assert.False(client.Suspended);
             Assert.Equal("waiting after the service was unavailable", client.Blocked());
-            Assert.Equal(("Test AI Mod: No test answer for the test moment: openrouter.ai's provider failed (Upstream provider timed out). "
-                + Notices.TryNow, true), host.Notices[0]);
+            Assert.Equal("No test answer for the test moment: openrouter.ai's provider failed (Upstream provider timed out). "
+                + Notices.TryNow, host.Notices[0].Text);
+            Assert.Equal(NoticeKind.Paused, host.Notices[0].Kind);
+            Assert.True(client.Paused);
         }
 
         /// <summary>
@@ -225,7 +234,9 @@ namespace AICore.Tests
             client.OnSettingsChanged("s", "u");
             host.RunFrames();
             transport.Reply(200, Replies.Anthropic("", stop));
-            Assert.Equal(("Test AI Mod connected: Anthropic with claude-haiku-5-5", false), host.Notices[0]);
+            Assert.Equal("Anthropic with claude-haiku-5-5", host.Notices[0].Text);
+            Assert.Equal(NoticeKind.Connected, host.Notices[0].Kind);
+            Assert.True(host.Notices[0].FromApply);
             Assert.False(client.Suspended);
         }
 
@@ -360,8 +371,9 @@ namespace AICore.Tests
             client.Send("sys", "user", Schema, reply => reply.Unusable(Problem.Unreadable, "Nothing usable."), "the test moment");
             Answer();
             Assert.True(client.Suspended);
-            Assert.Equal(("Test AI Mod: No test answer for the test moment: claude-haiku-5-5 on Anthropic didn't use the reply format. "
-                + "Requests stopped: choose another model, then press Apply in Mod Settings.", true), host.Notices[0]);
+            Assert.Equal("No test answer for the test moment: claude-haiku-5-5 on Anthropic didn't use the reply format. "
+                + "Requests stopped: choose another model, then press Apply in Mod Settings.", host.Notices[0].Text);
+            Assert.Equal(NoticeKind.Stopped, host.Notices[0].Kind);
         }
 
         [Fact]
@@ -387,7 +399,9 @@ namespace AICore.Tests
             Assert.Equal("test system", body["system"].Value);
             Assert.Equal(AIClient.TestMaxTokens, body["max_tokens"].AsInt);
             Answer("OK");
-            Assert.Equal(("Test AI Mod connected: Anthropic with claude-haiku-5-5", false), host.Notices[0]);
+            Assert.Equal("Anthropic with claude-haiku-5-5", host.Notices[0].Text);
+            Assert.Equal(NoticeKind.Connected, host.Notices[0].Kind);
+            Assert.True(host.Notices[0].FromApply);
             // The test doesn't count towards the limits
             Assert.Null(client.Blocked());
         }

@@ -153,6 +153,7 @@ namespace AIFanChatter
         public static void Postfix()
         {
             FeedQueue.Clear();
+            TabNotices.Clear();
             FeedRelease.NewSession();
             Moments.ResetGraduations();
         }
@@ -263,6 +264,7 @@ namespace AIFanChatter
         internal static bool LoadFeed(List<SNS_Manager._message> feed, List<variables._variable> vars)
         {
             FeedQueue.Load(FeedStore.GetVariable(vars, FeedQueue.QueueVar));
+            TabNotices.Clear();
             if (feed == null)
             {
                 return false;

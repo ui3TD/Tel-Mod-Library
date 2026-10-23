@@ -3,6 +3,7 @@ using SimpleJSON;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
 namespace AIFanChatter
@@ -118,6 +119,30 @@ namespace AIFanChatter
             }
             return next;
         }
+
+        /// <summary>
+        /// Takes the next posts, by when they're due, whether due or not, with every reply to them, in release
+        /// order: each post before its replies. For the player's Refresh.
+        /// </summary>
+        public static List<QueuedItem> TakeNext(int posts)
+        {
+            List<QueuedItem> taken = Items.Where(i => !i.IsReply).OrderBy(i => i.Due).Take(posts).ToList();
+            List<QueuedItem> replies = Items.Where(i => i.IsReply && taken.Any(p => p.User == i.ParentUser && p.Text == i.ParentText)).ToList();
+            List<QueuedItem> next = new();
+            foreach (QueuedItem post in taken)
+            {
+                next.Add(post);
+                next.AddRange(replies.Where(r => r.ParentUser == post.User && r.ParentText == post.Text).OrderBy(r => r.Due));
+            }
+            Items.RemoveAll(next.Contains);
+            return next;
+        }
+
+        /// <summary>Whether any post is waiting; a reply alone waits for its post in the feed.</summary>
+        public static bool HasPosts => PostCount > 0;
+
+        /// <summary>How many posts are waiting, not counting replies.</summary>
+        public static int PostCount => Items.Count(i => !i.IsReply);
 
         public static string Serialize()
         {

@@ -20,6 +20,8 @@ namespace AIFanChatter
         IList<SNS_Manager._message> RecentPosts { get; }
         /// <summary>Queues the posts for the moment that happened at this in-game time.</summary>
         void Queue(List<SNS_Manager._message> posts, DateTime moment);
+        /// <summary>Shows the posts and their replies at once, without a notification: the player asked for them.</summary>
+        void ShowNow(List<SNS_Manager._message> posts);
     }
 
     /// <summary>
@@ -34,7 +36,6 @@ namespace AIFanChatter
         public const double MinGapSeconds = AIClient.MinGapSeconds;
         public const int MaxPerHour = AIClient.MaxPerHour;
         public const double BackoffSeconds = AIClient.BackoffSeconds;
-        public const double ErrorNoticeSeconds = AIClient.ErrorNoticeSeconds;
         public const int TestMaxTokens = AIClient.TestMaxTokens;
 
         /// <summary>Fewer fans than this, and there's no one to post.</summary>
@@ -65,6 +66,7 @@ namespace AIFanChatter
 
         public bool InFlight => client.InFlight;
         public bool Suspended => client.Suspended;
+        public bool Paused => client.Paused;
 
         /// <summary>
         /// The Monday that starts the in-game week of a date.
@@ -74,14 +76,20 @@ namespace AIFanChatter
         /// <summary>
         /// Why a request can't be sent now, or null when it can.
         /// </summary>
-        public string Blocked() => client.Blocked() ?? (host.FanCounts.Values.Sum() < MinFans ? "the agency has fewer than " + MinFans + " fans" : null);
+        /// <param name="manual">For the player's Refresh: see AIClient.Blocked.</param>
+        public string Blocked(bool manual = false) => client.Blocked(manual) ?? (TooFewFans ? "the agency has fewer than " + MinFans + " fans" : null);
+
+        /// <summary>Whether the agency has too few fans for anyone to post.</summary>
+        public bool TooFewFans => host.FanCounts.Values.Sum() < MinFans;
 
         /// <summary>
         /// Asks for posts about a moment, if the limits allow. Returns whether a request was sent.
         /// </summary>
-        public bool Request(Moment moment)
+        /// <param name="manual">The player's Refresh: it isn't counted toward the limits (AIClient.Blocked), and its
+        /// posts show at once instead of over the days after.</param>
+        public bool Request(Moment moment, bool manual = false)
         {
-            if (moment == null || Blocked() != null)
+            if (moment == null || Blocked(manual) != null)
             {
                 return false;
             }
@@ -143,10 +151,17 @@ namespace AIFanChatter
                     noRetry = true;
                     Log.Warn("The model's reply had only one post again; it's shown, and one-post replies aren't sent again until the settings change.");
                 }
-                host.Queue(posts, momentTime);
+                if (manual)
+                {
+                    host.ShowNow(posts);
+                }
+                else
+                {
+                    host.Queue(posts, momentTime);
+                }
             }
 
-            return client.Send(system, user, Prompt.ReplySchemaFor(codes),reply => Handle(reply, false), moment.Label);
+            return client.Send(system, user, Prompt.ReplySchemaFor(codes), reply => Handle(reply, false), moment.Label, manual);
         }
 
         /// <summary>

@@ -160,7 +160,7 @@ namespace AIFanChatter.Tests
         }
 
         [Fact]
-        public void Errors_ShowAtMostEveryTenMinutes()
+        public void EveryError_IsReported()
         {
             // Refusals only cost their own request, so requests go on and each one fails again
             TestEnv.Vars[Settings.PerWeekVar] = "7";
@@ -170,12 +170,8 @@ namespace AIFanChatter.Tests
                 Assert.True(dispatcher.Request(Moment()));
                 transport.Reply(200, Replies.Anthropic("", "refusal"));
             }
-            Assert.Single(host.Notices);
+            Assert.Equal(3, host.Notices.Count);
             Assert.Equal(3, TestEnv.Logs.Count);
-            host.RealTime += 600;
-            Assert.True(dispatcher.Request(Moment()));
-            transport.Reply(200, Replies.Anthropic("", "refusal"));
-            Assert.Equal(2, host.Notices.Count);
         }
 
         /// <summary>
@@ -189,7 +185,7 @@ namespace AIFanChatter.Tests
             Assert.True(dispatcher.Request(single));
             transport.Reply(200, Replies.Anthropic("Here are some posts: none, sorry."));
             Assert.True(dispatcher.Suspended);
-            Assert.Equal("AI Fan Chatter: No fan posts for the single Midnight Platform: claude-haiku-5-5 on Anthropic didn't use the "
+            Assert.Equal("No fan posts for the single Midnight Platform: claude-haiku-5-5 on Anthropic didn't use the "
                 + "reply format. Requests stopped: choose another model, then press Apply in Mod Settings.", host.Notices.Single().Text);
             host.RealTime += 3600;
             Assert.False(dispatcher.Request(Moment()));
@@ -276,8 +272,8 @@ namespace AIFanChatter.Tests
             Assert.Single(transport.Sent);
             Assert.Contains("Connection test", transport.Sent[0].Body);
             transport.Reply(200, Replies.Anthropic("OK"));
-            Assert.Contains("connected", host.Notices.Single().Text);
-            Assert.False(host.Notices.Single().Error);
+            Assert.Equal(NoticeKind.Connected, host.Notices.Single().Kind);
+            Assert.True(host.Notices.Single().FromApply);
         }
 
         [Fact]

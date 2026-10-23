@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace AIFanChatter
 {
@@ -124,9 +125,39 @@ namespace AIFanChatter
             }
         }
 
-        public void Notify(string text, bool error)
+        /// <summary>
+        /// Shows a notice at the top of the social media tab, with the tab's red dot when it's closed. The result
+        /// of Apply also pops up, as the player is in Settings then; a connection that works only pops up.
+        /// </summary>
+        public void Notify(string text, NoticeKind kind, bool fromApply)
         {
-            NotificationManager.AddNotification(text, error ? mainScript.red32 : mainScript.green32);
+            if (TabNotices.Add(text, kind))
+            {
+                MarkTab();
+            }
+            if (fromApply || kind == NoticeKind.Connected)
+            {
+                NotificationManager.AddNotification(kind == NoticeKind.Connected ? AIMod.Name + " connected: " + text : AIMod.Name + ": " + text,
+                    kind == NoticeKind.Connected ? mainScript.green32 : mainScript.red32);
+            }
+        }
+
+        /// <summary>The social media tab's red dot, unless the tab is open or there's no agency (the main menu).</summary>
+        internal static void MarkTab()
+        {
+            try
+            {
+                if (mainScript.IsMainMenu() || Tabs_Manager.GetOpenTabType() == Tabs_Manager._tab._type.sns)
+                {
+                    return;
+                }
+                Camera.main.GetComponent<mainScript>().Data.GetComponent<Tabs_Manager>().GetTab(Tabs_Manager._tab._type.sns)
+                    .Button.GetComponent<LeftBarButton>().WarningMark(show: true);
+            }
+            catch (Exception e)
+            {
+                Log.Warn("Couldn't mark the social media tab: " + e.Message);
+            }
         }
 
         public void NextFrame(Action action)
@@ -142,10 +173,29 @@ namespace AIFanChatter
             // Posts whose time passed while the request ran appear now, even with the clock paused
             FeedRelease.OnTimeTick();
         }
+
+        public void ShowNow(List<SNS_Manager._message> posts)
+        {
+            // Turned off while the request ran: dropped, as queued posts are
+            if (!Settings.Enabled)
+            {
+                return;
+            }
+            List<QueuedItem> items = new();
+            foreach (SNS_Manager._message post in posts)
+            {
+                items.Add(new QueuedItem { Due = staticVars.dateTime, User = post.User, Text = post.Message });
+                items.AddRange(post.Replies.Select(reply => new QueuedItem
+                {
+                    Due = staticVars.dateTime, User = reply.User, Text = reply.Message, IsReply = true, ParentUser = post.User, ParentText = post.Message
+                }));
+            }
+            FeedRelease.ReleaseNow(items);
+        }
     }
 
     /// <summary>
-    /// Puts queued posts and replies into the game's feed when they're due.
+    /// Puts queued posts and replies into the game's feed when they're due, or at once for the Refresh bar.
     /// </summary>
     internal static class FeedRelease
     {
@@ -188,12 +238,43 @@ namespace AIFanChatter
             {
                 try
                 {
-                    Release(item);
+                    Release(item, quiet: !item.First);
                 }
                 catch (Exception e)
                 {
                     ReportTickError(e);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Puts posts and replies into the feed at once, in order, without a notification: the player asked
+        /// for them with Refresh. The feed scrolls to the top, where the new posts are.
+        /// </summary>
+        public static void ReleaseNow(List<QueuedItem> items)
+        {
+            foreach (QueuedItem item in items)
+            {
+                try
+                {
+                    Release(item, quiet: true);
+                }
+                catch (Exception e)
+                {
+                    ReportTickError(e);
+                }
+            }
+            try
+            {
+                ScrollRect scroll = Camera.main.GetComponent<mainScript>().Data.GetComponent<SNS_Manager>().Container.GetComponentInParent<ScrollRect>();
+                if (scroll != null)
+                {
+                    scroll.verticalNormalizedPosition = 1f;
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Warn("Couldn't scroll the feed to the new posts: " + e.Message);
             }
         }
 
@@ -206,12 +287,12 @@ namespace AIFanChatter
             }
         }
 
-        private static void Release(QueuedItem item)
+        private static void Release(QueuedItem item, bool quiet)
         {
             if (!item.IsReply)
             {
                 // Through the game's own method, so other mods' patches on it see every post
-                Quiet = !item.First;
+                Quiet = quiet;
                 try
                 {
                     SNS_Manager.AddMessage(new SNS_Manager._message { User = item.User, Message = item.Text });

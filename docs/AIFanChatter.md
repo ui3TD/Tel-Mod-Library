@@ -95,7 +95,7 @@ The group these parts call "the group" is the group the moment is about:
 
 ### `{event}`
 
-What kind of moment it is, such as `Event: the group released a new single`.
+What kind of moment it is, such as `Event: the group released a new single`. The Refresh button's request, with no posts waiting, is `Event: everyday fan chatter about the group`, and its `{facts}` is one line, `What fans talk about`, listing topics a post can pick from.
 
 ### `{facts}`
 
@@ -202,6 +202,8 @@ Each line gives, in this order:
 
 The group's own totals are in `{agency}`, so the lines leave them out.
 
+**The Refresh button's request:** 5 idols of the main group, picked at random each time: one of the 3 with the most fans and 4 from the rest.
+
 ### `{history}`
 
 Earlier results to compare with. Empty when there's nothing earlier.
@@ -219,11 +221,12 @@ Earlier results to compare with. Empty when there's nothing earlier.
 - **A hiatus:** nothing. The game keeps only the end of her last hiatus, which `{facts}` gives.
 - **A random event:** how often the same event happened before, and when it last did. For an event in a storyline, the text of the storyline's earlier events that happened, oldest first. The game doesn't keep which answer was given, so an earlier event is only included when every answer of it that leads on in the storyline had a public outcome, or the game posted about it. The answers themselves aren't included.
 - **A dating scandal:** nothing. The game gives each idol at most one.
+- **The Refresh button's request:** 3 picked at random each time from the latest single, an earlier single, the latest finished concert and a show on air, such as `Latest single: "Midnight Platform" (Pop, Loneliness lyrics, Elegant choreography): 104000 sales, quality 80%, fan satisfaction 82%, released 3 weeks ago`.
 - **A paid policy change or a staff firing:** the latest scandal of each idol whose points paid for it, and of the group when its own points did: the text of her most recent event that can add scandal points. Dating scandals aren't in the game's event log, so they're never named.
 
 ### `{feed}`
 
-The latest 8 posts on the game's feed, oldest first, without their replies. It includes posts the mod has queued that haven't appeared yet. Empty when the feed has no posts.
+The latest 8 posts on the game's feed, oldest first, without their replies, or the latest 20 for the Refresh button's request. It includes posts the mod has queued that haven't appeared yet. Empty when the feed has no posts.
 
 ## Example
 
@@ -362,17 +365,18 @@ Each placeholder was filled in as follows:
 - **One post:** when the prompt asks for several posts through `{min}` and the reply has only one, it sends the request once more. If that reply has only one post too, it shows it, and doesn't send one-post replies again until you change a setting.
 - **Emoji:** it takes them out, because the feed can't show them.
 - **Timing:** it spreads the posts over the two in-game days after the moment, in order, each at a random time in its share of the two days. Each reply comes with its post or up to 6 hours after it. Posts whose time has already passed when the AI's reply arrives appear at once.
+- **The Refresh button:** its label says how many posts are waiting, such as `Refresh feed (12 waiting)`, or `Refresh feed (AI request)` when none are and a press will send a request. It shows the next 5 waiting posts at once, each with its replies. With no posts waiting, it sends a request for everyday chatter and shows the posts as soon as they arrive. Neither shows a notification. The request isn't counted toward requests per week, the 30 seconds between requests or the 20 an hour, and it's sent even when requests per week is 0. It isn't sent while another request is running, or while requests are stopped or paused; the notice at the top of the tab says why. With fewer than 100 fans, a notice says nobody is posting about the group yet. The feed scrolls to the top to show the new posts. Posts that arrive after you turn the mod off are dropped.
 - **Reply format:** when your AI service supports it, it asks for replies in the reply format, so the replies always come back in that shape.
 - **Reasoning:** it asks models that reason before answering to reason only a little (low effort), which makes requests cheaper. A service ignores the setting if it doesn't know it. A service or model that rejects the request gets it again without the low effort, and if it rejects that too, without the reply format. What it rejected isn't asked for again until you change a setting.
 - **An answer in the wrong field:** some providers send the whole answer in the reply's reasoning field and leave the answer itself empty. The mod uses the posts it finds there.
 
 ## When a request fails
 
-The mod never sends a failed request again. It shows a notification that says what happened, which service and model it was, which moment got no posts, and what you can do. What happens next depends on whose fault it was:
+The mod never sends a failed request again. A notice at the top of the Social Media tab, under the Refresh feed bar, says what happened, which service and model it was, which moment got no posts, and what you can do, and the tab gets its red dot. While requests are stopped or paused, a red notice says so until they run again. Other notices stay until you close them; the latest 3 are kept, and the same notice again moves to the top instead of showing twice. Notices aren't saved. What happens next depends on whose fault it was:
 
 - **The model can't do the job:** it ran out of room for its answer (by reasoning or writing too much), sent an empty answer, or sent an answer that isn't in the format the mod asked for. The same model would keep failing and costing money, so requests stop. Choose another model, then press Apply in Mod Settings to start them again.
 - **The settings are wrong:** the service rejected the API key or refused access to the model, the account is out of credit, the service doesn't know the model, or the Base URL leads to something that isn't an AI service. Requests stop. Fix the setting, or add credit, then press Apply in Mod Settings to start them again.
 - **The service is busy or can't be reached:** no internet connection, a timeout, too many requests, the service is down, or a provider behind the service failed or had no room for the request (common with free models). Requests pause for 10 minutes, then go on. Press Apply in Mod Settings to try again at once.
 - **The model declined, or the service's content filter stopped the answer:** only that moment gets no posts, because it depends on what the moment is about. Requests go on.
 
-Pressing Apply starts stopped or paused requests again even when you haven't changed anything, and tests the connection, so a notification tells you at once whether it works now. When requests aren't stopped, pressing Apply sends nothing.
+Pressing Apply starts stopped or paused requests again even when you haven't changed anything, and tests the connection, so a notification tells you at once whether it works now. The connection test's result is the one notice that also pops up, since you're in Settings when you press Apply. When requests aren't stopped, pressing Apply sends nothing.

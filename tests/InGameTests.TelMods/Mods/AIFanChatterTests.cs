@@ -111,6 +111,402 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
+        /// The Refresh bar on the real social media tab, in every state the player can see: across the tab
+        /// under its title and above the posts, drawn and tinted as the game's blue buttons are, and reached
+        /// by a click. A click with posts queued shows the next 5 with their replies and scrolls up to them;
+        /// with nothing queued, it sends a request and shows the posts when the reply comes, reading
+        /// Refreshing... and taking no clicks meanwhile. While another moment's request runs it's faded with
+        /// nothing queued and clickable with posts queued. Turned off, it hides, the posts move up, and a
+        /// waiting refresh's posts are dropped. Screenshots go to %TEMP%\AIFanChatterRefreshScreens.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator RefreshButton_ShowsQueuedPostsAndAsksForMore(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+            yield return Game.CloseAllPopups(ctx);
+
+            const string reply = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"posts\\\":[" +
+                "{\\\"user\\\":\\\"F_HC_T\\\",\\\"text\\\":\\\"refresh one\\\",\\\"replies\\\":[{\\\"user\\\":\\\"M_C_A\\\",\\\"text\\\":\\\"refresh reply\\\"}]}," +
+                "{\\\"user\\\":\\\"M_C_YA\\\",\\\"text\\\":\\\"refresh two\\\"}]}\"},\"finish_reason\":\"stop\"}]}";
+            string shots = Path.Combine(Path.GetTempPath(), "AIFanChatterRefreshScreens");
+            Directory.CreateDirectory(shots);
+
+            List<SNS_Manager._message> before = SNS_Manager.Messages.ToList();
+            Type queueType = mod.GetType("AIFanChatter.FeedQueue", true);
+            IList queue = (IList)AccessTools.Field(queueType, "Items").GetValue(null);
+            using (LocalServer server = new(reply))
+            using (TempKeyFolder(mod, out _))
+            using (Game.Variable(Prefix + "Provider", "2"))
+            using (Game.Variable(Prefix + "BaseURL", server.Url))
+            using (Game.Variable(Prefix + "Model", "test-model"))
+            using (Game.Variable(Prefix + "PerWeek", "7"))
+            using (Game.Variable(Prefix + "Enabled", "1"))
+            using (TestTools.Restore(() => RestoreFeed(mod, before)))
+            using (TestTools.Restore(() => Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed)))
+            using (TestTools.Restore(() => ResetRequestLimits(mod)))
+            {
+                yield return TestTools.WaitFor(ctx, () => server.Requests >= 1, 10f, "the connection test");
+                yield return new WaitForSecondsRealtime(1f);
+                AccessTools.Method(queueType, "Clear").Invoke(null, null);
+
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.sns);
+                // The tab fades in over 0.3 seconds
+                yield return new WaitForSecondsRealtime(0.6f);
+                Transform tab = Tabs_Manager.GetTabObject(Tabs_Manager._tab._type.sns).transform;
+                Transform button = tab.Find("AIFanChatter_Refresh");
+                if (button == null)
+                {
+                    ctx.Fail("The social media tab has no Refresh button");
+                    yield break;
+                }
+                TMP_Text label = button.GetComponentInChildren<TMP_Text>();
+                // Nothing queued: a press asks the AI service, and the bar says so
+                FieldInfo tooltipField = AccessTools.Field(typeof(ButtonDefault), "tooltipText");
+                string Tooltip() => (string)tooltipField.GetValue(button.GetComponent<ButtonDefault>()) ?? "";
+                ctx.Assert(label != null && label.text == "Refresh feed (AI request)", "With nothing queued the bar reads " + (label == null ? "nothing" : "\"" + label.text + "\""));
+                ctx.Assert(Tooltip().StartsWith("Asks your AI service"), "With nothing queued the tooltip reads \"" + Tooltip() + "\"");
+                ctx.Assert(label == null || label.textInfo.characterCount == label.text.Length && !label.isTextOverflowing, "The bar's label doesn't fit");
+                ctx.Assert(button.GetComponent<Button>().interactable, "The bar can't be clicked");
+                Image barImage = button.GetComponent<Image>();
+                ctx.Assert(barImage.sprite != null && barImage.sprite.name == "blue" && barImage.type == Image.Type.Sliced, "The bar isn't drawn as the game's blue buttons are");
+
+                RectTransform postsRect = (RectTransform)tab.Find("ScrollRect");
+                Rect own = ScreenRect(button), title = ScreenRect(tab.Find("Title")), posts = ScreenRect(postsRect),
+                    scrollBar = ScreenRect(tab.Find("Singles_Slider")), panel = ScreenRect(tab);
+                ctx.Record("barRect", own);
+                ctx.Assert(own.yMax <= title.yMin + 1f, "The bar reaches into the title: " + own + " and " + title);
+                ctx.Assert(own.yMin >= posts.yMax && own.yMin >= scrollBar.yMax, "The bar covers the posts or their scroll bar: " + own + ", " + posts + ", " + scrollBar);
+                ctx.Assert(own.xMin >= panel.xMin && own.xMax <= panel.xMax && own.width >= panel.width * 0.9f, "The bar isn't across the tab: " + own + " in " + panel);
+                GameObject hit = TopHit(own.center);
+                ctx.Assert(hit != null && hit.transform.IsChildOf(button), "A click on the bar reaches " + (hit == null ? "nothing" : hit.name));
+                yield return Screenshot(Path.Combine(shots, "1-refresh-button.png"));
+
+                // The longest count a player could see still fits; the bar puts its own text back next frame
+                label.text = "Refresh feed (999 waiting)";
+                label.ForceMeshUpdate();
+                ctx.Assert(!label.isTextOverflowing && label.preferredWidth <= ((RectTransform)label.transform).rect.width, "\"Refresh feed (999 waiting)\" doesn't fit the bar");
+                yield return null;
+                ctx.Assert(label.text == "Refresh feed (AI request)", "The bar didn't put its label back: \"" + label.text + "\"");
+
+                // Hovered and pressed, as the game's blue buttons look
+                Button barButton = button.GetComponent<Button>();
+                ctx.Record("transition", barButton.transition + ", hover " + (Color32)barButton.colors.highlightedColor + ", pressed " + (Color32)barButton.colors.pressedColor
+                    + ", hover sprite " + (barButton.spriteState.highlightedSprite == null ? "none" : barButton.spriteState.highlightedSprite.name));
+                Color normalTint = barImage.canvasRenderer.GetColor();
+                var pointer = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current) { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left };
+                UnityEngine.EventSystems.ExecuteEvents.Execute(button.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.pointerEnterHandler);
+                yield return new WaitForSecondsRealtime(0.3f);
+                Color hoverTint = barImage.canvasRenderer.GetColor();
+                Sprite hoverSprite = barImage.overrideSprite;
+                yield return Screenshot(Path.Combine(shots, "1b-hover.png"));
+                UnityEngine.EventSystems.ExecuteEvents.Execute(button.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
+                yield return new WaitForSecondsRealtime(0.3f);
+                Color pressedTint = barImage.canvasRenderer.GetColor();
+                yield return Screenshot(Path.Combine(shots, "1c-pressed.png"));
+                UnityEngine.EventSystems.ExecuteEvents.Execute(button.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);
+                UnityEngine.EventSystems.ExecuteEvents.Execute(button.gameObject, pointer, UnityEngine.EventSystems.ExecuteEvents.pointerExitHandler);
+                yield return new WaitForSecondsRealtime(0.3f);
+                ctx.Record("tints", "normal " + (Color32)normalTint + ", hover " + (Color32)hoverTint + ", pressed " + (Color32)pressedTint);
+                ctx.Assert(hoverTint != normalTint || hoverSprite != barImage.sprite, "Hovering doesn't change the bar");
+                ctx.Assert(pressedTint != hoverTint, "Pressing doesn't change the bar");
+
+                Button barButton2 = button.GetComponent<Button>();
+                ButtonDefault barDefault = button.GetComponent<ButtonDefault>();
+                ScrollRect scroll = postsRect.GetComponent<ScrollRect>();
+                bool Ready() => label.text.StartsWith("Refresh feed (") && barButton2.interactable && barDefault.active && label.alpha == 1f;
+                string Looks() => "\"" + label.text + "\", " + (barButton2.interactable ? "clickable" : "not clickable") + ", sounds " + (barDefault.active ? "on" : "off") + ", label alpha " + label.alpha;
+                List<SNS_Manager._message> Batch(string tag, int posts) => Enumerable.Range(1, posts).Select(i => new SNS_Manager._message
+                {
+                    User = "F_C_T",
+                    Message = "<noparse>" + tag + " " + i + "</noparse>",
+                    Replies = new List<SNS_Manager._message> { new() { User = "M_HC_A", Message = "<noparse>reply to " + tag + " " + i + "</noparse>" } }
+                }).ToList();
+                void Queue(List<SNS_Manager._message> batch) =>
+                    AccessTools.Method(queueType, "AddBatch").Invoke(null, new object[] { batch, staticVars.dateTime.AddDays(10), new System.Random(1) });
+                object dispatcher = AccessTools.Property(mod.GetType("AIFanChatter.Dispatcher", true), "Instance").GetValue(null, null);
+                bool InFlight() => (bool)AccessTools.Property(dispatcher.GetType(), "InFlight").GetValue(dispatcher, null);
+
+                // Enough posts to scroll, scrolled to the bottom
+                for (int i = 0; i < 15; i++)
+                    SNS_Manager.Messages.Add(new SNS_Manager._message { User = "M_C_T", Message = "<noparse>older " + i + "</noparse>" });
+                Game.Main.Data.GetComponent<SNS_Manager>().RenderMessages();
+                yield return null;
+                scroll.verticalNormalizedPosition = 0f;
+                yield return null;
+
+                // 7 posts queued for days from now: a click shows the first 5 with their replies, and the feed scrolls up to them
+                Queue(Batch("queued", 7));
+                yield return null;
+                ctx.Assert(label.text == "Refresh feed (7 waiting)" && Ready(), "With 7 posts queued the bar is " + Looks());
+                ctx.Assert(Tooltip().StartsWith("Shows the next 5 waiting posts"), "With posts queued the tooltip reads \"" + Tooltip() + "\"");
+                yield return Screenshot(Path.Combine(shots, "1d-posts-waiting.png"));
+                DateTime clock = staticVars.dateTime;
+                int feedBefore = SNS_Manager.Messages.Count;
+                Click(button.gameObject);
+                yield return null;
+                List<string> shown = SNS_Manager.Messages.Skip(feedBefore).Select(m => m.Message).ToList();
+                ctx.Record("shownFromQueue", shown.Count);
+                ctx.Assert(shown.SequenceEqual(Enumerable.Range(1, 5).Select(i => "<noparse>queued " + i + "</noparse>")), "The click showed " + string.Join(", ", shown.ToArray()));
+                ctx.Assert(SNS_Manager.Messages.Skip(feedBefore).All(m => m.Replies.Count == 1), "A shown post is missing its reply");
+                ctx.Assert(queue.Count == 4, "The queue holds " + queue.Count + " items, not the last 2 posts and their replies");
+                yield return null;
+                ctx.Assert(label.text == "Refresh feed (2 waiting)", "After showing 5 of 7 the bar reads \"" + label.text + "\"");
+                ctx.Assert(server.Received == 1, "The click sent a request although posts were queued");
+                ctx.Assert(scroll.verticalNormalizedPosition > 0.99f, "The feed didn't scroll up to the new posts: " + scroll.verticalNormalizedPosition);
+
+                // Nothing queued: a click asks for more. While it waits, the bar reads Refreshing..., is faded,
+                // and a click does nothing; the posts appear when the reply comes, at the top
+                AccessTools.Method(queueType, "Clear").Invoke(null, null);
+                feedBefore = SNS_Manager.Messages.Count;
+                server.DelayMs = 1500;
+                int receivedBefore = server.Received;
+                Click(button.gameObject);
+                yield return TestTools.WaitFor(ctx, () => server.Received > receivedBefore, 5f, "the refresh request");
+                yield return null;
+                ctx.Assert(label.text == "Refreshing..." && !barButton2.interactable && !barDefault.active && label.alpha < 1f, "While waiting the bar is " + Looks());
+                int requestsWaiting = server.Received;
+                Click(button.gameObject);
+                yield return Screenshot(Path.Combine(shots, "2-refreshing.png"));
+                scroll.verticalNormalizedPosition = 0f;
+                yield return TestTools.WaitFor(ctx, () => SNS_Manager.Messages.Count >= feedBefore + 2, 15f, "the refreshed posts");
+                yield return null;
+                ctx.Assert(Ready(), "After the reply the bar is " + Looks());
+                ctx.Assert(server.Received == requestsWaiting, "A click while waiting sent another request");
+                SNS_Manager._message one = SNS_Manager.Messages.LastOrDefault(m => m.Message == "<noparse>refresh one</noparse>");
+                ctx.Assert(one != null && SNS_Manager.Messages.Any(m => m.Message == "<noparse>refresh two</noparse>"), "The refreshed posts aren't in the feed");
+                ctx.Assert(one != null && one.Replies.Any(r => r.Message == "<noparse>refresh reply</noparse>"), "The refreshed reply isn't under its post");
+                ctx.Assert(queue.Count == 0, "The refreshed posts went to the queue: " + queue.Count);
+                ctx.Assert(scroll.verticalNormalizedPosition > 0.99f, "The feed didn't scroll up to the refreshed posts: " + scroll.verticalNormalizedPosition);
+                ctx.Assert(staticVars.dateTime == clock, "The clock ran during the test");
+                yield return new WaitForSecondsRealtime(0.3f);
+                yield return Screenshot(Path.Combine(shots, "3-after-refresh.png"));
+
+                // Another moment's request running: with nothing queued the bar is faded and still reads Refresh feed;
+                // once posts are queued it can show them, without waiting for that request
+                object moment = Activator.CreateInstance(mod.GetType("AIFanChatter.Moment", true), "an in-game test");
+                bool sent = (bool)AccessTools.Method(dispatcher.GetType(), "Request").Invoke(dispatcher, new[] { moment, false });
+                ctx.Assert(sent, "The other moment's request wasn't sent: " + AccessTools.Method(dispatcher.GetType(), "Blocked").Invoke(dispatcher, new object[] { false }));
+                yield return null;
+                yield return null;
+                ctx.Assert(label.text == "Refresh feed" && !barButton2.interactable && !barDefault.active && label.alpha < 1f, "During another request with nothing queued the bar is " + Looks());
+                yield return Screenshot(Path.Combine(shots, "4-other-request.png"));
+                Queue(Batch("waiting", 2));
+                yield return null;
+                ctx.Assert(Ready(), "During another request with posts queued the bar is " + Looks());
+                feedBefore = SNS_Manager.Messages.Count;
+                Click(button.gameObject);
+                yield return null;
+                ctx.Assert(SNS_Manager.Messages.Count == feedBefore + 2, "During another request a click showed " + (SNS_Manager.Messages.Count - feedBefore) + " queued posts, not 2");
+                yield return TestTools.WaitFor(ctx, () => !InFlight(), 15f, "the other request to finish");
+                yield return null;
+                ctx.Assert(Ready(), "After the other request the bar is " + Looks());
+                AccessTools.Method(queueType, "Clear").Invoke(null, null);
+
+                // Turned off while a refresh waits: its posts are dropped
+                feedBefore = SNS_Manager.Messages.Count;
+                Click(button.gameObject);
+                yield return null;
+                using (Game.Variable(Prefix + "Enabled", "0"))
+                {
+                    yield return TestTools.WaitFor(ctx, () => !InFlight(), 15f, "the refresh to finish");
+                    yield return null;
+                    ctx.Assert(SNS_Manager.Messages.Count == feedBefore, "With the mod off the refresh still showed " + (SNS_Manager.Messages.Count - feedBefore) + " posts");
+
+                    // Off: the bar is gone and the posts start where it was
+                    Rect postsOff = ScreenRect(postsRect);
+                    ctx.Assert(!button.GetComponent<Image>().enabled && !label.enabled, "The bar still shows with the mod off");
+                    ctx.Assert(postsOff.yMax >= own.yMax - 1f, "With the mod off the posts start at " + postsOff.yMax + ", below where the bar was (" + own.yMax + ")");
+                    // Turning it back on tests the connection; answered at once, so it's over before the server stops
+                    server.DelayMs = 0;
+                }
+                yield return null;
+                yield return null;
+                ctx.Assert(Math.Abs(ScreenRect(postsRect).yMax - posts.yMax) < 0.5f, "Turned back on, the posts didn't move back under the bar");
+                yield return new WaitForSecondsRealtime(1f);
+                ctx.Record("requests", server.Requests);
+                ctx.Record("screenshots", shots);
+            }
+        }
+
+        /// <summary>
+        /// The mod's notices at the top of the real social media tab, through the mod's own Notify: a notice
+        /// gives the closed tab its red dot and doesn't pop up; in the tab, the stopped notice comes first, in
+        /// red, without a close button, then the others, newest first, a repeat moved to the top. The cards
+        /// sit between the Refresh bar and the posts, which move down under them, and the longest text fits
+        /// its card. Closing one moves the posts back up by its height; the stopped notice goes once requests
+        /// run again. Only the result of Apply also pops up. Screenshots go to %TEMP%\AIFanChatterRefreshScreens.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator Notices_ShowAtTheTopOfTheTab(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+            yield return Game.CloseAllPopups(ctx);
+            NotificationsContainer popups = UnityEngine.Object.FindObjectOfType<NotificationsContainer>();
+            if (popups == null)
+            {
+                ctx.Fail("The game has no notification panel");
+                yield break;
+            }
+
+            const string reply = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}";
+            string shots = Path.Combine(Path.GetTempPath(), "AIFanChatterRefreshScreens");
+            Directory.CreateDirectory(shots);
+            Type noticesType = mod.GetType("AIFanChatter.TabNotices", true);
+            Type kinds = mod.GetType("AICore.NoticeKind", true);
+            object host = Activator.CreateInstance(mod.GetType("AIFanChatter.GameHost", true), true);
+            MethodInfo notify = AccessTools.Method(host.GetType(), "Notify");
+            void Notify(string text, string kind, bool fromApply) => notify.Invoke(host, new[] { text, Enum.Parse(kinds, kind), fromApply });
+            void ResetNotices() => AccessTools.Method(noticesType, "Reset").Invoke(null, null);
+            object dispatcher = AccessTools.Property(mod.GetType("AIFanChatter.Dispatcher", true), "Instance").GetValue(null, null);
+            object client = AccessTools.Field(dispatcher.GetType(), "client").GetValue(dispatcher);
+            void Stopped(bool stopped) => AccessTools.Field(client.GetType(), "suspended").SetValue(client, stopped);
+            GameObject redDot = Game.Main.Data.GetComponent<Tabs_Manager>().GetTab(Tabs_Manager._tab._type.sns).Button.GetComponent<LeftBarButton>().warningMark;
+
+            const string stoppedText = "openrouter.ai rejected the API key (HTTP 401: invalid key). Requests stopped: fix the key, then press Apply in Mod Settings.";
+            string longText = "No fan posts for the event Producer caught dating an idol: deepseek/deepseek-v4-pro-0813 on openrouter.ai's provider failed ("
+                + string.Concat(Enumerable.Repeat("The upstream provider returned an error. ", 4)).Substring(0, 100) + "…). Other moments still get posts.";
+            const string shortText = "No fan posts for the single Midnight Platform: the model declined. Other moments still get posts.";
+
+            using (LocalServer server = new(reply))
+            using (TempKeyFolder(mod, out _))
+            using (Game.Variable(Prefix + "Provider", "2"))
+            using (Game.Variable(Prefix + "BaseURL", server.Url))
+            using (Game.Variable(Prefix + "Model", "test-model"))
+            using (Game.Variable(Prefix + "Enabled", "1"))
+            using (TestTools.Restore(() => { ResetNotices(); Stopped(false); if (redDot != null) redDot.SetActive(false); }))
+            using (TestTools.Restore(() => Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed)))
+            {
+                yield return TestTools.WaitFor(ctx, () => server.Requests >= 1, 10f, "the connection test");
+                yield return new WaitForSecondsRealtime(1f);
+                ResetNotices();
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                yield return null;
+                if (redDot != null)
+                    redDot.SetActive(false);
+                // Pop-ups are told apart by their text: the connection test's own may still be on screen
+                bool PoppedUp(string text) => popups.GetComponentsInChildren<Notification>(true)
+                    .Any(n => n.TextObj != null && n.TextObj.GetComponentsInChildren<Text>(true).Any(t => t.text.Contains(text)));
+
+                // With the tab closed: the red dot, and no pop-up
+                Stopped(true);
+                Notify(stoppedText, "Stopped", false);
+                ctx.Assert(redDot == null || redDot.activeSelf, "A notice didn't give the social media tab its red dot");
+                Notify(shortText, "Missed", false);
+                Notify(longText, "Missed", false);
+                Notify(shortText, "Missed", false);
+                yield return new WaitForSecondsRealtime(0.5f);
+                ctx.Assert(!PoppedUp(stoppedText) && !PoppedUp(shortText) && !PoppedUp("deepseek"), "A notice popped up");
+
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.sns);
+                yield return new WaitForSecondsRealtime(0.6f);
+                Transform tab = Tabs_Manager.GetTabObject(Tabs_Manager._tab._type.sns).transform;
+                Transform area = tab.Find("AIFanChatter_Notices");
+                Transform bar = tab.Find("AIFanChatter_Refresh");
+                RectTransform postsRect = (RectTransform)tab.Find("ScrollRect");
+                if (area == null || bar == null)
+                {
+                    ctx.Fail("The social media tab has no " + (area == null ? "notice area" : "Refresh bar"));
+                    yield break;
+                }
+                List<Transform> cards = area.Cast<Transform>().ToList();
+                string CardText(Transform card) => card.Find("Text").GetComponent<TMP_Text>().text;
+                ctx.Record("cards", cards.Count);
+                ctx.Assert(cards.Count == 3, "The tab shows " + cards.Count + " notices, not 3");
+                if (cards.Count != 3)
+                    yield break;
+                ctx.Assert(CardText(cards[0]).Contains(stoppedText) && cards[0].Find("Close") == null, "The stopped notice isn't first, without a close button");
+                ctx.Assert(CardText(cards[1]).Contains(shortText) && CardText(cards[2]).Contains("deepseek"), "The others aren't newest first, with the repeat moved to the top");
+                ctx.Assert(cards[1].Find("Close") != null && cards[2].Find("Close") != null, "A closable notice has no close button");
+                ctx.Assert(cards[0].GetComponent<Image>().color.r > cards[1].GetComponent<Image>().color.r, "The stopped notice isn't redder than the others");
+
+                Rect barRect = ScreenRect(bar), areaRect = ScreenRect(area), posts = ScreenRect(postsRect);
+                ctx.Assert(areaRect.yMax <= barRect.yMin && posts.yMax <= areaRect.yMin, "The notices aren't between the bar and the posts: " + barRect + ", " + areaRect + ", " + posts);
+                foreach (Transform card in cards)
+                {
+                    TMP_Text text = card.Find("Text").GetComponent<TMP_Text>();
+                    text.ForceMeshUpdate();
+                    ctx.Assert(!text.isTextOverflowing && text.preferredHeight <= ((RectTransform)text.transform).rect.height + 1f,
+                        "A notice's text doesn't fit its card: " + text.preferredHeight + " high in " + ((RectTransform)text.transform).rect.height);
+                }
+                yield return Screenshot(Path.Combine(shots, "7-notices.png"));
+
+                // Closing one: the posts move back up by its height
+                Transform close = cards[2].Find("Close");
+                GameObject hit = TopHit(ScreenRect(close).center);
+                ctx.Assert(hit != null && hit.transform.IsChildOf(close), "A click on the close button reaches " + (hit == null ? "nothing" : hit.name));
+                Click(close.gameObject);
+                yield return null;
+                yield return null;
+                ctx.Assert(area.Cast<Transform>().Count() == 2, "Closing a notice left " + area.Cast<Transform>().Count() + " cards");
+                ctx.Assert(ScreenRect(postsRect).yMax > posts.yMax + 1f, "The posts didn't move up after a notice closed");
+
+                // Requests run again: the stopped notice goes by itself
+                Stopped(false);
+                yield return null;
+                yield return null;
+                ctx.Assert(area.Cast<Transform>().Count() == 1 && CardText(area.GetChild(0)).Contains(shortText), "The stopped notice stayed after requests ran again");
+
+                // The result of Apply also pops up, and is in the tab too
+                Stopped(true);
+                Notify(stoppedText, "Stopped", true);
+                yield return TestTools.WaitFor(ctx, () => PoppedUp(stoppedText), 3f, "the Apply result to pop up");
+                yield return null;
+                yield return null;
+                ctx.Assert(CardText(area.GetChild(0)).Contains(stoppedText), "The Apply result isn't in the tab");
+                ctx.Record("screenshots", shots);
+            }
+        }
+
+        /// <summary>
+        /// Forgets the automatic request a test sent, so later tests aren't held back by the 30 seconds between
+        /// requests or the weekly and hourly counts.
+        /// </summary>
+        private static void ResetRequestLimits(Assembly mod)
+        {
+            object dispatcher = AccessTools.Property(mod.GetType("AIFanChatter.Dispatcher", true), "Instance").GetValue(null, null);
+            object client = AccessTools.Field(dispatcher.GetType(), "client").GetValue(dispatcher);
+            AccessTools.Field(client.GetType(), "lastSend").SetValue(client, double.NegativeInfinity);
+            ((IList)AccessTools.Field(client.GetType(), "sentThisHour").GetValue(client)).Clear();
+            AccessTools.Field(client.GetType(), "sentThisWeek").SetValue(client, 0);
+        }
+
+        private static Rect ScreenRect(Transform t)
+        {
+            Vector3[] c = new Vector3[4];
+            ((RectTransform)t).GetWorldCorners(c);
+            Camera cam = t.GetComponentInParent<Canvas>()?.rootCanvas.worldCamera;
+            Vector2 a = RectTransformUtility.WorldToScreenPoint(cam, c[0]), b = RectTransformUtility.WorldToScreenPoint(cam, c[2]);
+            return Rect.MinMaxRect(a.x, a.y, b.x, b.y);
+        }
+
+        private static GameObject TopHit(Vector2 point)
+        {
+            var results = new List<UnityEngine.EventSystems.RaycastResult>();
+            UnityEngine.EventSystems.EventSystem.current.RaycastAll(
+                new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current) { position = point }, results);
+            return results.Count > 0 ? results[0].gameObject : null;
+        }
+
+        private static void Click(GameObject target)
+        {
+            UnityEngine.EventSystems.ExecuteEvents.Execute(target, new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current),
+                UnityEngine.EventSystems.ExecuteEvents.pointerClickHandler);
+        }
+
+        private static IEnumerator Screenshot(string path)
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+            ScreenCapture.CaptureScreenshot(path);
+            float start = Time.realtimeSinceStartup;
+            while (!File.Exists(path) && Time.realtimeSinceStartup - start < 5f)
+                yield return null;
+            yield return new WaitForSecondsRealtime(0.2f);
+        }
+
+        /// <summary>
         /// The mod's longest notice, with a long model name and a long message from the service, fits the
         /// game's real notification panel: TextMesh Pro doesn't cut it off, the text stays inside its box,
         /// and the notification stays on screen. Only the engine lays the text out; the unit tests check
@@ -242,8 +638,8 @@ namespace InGameTests.TelMods
 
                 object dispatcher = AccessTools.Property(mod.GetType("AIFanChatter.Dispatcher", true), "Instance").GetValue(null, null);
                 object moment = Activator.CreateInstance(mod.GetType("AIFanChatter.Moment", true), "an in-game test");
-                bool sent = (bool)AccessTools.Method(dispatcher.GetType(), "Request").Invoke(dispatcher, new[] { moment });
-                ctx.Assert(sent, "The request wasn't sent: " + AccessTools.Method(dispatcher.GetType(), "Blocked").Invoke(dispatcher, null));
+                bool sent = (bool)AccessTools.Method(dispatcher.GetType(), "Request").Invoke(dispatcher, new[] { moment, false });
+                ctx.Assert(sent, "The request wasn't sent: " + AccessTools.Method(dispatcher.GetType(), "Blocked").Invoke(dispatcher, new object[] { false }));
                 if (!sent)
                     yield break;
 
@@ -469,9 +865,15 @@ namespace InGameTests.TelMods
             private readonly TcpListener listener = new(IPAddress.Loopback, 0);
             private readonly byte[] response;
             private int requests;
+            private int received;
 
             public string Url => "http://127.0.0.1:" + ((IPEndPoint)listener.LocalEndpoint).Port;
+            /// <summary>Requests answered.</summary>
             public int Requests => Volatile.Read(ref requests);
+            /// <summary>Requests received, answered yet or not.</summary>
+            public int Received => Volatile.Read(ref received);
+            /// <summary>How long the server waits before answering, in milliseconds.</summary>
+            public volatile int DelayMs;
 
             public LocalServer(string body)
             {
@@ -491,6 +893,8 @@ namespace InGameTests.TelMods
                         using TcpClient client = listener.AcceptTcpClient();
                         NetworkStream stream = client.GetStream();
                         ReadRequest(stream);
+                        Interlocked.Increment(ref received);
+                        Thread.Sleep(DelayMs);
                         stream.Write(response, 0, response.Length);
                         Interlocked.Increment(ref requests);
                     }

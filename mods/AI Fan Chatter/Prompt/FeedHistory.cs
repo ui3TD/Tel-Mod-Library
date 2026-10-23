@@ -20,7 +20,8 @@ namespace AIFanChatter
         /// <summary>
         /// The newest posts, oldest first, without their replies: "- F_HC_T: text". "" when there are none.
         /// </summary>
-        public static string Describe(IList<SNS_Manager._message> posts)
+        /// <param name="max">The most posts given; MaxPosts unless the moment asks for more.</param>
+        public static string Describe(IList<SNS_Manager._message> posts, int max = MaxPosts)
         {
             if (posts == null)
             {
@@ -28,7 +29,7 @@ namespace AIFanChatter
             }
             List<SNS_Manager._message> usable = posts.Where(p => p != null && Text(p.Message) != "").ToList();
             StringBuilder sb = new();
-            foreach (SNS_Manager._message post in usable.Skip(Math.Max(0, usable.Count - MaxPosts)))
+            foreach (SNS_Manager._message post in usable.Skip(Math.Max(0, usable.Count - max)))
             {
                 if (sb.Length > 0)
                 {

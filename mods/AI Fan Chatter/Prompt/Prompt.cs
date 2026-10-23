@@ -198,7 +198,7 @@ namespace AIFanChatter
             Dictionary<string, Func<string>> modules = new()
             {
                 ["event"] = () => "Event: " + moment.Kind,
-                ["feed"] = () => PromptTemplate.Wrap("feed", FeedHistory.Describe(posts))
+                ["feed"] = () => PromptTemplate.Wrap("feed", FeedHistory.Describe(posts, moment.FeedPosts))
             };
             foreach (string section in moment.SectionNames)
             {

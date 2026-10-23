@@ -23,6 +23,8 @@ namespace AIFanChatter
         public static readonly string[] Sections = { FactsSection, MembersSection, HistorySection, AgencySection };
 
         public readonly string Kind;
+        /// <summary>How many of the feed's newest posts the prompt gives.</summary>
+        public int FeedPosts = FeedHistory.MaxPosts;
         private readonly Dictionary<string, List<KeyValuePair<string, string>>> sections = new();
         private string label;
 

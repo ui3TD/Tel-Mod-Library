@@ -216,6 +216,9 @@ namespace AIFanChatter.LiveReport
                 // Last, as the graduate announces it and then leaves the group
                 new("graduation-announcement", () => { agency.AnnounceNow(); return MomentContext.GraduationAnnouncement(agency.Graduate); }),
                 new("graduation", () => GraduationMoment(agency)),
+                new("chatter", () => ChatterMoment(agency)),
+                new("chatter-2", () => ChatterMoment(agency)),
+                new("chatter-3", () => ChatterMoment(agency)),
             };
             string unknown = picked?.FirstOrDefault(name => all.All(m => m.Key != name));
             if (unknown != null)
@@ -247,7 +250,24 @@ namespace AIFanChatter.LiveReport
             ["hiatus-end"] = "an idol back from hiatus",
             ["graduation-announcement"] = "a graduation announcement",
             ["graduation"] = "a graduation",
+            ["chatter"] = "everyday chatter (Refresh)",
+            ["chatter-2"] = "everyday chatter again (Refresh)",
+            ["chatter-3"] = "everyday chatter a third time (Refresh)",
         };
+
+        private static readonly Random ChatterRandom = new();
+
+        /// <summary>
+        /// A Refresh with nothing queued. The agency's shows go on air first, so a show can be picked.
+        /// </summary>
+        private static Moment ChatterMoment(Agency agency)
+        {
+            if (!Shows.shows.Any(s => s.status == Shows._show._status.released))
+            {
+                agency.ShowNow();
+            }
+            return MomentContext.Chatter(ChatterRandom);
+        }
 
         /// <summary>
         /// The game's random event as the player answered it, with the agency's idols in its parts. Only an
@@ -634,14 +654,16 @@ namespace AIFanChatter.LiveReport
         /// <summary>The last notice the mod showed, for the report.</summary>
         public string LastNotice;
 
-        public void Notify(string text, bool error)
+        public void Notify(string text, NoticeKind kind, bool fromApply)
         {
             LastNotice = text;
-            Console.Error.WriteLine((error ? "Notice (error): " : "Notice: ") + text);
+            Console.Error.WriteLine("Notice (" + kind + "): " + text);
         }
         public void NextFrame(Action action) => action();
         // Straight into the queue: the game's feed isn't there to release posts into, and the report lists them all
         public void Queue(List<SNS_Manager._message> posts, DateTime moment) => FeedQueue.AddBatch(posts, moment, new Random());
+        // The report lists a Refresh's posts as queued too, due at once
+        public void ShowNow(List<SNS_Manager._message> posts) => FeedQueue.AddBatch(posts, GameTime, new Random());
     }
 
     /// <summary>

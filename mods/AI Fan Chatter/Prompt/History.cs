@@ -378,7 +378,7 @@ namespace AIFanChatter
         /// "\"Idol Kitchen\" (Internet, Food), with Rin and Aoi": its title, medium and genre as the game names
         /// them, and its cast: the idols in its cast slots, the whole group, or a rotating cast.
         /// </summary>
-        private static string ShowName(Shows._show show)
+        internal static string ShowName(Shows._show show)
         {
             string cast = show.castType == global::Shows._show._castType.entireGroup ? "the whole group"
                 : show.castType == global::Shows._show._castType.rotatingCast ? "a rotating cast"

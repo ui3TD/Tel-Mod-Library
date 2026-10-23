@@ -29,6 +29,7 @@ Supported element types are text, sliders, checkboxes, dropdowns and text fields
 - The tab shows your mod's `title` from `info.json` (or the text it names in `constants.json`). Tabs are in alphabetical order of these names.
 - A name too long for its tab is shown on two lines, ending in "…". The name at the top of your settings is always shown in full.
 - Apply saves every mod's settings, including those on tabs the player never opened. Cancel throws away every change.
+- Reset to Defaults sets the settings on the shown tab back to their defaults. Nothing is saved until the player presses Apply, and Cancel throws the defaults away. Rows with `"reset": false` keep their value.
 - The menu fits the player's screen. A mod that makes the game's popups narrower than about 600 units cuts off the right end of sliders.
 
 ## type: text
@@ -61,6 +62,9 @@ Slider elements output an integer as a string to an in-game variable.
 - **labelID**: ID for text defined in `JSON/Constants/constants.json`
 - **minValue** and **maxValue**: Optional integers. Default range: 0 to 100
 - **defaultValue**: Optional integer. Default: midpoint of range
+- **step**: Optional whole number of at least 1. The slider saves only `minValue`, `minValue + step`, `minValue + 2 × step` and so on, and `maxValue`, so `maxValue` can be picked even when the range isn't a whole number of steps. A `defaultValue` or saved value between steps moves to the nearest step. Default: 1
+
+With `"minValue": 0, "maxValue": 100, "step": 25` the slider saves 0, 25, 50, 75 or 100.
 
 ## type: checkbox
 
@@ -117,6 +121,62 @@ Text field elements let the player type free text, and output it to an in-game v
 - **defaultValue**: Optional string. Default: empty
 - **maxLength**: Optional integer, the most characters the player can type. Default: no limit
 - **password**: Optional boolean. When true, the field shows asterisks instead of what's typed, for API keys and other secrets. The value is still saved exactly as typed, in the save file, so a mod that must keep a secret out of saves has to move it elsewhere itself. Default: false
+- **inputType**: Optional. `"integer"` lets the player type only a whole number, and `"decimal"` only a number with a decimal point. Without it, the field takes any text.
+- **minValue** and **maxValue**: Optional numbers, for a field with `inputType`. Each one works without the other.
+
+A field with `inputType`:
+
+- When the player leaves the field, a number outside `minValue` and `maxValue` moves to the nearest limit, and a decimal in an `"integer"` field is rounded. An empty field goes back to the last number it held. Apply checks the field the same way, even if the player is still typing in it.
+- Its value is saved as plain digits (`"42"`, `"-3"`, `"0.5"`), like a slider's.
+- Its default is `defaultValue`, checked the same way. Without a `defaultValue`, it is 0, or the nearest limit if 0 is outside them.
+- The `password` option is ignored, because the field can only show the number.
+
+```json
+{
+	"type": "input",
+	"varID": "MyMod_Seats",
+	"labelID": "MYMOD__MODMENU__SEATS",
+	"inputType": "integer",
+	"minValue": 1,
+	"maxValue": 5000,
+	"defaultValue": "500"
+}
+```
+
+## Options for every row
+
+These go on any element, alongside its `type`:
+
+- **ignore**: Optional boolean. When true, the element is left out of the menu. Useful for testing. Default: false
+- **enabledIf**: Optional varID of another setting. The row is shown only while that setting is on (see below).
+- **reset**: Optional boolean. When false, Reset to Defaults leaves the row as it is. Use it for rows the player wouldn't want reset, such as a typed name, or a key your mod removes when the field is applied empty. Default: true
+
+### Showing a setting only when another is on (`enabledIf`)
+
+```json
+[
+	{
+		"type": "checkbox",
+		"varID": "MyMod_Custom",
+		"labelID": "MYMOD__MODMENU__CUSTOM"
+	},
+	{
+		"type": "slider",
+		"varID": "MyMod_CustomCount",
+		"labelID": "MYMOD__MODMENU__COUNT",
+		"enabledIf": "MyMod_Custom"
+	}
+]
+```
+
+The slider is shown only while the checkbox is ticked. When a row is hidden, the rows under it move up.
+
+- A setting is on when its value isn't empty and isn't 0. So a checkbox is on when ticked, a slider when above 0, a dropdown on any item but the first, and a text field when it has text in it.
+- The menu uses the value shown, even before the player presses Apply.
+- `enabledIf` can name a setting on another mod's tab. If no row in the menu has that varID, ModMenus reads its saved value, so your mod can show a row from its own code by setting that variable.
+- A row that depends on a hidden row is hidden too, whatever the hidden row's value.
+- Rows whose settings lead back to themselves (A depends on B, and B on A) are always shown, and a warning is logged.
+- A hidden row keeps its value, and Apply still saves it. Its default is saved when a game starts, like every other setting's. Your mod decides what a hidden setting means: for example, it can ignore the count while the checkbox is unticked.
 
 ## How settings are stored
 
@@ -133,6 +193,8 @@ ModMenus skips what it can't use and writes a warning to the BepInEx log, starti
 
 - A file that isn't valid JSON, or isn't a list (`[ ... ]`), is left out; other mods' settings still show.
 - A slider whose `defaultValue` is outside its range is left out.
+- A slider whose `step` isn't a whole number of at least 1 moves in steps of 1.
+- A text field with both `inputType` and `password` ignores `password`.
 - A dropdown whose saved or default choice is past the end of its list shows its last item.
 
 ## Tips
@@ -141,4 +203,3 @@ ModMenus skips what it can't use and writes a warning to the BepInEx log, starti
 - Implement null checks for `variables.Get(varID)` to handle cases where ModMenus is not installed, or the value was edited by hand.
 - To add vertical spacing, use a text element with an empty labelID (`""`).
 - Always define text in `constants.json` for translation support. If absolutely necessary, ModMenus can handle raw text from labelID or itemIDList fields.
-- For testing, add `"ignore": true` to any element to exclude it from parsing.

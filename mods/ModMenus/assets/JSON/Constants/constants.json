@@ -6,6 +6,10 @@
 	{
 		id: "MODMENU__NO_SETTINGS",
 		text: "No enabled mod has settings to show."
+	},
+	{
+		id: "MODMENU__RESET",
+		text: "Reset to Defaults"
 	}
 
 ]

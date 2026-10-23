@@ -12,7 +12,7 @@ Try one of these mods to see it in action:
 [/list]
 
 [h2]For Modders[/h2]
-ModMenus reads 'JSON/Mod Menu/modmenu.json' in your mod to build its settings menu. Supported elements: text, sliders, checkboxes, dropdowns and text fields.
+ModMenus reads 'JSON/Mod Menu/modmenu.json' in your mod to build its settings menu. Supported elements: text, sliders (with optional steps), checkboxes, dropdowns, and text fields (with optional number checking). Any row can be shown only while another setting is on.
 
 Format, examples and tips: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/ModMenus.md]ModMenus modding guide[/url]
 
@@ -28,3 +28,4 @@ Format, examples and tips: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/ma
 - 3.0.0: New password option for text fields: API keys and other secrets show as asterisks.
 - 3.1.0: Long setting labels wrap onto more lines instead of being cut off.
 - 4.0.0: Each mod's settings get their own tab, sorted A to Z; the menu fits every screen shape.
+- 4.1.0: Reset to Defaults button; slider steps; settings shown only when needed; number fields.

@@ -79,6 +79,7 @@ namespace ModMenus
         public const string BUTTON_LABEL = "MODMENU__BUTTON_LABEL";
         public const string APPLY_LABEL = "APPLY";
         public const string CANCEL_LABEL = "CANCEL";
+        public const string RESET_LABEL = "MODMENU__RESET";
 
         public const string NO_SETTINGS_LABEL = "MODMENU__NO_SETTINGS";
 
@@ -107,8 +108,8 @@ namespace ModMenus
         public const float POPUP_MARGIN_MAX = 24;
         public const float BUTTON_GAP = 8;
         public const float BUTTON_WIDTH = 184;
-        // Apply and Cancel sit this far either side of the panel's centre, as in the game's own popup
-        public const float BUTTON_SPREAD = 143;
+        // Cancel, Reset and Apply sit in a row under the panel, this far apart
+        public const float BUTTON_ROW_GAP = 24;
 
         // Inside the panel: the same margin on every side, and twice it between the tabs and the settings,
         // with a line in the middle. Each column's scroll bar sits inside it, on its right.
@@ -136,6 +137,12 @@ namespace ModMenus
         public const string JSON_FIELD_LIST = "itemIDList";
         public const string JSON_FIELD_MAXLEN = "maxLength";
         public const string JSON_FIELD_PASSWORD = "password";
+        public const string JSON_FIELD_STEP = "step";
+        public const string JSON_FIELD_ENABLEDIF = "enabledIf";
+        public const string JSON_FIELD_INPUTTYPE = "inputType";
+        public const string JSON_FIELD_RESET = "reset";
+        public const string JSON_INPUT_INTEGER = "integer";
+        public const string JSON_INPUT_DECIMAL = "decimal";
         public const string JSON_TYPE_TEXT = "text";
         public const string JSON_TYPE_DROPDOWN = "dropdown";
         public const string JSON_TYPE_SLIDER = "slider";
@@ -148,6 +155,7 @@ namespace ModMenus
         public const string POPUP_OBJ_NAME = "ModMenu";
         public const string APPLYBUTTON_OBJ_NAME = "ModMenuApply";
         public const string CANCELBUTTON_OBJ_NAME = "ModMenuCancel";
+        public const string RESETBUTTON_OBJ_NAME = "ModMenuReset";
         public const string MENU_TEXT_OBJ_NAME = "ModMenuText";
         public const string MENU_SLIDER_OBJ_NAME = "ModMenuSlider";
         public const string MENU_CHECKBOX_OBJ_NAME = "ModMenuCheckbox";
@@ -548,11 +556,13 @@ namespace ModMenus
             GameObject oldCancelButton = modMenuObj.transform.Find("Cancel").gameObject;
             GameObject applyButton = CloneButton(oldApplyButton, oldApplyButton.transform.parent, APPLYBUTTON_OBJ_NAME, APPLY_LABEL, new Color(0.2f, 0.7f, 0.2f), true);
             GameObject cancelButton = CloneButton(oldCancelButton, oldCancelButton.transform.parent, CANCELBUTTON_OBJ_NAME, CANCEL_LABEL, true);
+            GameObject resetButton = CloneButton(cancelButton, cancelButton.transform.parent, RESETBUTTON_OBJ_NAME, RESET_LABEL);
 
             // Attach custom component to Panel
             ModMenuManager panelModMenuManager = panelTransform.gameObject.AddComponent<ModMenuManager>();
             applyButton.GetComponent<Button>().onClick.AddListener(panelModMenuManager.OnApply);
             cancelButton.GetComponent<Button>().onClick.AddListener(panelModMenuManager.OnCancel);
+            resetButton.GetComponent<Button>().onClick.AddListener(panelModMenuManager.OnReset);
 
             // The settings first, so they're still the panel's first scroll area; then the tabs on the left, and
             // a line between them. Each page of settings is a child of the settings' container.
@@ -577,6 +587,7 @@ namespace ModMenus
             layout.panel = (RectTransform)panelTransform;
             layout.apply = (RectTransform)applyButton.transform;
             layout.cancel = (RectTransform)cancelButton.transform;
+            layout.reset = (RectTransform)resetButton.transform;
             layout.buttonHeight = layout.apply.rect.height;
             layout.tabColumn = (RectTransform)tabScroll.transform;
             layout.settingsArea = (RectTransform)settingsScroll.transform;
@@ -585,6 +596,9 @@ namespace ModMenus
 
             // Generate Menu Contents
             AddMenuItems(panelModMenuManager, menuContentContainer.transform, tabContainer.transform, dropdownLayer.transform);
+
+            // With no mod's settings shown, there's nothing to reset
+            resetButton.GetComponent<Button>().interactable = panelModMenuManager.selected != null;
         }
 
         /// <summary>
@@ -622,11 +636,150 @@ namespace ModMenus
         }
 
         /// <summary>
+        /// Reads a slider's step from its JSON item: 1 unless step is set. A step that isn't a whole number of
+        /// at least 1 is 1.
+        /// </summary>
+        /// <returns>False if step is set but isn't a whole number of at least 1.</returns>
+        public static bool TryGetSliderStep(JSONNode item, out int step)
+        {
+            step = 1;
+            if (string.IsNullOrEmpty(item[JSON_FIELD_STEP]))
+            {
+                return true;
+            }
+            float written = item[JSON_FIELD_STEP].AsFloat;
+            if (written < 1 || written != Mathf.Floor(written))
+            {
+                return false;
+            }
+            step = (int)written;
+            return true;
+        }
+
+        /// <summary>
+        /// The value a slider with a step saves: the nearest of min, min + step, min + 2 × step and so on up to
+        /// max, or max itself, so max can be picked even when the range isn't a whole number of steps. Halfway
+        /// goes up. With step 1 it's the whole number nearest the value, as sliders have always saved.
+        /// </summary>
+        public static float SnapToStep(float value, float min, float max, int step)
+        {
+            float clamped = Mathf.Clamp(value, min, max);
+            if (step <= 1)
+            {
+                return Mathf.Round(clamped);
+            }
+            float below = min + Mathf.Floor((clamped - min) / step) * step;
+            float above = Mathf.Min(below + step, max);
+            return Mathf.Round(clamped - below < above - clamped ? below : above);
+        }
+
+        /// <summary>
         /// Reads a text field's default from its JSON item: defaultValue as written, or empty if it isn't set.
         /// </summary>
         public static string GetInputDefault(JSONNode item)
         {
             return string.IsNullOrEmpty(item[JSON_FIELD_DEF]) ? "" : (string)item[JSON_FIELD_DEF];
+        }
+
+        /// <summary>
+        /// Reads what a text field takes from its JSON item: any text, or, with inputType "integer" or
+        /// "decimal", a number, between minValue and maxValue where they're set. Each limit works on its own.
+        /// </summary>
+        /// <param name="inputType">"integer" or "decimal"; null for any text.</param>
+        /// <returns>Whether the field takes a number.</returns>
+        public static bool GetNumberField(JSONNode item, out string inputType, out float? min, out float? max)
+        {
+            string type = item[JSON_FIELD_INPUTTYPE];
+            inputType = type == JSON_INPUT_INTEGER || type == JSON_INPUT_DECIMAL ? type : null;
+            min = string.IsNullOrEmpty(item[JSON_FIELD_MIN]) ? null : item[JSON_FIELD_MIN].AsFloat;
+            max = string.IsNullOrEmpty(item[JSON_FIELD_MAX]) ? null : item[JSON_FIELD_MAX].AsFloat;
+            return inputType != null;
+        }
+
+        /// <summary>
+        /// What a number field keeps of what was typed: the number, rounded to a whole number in an integer
+        /// field, and moved inside its limits; written as settings are saved ("7", "-2", "0.5"). A comma counts
+        /// as the decimal point. Text that isn't a number gives the fallback.
+        /// </summary>
+        public static string ValidNumber(string typed, bool integer, float? min, float? max, string fallback)
+        {
+            string text = (typed ?? "").Trim().Replace(',', '.');
+            if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double value) || double.IsNaN(value) || double.IsInfinity(value))
+            {
+                return fallback;
+            }
+
+            double low = min ?? double.MinValue;
+            double high = max ?? double.MaxValue;
+            if (integer)
+            {
+                // The limits move in to whole numbers, so the result is both whole and inside them
+                value = Math.Round(value);
+                low = Math.Ceiling(low);
+                high = Math.Floor(high);
+            }
+            if (value < low)
+            {
+                value = low;
+            }
+            else if (value > high)
+            {
+                value = high;
+            }
+            return value.ToString("0.######", CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// A number field's default: its defaultValue, checked as typing is; or, if that isn't a number,
+        /// 0 moved inside its limits.
+        /// </summary>
+        public static string NumberDefault(string def, bool integer, float? min, float? max)
+        {
+            return ValidNumber(def, integer, min, max, ValidNumber("0", integer, min, max, "0"));
+        }
+
+        /// <summary>
+        /// Whether a setting is on, for enabledIf: its value isn't missing, empty or a number equal to 0. So a
+        /// ticked checkbox, a slider above 0, a dropdown on any item but the first, or a text field with text.
+        /// </summary>
+        public static bool IsSettingOn(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return false;
+            }
+            return !TryParseSetting(value, out float number) || number != 0;
+        }
+
+        /// <summary>
+        /// Whether a row with enabledIf: varID is shown: the setting is on, and its own row, if it has an
+        /// enabledIf too, is shown. Settings that lead back to one already being checked form a loop, and the
+        /// loop's link counts as met.
+        /// </summary>
+        /// <param name="valueOf">A setting's value: its row's, if the menu has one, or the saved value.</param>
+        /// <param name="conditionOf">The enabledIf of a setting's row, or null if it has none.</param>
+        /// <param name="checking">The settings already being checked, which this adds to and takes from.</param>
+        /// <param name="loop">Set to true if a loop was found.</param>
+        public static bool ConditionMet(string varID, Func<string, string> valueOf, Func<string, string> conditionOf, HashSet<string> checking, ref bool loop)
+        {
+            if (!checking.Add(varID))
+            {
+                loop = true;
+                return true;
+            }
+            try
+            {
+                string parent = conditionOf(varID);
+                if (!string.IsNullOrEmpty(parent) && !ConditionMet(parent, valueOf, conditionOf, checking, ref loop))
+                {
+                    return false;
+                }
+                return IsSettingOn(valueOf(varID));
+            }
+            finally
+            {
+                checking.Remove(varID);
+            }
         }
 
         /// <summary>
@@ -704,6 +857,12 @@ namespace ModMenus
                 modNames.Add(menu.Mod.ModName);
             }
 
+            // A changed setting may show or hide rows with enabledIf
+            foreach (ModMenuItem item in pageParent.GetComponentsInChildren<ModMenuItem>(true))
+            {
+                item.manager = manager;
+            }
+
             // Every page is built shown, as the menu's rows always were; only now are the others hidden
             manager.ShowPage(manager.tabs[RememberedTab(modNames, ModMenuManager.lastModName)]);
         }
@@ -751,15 +910,16 @@ namespace ModMenus
                 // (The game's JSON parser drops empty strings, so an empty labelID reads as missing.)
                 if (string.IsNullOrEmpty(type) || (string.IsNullOrEmpty(label) && type != JSON_TYPE_TEXT) || item[JSON_FIELD_IGNORE].AsBool) continue;
                 string id;
+                GameObject row = null;
 
                 switch (type)
                 {
                     case JSON_TYPE_TEXT:
-                        GameObject textRow = AddMenuText(label ?? "", parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
+                        row = AddMenuText(label ?? "", parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
 
                         // As tall as its lines, so long text doesn't run into the next row. A blank one keeps its height: it's a spacer.
                         if (!string.IsNullOrEmpty(label))
-                            textRow.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                            row.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
                         break;
 
                     case JSON_TYPE_SLIDER:
@@ -769,7 +929,7 @@ namespace ModMenus
                         id = item[JSON_FIELD_VARID];
                         GetSliderRange(item, out float minValue, out float maxValue, out float defaultFloat);
 
-                        AddMenuSlider(id, label, minValue, maxValue, defaultFloat, parentTransform);
+                        row = AddMenuSlider(id, label, minValue, maxValue, defaultFloat, parentTransform);
                         break;
 
                     case JSON_TYPE_CHECKBOX:
@@ -783,7 +943,7 @@ namespace ModMenus
                             defaultBool = item[JSON_FIELD_DEF].AsBool;
                         }
 
-                        AddMenuCheckbox(id, label, defaultBool, parentTransform);
+                        row = AddMenuCheckbox(id, label, defaultBool, parentTransform);
                         break;
 
                     case JSON_TYPE_DROPDOWN:
@@ -804,7 +964,7 @@ namespace ModMenus
                             itemList[j] = jsonArrayItems[j];
                         }
 
-                        AddMenuDropdown(id, label, itemList, defaultSelect, parentTransform, dropdownLayer);
+                        row = AddMenuDropdown(id, label, itemList, defaultSelect, parentTransform, dropdownLayer);
                         break;
 
                     case JSON_TYPE_INPUT:
@@ -812,12 +972,70 @@ namespace ModMenus
                             continue;
 
                         id = item[JSON_FIELD_VARID];
-                        AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, item[JSON_FIELD_PASSWORD].AsBool, parentTransform);
+                        row = AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, item[JSON_FIELD_PASSWORD].AsBool, parentTransform);
                         break;
+                }
+
+                if (row != null)
+                {
+                    AddRowOptions(item, row);
                 }
             }
 
             return page;
+        }
+
+        /// <summary>
+        /// Gives a row the options any item can have, which the row builders don't take: a slider's step, a
+        /// number field's limits, "reset": false, and enabledIf.
+        /// </summary>
+        public static void AddRowOptions(JSONNode item, GameObject row)
+        {
+            ModMenuItem menuItem = row.GetComponent<ModMenuItem>();
+            if (menuItem != null)
+            {
+                // Only an explicit false: a missing field reads as false too
+                menuItem.noReset = !string.IsNullOrEmpty(item[JSON_FIELD_RESET]) && !item[JSON_FIELD_RESET].AsBool;
+
+                if (menuItem.settingsSlider != null)
+                {
+                    if (!TryGetSliderStep(item, out menuItem.step))
+                    {
+                        Debug.LogWarning("[ModMenus] The slider " + menuItem.varID + "'s step isn't a whole number of at least 1, so it moves in steps of 1.");
+                    }
+                }
+
+                if (menuItem.inputField != null && GetNumberField(item, out string inputType, out float? min, out float? max))
+                {
+                    MakeNumberField(menuItem, inputType, min, max);
+                    if (item[JSON_FIELD_PASSWORD].AsBool)
+                    {
+                        Debug.LogWarning("[ModMenus] The text field " + menuItem.varID + " takes a number, so its password option is ignored.");
+                    }
+                }
+            }
+
+            string condition = item[JSON_FIELD_ENABLEDIF];
+            if (!string.IsNullOrEmpty(condition))
+            {
+                row.AddComponent<ModMenuCondition>().varID = condition;
+            }
+        }
+
+        /// <summary>
+        /// Makes a text field take only a number: the game's field lets only a number be typed, and leaving the
+        /// field moves it inside its limits (see ValidNumber). This replaces the password option.
+        /// </summary>
+        public static void MakeNumberField(ModMenuItem menuItem, string inputType, float? min, float? max)
+        {
+            menuItem.inputType = inputType;
+            menuItem.inputMin = min;
+            menuItem.inputMax = max;
+
+            TMP_InputField field = menuItem.inputField;
+            field.contentType = inputType == JSON_INPUT_INTEGER ? TMP_InputField.ContentType.IntegerNumber : TMP_InputField.ContentType.DecimalNumber;
+            field.onEndEdit = new TMP_InputField.SubmitEvent();
+            field.onEndEdit.AddListener(menuItem.onEndInput);
         }
 
         /// <summary>
@@ -910,7 +1128,8 @@ namespace ModMenus
         /// <summary>
         /// The value a setting starts at, written as Apply would save it. Only settings the menu shows have one:
         /// text, ignored items, items missing their varID or labelID, sliders whose default is outside their
-        /// range and dropdowns without items are left out, as they are from the menu.
+        /// range and dropdowns without items are left out, as they are from the menu. A slider's default moves
+        /// to its nearest step, and a number field's is checked as typing is.
         /// </summary>
         public static bool TryGetDefault(JSONNode item, out string varID, out string value)
         {
@@ -931,7 +1150,8 @@ namespace ModMenus
                     GetSliderRange(item, out float min, out float max, out float def);
                     if (max < min || def < min || def > max)
                         return false;
-                    value = FormatSetting(Mathf.Round(def));
+                    TryGetSliderStep(item, out int step);
+                    value = FormatSetting(SnapToStep(def, min, max, step));
                     return true;
 
                 case JSON_TYPE_CHECKBOX:
@@ -947,7 +1167,9 @@ namespace ModMenus
                     return true;
 
                 case JSON_TYPE_INPUT:
-                    value = GetInputDefault(item);
+                    value = GetNumberField(item, out string inputType, out float? low, out float? high)
+                        ? NumberDefault(GetInputDefault(item), inputType == JSON_INPUT_INTEGER, low, high)
+                        : GetInputDefault(item);
                     return true;
 
                 default:
@@ -1072,7 +1294,7 @@ namespace ModMenus
             // Configure ModMenuItem
             ModMenuItem modSliderMenuItem = modSlider.AddComponent<ModMenuItem>();
             modSliderMenuItem.varID = varID;
-            modSliderMenuItem.defValue = savedValue;
+            modSliderMenuItem.defValue = def;
             modSliderMenuItem.tempValue = savedValue;
 
             // Configure Slider events
@@ -1127,7 +1349,7 @@ namespace ModMenus
             // Configure ModMenuItem
             ModMenuItem modCheckboxMenuItem = modCheckbox.AddComponent<ModMenuItem>();
             modCheckboxMenuItem.varID = varID;
-            modCheckboxMenuItem.defValue = savedValue ? 1 : 0;
+            modCheckboxMenuItem.defValue = def ? 1 : 0;
             modCheckboxMenuItem.tempValue = savedValue ? 1 : 0;
             modCheckboxMenuItem.checkboxText = modCheckboxCheck;
 
@@ -1174,7 +1396,7 @@ namespace ModMenus
             // Configure ModMenuItem
             ModMenuItem modDropdownMenuItem = modDropdown.AddComponent<ModMenuItem>();
             modDropdownMenuItem.varID = varID;
-            modDropdownMenuItem.defValue = savedValue;
+            modDropdownMenuItem.defValue = def;
             modDropdownMenuItem.tempValue = savedValue;
 
 
@@ -1498,7 +1720,7 @@ namespace ModMenus
 
 
         /// <summary>
-        /// Where the panel and the Apply and Cancel buttons go, in the popup's units, measured from its centre.
+        /// Where the panel and the Apply, Cancel and Reset buttons go, in the popup's units, measured from its centre.
         /// </summary>
         public struct MenuLayout
         {
@@ -1506,16 +1728,18 @@ namespace ModMenus
             public Rect Apply;
             public Rect Cancel;
             public float TabWidth;
+            public Rect Reset;
         }
 
         /// <summary>
         /// Fits the menu to the popup, which covers the screen. The game's popups keep the screen 1024 wide, so
         /// a wider screen gives a shorter popup. The panel is as big as fits, up to PANEL_MAX_WIDTH by
-        /// PANEL_MAX_HEIGHT, inside a margin that shrinks on short screens; Apply and Cancel sit under it, and the
-        /// two are centred together. The tab column is a quarter of the panel, between TAB_MIN_WIDTH and TAB_WIDTH.
+        /// PANEL_MAX_HEIGHT, inside a margin that shrinks on short screens; Cancel, Reset and Apply sit in a row
+        /// under it, and the two are centred together. The tab column is a quarter of the panel, between
+        /// TAB_MIN_WIDTH and TAB_WIDTH.
         /// </summary>
         /// <param name="popupSize">The popup's size.</param>
-        /// <param name="buttonHeight">How tall Apply and Cancel are.</param>
+        /// <param name="buttonHeight">How tall the buttons are.</param>
         public static MenuLayout LayoutFor(Vector2 popupSize, float buttonHeight)
         {
             float margin = Mathf.Clamp(0.04f * popupSize.y, POPUP_MARGIN_MIN, POPUP_MARGIN_MAX);
@@ -1524,15 +1748,17 @@ namespace ModMenus
             float top = (height + BUTTON_GAP + buttonHeight) / 2;
             float buttonsBottom = top - height - BUTTON_GAP - buttonHeight;
 
-            // On a panel too narrow for them, the buttons move in and then get narrower, staying under it
-            float buttonWidth = Mathf.Max(0, Mathf.Min(BUTTON_WIDTH, (width - BUTTON_GAP) / 2));
-            float spread = Mathf.Min(BUTTON_SPREAD, (width - buttonWidth) / 2);
+            // On a panel too narrow for them, the buttons and the gaps between them get narrower, staying under it
+            float gap = Mathf.Min(BUTTON_ROW_GAP, width / 20);
+            float buttonWidth = Mathf.Max(0, Mathf.Min(BUTTON_WIDTH, (width - 2 * gap) / 3));
+            float spread = buttonWidth + gap;
 
             return new MenuLayout
             {
                 Panel = new Rect(-width / 2, top - height, width, height),
                 Apply = new Rect(spread - buttonWidth / 2, buttonsBottom, buttonWidth, buttonHeight),
                 Cancel = new Rect(-spread - buttonWidth / 2, buttonsBottom, buttonWidth, buttonHeight),
+                Reset = new Rect(-buttonWidth / 2, buttonsBottom, buttonWidth, buttonHeight),
                 TabWidth = Mathf.Clamp(0.24f * width, TAB_MIN_WIDTH, TAB_WIDTH),
             };
         }
@@ -1620,6 +1846,15 @@ namespace ModMenus
             private int framesToShowTab;
 
             /// <summary>
+            /// While every row is being set at once, rows with enabledIf are shown or hidden once at the end
+            /// instead of after each one.
+            /// </summary>
+            private bool settingAll;
+
+            /// <summary>The settings whose enabledIf loop has been logged, so each loop is logged once.</summary>
+            private HashSet<string> loopsLogged;
+
+            /// <summary>
             /// Called when the mod menu is enabled. Every page shows the saved settings, whether or not
             /// its tab is shown; what was changed and not applied is gone.
             /// </summary>
@@ -1628,10 +1863,13 @@ namespace ModMenus
                 // A list left open when the menu closed would sit where it was, apart from its row,
                 // after the menu reopens scrolled to the top
                 CloseDropdownLists();
+                settingAll = true;
                 foreach (ModMenuItem item in GetComponentsInChildren<ModMenuItem>(true))
                 {
                     item.ShowSaved();
                 }
+                settingAll = false;
+                RefreshConditions();
                 if (scroll != null)
                 {
                     scroll.verticalNormalizedPosition = 1;
@@ -1717,6 +1955,91 @@ namespace ModMenus
             }
 
             /// <summary>
+            /// Sets the shown tab's settings back to their defaults, except rows with "reset": false, including
+            /// rows hidden by enabledIf. Nothing is saved: Apply saves the defaults, Cancel throws them away.
+            /// </summary>
+            public void OnReset()
+            {
+                if (selected == null || selected.page == null)
+                {
+                    return;
+                }
+                CloseDropdownLists();
+                settingAll = true;
+                foreach (ModMenuItem item in selected.page.transform.GetComponentsInChildren<ModMenuItem>(true))
+                {
+                    item.ShowDefault();
+                }
+                settingAll = false;
+                RefreshConditions();
+            }
+
+            /// <summary>
+            /// Called when the player changes a setting, which may show or hide rows with enabledIf.
+            /// </summary>
+            public void OnSettingChanged()
+            {
+                if (!settingAll)
+                {
+                    RefreshConditions();
+                }
+            }
+
+            /// <summary>
+            /// Shows each row with enabledIf while its setting is on, on every page (see ConditionMet), and hides
+            /// it otherwise; the rows under it move up. A setting's value is its row's, changed or not, on any
+            /// tab; or, if no row has it, its saved value. Hidden rows keep their value, and Apply saves it.
+            /// </summary>
+            public void RefreshConditions()
+            {
+                ModMenuCondition[] conditions = GetComponentsInChildren<ModMenuCondition>(true);
+                if (conditions.Length == 0)
+                {
+                    return;
+                }
+
+                Dictionary<string, string> values = new();
+                Dictionary<string, string> rowConditions = new();
+                foreach (ModMenuItem item in GetComponentsInChildren<ModMenuItem>(true))
+                {
+                    if (item.varID == null || values.ContainsKey(item.varID))
+                    {
+                        continue;
+                    }
+                    values[item.varID] = item.CurrentValue;
+                    ModMenuCondition own = item.GetComponent<ModMenuCondition>();
+                    rowConditions[item.varID] = own != null ? own.varID : null;
+                }
+                string ValueOf(string varID) => values.TryGetValue(varID, out string value) ? value : variables.Get(varID);
+                string ConditionOf(string varID) => rowConditions.TryGetValue(varID, out string condition) ? condition : null;
+
+                foreach (ModMenuCondition condition in conditions)
+                {
+                    bool loop = false;
+                    bool shown = ConditionMet(condition.varID, ValueOf, ConditionOf, new HashSet<string>(), ref loop);
+                    if (loop)
+                    {
+                        // No row is lost for good: a row in a loop could never be shown again once hidden
+                        shown = true;
+                        if ((loopsLogged ??= new HashSet<string>()).Add(condition.varID))
+                        {
+                            Debug.LogWarning("[ModMenus] The enabledIf settings leading from " + condition.varID + " lead back to themselves, so their rows are always shown.");
+                        }
+                    }
+                    if (!shown)
+                    {
+                        // An open list is in the dropdown layer, not in its row, and would stay there
+                        ModMenuItem item = condition.GetComponent<ModMenuItem>();
+                        if (item != null)
+                        {
+                            item.CloseList();
+                        }
+                    }
+                    condition.gameObject.SetActive(shown);
+                }
+            }
+
+            /// <summary>
             /// Handles the cancel action for the mod menu.
             /// </summary>
             public void OnCancel()
@@ -1733,8 +2056,9 @@ namespace ModMenus
                 CloseDropdownLists();
                 foreach(ModMenuItem item in GetComponentsInChildren<ModMenuItem>(true))
                 {
-                    // Only text fields have text; the other items save their number
-                    variables.Set(item.varID, item.tempText ?? FormatSetting(item.tempValue));
+                    // A number field still being typed in hasn't been checked yet
+                    item.Validate();
+                    variables.Set(item.varID, item.CurrentValue);
                 }
                 PopupManager.Close_();
             }
@@ -1797,6 +2121,7 @@ namespace ModMenus
             public RectTransform panel;
             public RectTransform apply;
             public RectTransform cancel;
+            public RectTransform reset;
             public RectTransform tabColumn;
             public RectTransform settingsArea;
             public RectTransform divider;
@@ -1842,6 +2167,7 @@ namespace ModMenus
                 PlaceFromCentre(panel, layout.Panel);
                 PlaceFromCentre(apply, layout.Apply);
                 PlaceFromCentre(cancel, layout.Cancel);
+                PlaceFromCentre(reset, layout.Reset);
 
                 float tabsRight = PANEL_MARGIN + layout.TabWidth;
                 float line = tabsRight + PANEL_MARGIN;
@@ -1898,6 +2224,40 @@ namespace ModMenus
                     RenderInput();
                 }
             }
+
+            /// <summary>
+            /// Shows the setting's default, unless its row has "reset": false, and keeps it until it's changed.
+            /// Called by Reset for every item on the shown tab.
+            /// </summary>
+            public void ShowDefault()
+            {
+                if (noReset)
+                {
+                    return;
+                }
+                if (settingsSlider != null)
+                {
+                    ShowSliderAt(defValue);
+                }
+                if (checkboxText != null)
+                {
+                    tempValue = defValue;
+                    checkboxText.SetCheck(tempValue != 0);
+                }
+                if (customDropdown != null)
+                {
+                    ShowDropdownAt(defValue);
+                }
+                if (inputField != null)
+                {
+                    ShowInputText(defText);
+                }
+            }
+
+            /// <summary>
+            /// What Apply saves: a text field's text, or the other items' number.
+            /// </summary>
+            public string CurrentValue => tempText ?? FormatSetting(tempValue);
 
             /// <summary>
             /// A dropdown's list that opens past the bottom of the screen moves up (see ListShift), and back when it closes.
@@ -2026,16 +2386,24 @@ namespace ModMenus
             }
 
             /// <summary>
-            /// Renders the current state of a slider item. Vanilla's Settings_Slider.Render_100 isn't used: it
-            /// needs the label to be a constant and divides by the maximum, which can be 0.
+            /// Renders the current state of a slider item.
             /// </summary>
             public void RenderSlider()
             {
+                ShowSliderAt(GetSavedFloat());
+            }
+
+            /// <summary>
+            /// Moves a slider to a value. Vanilla's Settings_Slider.Render_100 isn't used: it needs the label to be
+            /// a constant and divides by the maximum, which can be 0.
+            /// </summary>
+            private void ShowSliderAt(float value)
+            {
                 float range = settingsSlider.Max_Value - settingsSlider.Min_Value;
-                float position = range > 0 ? Mathf.Clamp01((GetSavedFloat() - settingsSlider.Min_Value) / range) : 0;
+                float position = range > 0 ? Mathf.Clamp01((value - settingsSlider.Min_Value) / range) : 0;
                 slider.value = position;
 
-                // Shows and keeps the whole number the slider saves, even if the slider didn't move
+                // Shows and keeps the value the slider saves, even if the slider didn't move
                 onUpdateSlider(position);
             }
 
@@ -2057,14 +2425,22 @@ namespace ModMenus
             /// </remarks>
             public void RenderDropdown()
             {
+                ShowDropdownAt(GetSavedFloat());
+            }
+
+            /// <summary>
+            /// Shows a dropdown's item, or its last item for a choice past the end of the list.
+            /// </summary>
+            private void ShowDropdownAt(float value)
+            {
                 int last = Mathf.Max(customDropdown.dropdownItems.Count - 1, 0);
-                int savedValue = Mathf.Clamp((int)Mathf.Floor(GetSavedFloat()), 0, last);
-                tempValue = savedValue;
+                int choice = Mathf.Clamp((int)Mathf.Floor(value), 0, last);
+                tempValue = choice;
 
                 // Without a click for every dropdown each time the menu opens
                 bool sounds = customDropdown.enableDropdownSounds;
                 customDropdown.enableDropdownSounds = false;
-                customDropdown.ChangeDropdownInfo(savedValue);
+                customDropdown.ChangeDropdownInfo(choice);
                 customDropdown.enableDropdownSounds = sounds;
             }
 
@@ -2073,7 +2449,37 @@ namespace ModMenus
             /// </summary>
             public void RenderInput()
             {
-                tempText = variables.Get(varID) ?? defText;
+                ShowInputText(variables.Get(varID) ?? defText);
+            }
+
+            /// <summary>
+            /// Shows a text field's text. A number field shows the number it keeps of it, or its default if
+            /// the text isn't a number (a save edited by hand, say).
+            /// </summary>
+            private void ShowInputText(string text)
+            {
+                tempText = text;
+                if (inputType != null)
+                {
+                    validText = NumberDefault(defText, inputType == JSON_INPUT_INTEGER, inputMin, inputMax);
+                    Validate();
+                    return;
+                }
+                inputField.SetTextWithoutNotify(tempText);
+            }
+
+            /// <summary>
+            /// Checks a number field's text (see ValidNumber): anything that isn't a number goes back to the last
+            /// number it held. Does nothing for other items.
+            /// </summary>
+            public void Validate()
+            {
+                if (inputType == null || inputField == null)
+                {
+                    return;
+                }
+                tempText = ValidNumber(tempText, inputType == JSON_INPUT_INTEGER, inputMin, inputMax, validText);
+                validText = tempText;
                 inputField.SetTextWithoutNotify(tempText);
             }
 
@@ -2086,19 +2492,28 @@ namespace ModMenus
                 {
                     tempValue = 1 - tempValue;
                     checkboxText.SetCheck(tempValue != 0);
+                    Changed();
                 }
             }
 
             /// <summary>
-            /// Handles value changes for a slider item.
+            /// Handles value changes for a slider item: it keeps the nearest value on its step (see SnapToStep).
+            /// A slider with a step bigger than 1 moves its handle there too, so it moves in steps.
             /// </summary>
             /// <param name="val">The new slider value.</param>
             public void onUpdateSlider(float val)
             {
                 if(settingsSlider != null)
                 {
-                    tempValue = Mathf.Round(settingsSlider.Min_Value + val * (settingsSlider.Max_Value - settingsSlider.Min_Value));
+                    float min = settingsSlider.Min_Value;
+                    float range = settingsSlider.Max_Value - min;
+                    tempValue = SnapToStep(min + val * range, min, settingsSlider.Max_Value, step);
+                    if (step > 1 && range > 0)
+                    {
+                        slider.SetValueWithoutNotify((tempValue - min) / range);
+                    }
                     sliderText.text = SliderLabel() + ": " + tempValue;
+                    Changed();
                 }
             }
 
@@ -2111,6 +2526,7 @@ namespace ModMenus
                 if (customDropdown != null)
                 {
                     tempValue = val;
+                    Changed();
                 }
             }
 
@@ -2121,6 +2537,29 @@ namespace ModMenus
             public void onUpdateInput(string val)
             {
                 tempText = val;
+                Changed();
+            }
+
+            /// <summary>
+            /// Handles the player leaving a number field: its number is checked (see Validate).
+            /// </summary>
+            /// <param name="val">The field's text.</param>
+            public void onEndInput(string val)
+            {
+                tempText = val;
+                Validate();
+                Changed();
+            }
+
+            /// <summary>
+            /// Tells the menu a setting changed, so rows with enabledIf can show or hide.
+            /// </summary>
+            private void Changed()
+            {
+                if (manager != null)
+                {
+                    manager.OnSettingChanged();
+                }
             }
 
             /// <summary>
@@ -2142,6 +2581,10 @@ namespace ModMenus
 
             public string varID;
             public float tempValue;
+
+            /// <summary>
+            /// The setting's default from the mod's menu file, which Reset shows. defText for a text field.
+            /// </summary>
             public float defValue;
 
             /// <summary>
@@ -2160,11 +2603,39 @@ namespace ModMenus
             public CustomDropdown customDropdown;
             public TMP_InputField inputField;
 
+            /// <summary>The menu's manager, told when the setting changes.</summary>
+            public ModMenuManager manager;
+
+            /// <summary>A slider's step (see SnapToStep).</summary>
+            public int step = 1;
+
+            /// <summary>Whether Reset leaves the setting as it is: "reset": false.</summary>
+            public bool noReset;
+
+            /// <summary>
+            /// A number field's type, "integer" or "decimal", and its limits; null for every other item.
+            /// </summary>
+            public string inputType;
+            public float? inputMin;
+            public float? inputMax;
+
+            /// <summary>The number a number field last held, which text that isn't a number goes back to.</summary>
+            private string validText;
+
             /// <summary>Whether the open list was moved up, and where it was before.</summary>
             private bool listMoved;
             private Vector2 listPosition;
             private List<RectTransform> beside;
             private List<Vector2> besidePositions;
+        }
+
+        /// <summary>
+        /// A row with enabledIf: it's shown only while that setting is on (see ModMenuManager.RefreshConditions).
+        /// </summary>
+        public class ModMenuCondition : MonoBehaviour
+        {
+            /// <summary>The setting the row depends on.</summary>
+            public string varID;
         }
 
         /// <summary>

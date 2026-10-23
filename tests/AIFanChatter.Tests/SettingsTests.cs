@@ -50,6 +50,16 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
+        /// ModMenus' Reset to Defaults would blank the key field, and Apply would then remove the saved key
+        /// (KeyStore.Apply), so the key row opts out of Reset. Every other row is reset.
+        /// </summary>
+        [Fact]
+        public void KeyRow_IsTheOnlyRowResetLeavesAlone()
+        {
+            Assert.Equal(new[] { Settings.ApiKeyVar }, Items().Where(i => i["reset"].Value == "false").Select(i => i["varID"].Value));
+        }
+
+        /// <summary>
         /// The key row must come after the provider row: Apply saves rows in order, and the key is filed under
         /// the provider just saved.
         /// </summary>

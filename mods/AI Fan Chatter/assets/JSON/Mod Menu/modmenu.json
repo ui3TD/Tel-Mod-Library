@@ -36,7 +36,8 @@
 		"labelID": "AIFANCHATTER__MODMENU__APIKEY",
 		"defaultValue": "",
 		"maxLength": 0,
-		"password": true
+		"password": true,
+		"reset": false
 	},
 	{
 		"type": "slider",

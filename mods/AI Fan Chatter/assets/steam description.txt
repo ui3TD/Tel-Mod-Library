@@ -74,3 +74,4 @@ Your saves load normally without it. The feed goes back to 20 posts.
 - 1.12.1: Base URLs work as each service documents them; Gemini keeps low reasoning effort
 - 1.13.0: The key field shows a saved key; clear it to remove the key
 - 1.14.0: Refresh feed bar; the mod's messages show at the top of the Social Media tab
+- 1.14.1: ModMenus' Reset to Defaults keeps your saved API key

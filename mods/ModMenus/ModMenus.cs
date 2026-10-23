@@ -156,6 +156,7 @@ namespace ModMenus
         public const string APPLYBUTTON_OBJ_NAME = "ModMenuApply";
         public const string CANCELBUTTON_OBJ_NAME = "ModMenuCancel";
         public const string RESETBUTTON_OBJ_NAME = "ModMenuReset";
+        public const string BLUE_BUTTON_SPRITE = "blue";
         public const string MENU_TEXT_OBJ_NAME = "ModMenuText";
         public const string MENU_SLIDER_OBJ_NAME = "ModMenuSlider";
         public const string MENU_CHECKBOX_OBJ_NAME = "ModMenuCheckbox";
@@ -556,7 +557,14 @@ namespace ModMenus
             GameObject oldCancelButton = modMenuObj.transform.Find("Cancel").gameObject;
             GameObject applyButton = CloneButton(oldApplyButton, oldApplyButton.transform.parent, APPLYBUTTON_OBJ_NAME, APPLY_LABEL, new Color(0.2f, 0.7f, 0.2f), true);
             GameObject cancelButton = CloneButton(oldCancelButton, oldCancelButton.transform.parent, CANCELBUTTON_OBJ_NAME, CANCEL_LABEL, true);
-            GameObject resetButton = CloneButton(cancelButton, cancelButton.transform.parent, RESETBUTTON_OBJ_NAME, RESET_LABEL);
+            // The game's blue button, so it isn't taken for Cancel or Apply
+            GameObject resetButton = CloneButton(applyButton, applyButton.transform.parent, RESETBUTTON_OBJ_NAME, RESET_LABEL);
+            Image resetImage = resetButton.GetComponent<Image>();
+            Sprite blueButton = Resources.FindObjectsOfTypeAll<Sprite>().FirstOrDefault(s => s.name == BLUE_BUTTON_SPRITE && resetImage.sprite != null && s.rect.size == resetImage.sprite.rect.size);
+            if (blueButton != null)
+            {
+                resetImage.sprite = blueButton;
+            }
 
             // Attach custom component to Panel
             ModMenuManager panelModMenuManager = panelTransform.gameObject.AddComponent<ModMenuManager>();

@@ -29,7 +29,12 @@ namespace AICore
         /// </summary>
         internal static Func<string, string> Read = variables.Get;
 
-        public static Provider Provider => (Provider)ReadInt(ProviderVar, (int)DefaultProvider, 0, 2);
+        public static Provider Provider => ProviderOf(Read(ProviderVar));
+
+        /// <summary>
+        /// The provider a Provider setting's value names; missing or out of range gives the default.
+        /// </summary>
+        internal static Provider ProviderOf(string value) => (Provider)ParseInt(value, (int)DefaultProvider, 0, 2);
 
         public static string BaseUrl => (Read(BaseUrlVar) ?? "").Trim();
 
@@ -39,9 +44,14 @@ namespace AICore
         /// A whole-number setting. ModMenus saves numbers as text with a dot decimal; anything missing,
         /// unreadable or out of range gives the default.
         /// </summary>
-        internal static int ReadInt(string varID, int def, int min, int max)
+        internal static int ReadInt(string varID, int def, int min, int max) => ParseInt(Read(varID), def, min, max);
+
+        /// <summary>
+        /// A whole-number setting's value, read as ReadInt reads a saved one.
+        /// </summary>
+        internal static int ParseInt(string text, int def, int min, int max)
         {
-            if (!double.TryParse(Read(varID), NumberStyles.Float, CultureInfo.InvariantCulture, out double value)
+            if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double value)
                 || double.IsNaN(value) || double.IsInfinity(value))
             {
                 return def;

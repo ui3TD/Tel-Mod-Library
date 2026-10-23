@@ -71,31 +71,26 @@ namespace AICore
         /// </summary>
         public const int MaxOutputTokens = 4096;
 
-        private static string Endpoint(Provider provider) => provider == Provider.Anthropic ? "messages" : "chat/completions";
-
         /// <summary>
-        /// The URL to post to; null with an error when there is none. A blank setting is the provider's own
-        /// address. A full endpoint is used as typed. For an OpenAI-compatible service, an address with a path
-        /// gets /chat/completions added, as the OpenAI SDKs add it to the base URL every service documents
-        /// (openrouter.ai/api/v1, api.groq.com/openai/v1, generativelanguage.googleapis.com/v1beta/openai,
-        /// open.bigmodel.cn/api/paas/v4, models.github.ai/inference); a bare host gets /v1/ and the endpoint, so
-        /// "http://localhost:11434" works for Ollama. Anthropic's own API: an address ending in /v1 gets the
-        /// endpoint added, any other /v1/ and the endpoint.
+        /// The URL to post to; null with an error when there is none. Anthropic and OpenAI always use their own
+        /// address; the Base URL is only for an OpenAI-compatible service. A full endpoint is used as typed. An address with a path gets /chat/completions added, as the OpenAI
+        /// SDKs add it to the base URL every service documents (openrouter.ai/api/v1, api.groq.com/openai/v1,
+        /// generativelanguage.googleapis.com/v1beta/openai, open.bigmodel.cn/api/paas/v4, models.github.ai/inference);
+        /// a bare host gets /v1/chat/completions, so "http://localhost:11434" works for Ollama.
         /// </summary>
         public static string ResolveUrl(Connection connection, out string error)
         {
             error = null;
+            switch (connection.Provider)
+            {
+                case Provider.Anthropic: return AnthropicUrl;
+                case Provider.OpenAI: return OpenAIUrl;
+            }
             string url = (connection.BaseUrl ?? "").Trim();
             if (url == "")
             {
-                switch (connection.Provider)
-                {
-                    case Provider.Anthropic: return AnthropicUrl;
-                    case Provider.OpenAI: return OpenAIUrl;
-                    default:
-                        error = "Set the service's address (Base URL) for an OpenAI-compatible service.";
-                        return null;
-                }
+                error = "Set the service's address (Base URL) for an OpenAI-compatible service.";
+                return null;
             }
             url = WithScheme(url);
             if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
@@ -103,18 +98,14 @@ namespace AICore
                 error = "The Base URL must be a web address, such as openrouter.ai/api/v1.";
                 return null;
             }
-            string endpoint = Endpoint(connection.Provider);
+            const string endpoint = "chat/completions";
             url = url.TrimEnd('/');
             if (url.EndsWith("/" + endpoint, StringComparison.OrdinalIgnoreCase))
             {
                 return url;
             }
             bool hasPath = uri.AbsolutePath.Trim('/') != "";
-            if (url.EndsWith("/v1", StringComparison.OrdinalIgnoreCase) || connection.Provider != Provider.Anthropic && hasPath)
-            {
-                return url + "/" + endpoint;
-            }
-            return url + "/v1/" + endpoint;
+            return hasPath ? url + "/" + endpoint : url + "/v1/" + endpoint;
         }
 
         /// <summary>
@@ -286,7 +277,7 @@ namespace AICore
             }
             if (root is not JSONClass)
             {
-                return ProviderReply.Fail(Problem.NotJson, "The service's reply isn't JSON. Check the Base URL.");
+                return ProviderReply.Fail(Problem.NotJson, "The service's reply isn't JSON." + (provider == Provider.Compatible ? " Check the Base URL." : ""));
             }
             // A provider behind the service can fail after the request started and still send a 2xx
             string failed = Json.Obj(root, "error") != null ? ErrorMessage(root) : Json.Str(root, "error");

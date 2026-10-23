@@ -1,5 +1,7 @@
 using AICore;
+using HarmonyLib;
 using System;
+using System.Reflection;
 
 namespace AIFanChatter
 {
@@ -17,6 +19,12 @@ namespace AIFanChatter
         public const string ModelVar = ConnectionSettings.ModelVar;
         public const string ApiKeyVar = ConnectionSettings.ApiKeyVar;
         public const string PerWeekVar = Prefix + "PerWeek";
+
+        /// <summary>
+        /// Whether the Base URL row is shown, for its enabledIf. No row has it, so it's never saved; the mod
+        /// answers it in variables.Get (see UsesBaseUrl).
+        /// </summary>
+        public const string UsesBaseUrlVar = Prefix + "UsesBaseURL";
 
         public const bool DefaultEnabled = false;
         public const Provider DefaultProvider = ConnectionSettings.DefaultProvider;
@@ -42,9 +50,43 @@ namespace AIFanChatter
             set => ConnectionSettings.Read = value;
         }
 
-        public static bool Enabled => ReadInt(EnabledVar, DefaultEnabled ? 1 : 0, 0, 1) != 0;
+        public static bool Enabled => EnabledOf(Read(EnabledVar));
+
+        /// <summary>
+        /// Whether an Enabled setting's value turns the mod on; missing or anything but 0 or 1 gives the default.
+        /// </summary>
+        internal static bool EnabledOf(string value) => ConnectionSettings.ParseInt(value, DefaultEnabled ? 1 : 0, 0, 1) != 0;
 
         public static Provider Provider => ConnectionSettings.Provider;
+
+        /// <summary>
+        /// ModMenus' MenuValue: what its open menu shows for a setting, applied or not; null while the menu is
+        /// closed. Found by name on first use, when ModMenus is asking for UsesBaseUrlVar, so the mod also runs
+        /// without ModMenus. Null without ModMenus 4.2.0 or later. Tests replace it.
+        /// </summary>
+        internal static Func<string, string> MenuValue = varID => ModMenusValue.Value?.Invoke(varID);
+
+        private static readonly Lazy<Func<string, string>> ModMenusValue = new(() =>
+        {
+            MethodInfo method = AccessTools.Method("ModMenus.ModMenusUtils:MenuValue", new[] { typeof(string) });
+            return method != null && method.ReturnType == typeof(string)
+                ? (Func<string, string>)Delegate.CreateDelegate(typeof(Func<string, string>), method)
+                : null;
+        });
+
+        /// <summary>
+        /// Whether the Base URL row is shown: while the mod is on and OpenAI-compatible is picked, as the open
+        /// mod menu shows them, so the row follows the player's choices before Apply; while the menu is closed,
+        /// as saved.
+        /// </summary>
+        public static bool UsesBaseUrl
+        {
+            get
+            {
+                string Shown(string varID) => MenuValue(varID) ?? Read(varID);
+                return EnabledOf(Shown(EnabledVar)) && ConnectionSettings.ProviderOf(Shown(ProviderVar)) == Provider.Compatible;
+            }
+        }
 
         public static int PerWeek => ReadInt(PerWeekVar, DefaultPerWeek, 0, MaxPerWeek);
 

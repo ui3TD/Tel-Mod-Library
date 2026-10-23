@@ -68,6 +68,7 @@ namespace AIFanChatter
     /// Shows that a key is saved without the key ever being in the variables: ModMenus fills each field from
     /// variables.Get, so while the chosen service has a key, the key row reads as the placeholder, which the
     /// masked field shows as asterisks. Only what Get returns changes; the save still holds "".
+    /// Also answers the Base URL row's enabledIf (Settings.UsesBaseUrlVar), which nothing saves.
     /// </summary>
     [HarmonyPatch(typeof(variables), nameof(variables.Get))]
     [HarmonyPriority(Priority.Last)]
@@ -78,6 +79,19 @@ namespace AIFanChatter
 
         public static void Postfix(string name, ref string __result)
         {
+            if (name == Settings.UsesBaseUrlVar)
+            {
+                try
+                {
+                    __result = Settings.UsesBaseUrl ? "1" : "0";
+                }
+                catch (Exception)
+                {
+                    // The row shows, so the address can still be set
+                    __result = "1";
+                }
+                return;
+            }
             if (name != Settings.ApiKeyVar || !string.IsNullOrEmpty(__result))
             {
                 return;

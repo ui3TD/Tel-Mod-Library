@@ -1,4 +1,5 @@
 using HarmonyLib;
+using Michsky.UI.ModernUIPack;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -48,8 +49,14 @@ namespace InGameTests.TelMods
             }
             yield return Game.CloseAllPopups(ctx);
 
+            // The key row shows only while the mod is on, so each change of the key tests the connection, here on this PC
+            const string reply = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}";
+            using (LocalServer server = new(reply))
             using (TempKeyFolder(mod, out _))
-            using (Game.Variable(Prefix + "Enabled", "0"))
+            using (Game.Variable(Prefix + "Provider", "2"))
+            using (Game.Variable(Prefix + "BaseURL", server.Url))
+            using (Game.Variable(Prefix + "Model", "test-model"))
+            using (Game.Variable(Prefix + "Enabled", "1"))
             using (RestoreVariables())
             {
                 const string typed = "sk-ingame-test-WXYZ";
@@ -104,6 +111,81 @@ namespace InGameTests.TelMods
                 ctx.Assert(!File.Exists(file), "Clearing the field didn't remove the key file");
                 yield return OpenMenu(ctx, _ => { });
                 ctx.Assert(field.text == "", "The field still shows a key after it was removed");
+                Game.Main.Data.GetComponent<PopupManager>().Close();
+                // Turning the mod on, the typed key and the removed key: answered before the server stops
+                yield return TestTools.WaitFor(ctx, () => server.Requests >= 3, 10f, "the connection tests");
+            }
+            yield return Game.CloseAllPopups(ctx);
+            Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+        }
+
+        /// <summary>
+        /// In ModMenus' real menu, the Base URL row follows the AI service the player picks, before Apply: the
+        /// mod reads the pick with ModMenus' real MenuValue, found by name. The unit tests use a stand-in for it.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator BaseUrlRow_FollowsTheProviderPick(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+            if (!ModTest.IsActive(ModMenusId))
+            {
+                ctx.Note("ModMenus isn't enabled; skipped");
+                yield break;
+            }
+            yield return Game.CloseAllPopups(ctx);
+
+            // Saved as OpenAI-compatible, so turning the mod on tests the connection here on this PC
+            const string reply = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}";
+            using (LocalServer server = new(reply))
+            using (TempKeyFolder(mod, out _))
+            using (Game.Variable(Prefix + "Provider", "2"))
+            using (Game.Variable(Prefix + "BaseURL", server.Url))
+            using (Game.Variable(Prefix + "Model", "test-model"))
+            using (Game.Variable(Prefix + "Enabled", "1"))
+            using (RestoreVariables())
+            {
+                yield return TestTools.WaitFor(ctx, () => server.Requests >= 1, 10f, "the connection test");
+                GameObject popup = null;
+                yield return OpenMenu(ctx, found => popup = found);
+                Transform[] rows = popup != null ? popup.GetComponentsInChildren<Transform>(true) : new Transform[0];
+                Transform baseUrl = rows.FirstOrDefault(t => t.name == "ModMenuInput_" + Prefix + "BaseURL");
+                Transform provider = rows.FirstOrDefault(t => t.name == "ModMenuDropdown_" + Prefix + "Provider");
+                CustomDropdown dropdown = provider != null ? provider.GetComponentInChildren<CustomDropdown>(true) : null;
+                if (baseUrl == null || dropdown == null)
+                {
+                    ctx.Fail("The mod menu has no Base URL row or AI service dropdown");
+                    yield return Game.CloseAllPopups(ctx);
+                    yield break;
+                }
+
+                // The player shows the mod's tab, as a click on it does
+                Assembly modMenus = TelMod.ByHarmonyId(ModMenusId).Assembly();
+                Type tabType = modMenus.GetType("ModMenus.ModMenusUtils+ModMenuTab", true);
+                Component tab = popup.GetComponentsInChildren(tabType, true)
+                    .FirstOrDefault(t => AccessTools.Field(tabType, "page").GetValue(t) is GameObject page && provider.IsChildOf(page.transform));
+                if (tab == null)
+                {
+                    ctx.Fail("The mod menu has no AI Fan Chatter tab");
+                    yield return Game.CloseAllPopups(ctx);
+                    yield break;
+                }
+                AccessTools.Method(tabType, "OnClick").Invoke(tab, null);
+                yield return null;
+                ctx.Assert(baseUrl.gameObject.activeSelf, "The Base URL row is hidden with OpenAI-compatible saved");
+
+                // Picks in the open list, as the player's clicks make them; nothing is applied
+                IEnumerator Pick(int item)
+                {
+                    dropdown.Animate();
+                    yield return new WaitForSecondsRealtime(0.5f);
+                    dropdown.GetButton(item).GetComponent<Button>().onClick.Invoke();
+                    yield return new WaitForSecondsRealtime(0.5f);
+                }
+                yield return Pick(1);
+                ctx.Assert(!baseUrl.gameObject.activeSelf, "Picking OpenAI didn't hide the Base URL row before Apply");
+                yield return Pick(2);
+                ctx.Assert(baseUrl.gameObject.activeSelf, "Picking OpenAI-compatible didn't show the Base URL row before Apply");
                 Game.Main.Data.GetComponent<PopupManager>().Close();
             }
             yield return Game.CloseAllPopups(ctx);

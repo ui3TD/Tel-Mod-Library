@@ -13,6 +13,7 @@
 		"type": "dropdown",
 		"varID": "AIFanChatter_Provider",
 		"labelID": "AIFANCHATTER__MODMENU__PROVIDER",
+		"enabledIf": "AIFanChatter_Enabled",
 		"itemIDList": ["AIFANCHATTER__MODMENU__ANTHROPIC", "AIFANCHATTER__MODMENU__OPENAI", "AIFANCHATTER__MODMENU__COMPATIBLE"],
 		"defaultValue": 1
 	},
@@ -20,6 +21,7 @@
 		"type": "input",
 		"varID": "AIFanChatter_BaseURL",
 		"labelID": "AIFANCHATTER__MODMENU__BASEURL",
+		"enabledIf": "AIFanChatter_UsesBaseURL",
 		"defaultValue": "",
 		"maxLength": 200
 	},
@@ -27,6 +29,7 @@
 		"type": "input",
 		"varID": "AIFanChatter_Model",
 		"labelID": "AIFANCHATTER__MODMENU__MODEL",
+		"enabledIf": "AIFanChatter_Enabled",
 		"defaultValue": "",
 		"maxLength": 100
 	},
@@ -34,6 +37,7 @@
 		"type": "input",
 		"varID": "AIFanChatter_APIKey",
 		"labelID": "AIFANCHATTER__MODMENU__APIKEY",
+		"enabledIf": "AIFanChatter_Enabled",
 		"defaultValue": "",
 		"maxLength": 0,
 		"password": true,
@@ -43,6 +47,7 @@
 		"type": "slider",
 		"varID": "AIFanChatter_PerWeek",
 		"labelID": "AIFANCHATTER__MODMENU__PERWEEK",
+		"enabledIf": "AIFanChatter_Enabled",
 		"minValue": 0,
 		"maxValue": 21,
 		"defaultValue": 2

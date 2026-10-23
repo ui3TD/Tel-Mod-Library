@@ -26,6 +26,8 @@ namespace AIFanChatter.Tests
             Vars.Clear();
             Logs.Clear();
             Settings.Read = name => Vars.TryGetValue(name, out string value) ? value : null;
+            // No ModMenus menu is open
+            Settings.MenuValue = _ => null;
             Log.Sink = Logs.Add;
             KeyFolder = Path.Combine(Path.GetTempPath(), "AIFanChatterTests", Guid.NewGuid().ToString("N"));
             KeyStore.FolderOverride = KeyFolder;

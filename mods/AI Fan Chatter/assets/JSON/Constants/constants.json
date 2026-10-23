@@ -25,7 +25,7 @@
 	},
 	{
 		id: "AIFANCHATTER__MODMENU__BASEURL",
-		text: "Base URL (leave blank for Anthropic or OpenAI)"
+		text: "Base URL (the service's address, such as openrouter.ai/api/v1)"
 	},
 	{
 		id: "AIFANCHATTER__MODMENU__MODEL",

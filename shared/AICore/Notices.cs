@@ -105,6 +105,8 @@ namespace AICore
             detail = Providers.Shorten((detail ?? "").Trim(), DetailLength).TrimEnd('.');
             string http = "HTTP " + status + (detail != "" ? ": " + detail : "");
             string quoted = detail != "" ? " (" + detail + ")" : "";
+            // Only an OpenAI-compatible service uses the Base URL
+            bool usesBaseUrl = connection.Provider == Provider.Compatible;
             switch (problem)
             {
                 case Problem.KeyRejected:
@@ -115,11 +117,11 @@ namespace AICore
                     return service + ": out of credit (" + http + "). " + Stopped + "add credit" + StartAgain;
                 case Problem.NotFound:
                     return service + " doesn't know model " + connection.ResolvedModel + " or the address (" + http + "). " + Stopped
-                        + "fix the model or Base URL" + StartAgain;
+                        + (usesBaseUrl ? "fix the model or Base URL" : "fix the model") + StartAgain;
                 case Problem.Rejected:
                     return service + " rejected the request (" + http + "). " + Stopped + "check the settings" + StartAgain;
                 case Problem.NotJson:
-                    return service + " isn't answering like an AI service. " + Stopped + "check the Base URL" + StartAgain;
+                    return service + " isn't answering like an AI service. " + Stopped + (usesBaseUrl ? "check the Base URL" : "check the settings") + StartAgain;
             }
             string what;
             switch (problem)

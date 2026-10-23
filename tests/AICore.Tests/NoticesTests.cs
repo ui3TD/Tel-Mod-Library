@@ -62,6 +62,25 @@ namespace AICore.Tests
         }
 
         /// <summary>
+        /// Only an OpenAI-compatible service uses the Base URL, so only its notices and log text point to it.
+        /// </summary>
+        [Theory]
+        [InlineData(Provider.Anthropic, false)]
+        [InlineData(Provider.OpenAI, false)]
+        [InlineData(Provider.Compatible, true)]
+        public void BaseUrlIsMentioned_OnlyForOpenAICompatible(Provider provider, bool mentioned)
+        {
+            Connection connection = new() { Provider = provider, BaseUrl = "https://openrouter.ai/api/v1", Model = "some-model" };
+            foreach (Problem problem in new[] { Problem.NotFound, Problem.NotJson })
+            {
+                string text = Notices.Text(problem, "", 404, connection, null);
+                Assert.True(mentioned == text.Contains("Base URL"), problem + ": " + text);
+            }
+            string error = Providers.ParseResponse(provider, new HttpResult { Status = 200, Body = "<html>login</html>" }).Error;
+            Assert.True(mentioned == error.Contains("Base URL"), error);
+        }
+
+        /// <summary>
         /// Whatever stops requests says so and says how to start them again.
         /// </summary>
         [Fact]

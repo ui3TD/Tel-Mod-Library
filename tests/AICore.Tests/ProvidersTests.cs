@@ -46,8 +46,6 @@ namespace AICore.Tests
         [InlineData(Provider.Compatible, "https://api.deepseek.com", "https://api.deepseek.com/v1/chat/completions")]
         // Any other address with a path is a base URL, as the OpenAI SDKs take it
         [InlineData(Provider.Compatible, "https://example.com/custom", "https://example.com/custom/chat/completions")]
-        [InlineData(Provider.Anthropic, "https://proxy.example.com", "https://proxy.example.com/v1/messages")]
-        [InlineData(Provider.Anthropic, "https://proxy.example.com/v1/messages", "https://proxy.example.com/v1/messages")]
         // Typed without http:// or https://: http for this PC and the local network, https for the rest
         [InlineData(Provider.Compatible, "openrouter.ai/api/v1", "https://openrouter.ai/api/v1/chat/completions")]
         [InlineData(Provider.Compatible, "localhost:11434", "http://localhost:11434/v1/chat/completions")]
@@ -63,12 +61,27 @@ namespace AICore.Tests
 
         [Theory]
         [InlineData(Provider.Compatible, "")]
-        [InlineData(Provider.OpenAI, "ftp://example.com")]
+        [InlineData(Provider.Compatible, "ftp://example.com")]
         [InlineData(Provider.Compatible, "not an address")]
         public void ResolveUrl_Unusable(Provider provider, string baseUrl)
         {
             Assert.Null(Providers.ResolveUrl(new Connection { Provider = provider, BaseUrl = baseUrl }, out string error));
             Assert.NotNull(error);
+        }
+
+        /// <summary>
+        /// Only an OpenAI-compatible service shows the Base URL, so a hidden one left over from it doesn't
+        /// steer Anthropic's or OpenAI's requests.
+        /// </summary>
+        [Theory]
+        [InlineData(Provider.Anthropic, "https://openrouter.ai/api/v1", "https://api.anthropic.com/v1/messages")]
+        [InlineData(Provider.Anthropic, "not an address", "https://api.anthropic.com/v1/messages")]
+        [InlineData(Provider.OpenAI, "https://openrouter.ai/api/v1", "https://api.openai.com/v1/chat/completions")]
+        [InlineData(Provider.OpenAI, "ftp://example.com", "https://api.openai.com/v1/chat/completions")]
+        public void ResolveUrl_AnthropicAndOpenAIIgnoreTheBaseUrl(Provider provider, string baseUrl, string expected)
+        {
+            Assert.Equal(expected, Providers.ResolveUrl(new Connection { Provider = provider, BaseUrl = baseUrl }, out string error));
+            Assert.Null(error);
         }
 
         [Fact]

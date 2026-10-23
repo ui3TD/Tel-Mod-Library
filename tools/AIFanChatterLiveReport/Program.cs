@@ -12,14 +12,14 @@ using System.Runtime.CompilerServices;
 namespace AIFanChatter.LiveReport
 {
     /// <summary>
-    /// Sends nineteen moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
+    /// Sends twenty moments from a made-up agency (Agency.cs) to a real AI service through the mod's own
     /// prompt, dispatcher, request and reply code, once per model, and writes every request, reply and
     /// queued post to a JSON file for tools/ai_fan_chatter_live_report.py. Runs outside the game: the
     /// game's text comes from its install folder and the key from the mod's key file. It costs money.
     ///
     ///     AIFanChatterLiveReport --game-dir DIR --provider 2 --base-url URL --model M [--model M2] --out FILE
     ///     AIFanChatterLiveReport --game-dir DIR --dry-run 1      (prints the prompts; sends nothing)
-    /// Options: --moment single|concert|event|scandal|policy|firing|tour|election|concert-election|election-cancel|awards|show|show-end|contract|audition|hiatus|hiatus-end|graduation-announcement|graduation (repeat to pick several; all nineteen by default),
+    /// Options: --moment single|concert|event|scandal|policy|firing|tour|election|concert-election|election-cancel|awards|show|show-end|contract|audition|hiatus|hiatus-end|mod-event|graduation-announcement|graduation (repeat to pick several; all twenty by default),
     /// --hiatus-reason injury|health|none (the hiatus's reason; health by default),
     /// --single voting|election makes the single an upcoming election's voting single or the single made from Election #1's results,
     /// --setlist "Signal Fire/Rin; talk: Mao, Kaede" for the concert (see Agency.SetList), and for the
@@ -213,6 +213,9 @@ namespace AIFanChatter.LiveReport
                 new("audition", () => MomentContext.Audition(agency.AuditionNow(), Auditions.type.nationwide)),
                 new("hiatus", () => { var h = agency.HiatusNow(hiatusReason); return MomentContext.HiatusStart(h.Girl, h.Reason, h.LastEnd, h.Ended, h.Shows); }),
                 new("hiatus-end", () => { data_girls.girls back = agency.HiatusBack(hiatusReason); return MomentContext.HiatusEnd(back, HiatusReasons.From(back.previous_status)); }),
+                // Another mod's event (ModMoments), about the graduate while she's still in the group
+                new("mod-event", () => MomentContext.ModEvent("the group opened a theme park", "the theme park opening",
+                    new[] { "Park name: Starlight Land", "Visitors on the first day: 12,000" }, new[] { agency.Graduate.id })),
                 // Last, as the graduate announces it and then leaves the group
                 new("graduation-announcement", () => { agency.AnnounceNow(); return MomentContext.GraduationAnnouncement(agency.Graduate); }),
                 new("graduation", () => GraduationMoment(agency)),
@@ -223,7 +226,7 @@ namespace AIFanChatter.LiveReport
             string unknown = picked?.FirstOrDefault(name => all.All(m => m.Key != name));
             if (unknown != null)
             {
-                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing, tour, election, concert-election, election-cancel, awards, show, show-end, contract, audition, hiatus, hiatus-end, graduation-announcement and graduation");
+                throw new ArgumentException("No moment " + unknown + "; the moments are single, concert, event, scandal, policy, firing, tour, election, concert-election, election-cancel, awards, show, show-end, contract, audition, hiatus, hiatus-end, mod-event, graduation-announcement and graduation");
             }
             return all.Where(m => picked == null || picked.Contains(m.Key))
                 .Select(m => new KeyValuePair<string, Func<Moment>>(Names[m.Key], m.Value)).ToList();
@@ -248,6 +251,7 @@ namespace AIFanChatter.LiveReport
             ["audition"] = "new members from an audition",
             ["hiatus"] = "an idol going on hiatus",
             ["hiatus-end"] = "an idol back from hiatus",
+            ["mod-event"] = "another mod's event",
             ["graduation-announcement"] = "a graduation announcement",
             ["graduation"] = "a graduation",
             ["chatter"] = "everyday chatter (Refresh)",

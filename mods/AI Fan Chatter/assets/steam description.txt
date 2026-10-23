@@ -45,6 +45,9 @@ Requests send the moment's details to your AI service: group and idol names, res
 [h3]Changing the AI's instructions (advanced)[/h3]
 See the [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/AIFanChatter.md]AI Fan Chatter prompt guide[/url].
 
+[h3]For modders[/h3]
+Your mod can ask for fan posts about its own events. See the [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/AIFanChatterForModders.md]modders' guide[/url].
+
 [h3]Removing the mod[/h3]
 Your saves load normally without it. The feed goes back to 20 posts.
 
@@ -76,3 +79,4 @@ Your saves load normally without it. The feed goes back to 20 posts.
 - 1.14.0: Refresh feed bar; the mod's messages show at the top of the Social Media tab
 - 1.14.1: ModMenus' Reset to Defaults keeps your saved API key
 - 1.15.0: Base URL shows only for OpenAI-compatible services, the only ones that use it
+- 1.16.0: Other mods can ask for fan posts about their own events

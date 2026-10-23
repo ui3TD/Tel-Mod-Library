@@ -1,6 +1,6 @@
 # AI Fan Chatter: changing the prompt
 
-The prompt is the text AI Fan Chatter sends to your AI service with each request. It tells the AI who the fans are, what happened in your game and how to write the posts. You don't need to change it to play. This guide is for players and modders who want to reword it, change its rules or leave parts out.
+The prompt is the text AI Fan Chatter sends to your AI service with each request. It tells the AI who the fans are, what happened in your game and how to write the posts. You don't need to change it to play. This guide is for players and modders who want to reword it, change its rules or leave parts out. To have AI Fan Chatter post about your own mod's events, see [fan posts about your mod's events](AIFanChatterForModders.md).
 
 The prompt is a set of texts in the mod's `JSON/Constants/constants.json`. Each text has an id that starts with `AIFANCHATTER__PROMPT__`. You can see the texts the mod ships with in [constants.json](../mods/AI%20Fan%20Chatter/assets/JSON/Constants/constants.json).
 
@@ -91,7 +91,8 @@ The group these parts call "the group" is the group the moment is about:
 - for a cancelled election, the group that released its voting single;
 - for a random event, the group of the idol it's mainly about, or the main group when no idol is involved;
 - for a dating scandal, the idol's group;
-- for a policy change or a staff firing, the group of the first idol whose scandal points paid for it, or the main group.
+- for a policy change or a staff firing, the group of the first idol whose scandal points paid for it, or the main group;
+- for another mod's event, the group of the first idol the mod names, or the main group.
 
 ### `{event}`
 

@@ -81,7 +81,8 @@ namespace FanAttrition
         /// </summary>
         /// <remarks>
         /// The game works out the base audience (num2) as (... + GetAllNewFans()) / 12 and stores it. The fatigue
-        /// is applied to that value on the stack, just before the store.
+        /// is applied to that value on the stack, just before the store. The store is found by the division by 12,
+        /// so code another mod adds after GetAllNewFans doesn't move it.
         /// </remarks>
         /// <param name="instructions">The original IL instructions.</param>
         /// <returns>Modified IL instructions.</returns>
@@ -89,7 +90,10 @@ namespace FanAttrition
         {
             CodeMatcher matcher = new CodeMatcher(instructions)
                 .MatchEndForward(new CodeMatch(ci => ci.Calls(AccessTools.Method(typeof(Shows._show), nameof(Shows._show.GetAllNewFans)))))
-                .MatchEndForward(new CodeMatch(ci => ci.IsStloc()));
+                .MatchEndForward(
+                    new CodeMatch(ci => ci.opcode == OpCodes.Ldc_R4 && ci.operand is float divisor && divisor == 12f),
+                    new CodeMatch(OpCodes.Div),
+                    new CodeMatch(ci => ci.IsStloc()));
             if (matcher.IsInvalid)
             {
                 LogPatchNotFound("the base audience for show fatigue");
@@ -186,11 +190,17 @@ namespace FanAttrition
         /// <summary>
         /// Postfix method to adjust the success chance for single PVs.
         /// </summary>
+        /// <remarks>
+        /// Only the game's own chance is replaced, so a chance another mod has changed is kept. Runs first among
+        /// postfixes, so it sees the chance before other mods' postfixes change it.
+        /// </remarks>
         /// <param name="__result">The original success chance, passed by reference for modification.</param>
         /// <param name="__instance">The instance of singles._param being patched.</param>
         /// <param name="Result">The result of the marketing roll.</param>
+        /// <param name="Level">The marketing level.</param>
         /// <param name="Single">The single being evaluated.</param>
-        public static void Postfix(ref float __result, singles._param __instance, Single_Marketing_Roll._result Result, singles._single Single)
+        [HarmonyPriority(Priority.First)]
+        public static void Postfix(ref float __result, singles._param __instance, Single_Marketing_Roll._result Result, int Level, singles._single Single)
         {
             if (Single == null)
                 return;
@@ -212,8 +222,46 @@ namespace FanAttrition
                     return;
             }
 
+            if (!IsGamesChance(__result, __instance, Result, Level, Single, paramValue))
+                return;
+
             __result = CalculateSuccessChance(paramValue, Result);
         }
+
+        /// <summary>
+        /// Whether the chance is the one the game works out, with no other mod's change.
+        /// </summary>
+        /// <remarks>
+        /// The game's fail chance is what's left after the other three, which it gets from this method, so after
+        /// this postfix. It counts as the game's when it is that remainder and none of the three was changed by
+        /// another mod: each is the game's own value or this mod's.
+        /// </remarks>
+        private static bool IsGamesChance(float chance, singles._param param, Single_Marketing_Roll._result Result, int Level, singles._single Single, float paramValue)
+        {
+            if (Result != Single_Marketing_Roll._result.fail)
+                return chance == GameChance(paramValue, Result);
+
+            float others = 0f;
+            foreach (Single_Marketing_Roll._result other in new[] { Single_Marketing_Roll._result.success, Single_Marketing_Roll._result.success_crit, Single_Marketing_Roll._result.fail_crit })
+            {
+                float otherChance = param.GetSuccessChance(other, Level, Single);
+                if (otherChance != GameChance(paramValue, other) && otherChance != CalculateSuccessChance(paramValue, other))
+                    return false;
+                others += otherChance;
+            }
+            return chance == Mathf.Round(100f - others);
+        }
+
+        /// <summary>
+        /// The game's chance for a PV other than failure: half the stat average for success, a quarter for crits.
+        /// </summary>
+        private static float GameChance(float paramValue, Single_Marketing_Roll._result Result) => Result switch
+        {
+            Single_Marketing_Roll._result.success => Mathf.Round(paramValue / 2f),
+            Single_Marketing_Roll._result.success_crit => Mathf.Round(paramValue / 4f),
+            Single_Marketing_Roll._result.fail_crit => Mathf.Round(paramValue / 4f),
+            _ => 0f
+        };
 
         /// <summary>
         /// Calculates the success chance for a single based on the parameter value and marketing roll result.
@@ -248,6 +296,11 @@ namespace FanAttrition
         /// <param name="Result">The result of the marketing roll.</param>
         /// <param name="Secondary">Indicates if this is a secondary effect.</param>
         /// <param name="Level">The level of the single or marketing action.</param>
+        /// <remarks>
+        /// Only the game's own modifier is replaced, so a modifier another mod has changed is kept. Runs first among
+        /// postfixes, so it sees the modifier before other mods' postfixes change it.
+        /// </remarks>
+        [HarmonyPriority(Priority.First)]
         public static void Postfix(ref float __result, singles._param __instance, Single_Marketing_Roll._result Result, bool Secondary, int Level)
         {
             if (Result != Single_Marketing_Roll._result.success_crit)
@@ -255,18 +308,18 @@ namespace FanAttrition
 
             if (__instance.Special_Type == singles._param._special_type.fake_scandal)
             {
-                if (!Secondary)
+                if (!Secondary && __result == 100f + (float)Level * 100f)
                 {
                     __result = FAKESCANDAL_MOD_BASE + Level * FAKESCANDAL_MOD_SCALING;
                 }
             }
             else if (__instance.Special_Type == singles._param._special_type.edgy_pv || __instance.Special_Type == singles._param._special_type.lewd_pv || __instance.Special_Type == singles._param._special_type.artsy_pv)
             {
-                if (!Secondary)
+                if (!Secondary && __result == 100f + (float)Level * 100f)
                 {
                     __result = PVPRIMARY_MOD_BASE + Level * PVPRIMARY_MOD_SCALING;
                 }
-                else
+                else if (Secondary && __result == 50f + (float)Level * 50f)
                 {
                     __result = PVSECONDARY_MOD_BASE + Level * PVSECONDARY_MOD_SCALING;
                 }
@@ -281,12 +334,28 @@ namespace FanAttrition
     [HarmonyPatch(typeof(resources), nameof(resources.OnNewDay))]
     public class resources_OnNewDay
     {
+        private static bool loggedError;
+
         /// <summary>
         /// Postfix method to apply daily fan churn.
         /// </summary>
+        /// <remarks>
+        /// An error here would stop the rest of the game's new day, so it's logged (once) and the day goes on.
+        /// </remarks>
         public static void Postfix()
         {
-            DailyFanChurn();
+            try
+            {
+                DailyFanChurn();
+            }
+            catch (Exception e)
+            {
+                if (!loggedError)
+                {
+                    loggedError = true;
+                    Debug.LogError("[Fan Attrition] Couldn't take the day's fan churn: " + e);
+                }
+            }
         }
     }
 

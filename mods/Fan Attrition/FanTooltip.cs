@@ -2,6 +2,7 @@
 using System;
 using UnityEngine;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEngine.UI;
 using static FanAttrition.Utility;
 
@@ -14,41 +15,60 @@ namespace FanAttrition
     [HarmonyPatch(typeof(tooltip_fans), nameof(tooltip_fans.Render), new Type[] { })]
     public class tooltip_fans_Render
     {
+        private static bool loggedError;
+
         /// <summary>
         /// Prefix method to completely replace the original tooltip rendering.
         /// </summary>
+        /// <remarks>
+        /// Writes to the lines tooltip_fans_Start added, so lines other mods add to the tooltip are left alone. If
+        /// there are none (Start was skipped) or rendering fails, the game's tooltip is shown instead.
+        /// </remarks>
         /// <param name="__instance">The tooltip_fans instance.</param>
         /// <returns>Whether to execute the original method.</returns>
         public static bool Prefix(tooltip_fans __instance)
         {
             if (__instance == null || __instance.gameObject.transform == null)
                 return true;
+            if (!tooltip_fans_Start.Lines.TryGetValue(__instance, out tooltip_fans_line[] lines) || RenderFanChangeDelegate == null)
+                return true;
 
-            resources.RecalcFans();
-            UpdateFanCount();
-            Text[] textLines = __instance.gameObject.GetComponentsInChildren<Text>();
-            textLines[0].text = GetLineText(resources.fanType.hardcore);
-            textLines[1].text = GetLineText(resources.fanType.casual);
-            textLines[2].text = GetLineText(resources.fanType.male);
-            textLines[3].text = GetLineText(resources.fanType.female);
-            textLines[4].text = GetLineText(resources.fanType.teen);
-            textLines[5].text = GetLineText(resources.fanType.youngAdult);
-            textLines[6].text = GetLineText(resources.fanType.adult);
+            try
+            {
+                resources.RecalcFans();
+                UpdateFanCount();
+                lines[0].Set(GetLineText(resources.fanType.hardcore));
+                lines[1].Set(GetLineText(resources.fanType.casual));
+                lines[2].Set(GetLineText(resources.fanType.male));
+                lines[3].Set(GetLineText(resources.fanType.female));
+                lines[4].Set(GetLineText(resources.fanType.teen));
+                lines[5].Set(GetLineText(resources.fanType.youngAdult));
+                lines[6].Set(GetLineText(resources.fanType.adult));
 
-            textLines[7].text = GetLineText(lineType.padding);
+                lines[7].Set(GetLineText(lineType.padding));
 
-            textLines[8].text = GetLineText(business._type.ad);
-            textLines[9].text = GetLineText(business._type.tv_drama);
-            textLines[10].text = GetLineText(Shows._param._media_type.internet);
-            textLines[11].text = GetLineText(Shows._param._media_type.tv);
-            textLines[12].text = GetLineText(Shows._param._media_type.radio);
-            textLines[13].text = GetLineText(lineType.cafe);
+                lines[8].Set(GetLineText(business._type.ad));
+                lines[9].Set(GetLineText(business._type.tv_drama));
+                lines[10].Set(GetLineText(Shows._param._media_type.internet));
+                lines[11].Set(GetLineText(Shows._param._media_type.tv));
+                lines[12].Set(GetLineText(Shows._param._media_type.radio));
+                lines[13].Set(GetLineText(lineType.cafe));
 
-            textLines[14].text = GetLineText(lineType.churn);
+                lines[14].Set(GetLineText(lineType.churn));
 
-            RenderFanChangeDelegate(__instance);
-            LayoutRebuilder.ForceRebuildLayoutImmediate(__instance.gameObject.GetComponent<RectTransform>());
-            return false;
+                RenderFanChangeDelegate(__instance);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(__instance.gameObject.GetComponent<RectTransform>());
+                return false;
+            }
+            catch (Exception e)
+            {
+                if (!loggedError)
+                {
+                    loggedError = true;
+                    Debug.LogError("[Fan Attrition] Couldn't show the fan tooltip, so the game's is shown: " + e);
+                }
+                return true;
+            }
         }
 
         static string GetLineText(lineType lineType)
@@ -282,6 +302,13 @@ namespace FanAttrition
     [HarmonyPatch(typeof(tooltip_fans), nameof(tooltip_fans.Start), new Type[] { })]
     public class tooltip_fans_Start
     {
+        public const int LINES = 15;
+
+        /// <summary>
+        /// The lines this mod added to each tooltip, in order.
+        /// </summary>
+        public static readonly ConditionalWeakTable<tooltip_fans, tooltip_fans_line[]> Lines = new();
+
         /// <summary>
         /// Prefix method to add additional lines to the tooltip.
         /// </summary>
@@ -293,10 +320,13 @@ namespace FanAttrition
             MethodInfo RenderFanChange = AccessTools.Method(typeof(tooltip_fans), nameof(tooltip_fans.RenderFanChange), Type.EmptyTypes);
             RenderFanChangeDelegate = AccessTools.MethodDelegate<Action<tooltip_fans>>(RenderFanChange);
 
-            for (int i = 0; i < 15; i++)
+            tooltip_fans_line[] lines = new tooltip_fans_line[LINES];
+            for (int i = 0; i < LINES; i++)
             {
-                AddLine(__instance, "");
+                lines[i] = AddLine(__instance, "");
             }
+            Lines.Remove(__instance);
+            Lines.Add(__instance, lines);
         }
 
         /// <summary>
@@ -304,11 +334,14 @@ namespace FanAttrition
         /// </summary>
         /// <param name="instance">The tooltip_fans instance to add the line to.</param>
         /// <param name="txt">The text content of the line to be added.</param>
-        static void AddLine(tooltip_fans instance, string txt)
+        /// <returns>The new line.</returns>
+        static tooltip_fans_line AddLine(tooltip_fans instance, string txt)
         {
             GameObject gameObject = UnityEngine.Object.Instantiate(instance.prefab_line);
             gameObject.transform.SetParent(instance.gameObject.transform, false);
-            gameObject.GetComponent<tooltip_fans_line>().Set(txt);
+            tooltip_fans_line line = gameObject.GetComponent<tooltip_fans_line>();
+            line.Set(txt);
+            return line;
         }
     }
 

@@ -29,6 +29,13 @@ namespace FanAttrition
         public static bool GainSplitFailed;
 
         /// <summary>
+        /// Idols whose gain is being measured. Another mod can add fans through a patched method while one is
+        /// running (say AddFans inside SetSales); the outer one already measures that gain, so the inner one leaves
+        /// those idols out, and hardcore groups get HARDCORE_JOIN once.
+        /// </summary>
+        private static readonly HashSet<data_girls.girls> Measuring = new();
+
+        /// <summary>
         /// The idol's stat appeal to a fan group, worked out from her stats the way data_girls.girls.RecalcFanAppeal()
         /// does, without changing her saved appeal.
         /// </summary>
@@ -127,7 +134,7 @@ namespace FanAttrition
                 List<Before> before = new();
                 foreach (data_girls.girls girl in girls.Distinct())
                 {
-                    if (girl?.Fans == null)
+                    if (girl?.Fans == null || Measuring.Contains(girl))
                         continue;
                     Dictionary<resources._fan, long> people = new();
                     foreach (resources._fan fan in girl.Fans)
@@ -135,6 +142,8 @@ namespace FanAttrition
                             people[fan] = fan.people;
                     before.Add(new Before { Girl = girl, People = people });
                 }
+                foreach (Before idol in before)
+                    Measuring.Add(idol.Girl);
                 return before;
             }
             catch (Exception e)
@@ -151,18 +160,35 @@ namespace FanAttrition
         /// </summary>
         public static void Respread(List<Before> before, bool weighted)
         {
-            if (before == null || GainSplitFailed)
+            if (before == null)
                 return;
             try
             {
-                foreach (Before idol in before)
-                    Respread(idol, weighted);
+                if (!GainSplitFailed)
+                    foreach (Before idol in before)
+                        Respread(idol, weighted);
             }
             catch (Exception e)
             {
                 GainSplitFailed = true;
                 Debug.LogError("[Fan Attrition] New fans are split the game's way from now on: " + e);
             }
+            finally
+            {
+                Release(before);
+            }
+        }
+
+        /// <summary>
+        /// Ends the measuring of these idols' gain. Also called by each patch's finalizer, for when the game's
+        /// method throws and the postfix doesn't run.
+        /// </summary>
+        public static void Release(List<Before> before)
+        {
+            if (before == null)
+                return;
+            foreach (Before idol in before)
+                Measuring.Remove(idol.Girl);
         }
 
         private static void Respread(Before idol, bool weighted)
@@ -217,6 +243,8 @@ namespace FanAttrition
 
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(List<FanSplit.Before> __state) => FanSplit.Respread(__state, weighted: false);
+
+        public static void Finalizer(List<FanSplit.Before> __state) => FanSplit.Release(__state);
     }
 
     /// <summary>
@@ -232,6 +260,8 @@ namespace FanAttrition
 
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(List<FanSplit.Before> __state) => FanSplit.Respread(__state, weighted: true);
+
+        public static void Finalizer(List<FanSplit.Before> __state) => FanSplit.Release(__state);
     }
 
     /// <summary>
@@ -247,5 +277,7 @@ namespace FanAttrition
 
         [HarmonyPriority(Priority.Last)]
         public static void Postfix(List<FanSplit.Before> __state) => FanSplit.Respread(__state, weighted: true);
+
+        public static void Finalizer(List<FanSplit.Before> __state) => FanSplit.Release(__state);
     }
 }

@@ -293,7 +293,7 @@ namespace FanAttrition.Tests
         public static void StartPrefix(tooltip_fans __instance) => throw new InvalidOperationException("Call Seams.Reset first");
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void AddLine(tooltip_fans instance, string txt) => throw new InvalidOperationException("Call Seams.Reset first");
+        public static tooltip_fans_line AddLine(tooltip_fans instance, string txt) => throw new InvalidOperationException("Call Seams.Reset first");
 
         public static Transform TransformOf(object owner)
         {
@@ -324,17 +324,10 @@ namespace FanAttrition.Tests
         public static string TextOf(object owner) => Texts.TryGetValue(owner, out string value) ? value : null;
 
         /// <summary>
-        /// The Text of every line added under this GameObject, in the order they were added.
+        /// The text last set on this tooltip line, or null.
         /// </summary>
-        public static Text[] LineTexts(GameObject parent)
-        {
-            Transform parentTransform = TransformOf(parent);
-            return Parented
-                .Where(p => ReferenceEquals(p.parent, parentTransform))
-                .Select(p => Instantiated.Single(i => ReferenceEquals(TransformOf(i.copy), p.child)).copy)
-                .Select(line => ComponentOf<Text>(line))
-                .ToArray();
-        }
+        public static string LineText(tooltip_fans_line line) =>
+            LinesSet.LastOrDefault(l => ReferenceEquals(l.line, line)).text;
 
         private static IEnumerable<CodeInstruction> Redirect(IEnumerable<CodeInstruction> instructions)
         {
@@ -346,7 +339,6 @@ namespace FanAttrition.Tests
                     string stub = generic.Name switch
                     {
                         nameof(GameObject.GetComponent) when generic.GetParameters().Length == 0 => nameof(StubGetComponent),
-                        nameof(GameObject.GetComponentsInChildren) when generic.GetParameters().Length == 0 => nameof(StubGetComponentsInChildren),
                         nameof(Object.Instantiate) when generic.GetParameters().Length == 1 => nameof(StubInstantiate),
                         nameof(ExtensionMethods.Shuffle) => nameof(StubShuffle),
                         _ => null,
@@ -440,7 +432,6 @@ namespace FanAttrition.Tests
         }
 
         private static void StubOnFansChange() => FanDisplayUpdates++;
-        private static T[] StubGetComponentsInChildren<T>(GameObject owner) => LineTexts(owner).Cast<T>().ToArray();
 
         private static T StubInstantiate<T>(T original)
         {

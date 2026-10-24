@@ -328,7 +328,7 @@ namespace FanAttrition.Tests
         public static float Chance(singles._param param, Single_Marketing_Roll._result roll, singles._single single, int level = 1)
         {
             float chance = param.GetSuccessChance(roll, level, single);
-            singles__param_GetSuccessChance.Postfix(ref chance, param, roll, single);
+            singles__param_GetSuccessChance.Postfix(ref chance, param, roll, level, single);
             return chance;
         }
 
@@ -491,6 +491,142 @@ namespace FanAttrition.Tests
             foreach (bool secondary in new[] { false, true })
                 foreach (int level in new[] { 1, 5, 10 })
                     Assert.Equal(param.GetSuccessModifier(Crit, secondary, level), Modifier(param, Crit, secondary, level));
+        }
+
+        // ---------------------------------------------------------------- other mods
+
+        /// <summary>
+        /// 2.0.0's chances, which replaced the game's whatever it was.
+        /// </summary>
+        private static float OldChance(float average, Single_Marketing_Roll._result roll) => roll switch
+        {
+            Success => average * (1 - Utility.MARK_SUCCESSCRIT_COEFF),
+            Crit => average * Utility.MARK_SUCCESSCRIT_COEFF,
+            CritFail => (100f - average) * Utility.MARK_FAIL_CRIT_COEFF,
+            Fail => (100f - average) * (1 - Utility.MARK_FAIL_CRIT_COEFF),
+            _ => 0f
+        };
+
+        /// <summary>
+        /// The mod's postfix on the game's GetSuccessChance, as in the game, so the game's fail chance is worked out
+        /// from the patched chances. A stand-in for another mod's postfix can go on with it. Removed when disposed.
+        /// </summary>
+        private sealed class PatchedChances : System.IDisposable
+        {
+            private const string Id = "tests.FanAttrition.Marketing";
+            private static readonly MethodInfo Target = AccessTools.Method(typeof(singles._param), nameof(singles._param.GetSuccessChance),
+                new[] { typeof(Single_Marketing_Roll._result), typeof(int), typeof(singles._single) });
+
+            public PatchedChances(string otherModPostfix = null)
+            {
+                Harmony harmony = new(Id);
+                harmony.Patch(Target, postfix: new HarmonyMethod(typeof(singles__param_GetSuccessChance), nameof(singles__param_GetSuccessChance.Postfix)));
+                if (otherModPostfix != null)
+                    harmony.Patch(Target, postfix: new HarmonyMethod(typeof(PatchedChances), otherModPostfix));
+            }
+
+            public void Dispose() => new Harmony(Id).Unpatch(Target, HarmonyPatchType.Postfix, Id);
+
+            /// <summary>Another mod that adds 10 to a PV's success chance.</summary>
+            private static void MoreSuccess(ref float __result, Single_Marketing_Roll._result Result, singles._single Single)
+            {
+                if (Single != null && Result == Single_Marketing_Roll._result.success)
+                    __result += 10f;
+            }
+
+            public const string OtherModAddsSuccess = nameof(MoreSuccess);
+        }
+
+        /// <summary>
+        /// Alone, every chance is exactly 2.0.0's, for every stat average in half steps, with the mod patched into
+        /// the game as it is in play.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(PVs))]
+        public void PvChances_Alone_AreExactlyTheOldOnes(singles._param._special_type pv)
+        {
+            singles._param param = Marketing(pv);
+            using PatchedChances patched = new();
+
+            for (float average = 0f; average <= 100f; average += 0.5f)
+            {
+                singles._single single = Formation(pv, average);
+                foreach (Single_Marketing_Roll._result roll in Rolls)
+                    Assert.Equal(OldChance(average, roll), param.GetSuccessChance(roll, 1, single));
+            }
+        }
+
+        /// <summary>
+        /// A chance another mod changed before this mod's postfix (a prefix, transpiler or earlier postfix) is kept.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(PVs))]
+        public void PvChances_ChangedByAnotherMod_AreKept(singles._param._special_type pv)
+        {
+            singles._single single = Formation(pv, 60);
+            singles._param param = Marketing(pv);
+
+            foreach (Single_Marketing_Roll._result roll in Rolls)
+            {
+                float chance = param.GetSuccessChance(roll, 1, single) + 3f;
+                singles__param_GetSuccessChance.Postfix(ref chance, param, roll, 1, single);
+                Assert.Equal(param.GetSuccessChance(roll, 1, single) + 3f, chance);
+            }
+        }
+
+        /// <summary>
+        /// Another mod's later postfix adds 10 to success: the mod's success, crit and crit fail stay, and fail is
+        /// the game's remainder of them, so the four still add up to 100 (within the game's rounding).
+        /// At average 60: 54 + 10, 6 and 4 leave 26.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(PVs))]
+        public void PvFail_FollowsAnotherModsChances(singles._param._special_type pv)
+        {
+            singles._single single = Formation(pv, 60);
+            singles._param param = Marketing(pv);
+            using PatchedChances patched = new(PatchedChances.OtherModAddsSuccess);
+
+            Assert.Equal(64f, param.GetSuccessChance(Success, 1, single), 3);
+            Assert.Equal(6f, param.GetSuccessChance(Crit, 1, single), 3);
+            Assert.Equal(4f, param.GetSuccessChance(CritFail, 1, single), 3);
+            Assert.Equal(26f, param.GetSuccessChance(Fail, 1, single));
+        }
+
+        /// <summary>
+        /// A crit modifier another mod changed before this mod's postfix is kept; the others still get the mod's.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(AllTypes))]
+        public void CritModifiers_ChangedByAnotherMod_AreKept(singles._param._special_type type)
+        {
+            singles._param param = Marketing(type);
+
+            foreach (bool secondary in new[] { false, true })
+                foreach (int level in Enumerable.Range(0, 11))
+                {
+                    float modifier = param.GetSuccessModifier(Crit, secondary, level) + 7f;
+                    singles__param_GetSuccessModifier.Postfix(ref modifier, param, Crit, secondary, level);
+                    Assert.Equal(param.GetSuccessModifier(Crit, secondary, level) + 7f, modifier);
+                }
+        }
+
+        /// <summary>
+        /// Alone, the crit modifiers are exactly 2.0.0's at every level, 0 to 10.
+        /// </summary>
+        [Fact]
+        public void CritModifiers_Alone_AreExactlyTheOldOnes()
+        {
+            foreach (int level in Enumerable.Range(0, 11))
+            {
+                Assert.Equal(100f + level * 290f, Modifier(Marketing(singles._param._special_type.fake_scandal), Crit, false, level));
+                foreach (object[] pv in PVs())
+                {
+                    singles._param param = Marketing((singles._param._special_type)pv[0]);
+                    Assert.Equal(100f + level * 80f, Modifier(param, Crit, false, level));
+                    Assert.Equal(50f + level * 30f, Modifier(param, Crit, true, level));
+                }
+            }
         }
     }
 
@@ -673,6 +809,18 @@ namespace FanAttrition.Tests
 
             Assert.Equal(100000 - 68, FansTotal());
         }
+
+        /// <summary>
+        /// An error in the churn is logged and the rest of the game's new day goes on.
+        /// </summary>
+        [Fact]
+        public void NewDay_ChurnError_DoesntStopTheDay()
+        {
+            TestGame.FanBase(100000);
+            data_girls.girl = null;
+
+            resources_OnNewDay.Postfix();
+        }
     }
 
     /// <summary>
@@ -729,6 +877,25 @@ namespace FanAttrition.Tests
             Assert.Equal(OpCodes.Ldarg_0, mod[call - 1].opcode);
             Assert.Equal(OpCodes.Stloc_1, mod[call + 1].opcode);
             Assert.DoesNotContain(mod.Skip(newFans).Take(call - newFans), i => i.IsStloc());
+            Assert.Empty(Log.Messages);
+        }
+
+        /// <summary>
+        /// Another mod stores and reloads the new fans right after GetAllNewFans: the fatigue still goes on the base
+        /// audience, stored after the division by 12, not on the other mod's local.
+        /// </summary>
+        [Fact]
+        public void Fatigue_OtherModsStoreAfterNewFans_StillHitsTheBaseAudience()
+        {
+            List<CodeInstruction> game = SetSales();
+            int newFans = game.FindIndex(i => i.Calls(AccessTools.Method(typeof(Shows._show), "GetAllNewFans")));
+            game.InsertRange(newFans + 1, new[] { new CodeInstruction(OpCodes.Stloc_0), new CodeInstruction(OpCodes.Ldloc_0) });
+
+            List<CodeInstruction> mod = Shows__show_SetSales_Fatigue.Transpiler(game).ToList();
+            int call = CallTo(mod, typeof(Shows__show_SetSales_Fatigue));
+
+            Assert.Equal(OpCodes.Div, mod[call - 2].opcode);
+            Assert.Equal(OpCodes.Stloc_1, mod[call + 1].opcode);
             Assert.Empty(Log.Messages);
         }
 

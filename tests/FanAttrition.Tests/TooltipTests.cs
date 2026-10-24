@@ -53,7 +53,16 @@ namespace FanAttrition.Tests
             Seams.StartPrefix(tooltip);
             Utility.RenderFanChangeDelegate = _ => { };
             Assert.False(Seams.RenderPrefix(tooltip));
-            return Seams.LineTexts(Seams.GameObjectOf(tooltip)).Select(Seams.TextOf).ToArray();
+            return LineTexts(tooltip);
+        }
+
+        /// <summary>
+        /// The text of each line the mod added to this tooltip, in order.
+        /// </summary>
+        private static string[] LineTexts(tooltip_fans tooltip)
+        {
+            Assert.True(tooltip_fans_Start.Lines.TryGetValue(tooltip, out tooltip_fans_line[] lines));
+            return lines.Select(Seams.LineText).ToArray();
         }
 
         private static string Total()
@@ -122,6 +131,58 @@ namespace FanAttrition.Tests
         public void Render_NoTooltip_LeavesItToTheGame()
         {
             Assert.True(Seams.RenderPrefix(null));
+            Assert.Empty(Seams.LayoutsRebuilt);
+        }
+
+        /// <summary>
+        /// Another mod adds a line to the tooltip before this mod's: the mod fills its own 15 lines, ending with the
+        /// churn, and leaves the other line's text alone.
+        /// </summary>
+        [Fact]
+        public void Render_OtherModsLine_IsLeftAlone()
+        {
+            tooltip_fans tooltip = Tooltip();
+            tooltip_fans_line other = Seams.AddLine(tooltip, "Another mod's line");
+            Seams.StartPrefix(tooltip);
+            Utility.RenderFanChangeDelegate = _ => { };
+
+            Assert.False(Seams.RenderPrefix(tooltip));
+
+            Assert.Equal("Another mod's line", Seams.LineText(other));
+            string[] lines = LineTexts(tooltip);
+            Assert.Equal(Lines, lines.Length);
+            Assert.StartsWith("Churn Rate: ", lines[Lines - 1]);
+        }
+
+        /// <summary>
+        /// If the mod's Start prefix didn't run (another mod skipped it), the tooltip has none of the mod's lines,
+        /// so the game renders its own.
+        /// </summary>
+        [Fact]
+        public void Render_WithoutStart_LeavesItToTheGame()
+        {
+            tooltip_fans tooltip = Tooltip();
+            Utility.RenderFanChangeDelegate = _ => { };
+
+            Assert.True(Seams.RenderPrefix(tooltip));
+            Assert.Empty(Seams.LinesSet);
+        }
+
+        /// <summary>
+        /// An error while rendering (here a missing text, as when another mod's text file replaces the mod's) is
+        /// logged and the game renders its own tooltip.
+        /// </summary>
+        [Fact]
+        public void Render_Error_LeavesItToTheGame()
+        {
+            Debug.unityLogger.logHandler = new Log();
+            Log.Messages.Clear();
+            tooltip_fans tooltip = Tooltip();
+            Seams.StartPrefix(tooltip);
+            Utility.RenderFanChangeDelegate = _ => { };
+            Language.Data.Remove(Utility.CHURNRATE_LABEL);
+
+            Assert.True(Seams.RenderPrefix(tooltip));
             Assert.Empty(Seams.LayoutsRebuilt);
         }
 

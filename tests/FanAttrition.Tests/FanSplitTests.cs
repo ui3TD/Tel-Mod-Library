@@ -284,6 +284,52 @@ namespace FanAttrition.Tests
             FanSplit.Respread(null, weighted: true);
         }
 
+        /// <summary>
+        /// Another mod adds fans through a patched method while this mod measures the same idol's gain (say AddFans
+        /// inside SetSales): the inner measure leaves her out, so hardcore groups get 0.75 once: 857 / 1,143, as in
+        /// Gain_HardcoreJoinsAtThreeQuarters, not 0.75 twice.
+        /// </summary>
+        [Fact]
+        public void Gain_NestedInAnotherGain_IsSplitOnce()
+        {
+            resources._fan soft = Group(male, casual, 5000), hard = Group(male, hardcore, 5000);
+            data_girls.girls girl = Idol(soft, hard);
+            List<FanSplit.Before> outer = FanSplit.Capture(new[] { girl });
+
+            data_girls_girls_AddFans_Split.Prefix(girl, 2000, out List<FanSplit.Before> inner);
+            Gain(soft, 1000);
+            Gain(hard, 1000);
+            data_girls_girls_AddFans_Split.Postfix(inner);
+            data_girls_girls_AddFans_Split.Finalizer(inner);
+            FanSplit.Respread(outer, weighted: false);
+
+            Assert.Empty(inner);
+            Assert.Equal(new long[] { 5000 + 1143, 5000 + 857 }, new[] { soft.people, hard.people });
+        }
+
+        /// <summary>
+        /// Once a gain is split, or the game's method threw and only the finalizer ran, the idol's next gain is
+        /// measured again.
+        /// </summary>
+        [Fact]
+        public void Gain_AfterAGainEnds_IsMeasuredAgain()
+        {
+            data_girls.girls girl = Idol(Group(male, casual, 100));
+
+            FanSplit.Respread(FanSplit.Capture(new[] { girl }), weighted: false);
+            Assert.Single(Release(FanSplit.Capture(new[] { girl })));
+
+            data_girls_girls_AddFans_Split.Prefix(girl, 10, out List<FanSplit.Before> thrown);
+            data_girls_girls_AddFans_Split.Finalizer(thrown);
+            Assert.Single(Release(FanSplit.Capture(new[] { girl })));
+        }
+
+        private static List<FanSplit.Before> Release(List<FanSplit.Before> before)
+        {
+            FanSplit.Release(before);
+            return before;
+        }
+
         private class FloatClose : IEqualityComparer<float>
         {
             public bool Equals(float a, float b) => System.Math.Abs(a - b) < 1e-5f;

@@ -7,7 +7,7 @@
 		<Authors>Tel</Authors>
 		<Version>4.3.0</Version>
 		<WorkshopID>3283314791</WorkshopID>
-		<Tags>["modding"]</Tags>
+		<Tags>["modding", "gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
 		<JSONLoadOrder>0</JSONLoadOrder>

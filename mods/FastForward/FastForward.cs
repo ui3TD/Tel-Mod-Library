@@ -54,6 +54,20 @@ namespace FastForward
 
             // Use vanilla state transition first so all game-side effects still run as expected.
             main.Time_SetState(mainScript._time_state.fast);
+            SetSuperSpeed();
+        }
+
+        /// <summary>
+        /// Speeds fast up to super-fast. Only while the game is in its fast state: another mod may have kept it
+        /// from switching to fast, and then time must not run at super-fast while the game shows another speed.
+        /// </summary>
+        internal static void SetSuperSpeed()
+        {
+            if (staticVars.timeState != mainScript._time_state.fast)
+            {
+                return;
+            }
+
             staticVars.dateTimeAddMinutesPerSecond = GetConfiguredSpeed();
             SetFastButtonColor(mainScript.gold32);
         }
@@ -86,19 +100,29 @@ namespace FastForward
     public class TimeControlButton_OnClick
     {
         /// <summary>
-        /// Prefix method to enhance the fast forward functionality when clicking the fast forward button twice.
+        /// Whether this click is a second click on fast forward, which switches on super-fast: the fast button,
+        /// while already at fast but not yet super-fast speed. Read before the click changes the speed.
         /// </summary>
         /// <param name="__instance">The instance of the TimeControlButton being clicked.</param>
-        /// <returns>Boolean indicating whether the original method should be executed.</returns>
-        public static bool Prefix(TimeControlButton __instance)
+        /// <param name="__runOriginal">False if another mod's prefix blocked the click.</param>
+        /// <param name="__state">Whether the postfix switches on super-fast.</param>
+        public static void Prefix(TimeControlButton __instance, bool __runOriginal, out bool __state)
         {
-            double speed = GetConfiguredSpeed();
+            __state = __runOriginal
+                && __instance.Type == mainScript._time_state.fast
+                && staticVars.timeState == mainScript._time_state.fast
+                && Math.Abs(staticVars.dateTimeAddMinutesPerSecond - GetConfiguredSpeed()) > EPSILON;
+        }
 
-            if (__instance.Type != mainScript._time_state.fast || staticVars.timeState != mainScript._time_state.fast || Math.Abs(staticVars.dateTimeAddMinutesPerSecond - speed) <= EPSILON)
-                return true;
-
-            ApplySuperFast(Camera.main != null ? Camera.main.GetComponent<mainScript>() : null);
-            return false;
+        /// <summary>
+        /// After the click has run vanilla's switch to fast, speeds it up to super-fast, unless the click was blocked.
+        /// </summary>
+        public static void Postfix(bool __state, bool __runOriginal)
+        {
+            if (__state && __runOriginal)
+            {
+                SetSuperSpeed();
+            }
         }
     }
 
@@ -113,11 +137,12 @@ namespace FastForward
 
         /// <summary>
         /// Postfix method to add hotkey functionality for speeding up time when pressing the super-fast key: 4,
-        /// unless the player changes it on ModMenus' Hotkeys tab.
+        /// unless the player changes it on ModMenus' Hotkeys tab. Not when another mod skipped Controls.Update to
+        /// block the game's hotkeys.
         /// </summary>
-        public static void Postfix()
+        public static void Postfix(bool __runOriginal)
         {
-            if (mainScript.IsBlockingHotkeys())
+            if (!__runOriginal || mainScript.IsBlockingHotkeys())
                 return;
 
             if (ModMenusKeys.Pressed(KEY_VAR, KeyCode.Alpha4))

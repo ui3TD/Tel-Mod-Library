@@ -51,24 +51,28 @@ namespace FastForward.Tests
         }
 
         /// <summary>
-        /// Clicks a time control button: the mod's prefix, then TimeControlButton.OnClick's body if the prefix allows it.
+        /// Clicks a time control button: the mod's prefix, TimeControlButton.OnClick's body, then the mod's postfix.
+        /// runOriginal false is another mod's prefix blocking the click, so the body doesn't run.
         /// </summary>
-        public static void Click(mainScript._time_state type)
+        public static void Click(mainScript._time_state type, bool runOriginal = true)
         {
             TimeControlButton button = Seams.Component<TimeControlButton>();
             button.Type = type;
-            if (Seams.OnClickPrefix(button))
-                Seams.TimeSetState(Main, type);
+            Seams.OnClickPrefix(button, runOriginal, out bool state);
+            if (runOriginal)
+                Seams.GameTimeSetState(Main, type);
+            Seams.OnClickPostfix(state, runOriginal);
         }
 
         /// <summary>
         /// Runs a frame of Controls.Update with this key pressed. Vanilla's Update has no '4' hotkey, so only the mod's postfix runs.
+        /// runOriginal false is another mod's prefix skipping Update.
         /// </summary>
-        public static void Press(KeyCode key)
+        public static void Press(KeyCode key, bool runOriginal = true)
         {
             Seams.KeysDown.Clear();
             Seams.KeysDown.Add(key);
-            Seams.UpdatePostfix();
+            Seams.UpdatePostfix(runOriginal);
             Seams.KeysDown.Clear();
         }
 
@@ -102,6 +106,11 @@ namespace FastForward.Tests
         /// </summary>
         public static readonly HashSet<KeyCode> KeysDown = new();
 
+        /// <summary>
+        /// Another mod's prefix blocking mainScript.Time_SetState, so the game's time state doesn't change.
+        /// </summary>
+        public static bool TimeSetStateBlocked;
+
         private static readonly Dictionary<object, Dictionary<Type, object>> Components = new(new SameObject());
         private static readonly Dictionary<object, Color> Colors = new(new SameObject());
 
@@ -113,8 +122,9 @@ namespace FastForward.Tests
             [AccessTools.Method(typeof(Object), "op_Inequality")] = Stub(nameof(StubInequality)),
             [AccessTools.PropertySetter(typeof(Graphic), nameof(Graphic.color))] = Stub(nameof(StubSetColor)),
             [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.color))] = Stub(nameof(StubSetColor)),
-            [AccessTools.Method(typeof(mainScript), nameof(mainScript.Time_SetState))] = Stub(nameof(TimeSetState)),
+            [AccessTools.Method(typeof(mainScript), nameof(mainScript.Time_SetState))] = Stub(nameof(GameTimeSetState)),
             [AccessTools.Method(typeof(FastForward), nameof(FastForward.ApplySuperFast))] = Stub(nameof(ApplySuperFast)),
+            [AccessTools.Method(typeof(FastForward), nameof(FastForward.SetSuperSpeed))] = Stub(nameof(SetSuperSpeed)),
             [AccessTools.Method(typeof(FastForward), nameof(FastForward.SetFastButtonColor))] = Stub(nameof(SetFastButtonColor)),
             [AccessTools.Method(typeof(ModMenusKeys), nameof(ModMenusKeys.Pressed))] = Stub(nameof(Pressed)),
         };
@@ -124,7 +134,9 @@ namespace FastForward.Tests
             Copy(AccessTools.Method(typeof(mainScript), nameof(mainScript.Time_SetState)), nameof(TimeSetState));
             Copy(AccessTools.Method(typeof(FastForward), nameof(FastForward.SetFastButtonColor)), nameof(SetFastButtonColor));
             Copy(AccessTools.Method(typeof(FastForward), nameof(FastForward.ApplySuperFast)), nameof(ApplySuperFast));
+            Copy(AccessTools.Method(typeof(FastForward), nameof(FastForward.SetSuperSpeed)), nameof(SetSuperSpeed));
             Copy(AccessTools.Method(typeof(TimeControlButton_OnClick), nameof(TimeControlButton_OnClick.Prefix)), nameof(OnClickPrefix));
+            Copy(AccessTools.Method(typeof(TimeControlButton_OnClick), nameof(TimeControlButton_OnClick.Postfix)), nameof(OnClickPostfix));
             Copy(AccessTools.Method(typeof(Controls_Update), nameof(Controls_Update.Postfix)), nameof(UpdatePostfix));
             Copy(AccessTools.Method(typeof(ModMenusKeys), nameof(ModMenusKeys.Pressed)), nameof(Pressed));
             return true;
@@ -139,14 +151,29 @@ namespace FastForward.Tests
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void SetFastButtonColor(Color32 color) => throw NotInstalled();
 
+        /// <summary>
+        /// The game's Time_SetState as the mod sees it: vanilla's, unless another mod blocks it.
+        /// </summary>
+        public static void GameTimeSetState(mainScript instance, mainScript._time_state state)
+        {
+            if (!TimeSetStateBlocked)
+                TimeSetState(instance, state);
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ApplySuperFast(mainScript main) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static bool OnClickPrefix(TimeControlButton __instance) => throw NotInstalled();
+        public static void SetSuperSpeed() => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void UpdatePostfix() => throw NotInstalled();
+        public static void OnClickPrefix(TimeControlButton __instance, bool __runOriginal, out bool __state) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void OnClickPostfix(bool __state, bool __runOriginal) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void UpdatePostfix(bool __runOriginal) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static bool Pressed(string varID, KeyCode key) => throw NotInstalled();
@@ -161,6 +188,7 @@ namespace FastForward.Tests
             _ = Installed.Value;
             MainCamera = null;
             KeysDown.Clear();
+            TimeSetStateBlocked = false;
             Components.Clear();
             Colors.Clear();
             // No ModMenus: it isn't loaded in tests

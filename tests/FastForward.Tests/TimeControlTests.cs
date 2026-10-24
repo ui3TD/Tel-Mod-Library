@@ -178,11 +178,49 @@ namespace FastForward.Tests
             AssertStillNormalSpeed();
         }
 
-        private static void AssertStillNormalSpeed()
+        internal static void AssertStillNormalSpeed()
         {
             Assert.Equal(mainScript._time_state.normal, staticVars.timeState);
             Assert.Equal(50d, staticVars.dateTimeAddMinutesPerSecond);
             Assert.Equal((Color)mainScript.white32, LabelColor(Main.TimeControls_Fast));
+        }
+    }
+
+    /// <summary>
+    /// Added in 1.4.1: when another mod blocks a time control, super-fast doesn't get around the block.
+    /// </summary>
+    public class BlockingModTests
+    {
+        public BlockingModTests() => Reset();
+
+        [Fact]
+        public void SecondClick_BlockedByAnotherMod_StaysFast()
+        {
+            Click(mainScript._time_state.fast);
+
+            Click(mainScript._time_state.fast, runOriginal: false);
+
+            Assert.Equal(mainScript._time_state.fast, staticVars.timeState);
+            Assert.Equal(200d, staticVars.dateTimeAddMinutesPerSecond);
+            Assert.Equal((Color)mainScript.green32, LabelColor(Main.TimeControls_Fast));
+        }
+
+        [Fact]
+        public void Pressing4_WhileAnotherModSkipsControlsUpdate_DoesNothing()
+        {
+            Press(KeyCode.Alpha4, runOriginal: false);
+
+            HotkeyTests.AssertStillNormalSpeed();
+        }
+
+        [Fact]
+        public void Pressing4_WhenAnotherModBlocksTheSwitchToFast_DoesNothing()
+        {
+            Seams.TimeSetStateBlocked = true;
+
+            Press(KeyCode.Alpha4);
+
+            HotkeyTests.AssertStillNormalSpeed();
         }
     }
 }

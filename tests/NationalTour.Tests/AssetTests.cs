@@ -47,44 +47,31 @@ namespace NationalTour.Tests
         // countries.json
 
         /// <summary>
-        /// The vanilla World Tour's costs and ticket prices, which the Steam description says are kept.
+        /// The mod ships no countries.json: the game reads only the last one loaded, so a copy would put the
+        /// game's tour costs back over another mod's. Tours use the game's own costs, ticket prices and areas.
         /// </summary>
-        [Theory]
-        [InlineData(Country.china, "asia", 45300, 2245)]
-        [InlineData(Country.southKorea, "asia", 15100, 4339)]
-        [InlineData(Country.india, "asia", 75500, 1286)]
-        [InlineData(Country.thailand, "asia", 52850, 1925)]
-        [InlineData(Country.philippines, "asia", 46810, 1468)]
-        [InlineData(Country.indonesia, "asia", 52850, 1582)]
-        [InlineData(Country.australia, "asia", 105700, 4817)]
-        [InlineData(Country.southAfrica, "africa", 135900, 1828)]
-        [InlineData(Country.canada, "namerica", 196300, 5734)]
-        [InlineData(Country.US, "namerica", 151000, 7271)]
-        [InlineData(Country.brazil, "samerica", 151000, 2510)]
-        [InlineData(Country.argentina, "samerica", 196300, 2903)]
-        [InlineData(Country.UK, "europe", 135900, 5174)]
-        [InlineData(Country.france, "europe", 90600, 5123)]
-        [InlineData(Country.germany, "europe", 120800, 5500)]
-        [InlineData(Country.italy, "europe", 120800, 4400)]
-        [InlineData(Country.spain, "europe", 75500, 4094)]
-        [InlineData(Country.russia, "europe", 108720, 2577)]
-        public void Countries_KeepTheWorldToursCostsAndDiscountAreas(Country type, string area, int cost, int ticketPrice)
-        {
-            SEvent_Tour.country country = LoadCountries().Single(c => c.Type == type);
-            Assert.Equal(area, country.Area.Type.ToString());
-            Assert.Equal(cost, country.Cost);
-            Assert.Equal(ticketPrice, country.TicketPrice);
-            Assert.Equal(1, country.Level);
-        }
-
         [Fact]
-        public void Countries_ListEachCountryOnce()
+        public void ShipsNoCountriesJson()
         {
-            Assert.Equal(Enum.GetValues(typeof(Country)).Cast<Country>().OrderBy(c => c), LoadCountries().Select(c => c.Type).OrderBy(c => c));
+            Assert.False(File.Exists(TestGame.ModAsset(Path.Combine("JSON", "SpecialEvents", "WorldTour", "countries.json"))));
         }
 
         /// <summary>
-        /// Each discount area holds one of the regions the Steam description lists.
+        /// The game's discount area for each tour country (its countries.json, the same in every language).
+        /// </summary>
+        private static readonly Dictionary<Country, string> GameAreas = new()
+        {
+            [Country.china] = "asia", [Country.southKorea] = "asia", [Country.india] = "asia", [Country.thailand] = "asia",
+            [Country.philippines] = "asia", [Country.indonesia] = "asia", [Country.australia] = "asia",
+            [Country.southAfrica] = "africa",
+            [Country.canada] = "namerica", [Country.US] = "namerica",
+            [Country.brazil] = "samerica", [Country.argentina] = "samerica",
+            [Country.UK] = "europe", [Country.france] = "europe", [Country.germany] = "europe", [Country.italy] = "europe",
+            [Country.spain] = "europe", [Country.russia] = "europe",
+        };
+
+        /// <summary>
+        /// Each of the game's discount areas holds one of the regions the Steam description lists.
         /// </summary>
         [Theory]
         [InlineData("Hokkaido + Tohoku", "namerica")]
@@ -95,27 +82,8 @@ namespace NationalTour.Tests
         public void Regions_ShareADiscountArea(string region, string area)
         {
             Assert.Contains("- " + region, SteamDescription());
-            IEnumerable<Prefectures> inArea = LoadCountries().Where(c => c.Area.Type.ToString() == area).Select(c => tourLocations[c.Type]);
+            IEnumerable<Prefectures> inArea = GameAreas.Where(c => c.Value == area).Select(c => tourLocations[c.Key]);
             Assert.Equal(MapTests.Regions[region].OrderBy(p => p), inArea.OrderBy(p => p));
-        }
-
-        /// <summary>
-        /// Loads the mod's countries.json with the game's own parser.
-        /// </summary>
-        private static List<SEvent_Tour.country> LoadCountries()
-        {
-            SEvent_Tour.Const_Area.Clear();
-            foreach (SEvent_Tour._areaType type in Enum.GetValues(typeof(SEvent_Tour._areaType)))
-                SEvent_Tour.Const_Area.Add(new SEvent_Tour._area { Type = type });
-
-            List<SEvent_Tour.country> countries = new();
-            foreach (JSONNode node in Json(Path.Combine("JSON", "SpecialEvents", "WorldTour", "countries.json")).AsArray)
-            {
-                SEvent_Tour.country country = new();
-                country.Set(node);
-                countries.Add(country);
-            }
-            return countries;
         }
 
         // constants.json

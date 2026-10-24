@@ -140,6 +140,28 @@ namespace EffortlessTraining.Tests
             }
         }
 
+        /// <summary>
+        /// Another mod's transpiler may leave an ldc.r4 with a double operand; the mod skips it instead of
+        /// throwing (which would also break that mod's patch) and still changes the real daily cost.
+        /// </summary>
+        [Fact]
+        public void NonFloatOperand_DoesNotThrow()
+        {
+            List<CodeInstruction> il = new()
+            {
+                new CodeInstruction(OpCodes.Ldc_R4, 2.0),
+                new CodeInstruction(OpCodes.Ldc_R4, 1440.0),
+                new CodeInstruction(OpCodes.Pop),
+                new CodeInstruction(OpCodes.Ldc_R4, 3f),
+                new CodeInstruction(OpCodes.Ldc_R4, 1440f),
+                new CodeInstruction(OpCodes.Ret),
+            };
+
+            List<CodeInstruction> patched = agency__room_DoGirlTraining.Transpiler(il).ToList();
+
+            Assert.Equal(new object[] { 2.0, 1440.0, null, 1f, 1440f, null }, patched.Select(i => i.operand));
+        }
+
         private class LogRecorder : UnityEngine.ILogHandler
         {
             public readonly List<string> Messages = new();

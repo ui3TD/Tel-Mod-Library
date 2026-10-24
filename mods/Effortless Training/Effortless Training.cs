@@ -28,9 +28,10 @@ namespace EffortlessTraining
 
             for (int i = 0; i < instructionList.Count - 1; i++)
             {
-                if (instructionList[i].opcode == OpCodes.Ldc_R4 && instructionList[i + 1].opcode == OpCodes.Ldc_R4 && (float)instructionList[i + 1].operand == 1440f)
+                // Type checks, not casts: another mod's transpiler may leave a non-float operand here
+                if (instructionList[i].opcode == OpCodes.Ldc_R4 && instructionList[i].operand is float dailyCost
+                    && instructionList[i + 1].opcode == OpCodes.Ldc_R4 && instructionList[i + 1].operand is float minutesPerDay && minutesPerDay == 1440f)
                 {
-                    float dailyCost = (float)instructionList[i].operand;
                     if (dailyCost == 3f)
                     {
                         instructionList[i].operand = DAILY_TRAINING_COST;

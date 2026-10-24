@@ -6,4 +6,5 @@ Training costs way too much stamina. This mod makes it so vocal/dance stamina co
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 1.0.2: No longer breaks other mods' changes to training if they use unusual number types.
 - 1.0.1: Logs a clear error if another mod already changed the training stamina cost.

@@ -130,11 +130,11 @@ namespace TraitsExpansionTests
         {
             business biz = TestGame.Component<business>();
             biz.ActiveProposal = null;
-            business_Accept.Prefix(biz);
+            business_Accept.Prefix(biz, true);
             Assert.Null(biz.ActiveProposal);
 
             biz.ActiveProposal = new business._proposal { type = tv_drama, girl = null, stamina = 20 };
-            business_Accept.Prefix(biz);
+            business_Accept.Prefix(biz, true);
             Assert.Equal(20, biz.ActiveProposal.stamina);
         }
 
@@ -146,7 +146,7 @@ namespace TraitsExpansionTests
             business biz = TestGame.Component<business>();
             biz.ActiveProposal = new business._proposal { type = tv_drama, girl = TestGame.Idol(NewTraits.Thespian), stamina = stamina };
 
-            business_Accept.Prefix(biz);
+            business_Accept.Prefix(biz, true);
             Assert.Equal(expected, biz.ActiveProposal.stamina);
         }
 
@@ -158,7 +158,7 @@ namespace TraitsExpansionTests
             business biz = TestGame.Component<business>();
             biz.ActiveProposal = new business._proposal { type = type, girl = TestGame.Idol(trait), stamina = 20 };
 
-            business_Accept.Prefix(biz);
+            business_Accept.Prefix(biz, true);
             Assert.Equal(20, biz.ActiveProposal.stamina);
         }
     }

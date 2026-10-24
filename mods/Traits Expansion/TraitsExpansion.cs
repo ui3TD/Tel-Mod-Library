@@ -28,8 +28,9 @@
         public const float POLYGLOT_BONUS = 0.2f;
 
 
-        // Set while the game works out a show, single, concert or proposal from idols' stats; the
-        // methods that set it never call each other, so a bool is enough. Cleared in finalizers.
+        // Set while the game works out a show, single, concert or proposal from idols' stats. The game
+        // never calls those methods inside each other, but another mod might, so each finalizer puts back
+        // the value its prefix found.
         public static bool patchGetVal = false;
         public static bool patchAddParam = false;
         public static bool patchGetFan_Count = false;

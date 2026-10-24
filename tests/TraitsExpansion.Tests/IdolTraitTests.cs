@@ -173,7 +173,7 @@ namespace TraitsExpansionTests
             data_girls.girls victim = TestGame.Idol();
             Clique(victim, TestGame.Idol(), TestGame.Idol(NewTraits.Sadistic));
 
-            Relationships_Do_Bullying.Postfix();
+            Relationships_Do_Bullying.Postfix(true);
 
             Assert.Equal(90f, TestGame.Stat(victim, mentalStamina));
             Assert.Equal(new[] { "An idol lost 10 mental stamina to bullying." }, Seams.Notifications);
@@ -188,7 +188,7 @@ namespace TraitsExpansionTests
             data_girls.girls victim = TestGame.Idol(name: "Victim");
             Clique(victim, TestGame.Idol(NewTraits.Sadistic)).KnownBulliedGirls.Add(victim);
 
-            Relationships_Do_Bullying.Postfix();
+            Relationships_Do_Bullying.Postfix(true);
 
             Assert.Equal(new[] { "Victim lost 10 mental stamina to bullying." }, Seams.Notifications);
         }
@@ -202,7 +202,7 @@ namespace TraitsExpansionTests
             data_girls.girls victim = TestGame.Idol();
             Clique(victim, TestGame.Idol(NewTraits.Sadistic), TestGame.Idol(NewTraits.Sadistic));
 
-            Relationships_Do_Bullying.Postfix();
+            Relationships_Do_Bullying.Postfix(true);
 
             Assert.Equal(90f, TestGame.Stat(victim, mentalStamina));
         }
@@ -216,7 +216,7 @@ namespace TraitsExpansionTests
             data_girls.girls victim = TestGame.Idol(NewTraits.Sadistic);
             Clique(victim, TestGame.Idol(), TestGame.Idol());
 
-            Relationships_Do_Bullying.Postfix();
+            Relationships_Do_Bullying.Postfix(true);
 
             Assert.Equal(100f, TestGame.Stat(victim, mentalStamina));
             Assert.Empty(Seams.Notifications);
@@ -232,7 +232,7 @@ namespace TraitsExpansionTests
             bully.status = status;
             Clique(victim, TestGame.Idol(), bully);
 
-            Relationships_Do_Bullying.Postfix();
+            Relationships_Do_Bullying.Postfix(true);
 
             Assert.Equal(100f, TestGame.Stat(victim, mentalStamina));
         }
@@ -248,7 +248,7 @@ namespace TraitsExpansionTests
             Relationships._clique clique = Clique(victim, TestGame.Idol(), bully);
             clique.StoppedBullying.Add(new Relationships._clique._stopped_bullying { Target = victim, Girls = { bully } });
 
-            Relationships_Do_Bullying.Postfix();
+            Relationships_Do_Bullying.Postfix(true);
 
             Assert.Equal(100f, TestGame.Stat(victim, mentalStamina));
         }
@@ -260,7 +260,7 @@ namespace TraitsExpansionTests
             victim.status = data_girls._status.injured;
             Clique(victim, TestGame.Idol(NewTraits.Sadistic));
 
-            Relationships_Do_Bullying.Postfix();
+            Relationships_Do_Bullying.Postfix(true);
 
             Assert.Equal(100f, TestGame.Stat(victim, mentalStamina));
             Assert.Empty(Seams.Notifications);
@@ -270,7 +270,7 @@ namespace TraitsExpansionTests
         public void NoVictim_NothingHappens()
         {
             Clique(null, TestGame.Idol(NewTraits.Sadistic));
-            Relationships_Do_Bullying.Postfix();
+            Relationships_Do_Bullying.Postfix(true);
             Assert.Empty(Seams.Notifications);
         }
 
@@ -285,7 +285,7 @@ namespace TraitsExpansionTests
             Clique(victimOfSadist, TestGame.Idol(NewTraits.Sadistic));
             Clique(otherVictim, TestGame.Idol());
 
-            Relationships_Do_Bullying.Postfix();
+            Relationships_Do_Bullying.Postfix(true);
 
             Assert.Equal(90f, TestGame.Stat(victimOfSadist, mentalStamina));
             Assert.Equal(100f, TestGame.Stat(otherVictim, mentalStamina));
@@ -307,11 +307,30 @@ namespace TraitsExpansionTests
         {
             Seams.Range = (_, _) => roll;
             data_girls.girls girl = TestGame.Idol(NewTraits.Job_Hopper);
+            // The game's own default, which the postfix runs after, is at least a year away
+            girl.Graduation_Date = TestGame.Today.AddYears(1);
 
             data_girls_girls_Graduation_Set_Default_Date.Postfix(girl);
 
             Assert.Equal(new[] { (100, 365) }, Seams.RangesRolled);
             Assert.Equal(TestGame.Today.AddDays(roll), girl.Graduation_Date);
+        }
+
+        /// <summary>
+        /// An earlier date another mod set is kept; the roll still happens, so later rolls are the same.
+        /// </summary>
+        [Fact]
+        public void EarlierDateFromAnotherMod_Kept()
+        {
+            Seams.Range = (_, _) => 200;
+            data_girls.girls girl = TestGame.Idol(NewTraits.Job_Hopper);
+            DateTime earlier = TestGame.Today.AddDays(50);
+            girl.Graduation_Date = earlier;
+
+            data_girls_girls_Graduation_Set_Default_Date.Postfix(girl);
+
+            Assert.Equal(new[] { (100, 365) }, Seams.RangesRolled);
+            Assert.Equal(earlier, girl.Graduation_Date);
         }
 
         [Fact]
@@ -351,7 +370,7 @@ namespace TraitsExpansionTests
         [InlineData(0f, 2f)]
         public void LowStamina_RollsForInjury(float stamina, float chance)
         {
-            data_girls_girls_Try_Injury.Postfix(Reckless(stamina));
+            data_girls_girls_Try_Injury.Postfix(Reckless(stamina), true);
             Assert.Equal(new[] { chance }, Seams.ChancesRolled);
             Assert.Empty(Seams.Injured);
         }
@@ -362,7 +381,7 @@ namespace TraitsExpansionTests
             Seams.Chance = _ => true;
             data_girls.girls girl = Reckless(30f);
 
-            data_girls_girls_Try_Injury.Postfix(girl);
+            data_girls_girls_Try_Injury.Postfix(girl, true);
 
             Assert.Equal(new[] { girl }, Seams.Injured);
         }
@@ -372,7 +391,7 @@ namespace TraitsExpansionTests
         [InlineData(100f)]
         public void HighStamina_NoRoll(float stamina)
         {
-            data_girls_girls_Try_Injury.Postfix(Reckless(stamina));
+            data_girls_girls_Try_Injury.Postfix(Reckless(stamina), true);
             Assert.Empty(Seams.ChancesRolled);
         }
 
@@ -382,7 +401,7 @@ namespace TraitsExpansionTests
             data_girls.girls girl = Reckless(0f);
             girl.status = data_girls._status.injured;
 
-            data_girls_girls_Try_Injury.Postfix(girl);
+            data_girls_girls_Try_Injury.Postfix(girl, true);
 
             Assert.Empty(Seams.ChancesRolled);
         }
@@ -393,7 +412,7 @@ namespace TraitsExpansionTests
             data_girls.girls girl = Reckless(0f);
             girl.room = new agency._room { type = agency._type.doctorsOffice };
 
-            data_girls_girls_Try_Injury.Postfix(girl);
+            data_girls_girls_Try_Injury.Postfix(girl, true);
 
             Assert.Empty(Seams.ChancesRolled);
         }
@@ -404,7 +423,7 @@ namespace TraitsExpansionTests
             data_girls.girls girl = TestGame.Idol(NewTraits.Job_Hopper);
             TestGame.SetStat(girl, physicalStamina, 0f);
 
-            data_girls_girls_Try_Injury.Postfix(girl);
+            data_girls_girls_Try_Injury.Postfix(girl, true);
 
             Assert.Empty(Seams.ChancesRolled);
         }

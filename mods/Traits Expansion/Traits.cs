@@ -74,7 +74,7 @@ namespace TraitsExpansion
 
         public static void WarnUnlessModTrait(object message, JSONNode jsonnode)
         {
-            if (!Enum.TryParse(jsonnode["trait"], out NewTraits _))
+            if (jsonnode == null || !Enum.TryParse(jsonnode["trait"], out NewTraits _))
             {
                 Debug.LogWarning(message);
             }
@@ -82,7 +82,7 @@ namespace TraitsExpansion
 
         public static void Infix(data_girls_textures._textureAsset textureAsset, JSONNode jsonnode)
         {
-            if (jsonnode["trait"] != null && Enum.TryParse(jsonnode["trait"], out NewTraits parsedEnum))
+            if (textureAsset != null && jsonnode != null && jsonnode["trait"] != null && Enum.TryParse(jsonnode["trait"], out NewTraits parsedEnum))
             {
                 textureAsset.Trait = (traits._trait._type)parsedEnum;
             }

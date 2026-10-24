@@ -164,6 +164,7 @@ namespace TraitsExpansionTests
 
         private static readonly MethodBase[] Patched =
         {
+            AccessTools.Method(typeof(Relationships_Do_Bullying), "SadisticBullying"),
             AccessTools.Method(typeof(Relationships_Do_Bullying), nameof(Relationships_Do_Bullying.Postfix)),
             AccessTools.Method(typeof(data_girls_girls_Graduation_Set_Default_Date), nameof(data_girls_girls_Graduation_Set_Default_Date.Postfix)),
             AccessTools.Method(typeof(SEvent_Tour_UseStamina), nameof(SEvent_Tour_UseStamina.Postfix)),

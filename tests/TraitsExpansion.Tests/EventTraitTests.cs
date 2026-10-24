@@ -105,7 +105,8 @@ namespace TraitsExpansionTests
             mc.Girls[2] = calm;
             concert.SetListItems.Add(mc);
 
-            SEvent_Concerts__concert_Finish.Postfix(concert);
+            concert.Status = SEvent_Tour.tour._status.finished;
+            SEvent_Concerts__concert_Finish.Postfix(concert, true, false);
 
             Assert.Equal(3, Seams.ParamsAdded.Count);
             Assert.All(Seams.ParamsAdded, p => Assert.Equal((nervous, mentalStamina, -10f), p));
@@ -120,7 +121,8 @@ namespace TraitsExpansionTests
             concert.SetListItems.Add(new SEvent_Concerts._concert._mc());
             concert.SetListItems.Add(new SEvent_Concerts._concert._song { Center = TestGame.Idol(NewTraits.Aerophobia) });
 
-            SEvent_Concerts__concert_Finish.Postfix(concert);
+            concert.Status = SEvent_Tour.tour._status.finished;
+            SEvent_Concerts__concert_Finish.Postfix(concert, true, false);
 
             Assert.Empty(Seams.ParamsAdded);
             Assert.Empty(Seams.Notifications);

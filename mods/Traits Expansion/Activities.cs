@@ -44,13 +44,26 @@ namespace TraitsExpansion
     }
 
     // Stage Fright stamina penalty
+    // Only for the call that finishes the concert: not if another mod skipped the game's Finish,
+    // and not again if Finish is called on a concert that was already finished
     [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Finish))]
     public class SEvent_Concerts__concert_Finish
     {
-        public static void Postfix(SEvent_Concerts._concert __instance)
+        public static void Prefix(SEvent_Concerts._concert __instance, out bool __state)
         {
+            __state = __instance.Status == SEvent_Tour.tour._status.finished;
+        }
+
+        public static void Postfix(SEvent_Concerts._concert __instance, bool __runOriginal, bool __state)
+        {
+            if (!__runOriginal || __state || __instance.Status != SEvent_Tour.tour._status.finished)
+                return;
+
             foreach (SEvent_Concerts._concert.ISetlistItem setlistItem in __instance.SetListItems)
             {
+                if (setlistItem == null)
+                    continue;
+
                 foreach (data_girls.girls girls in setlistItem.GetGirls(true))
                 {
                     if (girls != null && girls.trait == (traits._trait._type)NewTraits.Stage_Fright)
@@ -110,17 +123,20 @@ namespace TraitsExpansion
             if (_proposal.type != business._type.tv_drama || _proposal.girl.trait != (traits._trait._type)NewTraits.Thespian)
                 return;
 
-            __state = _proposal.stamina;
-            _proposal.stamina = Mathf.RoundToInt(_proposal.stamina * THESPIAN_COEFF);
+            int lowered = Mathf.RoundToInt(_proposal.stamina * THESPIAN_COEFF);
+            __state = _proposal.stamina - lowered;
+            _proposal.stamina = lowered;
         }
 
-        // Finalizer so the stamina is restored even if Set throws
+        // Finalizer so the stamina is restored even if Set throws. It puts back only what the prefix took off,
+        // so other mods that lower it for the popup too (MBTI's ENFP, for one), or change it for good, all end
+        // up right in any order.
         public static void Finalizer(business._proposal _proposal, int? __state)
         {
             if (__state == null || _proposal == null)
                 return;
 
-            _proposal.stamina = __state.Value;
+            _proposal.stamina += __state.Value;
         }
     }
 
@@ -128,9 +144,10 @@ namespace TraitsExpansion
     [HarmonyPatch(typeof(business), nameof(business.Accept))]
     public class business_Accept
     {
-        public static void Prefix(business __instance)
+        // __runOriginal is false if another mod skipped the game's Accept: then the offer isn't taken, so it isn't lowered
+        public static void Prefix(business __instance, bool __runOriginal)
         {
-            if (__instance.ActiveProposal?.girl == null)
+            if (!__runOriginal || __instance.ActiveProposal?.girl == null)
                 return;
             if (__instance.ActiveProposal.type != business._type.tv_drama || __instance.ActiveProposal.girl.trait != (traits._trait._type)NewTraits.Thespian)
                 return;

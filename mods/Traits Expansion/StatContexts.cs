@@ -4,13 +4,17 @@ using static TraitsExpansion.TraitsExpansion;
 
 namespace TraitsExpansion
 {
+    // Each prefix saves the flag as it was and its finalizer puts it back, rather than clearing it: the game
+    // never calls one of these inside another, but another mod might, and clearing would switch the outer
+    // calculation's trait bonuses off for the rest of it.
     // Apply traits to businesses
     [HarmonyPatch(typeof(business._proposal), nameof(business._proposal.GetGirlCoeff))]
     public class Business__proposal_GetGirlCoeff
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out bool __state)
         {
+            __state = patchGetVal;
             patchGetVal = true;
         }
 
@@ -30,9 +34,9 @@ namespace TraitsExpansion
         }
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static Exception Finalizer(Exception __exception)
+        public static Exception Finalizer(Exception __exception, bool __state)
         {
-            patchGetVal = false;
+            patchGetVal = __state;
             return __exception;
         }
     }
@@ -42,15 +46,16 @@ namespace TraitsExpansion
     public class Data_girls_GetAverageParam
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out bool __state)
         {
+            __state = patchGetVal;
             patchGetVal = true;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static Exception Finalizer(Exception __exception)
+        public static Exception Finalizer(Exception __exception, bool __state)
         {
-            patchGetVal = false;
+            patchGetVal = __state;
             return __exception;
         }
     }
@@ -60,15 +65,16 @@ namespace TraitsExpansion
     public class Shows__show_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out bool __state)
         {
+            __state = patchGetVal;
             patchGetVal = true;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static Exception Finalizer(Exception __exception)
+        public static Exception Finalizer(Exception __exception, bool __state)
         {
-            patchGetVal = false;
+            patchGetVal = __state;
             return __exception;
         }
     }
@@ -78,15 +84,16 @@ namespace TraitsExpansion
     public class Singles__single_SenbatsuCalcParam
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out bool __state)
         {
+            __state = patchGetVal;
             patchGetVal = true;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static Exception Finalizer(Exception __exception)
+        public static Exception Finalizer(Exception __exception, bool __state)
         {
-            patchGetVal = false;
+            patchGetVal = __state;
             return __exception;
         }
     }
@@ -96,15 +103,16 @@ namespace TraitsExpansion
     public class SEvent_Concerts__concert__song_GetSkillValue
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out bool __state)
         {
+            __state = patchGetVal;
             patchGetVal = true;
         }
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static Exception Finalizer(Exception __exception)
+        public static Exception Finalizer(Exception __exception, bool __state)
         {
-            patchGetVal = false;
+            patchGetVal = __state;
             return __exception;
         }
     }
@@ -114,16 +122,17 @@ namespace TraitsExpansion
     public class SEvent_Concerts__concert__mc_GetSkillValue
     {
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out bool __state)
         {
+            __state = patchGetVal;
             patchGetVal = true;
         }
 
 
         [HarmonyPriority(Priority.VeryLow)]
-        public static Exception Finalizer(Exception __exception)
+        public static Exception Finalizer(Exception __exception, bool __state)
         {
-            patchGetVal = false;
+            patchGetVal = __state;
             return __exception;
         }
     }

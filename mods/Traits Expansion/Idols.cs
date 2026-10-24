@@ -74,18 +74,47 @@ namespace TraitsExpansion
     }
 
     // Sadistic bullying
+    // Not if another mod skipped the game's bullying. It's the last step of the game's weekly relationship
+    // update, so an error here is logged (once) and the week goes on.
     [HarmonyPatch(typeof(Relationships), nameof(Relationships.Do_Bullying))]
     public class Relationships_Do_Bullying
     {
-        public static void Postfix()
+        private static bool loggedError;
+
+        public static void Postfix(bool __runOriginal)
         {
+            if (!__runOriginal)
+                return;
+
+            try
+            {
+                SadisticBullying();
+            }
+            catch (Exception e)
+            {
+                if (!loggedError)
+                {
+                    loggedError = true;
+                    UnityEngine.Debug.LogError("[Traits Expansion] Couldn't apply this week's Sadistic bullying: " + e);
+                }
+            }
+        }
+
+        private static void SadisticBullying()
+        {
+            if (Relationships.Cliques == null)
+                return;
+
             int sadistic;
             foreach (Relationships._clique clique in Relationships.Cliques)
             {
+                if (clique?.Members == null || clique.Bullied_Girls == null)
+                    continue;
+
                 sadistic = 0;
                 foreach(data_girls.girls member in clique.Members)
                 {
-                    if (member.IsSick())
+                    if (member == null || member.IsSick())
                         continue;
 
                     if (member.trait == (traits._trait._type)NewTraits.Sadistic && clique.IsBully(member))
@@ -99,7 +128,7 @@ namespace TraitsExpansion
 
                 foreach (data_girls.girls girls in clique.Bullied_Girls)
                 {
-                    if (girls.IsSick())
+                    if (girls == null || girls.IsSick())
                         continue;
 
                     string notif = Language.Insert("IDOL__BULLIED_UNKNOWN", new string[] { SADISTIC_MODIFIER.ToString() });
@@ -118,6 +147,7 @@ namespace TraitsExpansion
     }
 
     // Job Hopper graduation date within the next year
+    // An earlier date another mod set is kept. The game's own default is always at least a year away, so it's always replaced.
     [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.Graduation_Set_Default_Date))]
     public class data_girls_girls_Graduation_Set_Default_Date
     {
@@ -126,16 +156,22 @@ namespace TraitsExpansion
             if (__instance.trait != (traits._trait._type)NewTraits.Job_Hopper)
                 return;
 
-            __instance.Graduation_Date = staticVars.dateTime.AddDays(UnityEngine.Random.Range(JOBHOPPER_DAYS_LOWER, JOBHOPPER_DAYS_UPPER));
+            DateTime jobHopper = staticVars.dateTime.AddDays(UnityEngine.Random.Range(JOBHOPPER_DAYS_LOWER, JOBHOPPER_DAYS_UPPER));
+            if (jobHopper < __instance.Graduation_Date)
+                __instance.Graduation_Date = jobHopper;
         }
     }
 
     // Reckless
+    // Not if another mod skipped the game's injury roll (it turned injuries off)
     [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.Try_Injury))]
     public class data_girls_girls_Try_Injury
     {
-        public static void Postfix(data_girls.girls __instance)
+        public static void Postfix(data_girls.girls __instance, bool __runOriginal)
         {
+            if (!__runOriginal)
+                return;
+
             if (__instance.trait == (traits._trait._type)NewTraits.Reckless && __instance.status != data_girls._status.injured)
             {
                 if (__instance.room != null && __instance.room.type == agency._type.doctorsOffice)

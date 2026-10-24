@@ -235,24 +235,25 @@ namespace TraitsExpansionTests
         {
             List<data_girls.girls> girls = new() { TestGame.Idol() };
 
-            Data_girls_GetAverageParam.Prefix();
+            patchGetVal = false;
+            Data_girls_GetAverageParam.Prefix(out bool state);
             Assert.True(patchGetVal);
-            Data_girls_GetAverageParam.Finalizer(null);
+            Data_girls_GetAverageParam.Finalizer(null, state);
             Assert.False(patchGetVal);
 
-            Shows__show_SenbatsuCalcParam.Prefix();
+            Shows__show_SenbatsuCalcParam.Prefix(out state);
             Assert.True(patchGetVal);
-            Shows__show_SenbatsuCalcParam.Finalizer(null);
+            Shows__show_SenbatsuCalcParam.Finalizer(null, state);
             Assert.False(patchGetVal);
 
-            Action[] prefixes =
+            Prefix[] prefixes =
             {
                 Business__proposal_GetGirlCoeff.Prefix,
                 Singles__single_SenbatsuCalcParam.Prefix,
                 SEvent_Concerts__concert__song_GetSkillValue.Prefix,
                 SEvent_Concerts__concert__mc_GetSkillValue.Prefix,
             };
-            Func<Exception, Exception>[] finalizers =
+            Func<Exception, bool, Exception>[] finalizers =
             {
                 Business__proposal_GetGirlCoeff.Finalizer,
                 Singles__single_SenbatsuCalcParam.Finalizer,
@@ -261,12 +262,14 @@ namespace TraitsExpansionTests
             };
             for (int i = 0; i < prefixes.Length; i++)
             {
-                prefixes[i]();
+                prefixes[i](out bool before);
                 Assert.True(patchGetVal);
                 Exception thrown = new InvalidOperationException();
-                Assert.Same(thrown, finalizers[i](thrown));
+                Assert.Same(thrown, finalizers[i](thrown, before));
                 Assert.False(patchGetVal);
             }
         }
+
+        private delegate void Prefix(out bool __state);
     }
 }

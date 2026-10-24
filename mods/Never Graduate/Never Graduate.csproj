@@ -5,7 +5,7 @@
 		<HarmonyID>com.tel.nevergraduate</HarmonyID>
 		<ModDescription>This makes the game never check for graduations, unless the girl is fired.</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.0.0</Version>
+		<Version>1.0.1</Version>
 		<WorkshopID>2977892324</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 

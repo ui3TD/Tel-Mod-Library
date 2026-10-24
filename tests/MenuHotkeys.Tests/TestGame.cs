@@ -66,11 +66,18 @@ namespace MenuHotkeys.Tests
         /// <summary>
         /// Runs the mod's Controls.Update postfix for a frame with these keys pressed.
         /// </summary>
-        public static void Press(params KeyCode[] keys)
+        public static void Press(params KeyCode[] keys) => Frame(true, keys);
+
+        /// <summary>
+        /// The same, but another mod's prefix skipped Controls.Update to block the game's hotkeys.
+        /// </summary>
+        public static void PressSkipped(params KeyCode[] keys) => Frame(false, keys);
+
+        private static void Frame(bool runOriginal, KeyCode[] keys)
         {
             Seams.KeysDown.Clear();
             Seams.KeysDown.UnionWith(keys);
-            Seams.UpdatePostfix();
+            Seams.UpdatePostfix(runOriginal);
             Seams.KeysDown.Clear();
         }
 
@@ -143,7 +150,7 @@ namespace MenuHotkeys.Tests
         });
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void UpdatePostfix() => throw new InvalidOperationException("Call Seams.Reset first");
+        public static void UpdatePostfix(bool __runOriginal) => throw new InvalidOperationException("Call Seams.Reset first");
 
         /// <summary>
         /// ModMenusKeys.Pressed, reading the test's keys.

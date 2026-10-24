@@ -95,6 +95,18 @@ namespace MenuHotkeys.Tests
 
             Assert.Empty(Seams.OpenedTabs);
         }
+
+        /// <summary>
+        /// Added in 1.1.1: another mod blocking the game's hotkeys, for example while the player types, blocks these too.
+        /// </summary>
+        [Fact]
+        public void Keys_WhileAnotherModSkipsControlsUpdate_DoNothing()
+        {
+            foreach ((KeyCode key, _, _) in Hotkeys)
+                PressSkipped(key);
+
+            Assert.Empty(Seams.OpenedTabs);
+        }
     }
 
     /// <summary>

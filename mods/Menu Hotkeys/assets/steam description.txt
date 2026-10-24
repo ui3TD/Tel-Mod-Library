@@ -17,5 +17,6 @@ To change these keys, install [url=https://steamcommunity.com/sharedfiles/filede
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 1.1.1: Works with mods that switch off the game's hotkeys; no change without them.
 - 1.1.0: The keys can be changed on the Hotkeys tab of ModMenus.
 - 1.0.1: Internal tidy-up of the hotkey code; no change in game.

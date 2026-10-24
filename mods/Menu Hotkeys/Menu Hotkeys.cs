@@ -47,9 +47,13 @@ namespace MenuHotkeys
             new("MenuHotkeys_Policies", KEY_POLICIES, Tabs_Manager._tab._type.policies),
         };
 
-        public static void Postfix()
+        /// <summary>
+        /// Opens the tab of the first key pressed. Not when another mod skipped Controls.Update to block the
+        /// game's hotkeys.
+        /// </summary>
+        public static void Postfix(bool __runOriginal)
         {
-            if (mainScript.IsBlockingHotkeys())
+            if (!__runOriginal || mainScript.IsBlockingHotkeys())
             {
                 return;
             }

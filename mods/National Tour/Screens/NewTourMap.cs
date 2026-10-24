@@ -174,13 +174,13 @@ namespace NationalTour
     }
 
 
-    // A national tour can be planned but not created until national tours have their own slot: Continue stays greyed
+    // A national tour is only created when it can have its own slot: otherwise Continue stays greyed
     [HarmonyPatch(typeof(Tour_New_Popup), nameof(Tour_New_Popup.Render))]
     public class Tour_New_Popup_Render
     {
         public static void Postfix(Tour_New_Popup __instance)
         {
-            if (NewTourMap.NationalMode && !Readiness.IsReady(Module.Routing))
+            if (NewTourMap.NationalMode && !Readiness.CanCreateNationalTours())
                 __instance.Continue.GetComponent<ButtonDefault>().Activate(false);
         }
     }

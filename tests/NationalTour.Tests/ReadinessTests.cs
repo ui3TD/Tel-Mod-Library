@@ -13,14 +13,13 @@ namespace NationalTour.Tests
         public ReadinessTests() => TestGame.Reset();
 
         /// <summary>
-        /// Stage 1 has the modules a national tour is planned with; the ones that create and run it come later.
+        /// This build plans, creates and runs national tours; saving them comes in a later stage.
         /// </summary>
         [Fact]
-        public void ThisBuild_HasTheModulesToPlanANationalTour()
+        public void ThisBuild_HasEveryModuleButSaving()
         {
-            Module[] planning = { Module.Pictures, Module.Prefectures, Module.Text, Module.NationalRecord, Module.NationalTab, Module.NewTourMap, Module.ResultsPictures };
-            Assert.All(planning, m => Assert.True(IsReady(m), m.ToString()));
-            Assert.All(Enum.GetValues(typeof(Module)).Cast<Module>().Except(planning), m => Assert.False(IsReady(m), m.ToString()));
+            Assert.All(Enum.GetValues(typeof(Module)).Cast<Module>().Where(m => m != Module.Save), m => Assert.True(IsReady(m), m.ToString()));
+            Assert.False(IsReady(Module.Save));
         }
 
         [Fact]

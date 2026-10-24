@@ -26,14 +26,21 @@ namespace NationalTour
         }
 
         /// <summary>
-        /// The modules this build has. Routing and the modules after it come in later stages; until then a
-        /// national tour can be planned on the map but not created.
+        /// The modules this build has. Saving comes in a later stage.
         /// </summary>
         public static readonly HashSet<Module> Built = new()
         {
             Module.Pictures, Module.Prefectures, Module.Text, Module.NationalRecord,
             Module.NationalTab, Module.NewTourMap, Module.ResultsPictures,
+            Module.NationalHandler, Module.Routing, Module.TourMethods, Module.Labels,
         };
+
+        /// <summary>
+        /// A national tour can be created: it has a handler of its own, the game's buttons reach it, and its tour
+        /// methods use the national record.
+        /// </summary>
+        public static bool CanCreateNationalTours() =>
+            AreReady(Module.NationalHandler, Module.Routing, Module.TourMethods) && NationalHandler.Instance is not null;
 
         private static readonly Dictionary<Module, string> Failed = new();
 

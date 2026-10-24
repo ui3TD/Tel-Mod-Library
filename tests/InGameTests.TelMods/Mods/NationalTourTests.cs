@@ -177,8 +177,64 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
-        /// A world tour's results keep the game's background. The game resets the popup with the real
-        /// PopupManager objects, which the unit tests stand in for.
+        /// A national tour's event card, made by the game's own event list: the card's title says National Tour
+        /// after its label's own Start has run, and the card launches and cancels through the national handler,
+        /// which it finds in its Start after the game gave it its tour. Only the engine runs the prefab's label
+        /// and the card's Start, in that order.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator NationalCardTitle(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+
+            yield return Game.Quicksave(ctx);
+            SEvent_Tour national = NationalHandlerOf(mod);
+            ctx.Assert(national != null, "There is no national tour handler");
+            if (national == null)
+                yield break;
+            try
+            {
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.specialEvents);
+                SEvent_Tour.tour tour = NewNationalTour(mod);
+                national.SetTour(tour);
+                yield return null;
+                yield return null;
+
+                SEvent_Button_Tour card = Game.Main.Data.GetComponent<SpecialEvents_Manager>().Buttons
+                    .Where(b => b.Tour == tour && b.Button != null).Select(b => b.Button.GetComponent<SEvent_Button_Tour>()).FirstOrDefault();
+                ctx.Assert(card != null, "The event list has no card for the national tour");
+                if (card != null)
+                {
+                    string title = card.Title.GetComponentInChildren<TMPro.TextMeshProUGUI>().text;
+                    ctx.Record("card title", title);
+                    ctx.Assert(title == Language.Data["NATIONAL_TOUR__TITLE"], "The national tour's card says " + title);
+                    ctx.Assert(Traverse.Create(card).Field("_Sevent_Tour").GetValue<SEvent_Tour>() == national, "The national tour's card would launch the World Tour's slot");
+                }
+
+                SEvent_Button_Tour worldCard = Game.Main.Data.GetComponent<SpecialEvents_Manager>().Buttons
+                    .Where(b => b.Tour != null && b.Tour != tour && b.Button != null && b.Tour.Status != SEvent_Tour.tour._status.finished)
+                    .Select(b => b.Button.GetComponent<SEvent_Button_Tour>()).FirstOrDefault();
+                if (worldCard != null)
+                {
+                    string title = worldCard.Title.GetComponentInChildren<TMPro.TextMeshProUGUI>().text;
+                    ctx.Record("world card title", title);
+                    ctx.Assert(title == Language.Data["SEVENT__WORLD_TOUR"], "The world tour's card says " + title);
+                }
+            }
+            finally
+            {
+                ClearNational(mod, national);
+                Tabs_Manager.CloseTab_(force: true);
+            }
+            yield return Game.Quickload(ctx);
+        }
+
+        /// <summary>
+        /// The results of each kind of tour, through the real PopupManager.Open, which sets the game's background
+        /// before the mod's postfix: a national tour fades in the national pictures, a world tour keeps the game's.
+        /// After a national tour's results close, the zoom tween is stopped and the shared background keeps the
+        /// game's size. Only the engine runs the popup's open, its tweens and the results animation.
         /// </summary>
         [InGameTest(Suite = ModTest.Suite)]
         private static IEnumerator TourResultsBackground(TestContext ctx)
@@ -187,21 +243,84 @@ namespace InGameTests.TelMods
                 yield break;
 
             Type pictures = mod.GetType(Pictures, true);
+            Texture nationalPicture = Traverse.Create(pictures).Field("World_tour_def_tex").GetValue<Texture>();
+            Sprite nationalBlur = Traverse.Create(pictures).Field("World_tour_def_BG").GetValue<Sprite>();
             PopupManager popups = Game.Main.Data.GetComponent<PopupManager>();
             Tour_Popup results = PopupObject(PopupManager._type.sevent_tour).GetComponent<Tour_Popup>();
-
-            // Reset lowers the progress bar by a fixed step each call, for the animation that follows.
-            Vector3 bar = results.Bar.transform.localPosition;
-            using (TestTools.Restore(() => results.Bar.transform.localPosition = bar))
-                results.Reset();
-
-            ctx.Assert(popups.BGImage.GetComponent<RawImage>().texture != Traverse.Create(pictures).Field("World_tour_def_tex").GetValue<Texture>(),
-                "A world tour's results show National Tour's picture");
             Image blurred = Path(results.gameObject, "BG")?.GetComponent<Image>();
-            ctx.Assert(blurred != null, "sevent_tour popup has no BG image");
-            if (blurred != null)
-                ctx.Assert(blurred.sprite != Traverse.Create(pictures).Field("World_tour_def_BG").GetValue<Sprite>(), "A world tour's results show National Tour's blurred picture");
-            yield break;
+            RectTransform background = popups.BGImage.GetComponent<RectTransform>();
+            Vector2 gameSize = background.sizeDelta;
+            SEvent_Tour game = Game.Main.Data.GetComponent<SEvent_Tour>();
+            SEvent_Tour national = NationalHandlerOf(mod);
+            ctx.Assert(national != null && blurred != null, "There is no national tour handler or results background");
+            if (national == null || blurred == null)
+                yield break;
+
+            yield return Game.Quicksave(ctx);
+            try
+            {
+                // A national tour
+                SEvent_Tour.tour tour = NewNationalTour(mod);
+                national.SetTour(tour);
+                foreach (SEvent_Tour.tour._progressable param in tour.parameters)
+                    param.val = 50f;
+                national.StartTour();
+                yield return WaitForResults(ctx, results);
+                ctx.Assert(popups.BGImage.GetComponent<RawImage>().texture == nationalPicture, "A national tour's results don't show the national picture");
+                ctx.Assert(blurred.sprite == nationalBlur, "A national tour's results don't show the national blurred picture");
+                results.OnFinish();
+                yield return new WaitForSecondsRealtime(1f);
+                ctx.Record("background size after the national results", background.sizeDelta.ToString());
+                ctx.Assert(background.sizeDelta == gameSize, "After the national results the background is " + background.sizeDelta + ", not the game's " + gameSize);
+                ctx.Assert(national.Tour == null && tour.Status == SEvent_Tour.tour._status.finished, "Finish didn't finish the national tour");
+                yield return Game.CloseAllPopups(ctx);
+
+                // A world tour (the test save has one in production)
+                ctx.Assert(game.Tour != null, "The test save has no world tour in production");
+                if (game.Tour != null)
+                {
+                    game.StartTour();
+                    yield return WaitForResults(ctx, results);
+                    ctx.Assert(popups.BGImage.GetComponent<RawImage>().texture != nationalPicture, "A world tour's results show the national picture");
+                    ctx.Assert(blurred.sprite != nationalBlur, "A world tour's results show the national blurred picture");
+                    results.OnFinish();
+                    yield return Game.CloseAllPopups(ctx);
+                }
+            }
+            finally
+            {
+                ClearNational(mod, national);
+            }
+            yield return Game.Quickload(ctx);
+        }
+
+        private static IEnumerator WaitForResults(TestContext ctx, Tour_Popup results)
+        {
+            yield return TestTools.WaitFor(ctx, () => results.Button_Continue.activeSelf, 90f, "the tour results to finish animating (about 6 s per stop)");
+        }
+
+        private static SEvent_Tour NationalHandlerOf(Assembly mod) =>
+            Traverse.Create(mod.GetType("NationalTour.NationalHandler", true)).Field("Instance").GetValue<SEvent_Tour>();
+
+        /// <summary>
+        /// A national tour to two prefectures at the smallest venue, as the map makes it.
+        /// </summary>
+        private static SEvent_Tour.tour NewNationalTour(Assembly mod)
+        {
+            IList prefectures = Traverse.Create(mod.GetType("NationalTour.Prefectures", true)).Field("All").GetValue<IList>();
+            SEvent_Tour.tour tour = new();
+            tour.SelectCountry((SEvent_Tour.country)prefectures[0], 1);
+            tour.SelectCountry((SEvent_Tour.country)prefectures[13], 1);
+            return tour;
+        }
+
+        /// <summary>
+        /// This build doesn't save national tours yet, so a quickload can't undo one: clear it by hand.
+        /// </summary>
+        private static void ClearNational(Assembly mod, SEvent_Tour national)
+        {
+            national.Tour = null;
+            mod.GetType("NationalTour.NationalRecord", true).GetMethod("Reset").Invoke(null, null);
         }
 
         /// <summary>

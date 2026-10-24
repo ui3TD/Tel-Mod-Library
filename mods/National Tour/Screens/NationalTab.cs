@@ -111,7 +111,7 @@ namespace NationalTour
         /// <summary>
         /// Points the copied label at the mod's text, which the game then also uses when the language changes.
         /// </summary>
-        private static void SetText(Transform label, string key, string fallback)
+        public static void SetText(Transform label, string key, string fallback)
         {
             if (label == null)
                 return;

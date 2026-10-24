@@ -50,6 +50,12 @@ namespace NationalTour.Tests
             NationalTab.Manager = null;
             NewTourMap.Reset();
             ResultsPictures.Reset();
+            Routing.Launcher = null;
+            NationalHandler.Instance = null;
+            SpecialEvents_Manager.SpecialEvents.Clear();
+            SEvent_Tour.Last_Tour_ID = 0;
+            AccessTools.Field(typeof(SaveManager), "SaveEvent").SetValue(null, null);
+            AccessTools.Field(typeof(SaveManager), "LoadEvent").SetValue(null, null);
             Pictures.TOUR_map_2 = null;
             Pictures.World_tour_def = null;
             Pictures.World_tour_def_tex = null;
@@ -195,6 +201,10 @@ namespace NationalTour.Tests
         public Image ResultsBG;
         public Sprite GameBlur;
 
+        // The game's tour handler (the national one is added next to it) and the rooms
+        public SEvent_Tour Handler;
+        public agency Agency;
+
         // The Special Events popup
         public SpecialEvents_Manager SpecialEvents;
         public GameObject SpecialEventsPopup;
@@ -223,7 +233,11 @@ namespace NationalTour.Tests
             Main.Data = Data;
             Popups = Seams.Add<PopupManager>(Data);
             if (inGame)
+            {
                 SpecialEvents = Seams.Add<SpecialEvents_Manager>(Data);
+                Handler = Seams.Add<SEvent_Tour>(Data);
+                Agency = Seams.Add<agency>(Data);
+            }
 
             BGImage = Seams.NewObject("BGImage_RenderTexture");
             BGRaw = Seams.Add<RawImage>(BGImage);
@@ -447,7 +461,39 @@ namespace NationalTour.Tests
             [AccessTools.Method(typeof(NationalTab), nameof(NationalTab.OnTabClicked))] = Stub(nameof(ClickTab)),
             [AccessTools.Method(typeof(NationalTab), "SetText")] = Stub(nameof(SetTabText)),
             [AccessTools.Method(typeof(SpecialEvents_Manager_ResetPopup_New), nameof(SpecialEvents_Manager_ResetPopup_New.Postfix))] = Stub(nameof(SpecialEventsContinue)),
+
+            [AccessTools.Method(typeof(NationalHandler), nameof(NationalHandler.Add))] = Stub(nameof(AddHandler)),
+            [AccessTools.Method(typeof(NationalHandler), nameof(NationalHandler.CopyPopups))] = Stub(nameof(CopyHandlerPopups)),
+            [AccessTools.Method(typeof(TourMethods), nameof(TourMethods.UnlockFor))] = Stub(nameof(UnlockFor)),
+            [AccessTools.Method(typeof(TourMethods), nameof(TourMethods.OnWorldTourFor))] = Stub(nameof(OnWorldTourFor)),
+            [AccessTools.Method(typeof(Labels), nameof(Labels.CardInProduction))] = Stub(nameof(CardInProduction)),
+            [AccessTools.Method(typeof(Labels), nameof(Labels.CardFinished))] = Stub(nameof(CardFinished)),
         };
+
+        /// <summary>
+        /// The game's methods the mod transpiles, copied with the mod's transpiler applied (as in the game), then
+        /// redirected like the mod's copies. Each runs the game's real code around the mod's change.
+        /// </summary>
+        private static readonly Dictionary<MethodBase, KeyValuePair<MethodInfo, MethodInfo>> GameCopies = new()
+        {
+            [AccessTools.Method(typeof(Tour_New_Popup), nameof(Tour_New_Popup.OnContinue))] = Pair(nameof(GameOnContinue), nameof(TranspileOnContinue)),
+            [AccessTools.Method(typeof(DragAndDropManager), nameof(DragAndDropManager.OnMouseUp), new[] { typeof(SEvent_Tour.tour) })] = Pair(nameof(GameDropTour), nameof(TranspileDropTour)),
+            [AccessTools.Method(typeof(Tour_Popup), nameof(Tour_Popup.OnFinish))] = Pair(nameof(GameOnFinish), nameof(TranspileOnFinish)),
+            [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.SetTour))] = Pair(nameof(GameSetTour), nameof(TranspileSetTour)),
+            [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.StartTour))] = Pair(nameof(GameStartTour), nameof(TranspileStartTour)),
+            [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.FinishTour))] = Pair(nameof(GameFinishTour), nameof(TranspileFinishTour)),
+            [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.CancelTour))] = Pair(nameof(GameCancelTour), nameof(TranspileCancelTour)),
+        };
+
+        private static KeyValuePair<MethodInfo, MethodInfo> Pair(string standIn, string transpiler) => new(Stub(standIn), Stub(transpiler));
+
+        private static IEnumerable<CodeInstruction> TranspileOnContinue(IEnumerable<CodeInstruction> i) => Redirect(Tour_New_Popup_OnContinue.Transpiler(i));
+        private static IEnumerable<CodeInstruction> TranspileDropTour(IEnumerable<CodeInstruction> i) => Redirect(DragAndDropManager_OnMouseUp.Transpiler(i));
+        private static IEnumerable<CodeInstruction> TranspileOnFinish(IEnumerable<CodeInstruction> i) => Redirect(Tour_Popup_OnFinish_Routing.Transpiler(i));
+        private static IEnumerable<CodeInstruction> TranspileSetTour(IEnumerable<CodeInstruction> i) => Redirect(SEvent_Tour_SetTour.Transpiler(i));
+        private static IEnumerable<CodeInstruction> TranspileStartTour(IEnumerable<CodeInstruction> i) => Redirect(SEvent_Tour_StartTour_Methods.Transpiler(i));
+        private static IEnumerable<CodeInstruction> TranspileFinishTour(IEnumerable<CodeInstruction> i) => Redirect(SEvent_Tour_FinishTour.Transpiler(i));
+        private static IEnumerable<CodeInstruction> TranspileCancelTour(IEnumerable<CodeInstruction> i) => Redirect(SEvent_Tour_CancelTour.Transpiler(i));
 
         /// <summary>
         /// What the copies call instead: each other, and stubs for the engine and the game.
@@ -466,6 +512,7 @@ namespace NationalTour.Tests
             [AccessTools.Method(typeof(GameObject), nameof(GameObject.SetActive))] = Stub(nameof(StubSetActive)),
             [AccessTools.PropertyGetter(typeof(GameObject), nameof(GameObject.activeSelf))] = Stub(nameof(StubActiveSelf)),
             [AccessTools.Method(typeof(Transform), nameof(Transform.Find), new[] { typeof(string) })] = Stub(nameof(StubFind)),
+            [AccessTools.PropertyGetter(typeof(Transform), nameof(Transform.parent))] = Stub(nameof(StubParent)),
             [AccessTools.Method(typeof(Transform), nameof(Transform.GetSiblingIndex))] = Stub(nameof(StubGetSiblingIndex)),
             [AccessTools.Method(typeof(Transform), nameof(Transform.SetSiblingIndex))] = Stub(nameof(StubSetSiblingIndex)),
             [AccessTools.PropertyGetter(typeof(Transform), nameof(Transform.position))] = Stub(nameof(StubGetPosition)),
@@ -500,6 +547,34 @@ namespace NationalTour.Tests
             [AccessTools.Method(typeof(NationalTab), nameof(NationalTab.CallRenderContinueButton))] = Stub(nameof(StubRenderContinueButton)),
             [AccessTools.Method(typeof(NationalTab), nameof(NationalTab.CallRenderTab))] = Stub(nameof(StubRenderTab)),
 
+            // Tours: what the game's tour code was asked to do is recorded
+            [AccessTools.PropertySetter(typeof(Behaviour), nameof(Behaviour.enabled))] = Stub(nameof(StubSetEnabled)),
+            [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.SetTour))] = Stub(nameof(StubSetTour)),
+            [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.Assign))] = Stub(nameof(StubAssign)),
+            [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.FinishTour))] = Stub(nameof(StubFinishTour)),
+            [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.UseStamina))] = Stub(nameof(StubUseStamina)),
+            [AccessTools.Method(typeof(PopupManager), nameof(PopupManager.Open), new[] { typeof(PopupManager._type), typeof(bool) })] = Stub(nameof(StubOpenPopup)),
+            [AccessTools.Method(typeof(PopupManager), nameof(PopupManager.Close), Type.EmptyTypes)] = Stub(nameof(StubClosePopup)),
+            [AccessTools.Method(typeof(PopupManager), nameof(PopupManager.Close), new[] { typeof(Action) })] = Stub(nameof(StubClosePopupThen)),
+            [AccessTools.Method(typeof(Tour_Popup), nameof(Tour_Popup.Reset))] = Stub(nameof(StubResultsReset)),
+            [AccessTools.Method(typeof(Tour_Popup), nameof(Tour_Popup.SetTour))] = Stub(nameof(StubResultsSetTour)),
+            [AccessTools.Method(typeof(SpecialEvents_Manager), nameof(SpecialEvents_Manager.RenderTab))] = Stub(nameof(StubRenderEventList)),
+            [AccessTools.Method(typeof(Achievements), nameof(Achievements.Unlock))] = Stub(nameof(StubUnlock)),
+            [AccessTools.Method(typeof(Achievements), nameof(Achievements.CheckWorldTour))] = Stub(nameof(StubCheckWorldTour)),
+            [AccessTools.Method(typeof(tasks), nameof(tasks.OnWorldTour))] = Stub(nameof(StubOnWorldTour)),
+            [AccessTools.Method(typeof(resources), nameof(resources.AddMoney))] = Stub(nameof(StubAddMoney)),
+            [AccessTools.Method(typeof(resources), nameof(resources.Add), new[] { typeof(resources.type), typeof(long) })] = Stub(nameof(StubAddResource)),
+            [AccessTools.Method(typeof(data_girls), nameof(data_girls.GetActiveGirls))] = Stub(nameof(StubActiveGirls)),
+            [AccessTools.Method(typeof(Widget_Details), nameof(Widget_Details.Render_Waiting))] = Stub(nameof(StubNothing)),
+            [AccessTools.Method(typeof(agency), nameof(agency.allRooms), new[] { typeof(bool), typeof(bool) })] = Stub(nameof(StubAllRooms)),
+            [AccessTools.Method(typeof(agency._room), nameof(agency._room.CancelJob))] = Stub(nameof(StubCancelJob)),
+            [AccessTools.Method(typeof(agency._room), nameof(agency._room.canAssign), new[] { typeof(SEvent_Tour.tour) })] = Stub(nameof(StubCanAssign)),
+            [AccessTools.Method(typeof(agency._room), nameof(agency._room.Focus))] = Stub(nameof(StubFocus)),
+            [AccessTools.Method(typeof(DragAndDropManager), "BrightenAllRooms")] = Stub(nameof(StubDragNothing)),
+            [AccessTools.Method(typeof(DragAndDropManager), "HoveringRoom")] = Stub(nameof(StubHoveringRoom)),
+            [AccessTools.Method(typeof(DragAndDropManager), nameof(DragAndDropManager.OnInsert))] = Stub(nameof(StubDragNothing)),
+            [AccessTools.Method(typeof(VO), nameof(VO.Play), new[] { typeof(string), typeof(staff._staff) })] = Stub(nameof(StubVoice)),
+
             // Image loading
             [AccessTools.PropertyGetter(typeof(IMG2Sprite), nameof(IMG2Sprite.instance))] = Stub(nameof(StubLoader)),
             [AccessTools.Method(typeof(IMG2Sprite), nameof(IMG2Sprite.LoadNewSprite))] = Stub(nameof(StubLoadSprite)),
@@ -519,6 +594,8 @@ namespace NationalTour.Tests
             [typeof(Component).GetMethods().Single(m => m.Name == nameof(Component.GetComponentsInChildren) && m.IsGenericMethodDefinition
                 && m.GetParameters().Select(p => p.ParameterType).SequenceEqual(new[] { typeof(bool) }))] = Stub(nameof(StubGetComponentsInChildrenWithInactive)),
             [Generic(typeof(GameObject), nameof(GameObject.GetComponentsInChildren), 0)] = Stub(nameof(StubGetComponentsInChildren)),
+            [Generic(typeof(Component), nameof(Component.GetComponents), 0)] = Stub(nameof(StubGetComponents)),
+            [Generic(typeof(GameObject), nameof(GameObject.AddComponent), 0)] = Stub(nameof(StubAddComponent)),
             [typeof(GameObject).GetMethods().Single(m => m.Name == nameof(GameObject.GetComponentsInChildren) && m.IsGenericMethodDefinition
                 && m.GetParameters().Select(p => p.ParameterType).SequenceEqual(new[] { typeof(bool) }))] = Stub(nameof(StubGetComponentsInChildrenWithInactive)),
             [typeof(Object).GetMethods().Single(m => m.Name == nameof(Object.Instantiate) && m.IsGenericMethodDefinition
@@ -531,6 +608,8 @@ namespace NationalTour.Tests
         {
             foreach (KeyValuePair<MethodBase, MethodInfo> copy in Copies)
                 Harmony.ReversePatch(copy.Key, new HarmonyMethod(copy.Value), Stub(nameof(Redirect)), ilmanipulator: null);
+            foreach (KeyValuePair<MethodBase, KeyValuePair<MethodInfo, MethodInfo>> copy in GameCopies)
+                Harmony.ReversePatch(copy.Key, new HarmonyMethod(copy.Value.Key), copy.Value.Value, ilmanipulator: null);
             return true;
         });
 
@@ -584,6 +663,47 @@ namespace NationalTour.Tests
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void SpecialEventsContinue(SpecialEvents_Manager __instance) => throw NotInstalled();
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void AddHandler(SEvent_Tour game) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void CopyHandlerPopups(SEvent_Tour game) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void UnlockFor(Achievements.ID id, SEvent_Tour handler) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void OnWorldTourFor(SEvent_Tour.tour tour, SEvent_Tour handler) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void CardInProduction(SEvent_Button_Tour card, SEvent_Tour.tour tour) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void CardFinished(SEvent_Button_Tour_Finished card, SEvent_Tour.tour tour) => throw NotInstalled();
+
+        // The game's methods, with the mod's transpilers
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void GameOnContinue(Tour_New_Popup popup) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void GameDropTour(DragAndDropManager manager, SEvent_Tour.tour tour) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void GameOnFinish(Tour_Popup popup) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void GameSetTour(SEvent_Tour handler, SEvent_Tour.tour tour) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void GameStartTour(SEvent_Tour handler) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void GameFinishTour(SEvent_Tour handler) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void GameCancelTour(SEvent_Tour handler) => throw NotInstalled();
+
         private static Exception NotInstalled() => new InvalidOperationException("Call Seams.Reset first");
 
         /// <summary>
@@ -610,6 +730,8 @@ namespace NationalTour.Tests
             Listeners.Clear();
             Loads.Clear();
             SpriteTextures.Clear();
+            Rooms.Clear();
+            Enabled.Clear();
         }
 
         /// <summary>
@@ -658,6 +780,8 @@ namespace NationalTour.Tests
         public static GameObject Child(object owner, string name) => NodeOf(owner).Children.Single(c => c.Name == name).GameObject;
 
         public static T GetComponent<T>(object owner) => NodeOf(owner).Components.OfType<T>().FirstOrDefault();
+
+        public static T[] ComponentsOf<T>(object owner) => NodeOf(owner).Components.OfType<T>().ToArray();
 
         public static string TextOf(object owner) => Texts.TryGetValue(GetComponent<TextMeshProUGUI>(owner), out string text) ? text : null;
 
@@ -722,6 +846,8 @@ namespace NationalTour.Tests
             Finds++;
             return NodeOf(parent).Children.FirstOrDefault(c => c.Name == name)?.Transform;
         }
+
+        private static Transform StubParent(Transform transform) => NodeOf(transform).Parent?.Transform;
 
         private static int StubGetSiblingIndex(Transform transform)
         {
@@ -901,6 +1027,57 @@ namespace NationalTour.Tests
         private static void StubRenderContinueButton(SpecialEvents_Manager manager) => Calls.Add((nameof(NationalTab.CallRenderContinueButton), manager));
 
         private static void StubRenderTab(TabButton tab) => Calls.Add((nameof(NationalTab.CallRenderTab), tab));
+
+        /// <summary>
+        /// The agency's rooms, as allRooms lists them.
+        /// </summary>
+        public static readonly List<agency._room> Rooms = new();
+
+        public static readonly Dictionary<object, bool> Enabled = new(new SameObject());
+
+        public static IEnumerable<object> CallsTo(string method) => Calls.Where(c => c.Method == method).Select(c => c.Target);
+
+        private static T[] StubGetComponents<T>(Component owner) => NodeOf(owner).Components.OfType<T>().ToArray();
+
+        /// <summary>
+        /// As in Unity: the new component's Awake runs as it's added, and with it the mod's Awake postfix.
+        /// </summary>
+        private static T StubAddComponent<T>(GameObject owner) where T : Component
+        {
+            T component = Add<T>(owner);
+            if (component is SEvent_Tour handler)
+            {
+                AccessTools.Method(typeof(SEvent_Tour), "Awake").Invoke(handler, null);
+                AddHandler(handler);
+            }
+            return component;
+        }
+
+        private static void StubSetEnabled(Behaviour behaviour, bool value) => Enabled[behaviour] = value;
+        private static void StubSetTour(SEvent_Tour handler, SEvent_Tour.tour tour) => Calls.Add((nameof(SEvent_Tour.SetTour), handler));
+        private static void StubAssign(SEvent_Tour handler, agency._room room) => Calls.Add((nameof(SEvent_Tour.Assign), handler));
+        private static void StubFinishTour(SEvent_Tour handler) => Calls.Add((nameof(SEvent_Tour.FinishTour), handler));
+        private static void StubUseStamina(SEvent_Tour handler) => Calls.Add((nameof(SEvent_Tour.UseStamina), handler));
+        private static void StubOpenPopup(PopupManager manager, PopupManager._type type, bool addToQueue) => Calls.Add((nameof(PopupManager.Open), type));
+        private static void StubClosePopup(PopupManager manager) => Calls.Add((nameof(PopupManager.Close), manager));
+        private static void StubClosePopupThen(PopupManager manager, Action then) => Calls.Add((nameof(PopupManager.Close), manager));
+        private static void StubResultsReset(Tour_Popup popup) => Calls.Add(("ResultsReset", popup));
+        private static void StubResultsSetTour(Tour_Popup popup, SEvent_Tour.tour tour) => Calls.Add(("ResultsSetTour", tour));
+        private static void StubRenderEventList(SpecialEvents_Manager manager) => Calls.Add((nameof(SpecialEvents_Manager.RenderTab), manager));
+        private static void StubUnlock(Achievements.ID id) => Calls.Add((nameof(Achievements.Unlock), id));
+        private static void StubCheckWorldTour() => Calls.Add((nameof(Achievements.CheckWorldTour), null));
+        private static void StubOnWorldTour(SEvent_Tour.tour tour) => Calls.Add((nameof(tasks.OnWorldTour), tour));
+        private static void StubAddMoney(resources resources, long money) => Calls.Add((nameof(resources.AddMoney), money));
+        private static void StubAddResource(resources.type type, long value) => Calls.Add((nameof(resources.Add), type));
+        private static List<data_girls.girls> StubActiveGirls(Groups._group group) => new();
+        private static void StubNothing() { }
+        private static List<agency._room> StubAllRooms(agency agency, bool includeButton, bool includeFirstFloor) => Rooms;
+        private static void StubCancelJob(agency._room room) => Calls.Add((nameof(agency._room.CancelJob), room));
+        private static bool StubCanAssign(agency._room room, SEvent_Tour.tour tour) => true;
+        private static void StubFocus(agency._room room, bool focus) { }
+        private static void StubDragNothing(DragAndDropManager manager) { }
+        private static bool StubHoveringRoom(DragAndDropManager manager) => true;
+        private static void StubVoice(string id, staff._staff staffer) { }
 
         private static IMG2Sprite StubLoader() => Loader;
 

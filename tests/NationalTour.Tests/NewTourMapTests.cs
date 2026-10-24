@@ -143,7 +143,23 @@ namespace NationalTour.Tests
         // Continue
 
         [Fact]
-        public void National_ContinueStaysGreyed_UntilNationalToursCanBeCreated()
+        public void National_ContinueIsTheGames_WhenNationalToursCanBeCreated()
+        {
+            Seams.AddHandler(scene.Handler);
+            OpenNational();
+
+            Seams.Activated.Clear();
+            Seams.NewTourRender(scene.NewTour);
+
+            Assert.False(Seams.Activated.ContainsKey(scene.NewTourContinue));
+        }
+
+        /// <summary>
+        /// Without a national handler (another mod already added a second one), a national tour would go in the
+        /// World Tour's slot: Continue stays greyed instead.
+        /// </summary>
+        [Fact]
+        public void National_ContinueStaysGreyed_WithoutANationalHandler()
         {
             OpenNational();
 
@@ -151,10 +167,13 @@ namespace NationalTour.Tests
         }
 
         [Fact]
-        public void National_ChoosingAPrefecture_KeepsContinueGreyed()
+        public void National_ContinueStaysGreyed_WhenRoutingIsOff()
         {
-            OpenNational();
+            Seams.AddHandler(scene.Handler);
+            using LogRecorder log = new();
+            Readiness.Fail(Readiness.Module.Routing, "test");
 
+            OpenNational();
             Seams.NewTourRender(scene.NewTour);
 
             Assert.False(Seams.Activated[scene.NewTourContinue]);

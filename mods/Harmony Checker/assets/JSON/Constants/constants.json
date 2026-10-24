@@ -4,15 +4,15 @@
 		text: "Mods [IM-HI not installed]"
 	},
 	{
-		id: "IMHI_INSTALLED",
-		text: "Mods [IM-HI installed]"
-	},
-	{
-		id: "IMHI_OUT_OF_DATE",
-		text: "Mods [IM-HI out-of-date]"
-	},
-	{
 		id: "IMHI_UPDATE",
 		text: "Update IM-HI to @2"
+	},
+	{
+		id: "IMHI_STATUS_OK",
+		text: "IM-HarmonyIntegration is installed"
+	},
+	{
+		id: "IMHI_STATUS_OUTDATED",
+		text: "Please update IM-HarmonyIntegration"
 	}
 ]

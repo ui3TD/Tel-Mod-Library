@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using SimpleJSON;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -15,10 +16,23 @@ namespace HarmonyChecker
 {
     internal static class HarmonyCheckerStatus
     {
-        public const string BUTTON_LABEL = "IMHI_INSTALLED";
-
+        /// <summary>
+        /// Shows on the main menu that IM-HI works: the Mods button gets back the label of the player's
+        /// language (this mod's JSON changes it to say IM-HI isn't installed, which only shows when this DLL
+        /// can't run), and a badge with a tick, or a "!" when IM-HI is out of date.
+        /// </summary>
         public static void MarkInstalled(MainMenu_Buttons_Controller controller = null)
         {
+            // The language table is the same everywhere, so this runs even outside the main menu.
+            try
+            {
+                ModsLabel.Restore();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[Harmony Checker] Couldn't restore the Mods label: " + e);
+            }
+
             if (controller == null)
             {
                 Camera camera = Camera.main;
@@ -46,16 +60,18 @@ namespace HarmonyChecker
             Transform container = controller.Main_Container.transform;
             Transform modsTransform = container.Find("Mods");
 
-            // Only the game's label or one of ours is changed: another mod's label on the Mods button is kept
+            // Only the game's label is redrawn: another mod's label on the Mods button is kept
             Lang_Button modButton = modsTransform == null ? null : modsTransform.GetComponentInChildren<Lang_Button>();
-            if (modButton != null && Array.IndexOf(LABELS_TO_REPLACE, modButton.Constant) >= 0)
+            if (modButton != null && modButton.Constant == GAME_LABEL)
             {
-                modButton.Constant = outdated ? IMHIUpdate.MODS_LABEL : BUTTON_LABEL;
-
                 // MainMenu_Buttons_Controller.Start may already have run by the time IM-HI
-                // finishes loading Workshop Harmony DLLs. Updating Constant alone does not
-                // redraw an already-started Lang_Button, so force the text refresh now.
+                // finishes loading Workshop Harmony DLLs, so the button already shows the old text.
                 modButton.ResetText();
+            }
+
+            if (modsTransform != null)
+            {
+                IMHIUpdate.ShowBadge(modsTransform, outdated, installed);
             }
 
             if (outdated)
@@ -64,10 +80,267 @@ namespace HarmonyChecker
             }
         }
 
-        /// <summary>The Mods button's label in the game, and the two this mod gives it.</summary>
-        public static readonly string[] LABELS_TO_REPLACE = { GAME_LABEL, BUTTON_LABEL, IMHIUpdate.MODS_LABEL };
-
         public const string GAME_LABEL = "MM_MODS";
+    }
+
+    /// <summary>
+    /// This mod's constants.json changes the game's Mods label (MM_MODS) to say IM-HI isn't installed, in every
+    /// language. Once this DLL runs, IM-HI is installed, so the label goes back to what the game would show
+    /// without this mod: the player's language, or a translation mod's label.
+    /// </summary>
+    internal static class ModsLabel
+    {
+        // Replaced in tests.
+        internal static Func<IEnumerable<string>> ConstantsFiles = () => GameConstantsFiles();
+        internal static Func<string, bool> IsOwnFile = path => IsUnder(path, OwnFolders());
+        internal static Func<string, string> ReadFile = path => File.Exists(path) ? File.ReadAllText(path) : null;
+
+        public static void Restore()
+        {
+            string label = WithoutThisMod(ConstantsFiles(), IsOwnFile, ReadFile);
+            if (label != null)
+            {
+                Language.Data[HarmonyCheckerStatus.GAME_LABEL] = label;
+            }
+        }
+
+        /// <summary>
+        /// The Mods label from the files before this mod's, if this mod's file is the last one that sets it (as
+        /// the game loads them, the last one wins); otherwise null, since a later mod's label is the one shown.
+        /// A file that is missing (null text) is skipped, as the game skips it.
+        /// </summary>
+        public static string WithoutThisMod(IEnumerable<string> files, Func<string, bool> isOwn, Func<string, string> read)
+        {
+            string others = null;
+            bool ownIsLast = false;
+            foreach (string file in files)
+            {
+                string text = read(file);
+                if (text == null)
+                {
+                    continue;
+                }
+
+                foreach (JSONNode constant in mainScript.ProcessInboundData(text).AsArray)
+                {
+                    if (constant["id"].Value != HarmonyCheckerStatus.GAME_LABEL)
+                    {
+                        continue;
+                    }
+
+                    ownIsLast = isOwn(file);
+                    if (!ownIsLast)
+                    {
+                        others = constant["text"].Value;
+                    }
+                }
+            }
+            return ownIsLast ? others : null;
+        }
+
+        /// <summary>The constants files in the order Language._Load reads them: English first, then the language's and the mods'.</summary>
+        private static IEnumerable<string> GameConstantsFiles()
+        {
+            string english = Path.Combine(Application.streamingAssetsPath, "Languages", "en", "JSON", "Constants", "constants.json");
+            List<string> files = Mods.GetFilePaths(Path.Combine("JSON", "Constants", "constants.json"));
+            if (!files.Contains(english))
+            {
+                files.Insert(0, english);
+            }
+            return files;
+        }
+
+        /// <summary>The folder of this DLL and of every mod with this mod's title.</summary>
+        private static IEnumerable<string> OwnFolders() =>
+            new[] { Path.GetDirectoryName(typeof(ModsLabel).Assembly.Location) }
+                .Concat(Mods._Mods.Where(mod => mod != null && mod.Title == GoldButton.ModTitle).Select(mod => mod.Path));
+
+        public static bool IsUnder(string path, IEnumerable<string> folders)
+        {
+            string file = Normalize(path);
+            return folders.Where(folder => !string.IsNullOrEmpty(folder))
+                .Any(folder => file.StartsWith(Normalize(folder).TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string Normalize(string path) => path.Replace('\\', '/');
+    }
+
+    /// <summary>
+    /// A round badge on the right of the Mods button: a green tick when IM-HI works, an amber "!" when it is out
+    /// of date. Hovering it shows what it means in the game's tooltip.
+    /// </summary>
+    internal static class StatusBadge
+    {
+        public const string NAME = "IMHI_Status";
+
+        // The badge's size, and its gap to the right edge of the Mods button (which is 50 high).
+        public const float SIZE = 28f;
+        public const float INSET = 12f;
+
+        public const string OK_TEXT = "IMHI_STATUS_OK";
+        public const string OUTDATED_TEXT = "IMHI_STATUS_OUTDATED";
+        public const string OK_FALLBACK = "IM-HarmonyIntegration is installed";
+        public const string OUTDATED_FALLBACK = "Please update IM-HarmonyIntegration";
+
+        public static readonly GoldButton.Picture Ok = new GoldButton.Picture("IMHI_Badge_OK.png", Vector4.zero);
+        public static readonly GoldButton.Picture Outdated = new GoldButton.Picture("IMHI_Badge_Outdated.png", Vector4.zero);
+
+        // Replaced in tests.
+        internal static Func<bool, Sprite> Picture = outdated => (outdated ? Outdated : Ok).Get();
+
+        /// <summary>
+        /// Adds the badge to the Mods button, or updates the one already there; runs on every menu refresh.
+        /// Without its picture there is no badge. If building it fails, the half-built badge is removed, so the
+        /// next refresh tries again, and the error is passed on.
+        /// </summary>
+        public static void Show(Transform modsButton, bool outdated, Version installed)
+        {
+            Sprite sprite = Picture(outdated);
+            if (sprite is null)
+            {
+                return;
+            }
+
+            Transform existing = modsButton.Find(NAME);
+            GameObject badge = existing == null ? null : existing.gameObject;
+            if (badge == null)
+            {
+                badge = new GameObject(NAME, typeof(RectTransform));
+                try
+                {
+                    badge.transform.SetParent(modsButton, false);
+                    badge.AddComponent<LayoutElement>().ignoreLayout = true;
+
+                    // Centred on the button's right edge, moved in by INSET
+                    RectTransform rect = (RectTransform)badge.transform;
+                    rect.anchorMin = new Vector2(1f, 0.5f);
+                    rect.anchorMax = new Vector2(1f, 0.5f);
+                    rect.offsetMin = new Vector2(-INSET - SIZE, -SIZE / 2f);
+                    rect.offsetMax = new Vector2(-INSET, SIZE / 2f);
+
+                    // The image takes the mouse so the badge can show its tooltip; a click still goes on to the
+                    // Mods button, since the badge has no click handler of its own.
+                    badge.AddComponent<Image>();
+                    badge.AddComponent<BadgeTooltip>();
+                }
+                catch
+                {
+                    Object.Destroy(badge);
+                    throw;
+                }
+            }
+
+            badge.GetComponent<Image>().sprite = sprite;
+            badge.GetComponent<BadgeTooltip>().Text = Text(outdated, installed);
+        }
+
+        /// <summary>The tooltip, from the language table (so a translation mod can change it), versions filled in.</summary>
+        public static string Text(bool outdated, Version installed)
+        {
+            string key = outdated ? OUTDATED_TEXT : OK_TEXT;
+            string text = Language.Data.TryGetValue(key, out string translated) ? translated : outdated ? OUTDATED_FALLBACK : OK_FALLBACK;
+
+            // An unknown version is left out
+            return text.Replace("@1", installed?.ToString() ?? "").Replace("@2", IMHIUpdate.MIN_VERSION.ToString()).Replace("  ", " ");
+        }
+    }
+
+    /// <summary>
+    /// Shows the badge's text in the game's tooltip while the mouse is over the badge. The game hides its
+    /// tooltip each frame it isn't asked for, so this asks every frame, as the game's buttons do.
+    /// </summary>
+    internal class BadgeTooltip : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    {
+        // The light tooltip of the game's other screens (their TooltipManager's LightBG and LightText). The main
+        // menu's tooltip is left in its dark prefab colours, since no menu button has a tooltip.
+        public static readonly Color32 LIGHT_BG = new Color32(255, 255, 255, 229);
+        public static readonly Color32 LIGHT_TEXT = new Color32(119, 123, 186, 255);
+
+        public string Text;
+
+        public bool Hovered { get; private set; }
+
+        private TooltipManager tooltips;
+
+        // The tooltip's background and text while this badge has recoloured them, with their colours before.
+        private Image themedBackground;
+        private TextMeshProUGUI themedText;
+        private Color backgroundBefore, textBefore;
+
+        public void OnPointerEnter(PointerEventData eventData) => Hovered = true;
+
+        public void OnPointerExit(PointerEventData eventData) => Hovered = false;
+
+        private void Update()
+        {
+            if (!Hovered || string.IsNullOrEmpty(Text))
+            {
+                RestoreTheme();
+                return;
+            }
+
+            if (tooltips == null)
+            {
+                mainScript main = Camera.main == null ? null : Camera.main.GetComponent<mainScript>();
+                tooltips = main == null || main.Data == null ? null : main.Data.GetComponent<TooltipManager>();
+            }
+            if (tooltips != null)
+            {
+                Theme();
+                tooltips.ShowTooltip(Text);
+            }
+
+            // The Mods button only counts the mouse as over it when it is over the button itself, not the badge
+            staticVars.setCursor(staticVars.CursorType.pointer);
+        }
+
+        /// <summary>Gives the tooltip the game's light colours, keeping its own to put back.</summary>
+        private void Theme()
+        {
+            if (themedText != null || tooltips.TextObj == null)
+            {
+                return;
+            }
+
+            // The text sits in the background (TooltipManager.TextObj in "BG")
+            TextMeshProUGUI text = tooltips.TextObj.GetComponent<TextMeshProUGUI>();
+            Image background = text == null || text.transform.parent == null ? null : text.transform.parent.GetComponent<Image>();
+            if (background == null)
+            {
+                return;
+            }
+
+            themedText = text;
+            themedBackground = background;
+            textBefore = text.color;
+            backgroundBefore = background.color;
+            text.color = LIGHT_TEXT;
+            background.color = LIGHT_BG;
+        }
+
+        /// <summary>Puts the tooltip's own colours back, so other tooltips on the menu look as before.</summary>
+        private void RestoreTheme()
+        {
+            if (themedText == null)
+            {
+                return;
+            }
+
+            themedText.color = textBefore;
+            if (themedBackground != null)
+            {
+                themedBackground.color = backgroundBefore;
+            }
+            themedText = null;
+            themedBackground = null;
+        }
+
+        // A hidden badge gets no mouse-leave, so it stops counting as hovered here.
+        private void OnDisable()
+        {
+            Hovered = false;
+            RestoreTheme();
+        }
     }
 
     /// <summary>
@@ -82,7 +355,6 @@ namespace HarmonyChecker
         public const string CHAINLOADER_TYPE = "BepInEx.Bootstrap.Chainloader";
         public const string RELEASES_URL = "https://github.com/ui3TD/IM-HarmonyIntegration/releases/latest";
 
-        public const string MODS_LABEL = "IMHI_OUT_OF_DATE";
         public const string BUTTON_NAME = "IMHI_Update";
         public const string BUTTON_LABEL = "IMHI_UPDATE";
         public const string FALLBACK_LABEL = "Update IM-HI to @2";
@@ -97,6 +369,7 @@ namespace HarmonyChecker
         internal static Func<Sprite> GoldSprite = () => GoldButton.Button.Get();
         internal static Action<GameObject> AddGlow = button => GoldButton.AddGlow(button);
         internal static Func<TMP_FontAsset> MenuFont = () => FindMenuFont();
+        internal static Action<Transform, bool, Version> ShowBadge = (modsButton, outdated, installed) => StatusBadge.Show(modsButton, outdated, installed);
 
         // The game's menu buttons, as the game draws them: 50 high (the menu's column sets their width), the
         // picture at twice its pixel density, and white text in the menu font, centred and raised a little.
@@ -339,7 +612,7 @@ namespace HarmonyChecker
                 else
                 {
                     loadFailed = true;
-                    Debug.LogError("[Harmony Checker] couldn't load " + RelativePath + "; the update button is drawn without it.");
+                    Debug.LogError("[Harmony Checker] couldn't load " + RelativePath + "; the menu is drawn without it.");
                 }
                 return sprite;
             }
@@ -433,7 +706,7 @@ namespace HarmonyChecker
         }
     }
 
-    // The two refreshes below run whether or not another mod skipped the game's method: the menu's label
+    // The refreshes below run whether or not another mod skipped the game's method: the menu's label
     // shows whether IM-HI works, which doesn't depend on what those methods do. An error stays in the
     // postfix, so the game's method and other mods' patches on it still finish.
 
@@ -446,6 +719,25 @@ namespace HarmonyChecker
             try
             {
                 HarmonyCheckerStatus.MarkInstalled(__instance);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[Harmony Checker] Couldn't update the main menu: " + e);
+            }
+        }
+    }
+
+    // A language change (or any reload of the language table) loads this mod's JSON label again, so it's
+    // put back after the game's load. Last, so it also comes after other mods' changes to the table.
+    [HarmonyPatch(typeof(Language), nameof(Language._Load))]
+    public class Language__Load
+    {
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix()
+        {
+            try
+            {
+                HarmonyCheckerStatus.MarkInstalled();
             }
             catch (Exception e)
             {

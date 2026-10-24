@@ -206,14 +206,14 @@ namespace HarmonyChecker.Tests
         }
 
         /// <summary>
-        /// The Mods label, "Mods [IM-HI installed]", is the longest text known to fit the button.
+        /// The Mods label without IM-HI, "Mods [IM-HI not installed]", is the longest text known to fit the button.
         /// </summary>
         [Fact]
         public void Label_NoLongerThanModsLabel()
         {
             string label = IMHIUpdate.FALLBACK_LABEL.Replace("@2", IMHIUpdate.MIN_VERSION.ToString());
 
-            Assert.True(label.Length <= "Mods [IM-HI installed]".Length, label);
+            Assert.True(label.Length <= TestGame.NotInstalledText.Length, label);
         }
 
         /// <summary>
@@ -233,18 +233,19 @@ namespace HarmonyChecker.Tests
         }
 
         /// <summary>
-        /// The Mods label says IM-HI is out of date; the Mods button keeps its look and click.
+        /// The Mods button keeps the game's label, look and click; the badge on it shows IM-HI is out of date.
         /// </summary>
         [Fact]
-        public void Outdated_ModsLabelSaysOutOfDate()
+        public void Outdated_ModsButtonKeepsGameLabel()
         {
             IMHIUpdate.InstalledVersion = () => Old;
             Menu menu = TestGame.BuildMenu();
 
             Seams.StopSpinnerPostfix();
 
-            Assert.Equal(IMHIUpdate.MODS_LABEL, menu.ModsLangButton.Constant);
-            Assert.Equal("Mods [IM-HI out-of-date]", TestGame.TextOf(menu.Text));
+            Assert.Equal(TestGame.VanillaConstant, menu.ModsLangButton.Constant);
+            Assert.Equal(TestGame.VanillaText, TestGame.TextOf(menu.Text));
+            Assert.True(Assert.Single(Seams.Badges).outdated);
             Assert.False(Seams.Colors.ContainsKey(menu.Text));
             Assert.False(Seams.Colors.ContainsKey(menu.ModsBackground));
             Assert.Equal(TestGame.PurpleSprite, Seams.Sprites[menu.ModsBackground]);
@@ -346,7 +347,8 @@ namespace HarmonyChecker.Tests
 
             Assert.Null(TestGame.UpdateButton(menu));
             Assert.Empty(Seams.Created);
-            Assert.Equal("Mods [IM-HI installed]", TestGame.TextOf(menu.Text));
+            Assert.Equal(TestGame.VanillaText, TestGame.TextOf(menu.Text));
+            Assert.False(Assert.Single(Seams.Badges).outdated);
         }
 
         /// <summary>

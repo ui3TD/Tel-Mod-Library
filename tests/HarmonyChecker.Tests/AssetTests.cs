@@ -16,8 +16,8 @@ namespace HarmonyChecker.Tests
 
         /// <summary>
         /// The mod ships four labels: the game's own Mods label, changed to say IM-HI isn't installed (shown when
-        /// only the mod's JSON loads), the two labels the patches switch to, and the update button's label
-        /// with the required version (@2), worded like the mod's fallback.
+        /// only the mod's JSON loads), the update button's label with the required version (@2), and the badge's
+        /// two tooltips, each worded like the mod's fallback.
         /// </summary>
         [Fact]
         public void Constants_DefineAllLabels()
@@ -27,9 +27,34 @@ namespace HarmonyChecker.Tests
             Dictionary<string, string> text = Enumerable.Range(0, constants.Count).ToDictionary(i => constants[i]["id"].Value, i => constants[i]["text"].Value);
             Assert.Equal(4, text.Count);
             Assert.Equal(TestGame.NotInstalledText, text[TestGame.VanillaConstant]);
-            Assert.Equal("Mods [IM-HI installed]", text[HarmonyCheckerStatus.BUTTON_LABEL]);
-            Assert.Equal("Mods [IM-HI out-of-date]", text[IMHIUpdate.MODS_LABEL]);
             Assert.Equal(IMHIUpdate.FALLBACK_LABEL, text[IMHIUpdate.BUTTON_LABEL]);
+            Assert.Equal(StatusBadge.OK_FALLBACK, text[StatusBadge.OK_TEXT]);
+            Assert.Equal(StatusBadge.OUTDATED_FALLBACK, text[StatusBadge.OUTDATED_TEXT]);
+        }
+
+        /// <summary>
+        /// The badge pictures are round: square, twice the badge's size (the menu is drawn at twice its pixel
+        /// density), clear in the corners and solid in the middle.
+        /// </summary>
+        [Theory]
+        [InlineData("IMHI_Badge_OK.png")]
+        [InlineData("IMHI_Badge_Outdated.png")]
+        public void BadgePictures_AreRound(string name)
+        {
+            using System.Drawing.Bitmap picture = new(TestGame.ModAsset(Path.Combine("Images", name)));
+            int size = (int)(2 * StatusBadge.SIZE);
+
+            Assert.Equal((size, size), (picture.Width, picture.Height));
+            Assert.Equal(0, picture.GetPixel(0, 0).A);
+            Assert.Equal(0, picture.GetPixel(size - 1, size - 1).A);
+            Assert.Equal(255, picture.GetPixel(size / 2, 4).A);
+        }
+
+        [Fact]
+        public void BadgePictures_AreTheOnesLoaded()
+        {
+            Assert.Equal(Path.Combine("Images", "IMHI_Badge_OK.png"), StatusBadge.Ok.RelativePath);
+            Assert.Equal(Path.Combine("Images", "IMHI_Badge_Outdated.png"), StatusBadge.Outdated.RelativePath);
         }
 
         /// <summary>

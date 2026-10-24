@@ -73,12 +73,53 @@ namespace HarmonyChecker.Tests
             return (ColorBlock)block;
         }
 
+        /// <summary>
+        /// The constants files the game reads, by path, in the order it reads them: the English file, then (in
+        /// some tests) a language's and other mods' files, and this mod's. A null text is a missing file.
+        /// </summary>
+        public static readonly List<KeyValuePair<string, string>> ConstantsFiles = new();
+
+        public const string EnglishFile = "Languages/en/JSON/Constants/constants.json";
+        public const string OwnFile = "Mods/Harmony Checker/JSON/Constants/constants.json";
+
         public static void Reset()
         {
             Seams.Reset();
             Language.Data.Clear();
             Language.Data[VanillaConstant] = VanillaText;
             Language.Data["SETTINGS"] = "Settings";
+
+            ConstantsFiles.Clear();
+            ConstantsFiles.Add(new(EnglishFile, Constants((VanillaConstant, VanillaText), ("SETTINGS", "Settings"))));
+            ConstantsFiles.Add(new(OwnFile, File.ReadAllText(ModAsset("JSON/Constants/constants.json"))));
+            ModsLabel.ConstantsFiles = () => ConstantsFiles.Select(file => file.Key).ToList();
+            ModsLabel.ReadFile = path => ConstantsFiles.First(file => file.Key == path).Value;
+            ModsLabel.IsOwnFile = path => path == OwnFile;
+        }
+
+        /// <summary>A constants file with these labels, written the way the game's are.</summary>
+        public static string Constants(params (string id, string text)[] labels) =>
+            "[" + string.Join(",", labels.Select(label => $"{{ id: \"{label.id}\", text: \"{label.text}\" }}")) + "]";
+
+        /// <summary>Adds a constants file just before this mod's (a language's or another mod's that loads first).</summary>
+        public static void AddFileBeforeOwn(string path, string text) =>
+            ConstantsFiles.Insert(ConstantsFiles.FindIndex(file => file.Key == OwnFile), new(path, text));
+
+        /// <summary>
+        /// What Language._Load does: clears the table and reads every constants file in order (the last one
+        /// wins), then lets the labels redraw (onReset). The mod's postfix runs after that.
+        /// </summary>
+        public static void LoadLanguage(params Lang_Button[] redraw)
+        {
+            Language.Data.Clear();
+            foreach (KeyValuePair<string, string> file in ConstantsFiles.Where(file => file.Value != null))
+            {
+                JSONNode constants = mainScript.ProcessInboundData(file.Value);
+                for (int i = 0; i < constants.Count; i++)
+                    Language.Data[constants[i]["id"]] = constants[i]["text"];
+            }
+            foreach (Lang_Button button in redraw)
+                Seams.ResetText(button);
         }
 
         /// <summary>
@@ -276,6 +317,12 @@ namespace HarmonyChecker.Tests
             [AccessTools.Method(typeof(Mods_StopSpinner), nameof(Mods_StopSpinner.Postfix))] = Stub(nameof(StopSpinnerPostfix)),
             [AccessTools.Method(typeof(Lang_Button), nameof(Lang_Button.ResetText))] = Stub(nameof(ResetText)),
             [AccessTools.Method(typeof(IMHIUpdate), nameof(IMHIUpdate.ShowButton))] = Stub(nameof(ShowButton)),
+            [AccessTools.Method(typeof(Language__Load), nameof(Language__Load.Postfix))] = Stub(nameof(LoadPostfix)),
+            [AccessTools.Method(typeof(StatusBadge), nameof(StatusBadge.Show))] = Stub(nameof(ShowBadge)),
+            [AccessTools.Method(typeof(BadgeTooltip), "Update")] = Stub(nameof(BadgeUpdate)),
+            [AccessTools.Method(typeof(BadgeTooltip), "OnDisable")] = Stub(nameof(BadgeDisable)),
+            [AccessTools.Method(typeof(BadgeTooltip), "Theme")] = Stub(nameof(BadgeTheme)),
+            [AccessTools.Method(typeof(BadgeTooltip), "RestoreTheme")] = Stub(nameof(BadgeRestoreTheme)),
         };
 
         /// <summary>
@@ -319,6 +366,14 @@ namespace HarmonyChecker.Tests
             [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.fontSize))] = Stub(nameof(StubSetFontSize)),
             [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.alignment))] = Stub(nameof(StubSetAlignment)),
             [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.enableWordWrapping))] = Stub(nameof(StubSetWordWrapping)),
+
+            // The status badge
+            [AccessTools.PropertySetter(typeof(LayoutElement), nameof(LayoutElement.ignoreLayout))] = Stub(nameof(StubSetIgnoreLayout)),
+            [AccessTools.PropertyGetter(typeof(Graphic), nameof(Graphic.color))] = Stub(nameof(StubGetColor)),
+            [AccessTools.DeclaredPropertyGetter(typeof(TMP_Text), nameof(TMP_Text.color))] = Stub(nameof(StubGetColor)),
+            [AccessTools.DeclaredPropertyGetter(typeof(TMP_Text), nameof(TMP_Text.transform))] = Stub(nameof(StubTransform)),
+            [AccessTools.Method(typeof(TooltipManager), nameof(TooltipManager.ShowTooltip), new[] { typeof(string), typeof(bool) })] = Stub(nameof(StubShowTooltip)),
+            [AccessTools.Method(typeof(staticVars), nameof(staticVars.setCursor))] = Stub(nameof(StubSetCursor)),
         };
 
         /// <summary>
@@ -354,6 +409,27 @@ namespace HarmonyChecker.Tests
 
         public static void ShowButton(Transform container, Transform modsTransform, Version installed) => throw NotInstalled();
 
+        public static void LoadPostfix() => throw NotInstalled();
+
+        public static void ShowBadge(Transform modsButton, bool outdated, Version installed) => throw NotInstalled();
+
+        public static void BadgeUpdate(BadgeTooltip instance) => throw NotInstalled();
+
+        public static void BadgeDisable(BadgeTooltip instance) => throw NotInstalled();
+
+        public static void BadgeTheme(BadgeTooltip instance) => throw NotInstalled();
+
+        public static void BadgeRestoreTheme(BadgeTooltip instance) => throw NotInstalled();
+
+        /// <summary>The badges the menu refreshes asked for: the Mods button, whether out of date, the version.</summary>
+        public static readonly List<(Transform modsButton, bool outdated, Version installed)> Badges = new();
+
+        /// <summary>The badge pictures, a fake sprite each; a test sets one to null to take it away.</summary>
+        public static Sprite OkPicture, OutdatedPicture;
+
+        public static readonly List<string> Tooltips = new();
+        public static readonly List<staticVars.CursorType> Cursors = new();
+
         private static Exception NotInstalled() => new InvalidOperationException("Call Seams.Reset first");
 
         /// <summary>
@@ -379,6 +455,14 @@ namespace HarmonyChecker.Tests
             IMHIUpdate.GoldSprite = () => null;
             IMHIUpdate.AddGlow = button => { };
             IMHIUpdate.MenuFont = () => MenuFont;
+            Badges.Clear();
+            OnSetOffsetMax = null;
+            Tooltips.Clear();
+            Cursors.Clear();
+            IMHIUpdate.ShowBadge = (modsButton, outdated, installed) => Badges.Add((modsButton, outdated, installed));
+            OkPicture = Fake<Sprite>();
+            OutdatedPicture = Fake<Sprite>();
+            StatusBadge.Picture = outdated => outdated ? OutdatedPicture : OkPicture;
         }
 
         /// <summary>
@@ -512,9 +596,11 @@ namespace HarmonyChecker.Tests
         private static bool StubExists(Object obj) => obj is not null;
         private static void StubSetText(object text, string value) => Texts[text] = value;
         private static void StubSetColor(object text, Color value) => Colors[text] = value;
+        private static Color StubGetColor(object graphic) => Colors.TryGetValue(graphic, out Color color) ? color : Color.white;
         private static ColorBlock StubGetTints(Selectable button) => Tints.TryGetValue(button, out ColorBlock tints) ? tints : ColorBlock.defaultColorBlock;
         private static void StubSetTints(Selectable button, ColorBlock value) => Tints[button] = value;
-        private static void StubSetSprite(Image image, Sprite sprite) => Sprites[image] = sprite is null ? null : "sprite";
+        private static void StubSetSprite(Image image, Sprite sprite) =>
+            Sprites[image] = sprite is null ? null : ReferenceEquals(sprite, OkPicture) ? "ok" : ReferenceEquals(sprite, OutdatedPicture) ? "outdated" : "sprite";
         private static GameObject StubGameObject(Component component) => NodeOf(component).GameObject;
         private static Transform StubParent(Transform transform) => NodeOf(transform).Parent?.Transform;
         private static void StubSetName(Object obj, string name) => NodeOf(obj).Name = name;
@@ -565,13 +651,23 @@ namespace HarmonyChecker.Tests
         private static void StubSetAnchorMin(RectTransform rect, Vector2 value) => Set(rect, "anchorMin", value);
         private static void StubSetAnchorMax(RectTransform rect, Vector2 value) => Set(rect, "anchorMax", value);
         private static void StubSetOffsetMin(RectTransform rect, Vector2 value) => Set(rect, "offsetMin", value);
-        private static void StubSetOffsetMax(RectTransform rect, Vector2 value) => Set(rect, "offsetMax", value);
+        private static void StubSetOffsetMax(RectTransform rect, Vector2 value)
+        {
+            OnSetOffsetMax?.Invoke();
+            Set(rect, "offsetMax", value);
+        }
+
+        /// <summary>Runs when the code under test sets a rect's offsetMax; a test can throw from it.</summary>
+        public static Action OnSetOffsetMax;
         private static void StubSetImageType(Image image, Image.Type value) => Set(image, "type", value);
         private static void StubSetPixelsPerUnit(Image image, float value) => Set(image, "pixelsPerUnitMultiplier", value);
         private static void StubSetFont(TMP_Text text, TMP_FontAsset value) => Set(text, "font", value);
         private static void StubSetFontSize(TMP_Text text, float value) => Set(text, "fontSize", value);
         private static void StubSetAlignment(TMP_Text text, TextAlignmentOptions value) => Set(text, "alignment", value);
         private static void StubSetWordWrapping(TMP_Text text, bool value) => Set(text, "enableWordWrapping", value);
+        private static void StubSetIgnoreLayout(LayoutElement element, bool value) => Set(element, "ignoreLayout", value);
+        private static void StubShowTooltip(TooltipManager manager, string text, bool dark) => Tooltips.Add(text);
+        private static void StubSetCursor(staticVars.CursorType type) => Cursors.Add(type);
 
         private static Transform StubFind(Transform parent, string path)
         {

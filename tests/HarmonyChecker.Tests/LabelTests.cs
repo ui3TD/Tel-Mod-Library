@@ -7,23 +7,23 @@ using Xunit;
 namespace HarmonyChecker.Tests
 {
     /// <summary>
-    /// With the mod loaded (so IM-HI is installed), the main menu's Mods button reads "Mods [IM-HI installed]",
-    /// whether the mod loads before the menu starts or after.
+    /// The mod's constants.json changes the Mods label to "Mods [IM-HI not installed]" in every language. With
+    /// the mod's DLL loaded (so IM-HI is installed), the button gets back the label the game would show without
+    /// the mod, whether the mod loads before the menu starts or after, and the menu asks for the status badge.
     /// </summary>
     public class LabelTests
     {
-        private const string InstalledText = "Mods [IM-HI installed]";
-
         public LabelTests()
         {
             TestGame.Reset();
             TestGame.LoadModConstants();
         }
 
-        private static void AssertInstalled(Menu menu)
+        private static void AssertInstalled(Menu menu, string label = TestGame.VanillaText)
         {
-            Assert.Equal(HarmonyCheckerStatus.BUTTON_LABEL, menu.ModsLangButton.Constant);
-            Assert.Equal(InstalledText, TestGame.TextOf(menu.Text));
+            Assert.Equal(TestGame.VanillaConstant, menu.ModsLangButton.Constant);
+            Assert.Equal(label, Language.Data[TestGame.VanillaConstant]);
+            Assert.Equal(label, TestGame.TextOf(menu.Text));
         }
 
         /// <summary>
@@ -33,13 +33,14 @@ namespace HarmonyChecker.Tests
         {
             Assert.Equal(TestGame.VanillaConstant, menu.ModsLangButton.Constant);
             Assert.Equal(TestGame.NotInstalledText, TestGame.TextOf(menu.Text));
+            Assert.Empty(Seams.Badges);
         }
 
         /// <summary>
-        /// Mods loaded before the menu started: the Start postfix relabels the button.
+        /// Mods loaded before the menu started: the Start postfix restores the label.
         /// </summary>
         [Fact]
-        public void MenuStart_LabelsModsButton()
+        public void MenuStart_RestoresLabel()
         {
             Menu menu = TestGame.BuildMenu();
             MainMenu_Buttons_Controller controller = menu.Controller;
@@ -52,10 +53,10 @@ namespace HarmonyChecker.Tests
         /// <summary>
         /// On Steam the menu can start before Workshop mods finish loading, and the button then says
         /// "Mods [IM-HI not installed]" from the mod's constants. When the spinner stops, the mod finds the
-        /// menu through the camera and relabels the button, redrawing the text the game already drew.
+        /// menu through the camera and restores the label, redrawing the text the game already drew.
         /// </summary>
         [Fact]
-        public void SpinnerStop_LabelsModsButtonDrawnBeforeModsLoaded()
+        public void SpinnerStop_RestoresLabelDrawnBeforeModsLoaded()
         {
             Menu menu = TestGame.BuildMenu();
             Assert.Equal(TestGame.NotInstalledText, TestGame.TextOf(menu.Text));
@@ -76,6 +77,118 @@ namespace HarmonyChecker.Tests
             Seams.StopSpinnerPostfix();
 
             AssertInstalled(menu);
+        }
+
+        /// <summary>
+        /// In another language the label is that language's, not English: the game reads English first, then
+        /// the language's file, then the mods'.
+        /// </summary>
+        [Theory]
+        [InlineData("Languages/jp/JSON/Constants/constants.json", "MOD")]
+        [InlineData("Languages/ru/JSON/Constants/constants.json", "Моды")]
+        public void OtherLanguage_GetsItsOwnLabel(string languageFile, string label)
+        {
+            TestGame.AddFileBeforeOwn(languageFile, TestGame.Constants((TestGame.VanillaConstant, label)));
+            TestGame.LoadLanguage();
+            Menu menu = TestGame.BuildMenu();
+
+            Seams.StopSpinnerPostfix();
+
+            AssertInstalled(menu, label);
+        }
+
+        /// <summary>
+        /// Brazilian Portuguese has no Mods label of its own, so the game shows the English one.
+        /// </summary>
+        [Fact]
+        public void LanguageWithoutModsLabel_GetsEnglish()
+        {
+            TestGame.AddFileBeforeOwn("Languages/ptbr/JSON/Constants/constants.json", TestGame.Constants(("SETTINGS", "Configurações")));
+            TestGame.AddFileBeforeOwn("Languages/ptbr/JSON/Constants/missing.json", null);
+            TestGame.LoadLanguage();
+            Menu menu = TestGame.BuildMenu();
+
+            Seams.StopSpinnerPostfix();
+
+            AssertInstalled(menu);
+        }
+
+        /// <summary>
+        /// A translation mod that loads before this mod is the label the game would show without this mod.
+        /// </summary>
+        [Fact]
+        public void TranslationModBefore_GetsItsLabel()
+        {
+            TestGame.AddFileBeforeOwn("Mods/Traducao/JSON/Constants/constants.json", TestGame.Constants((TestGame.VanillaConstant, "Modificações")));
+            TestGame.LoadLanguage();
+            Menu menu = TestGame.BuildMenu();
+
+            Seams.StopSpinnerPostfix();
+
+            AssertInstalled(menu, "Modificações");
+        }
+
+        /// <summary>
+        /// A translation mod that loads after this mod already shows its label, which is kept.
+        /// </summary>
+        [Fact]
+        public void TranslationModAfter_IsKept()
+        {
+            TestGame.ConstantsFiles.Add(new("Mods/Traducao/JSON/Constants/constants.json", TestGame.Constants((TestGame.VanillaConstant, "Modificações"))));
+            TestGame.LoadLanguage();
+            Menu menu = TestGame.BuildMenu();
+
+            Seams.StopSpinnerPostfix();
+
+            AssertInstalled(menu, "Modificações");
+        }
+
+        /// <summary>
+        /// Changing language reloads the table, with this mod's label again; the reload's postfix puts the
+        /// game's label back and redraws it.
+        /// </summary>
+        [Fact]
+        public void LanguageReload_RestoresLabelAgain()
+        {
+            Menu menu = TestGame.BuildMenu();
+            Seams.StopSpinnerPostfix();
+            TestGame.AddFileBeforeOwn("Languages/jp/JSON/Constants/constants.json", TestGame.Constants((TestGame.VanillaConstant, "MOD")));
+
+            TestGame.LoadLanguage(menu.ModsLangButton);
+            Assert.Equal(TestGame.NotInstalledText, TestGame.TextOf(menu.Text));
+            Seams.LoadPostfix();
+
+            AssertInstalled(menu, "MOD");
+        }
+
+        /// <summary>
+        /// Outside the main menu the label in the language table is still put back, ready for the menu.
+        /// </summary>
+        [Fact]
+        public void LanguageReloadOutsideMenu_RestoresTable()
+        {
+            TestGame.LoadLanguage();
+
+            Seams.LoadPostfix();
+
+            Assert.Equal(TestGame.VanillaText, Language.Data[TestGame.VanillaConstant]);
+            Assert.Empty(Seams.Badges);
+        }
+
+        /// <summary>
+        /// If the constants files can't be read, the error is logged and the menu still gets its badge.
+        /// </summary>
+        [Fact]
+        public void FilesUnreadable_LogsAndStillShowsBadge()
+        {
+            ModsLabel.ReadFile = path => throw new System.IO.IOException("locked");
+            Menu menu = TestGame.BuildMenu();
+
+            Seams.StopSpinnerPostfix();
+
+            Assert.Contains(Log.Messages, m => m.Contains("[Harmony Checker] Couldn't restore the Mods label") && m.Contains("locked"));
+            Assert.Equal(TestGame.NotInstalledText, TestGame.TextOf(menu.Text));
+            Assert.Single(Seams.Badges);
         }
 
         /// <summary>
@@ -111,26 +224,22 @@ namespace HarmonyChecker.Tests
         }
 
         /// <summary>
-        /// If the mod's constants aren't in the language table yet, the game's ResetText keeps the old text;
-        /// the button still holds the new constant, so the game's next language reset draws it.
+        /// The badge goes on the Mods button, with the tick when IM-HI is up to date and the "!" when not.
         /// </summary>
         [Fact]
-        public void ConstantsNotLoaded_KeepsTextUntilLanguageReset()
+        public void Badge_ShowsStatus()
         {
-            TestGame.Reset();
             Menu menu = TestGame.BuildMenu();
 
             Seams.StopSpinnerPostfix();
+            IMHIUpdate.InstalledVersion = () => new Version(1, 0, 0);
+            Seams.StopSpinnerPostfix();
 
-            Assert.Equal(HarmonyCheckerStatus.BUTTON_LABEL, menu.ModsLangButton.Constant);
-            Assert.Equal(TestGame.VanillaText, TestGame.TextOf(menu.Text));
-
-            TestGame.LoadModConstants();
-            Seams.ResetText(menu.ModsLangButton);
-            AssertInstalled(menu);
+            Assert.Equal(new[] { (Seams.TransformOf(menu.ModsButton), false, IMHIUpdate.MIN_VERSION), (Seams.TransformOf(menu.ModsButton), true, new Version(1, 0, 0)) },
+                Seams.Badges);
         }
 
-        // Outside the main menu (or while it's being built), the mod does nothing rather than throwing.
+        // Outside the main menu (or while it's being built), the menu is left alone rather than throwing.
 
         [Fact]
         public void NoMainCamera_DoesNothing()
@@ -205,20 +314,24 @@ namespace HarmonyChecker.Tests
             AssertUnchanged(menu);
         }
 
+        /// <summary>
+        /// A Mods button without a label still gets the badge.
+        /// </summary>
         [Fact]
-        public void ModsButtonWithoutLabel_DoesNothing()
+        public void ModsButtonWithoutLabel_StillGetsBadge()
         {
             Menu menu = TestGame.BuildMenu();
             Seams.Remove(menu.Label);
             MainMenu_Buttons_Controller controller = menu.Controller;
 
             Seams.StartPostfix(controller);
-            Seams.StopSpinnerPostfix();
 
-            AssertUnchanged(menu);
+            Assert.Equal(TestGame.NotInstalledText, TestGame.TextOf(menu.Text));
+            Assert.Single(Seams.Badges);
         }
+
         /// <summary>
-        /// Added in 1.4.1: another mod's label on the Mods button is kept by both refreshes. The update button
+        /// Another mod's label on the Mods button is kept by every refresh. The update button
         /// still appears when IM-HI is out of date.
         /// </summary>
         [Fact]
@@ -232,6 +345,7 @@ namespace HarmonyChecker.Tests
 
             Seams.StartPostfix(menu.Controller);
             Seams.StopSpinnerPostfix();
+            Seams.LoadPostfix();
 
             Assert.Equal("OTHER_MOD_MODS", menu.ModsLangButton.Constant);
             Assert.Equal("Mods (12)", TestGame.TextOf(menu.Text));
@@ -239,19 +353,16 @@ namespace HarmonyChecker.Tests
         }
 
         /// <summary>
-        /// The mod's own two labels still switch, both ways, as IM-HI goes out of date and is updated.
+        /// The label stays the game's whether IM-HI is up to date or not; only the badge changes.
         /// </summary>
         [Fact]
-        public void OwnLabels_SwitchBothWays()
+        public void Outdated_KeepsGameLabel()
         {
             Menu menu = TestGame.BuildMenu();
 
             IMHIUpdate.InstalledVersion = () => new Version(1, 0, 0);
             Seams.StopSpinnerPostfix();
-            Assert.Equal(IMHIUpdate.MODS_LABEL, menu.ModsLangButton.Constant);
 
-            IMHIUpdate.InstalledVersion = () => IMHIUpdate.MIN_VERSION;
-            Seams.StopSpinnerPostfix();
             AssertInstalled(menu);
         }
 
@@ -260,16 +371,57 @@ namespace HarmonyChecker.Tests
         /// mods' patches on it still finish. Here reading the installed version fails.
         /// </summary>
         [Fact]
-        public void Error_StaysInEitherPostfix()
+        public void Error_StaysInEveryPostfix()
         {
             Menu menu = TestGame.BuildMenu();
             IMHIUpdate.InstalledVersion = () => throw new InvalidOperationException("broken");
 
             Seams.StartPostfix(menu.Controller);
             Seams.StopSpinnerPostfix();
+            Seams.LoadPostfix();
 
-            Assert.Equal(2, Log.Messages.FindAll(m => m.Contains("[Harmony Checker] Couldn't update the main menu") && m.Contains("broken")).Count);
+            Assert.Equal(3, Log.Messages.FindAll(m => m.Contains("[Harmony Checker] Couldn't update the main menu") && m.Contains("broken")).Count);
             AssertUnchanged(menu);
         }
+    }
+
+    /// <summary>
+    /// Which file's Mods label the game would show without this mod.
+    /// </summary>
+    public class ModsLabelTests
+    {
+        private static string Label(string text) => TestGame.Constants((TestGame.VanillaConstant, text));
+
+        private static string Without(params (string path, string text)[] files) =>
+            ModsLabel.WithoutThisMod(Array.ConvertAll(files, f => f.path), path => path.StartsWith("own"),
+                path => Array.Find(files, f => f.path == path).text);
+
+        [Fact]
+        public void OwnLast_GivesTheOneBefore() =>
+            Assert.Equal("MOD", Without(("en", Label("Mods")), ("jp", Label("MOD")), ("own", Label("Mods [IM-HI not installed]"))));
+
+        [Fact]
+        public void OtherLast_GivesNull() =>
+            Assert.Null(Without(("en", Label("Mods")), ("own", Label("x")), ("other", Label("Mods (12)"))));
+
+        [Fact]
+        public void OwnNotSettingIt_GivesNull() =>
+            Assert.Null(Without(("en", Label("Mods")), ("own", TestGame.Constants(("IMHI_UPDATE", "u")))));
+
+        [Fact]
+        public void MissingFiles_AreSkipped() =>
+            Assert.Equal("Mods", Without(("en", Label("Mods")), ("gone", null), ("own", Label("x"))));
+
+        [Fact]
+        public void NothingBefore_GivesNull() => Assert.Null(Without(("own", Label("x"))));
+
+        [Theory]
+        [InlineData(@"C:\Steam\workshop\3102983863\JSON\Constants\constants.json", true)]
+        [InlineData("C:/Steam/workshop/3102983863/JSON/Constants/constants.json", true)]
+        [InlineData(@"c:\steam\WORKSHOP\3102983863\x.json", true)]
+        [InlineData(@"C:\Steam\workshop\31029838630\x.json", false)]
+        [InlineData(@"C:\Steam\workshop\other\x.json", false)]
+        public void IsUnder_MatchesFolderOnly(string path, bool under) =>
+            Assert.Equal(under, ModsLabel.IsUnder(path, new[] { null, "", @"C:\Steam\workshop\3102983863\" }));
     }
 }

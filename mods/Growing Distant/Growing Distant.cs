@@ -21,40 +21,54 @@ namespace GrowingDistant
         public const int FRIEND_PENALTY = -2;
         public const int RELATIONSHIP_MAX_POINTS = 512;
 
+        private static bool loggedError;
+
         /// <summary>
         /// Harmony patch for the UpdateRelationshipBasedOnSalary method in data_girls.girls.
         /// </summary>
         /// <remarks>
         /// The points are changed directly, not through Relationships_Player.AddPoints: that shows the game's
         /// relationship-change popup for every change, which would be two or three popups per idol every week.
+        /// An error here would stop the rest of the game's weekly update, so it's logged (once) and the week goes on.
         /// </remarks>
         public static void Postfix(data_girls.girls __instance)
         {
-            if (staticVars.IsEasy())
-                return;
+            try
+            {
+                if (staticVars.IsEasy())
+                    return;
 
-            int salarySatisfaction_Percentage = __instance.GetSalarySatisfaction_Percentage();
-            if (salarySatisfaction_Percentage >= SALARY_UPPER_THR)
-            {
-                __instance.Rel_Influence_Points = Math.Min(RELATIONSHIP_MAX_POINTS, __instance.Rel_Influence_Points + INFLUENCE_BONUS);
-            }
-            else if (salarySatisfaction_Percentage <= SALARY_LOWER_THR && __instance.Rel_Influence_Points >= -INFLUENCE_PENALTYCRIT)
-            {
-                __instance.Rel_Influence_Points += INFLUENCE_PENALTYCRIT;
-            }
-            else if (salarySatisfaction_Percentage <= SALARY_MID_THR && __instance.Rel_Influence_Points >= -INFLUENCE_PENALTY)
-            {
-                __instance.Rel_Influence_Points += INFLUENCE_PENALTY;
-            }
+                int salarySatisfaction_Percentage = __instance.GetSalarySatisfaction_Percentage();
+                if (salarySatisfaction_Percentage >= SALARY_UPPER_THR)
+                {
+                    __instance.Rel_Influence_Points = Math.Min(RELATIONSHIP_MAX_POINTS, __instance.Rel_Influence_Points + INFLUENCE_BONUS);
+                }
+                else if (salarySatisfaction_Percentage <= SALARY_LOWER_THR && __instance.Rel_Influence_Points >= -INFLUENCE_PENALTYCRIT)
+                {
+                    __instance.Rel_Influence_Points += INFLUENCE_PENALTYCRIT;
+                }
+                else if (salarySatisfaction_Percentage <= SALARY_MID_THR && __instance.Rel_Influence_Points >= -INFLUENCE_PENALTY)
+                {
+                    __instance.Rel_Influence_Points += INFLUENCE_PENALTY;
+                }
 
-            if (__instance.Rel_Romance_Points >= -ROMANCE_PENALTY)
-            {
-                __instance.Rel_Romance_Points += ROMANCE_PENALTY;
-            }
+                if (__instance.Rel_Romance_Points >= -ROMANCE_PENALTY)
+                {
+                    __instance.Rel_Romance_Points += ROMANCE_PENALTY;
+                }
 
-            if (__instance.Rel_Friendship_Points >= -FRIEND_PENALTY)
+                if (__instance.Rel_Friendship_Points >= -FRIEND_PENALTY)
+                {
+                    __instance.Rel_Friendship_Points += FRIEND_PENALTY;
+                }
+            }
+            catch (Exception e)
             {
-                __instance.Rel_Friendship_Points += FRIEND_PENALTY;
+                if (!loggedError)
+                {
+                    loggedError = true;
+                    Debug.LogError("[Growing Distant] Couldn't change this week's relationship points: " + e);
+                }
             }
         }
     }

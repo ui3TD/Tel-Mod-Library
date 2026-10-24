@@ -1,5 +1,6 @@
 using HarmonyLib;
 using System;
+using System.Collections.Generic;
 using Xunit;
 using Patch = GrowingDistant.data_girls_girls_UpdateRelationshipBasedOnSalary;
 
@@ -13,6 +14,16 @@ namespace GrowingDistant.Tests
     {
         public static float Value;
 
+        /// <summary>
+        /// Makes the stub throw, standing in for another mod's broken patch on salary satisfaction.
+        /// </summary>
+        public static bool Throw;
+
+        /// <summary>
+        /// Messages sent to Debug.LogError, which doesn't work outside the game.
+        /// </summary>
+        public static readonly List<string> Errors = new();
+
         private readonly Harmony harmony = new("tests.GrowingDistant.SatisfactionStub");
 
         public SatisfactionStub()
@@ -20,11 +31,22 @@ namespace GrowingDistant.Tests
             harmony.Patch(
                 AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.GetSalarySatisfaction)),
                 prefix: new HarmonyMethod(typeof(SatisfactionStub), nameof(Prefix)));
+            harmony.Patch(
+                AccessTools.Method(typeof(UnityEngine.Debug), nameof(UnityEngine.Debug.LogError), new[] { typeof(object) }),
+                prefix: new HarmonyMethod(typeof(SatisfactionStub), nameof(LogErrorPrefix)));
         }
 
         private static bool Prefix(ref float __result)
         {
+            if (Throw)
+                throw new InvalidOperationException("broken satisfaction patch");
             __result = Value;
+            return false;
+        }
+
+        private static bool LogErrorPrefix(object message)
+        {
+            Errors.Add(message?.ToString());
             return false;
         }
 
@@ -131,6 +153,31 @@ namespace GrowingDistant.Tests
             Assert.Equal(100, girl.Rel_Influence_Points);
             Assert.Equal(100, girl.Rel_Romance_Points);
             Assert.Equal(100, girl.Rel_Friendship_Points);
+        }
+
+        /// <summary>
+        /// An error would stop the rest of the game's weekly update, so it's logged once and the points are left alone.
+        /// </summary>
+        [Fact]
+        public void Error_IsLoggedOnce_AndChangesNothing()
+        {
+            SatisfactionStub.Errors.Clear();
+            SatisfactionStub.Throw = true;
+            try
+            {
+                data_girls.girls first = Run(0);
+                data_girls.girls second = Run(0);
+                Assert.Equal(100, first.Rel_Influence_Points);
+                Assert.Equal(100, first.Rel_Romance_Points);
+                Assert.Equal(100, first.Rel_Friendship_Points);
+                Assert.Equal(100, second.Rel_Influence_Points);
+                string error = Assert.Single(SatisfactionStub.Errors);
+                Assert.Contains("[Growing Distant]", error);
+            }
+            finally
+            {
+                SatisfactionStub.Throw = false;
+            }
         }
 
         [Fact]

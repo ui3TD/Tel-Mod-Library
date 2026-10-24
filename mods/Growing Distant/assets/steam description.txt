@@ -7,5 +7,6 @@ Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyInt
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 1.1.2: An error no longer stops the rest of the weekly update; no change in play.
 - 1.1.1: Code tidy-up; no change in play.
 - 1.1.0: Well-paid idols' influence no longer climbs past the maximum.

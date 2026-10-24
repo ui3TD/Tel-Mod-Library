@@ -1,117 +1,131 @@
 using AICore;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using Xunit;
 
 namespace AIFanChatter.Tests
 {
     /// <summary>
-    /// The key never reaches a save: ModMenus' Apply saves every row through variables.Set, and the mod's
-    /// prefix files the key away and saves "".
+    /// The keys are ModMenus' secret rows, one per service, which write the key files KeyStore reads and never
+    /// go through the variables. ModMenus tells the mod which secrets an Apply changed; a changed key is a
+    /// settings change.
     /// </summary>
-    public class KeyStoreTests
+    public class KeyStoreTests : IDisposable
     {
-        public KeyStoreTests() => TestEnv.Reset();
-
-        private static string ApplyKeyRow(string typed)
+        public KeyStoreTests()
         {
-            string value = typed;
-            variables_Set.Prefix(Settings.ApiKeyVar, ref value);
-            return value;
+            TestEnv.Reset();
+            ModMenusSecrets.Reset();
         }
 
-        [Fact]
-        public void TypedKey_IsFiledAndTheSaveGetsBlank()
+        public void Dispose()
         {
-            Dispatcher.Instance = new Dispatcher(new FakeHost(), new FakeTransport(), new System.Random(1));
-            Assert.Equal("", ApplyKeyRow("  sk-secret-9876  "));
-            Assert.Equal("sk-secret-9876", KeyStore.Get(Provider.OpenAI));
-            Assert.Equal("sk-secret-9876", File.ReadAllText(Path.Combine(TestEnv.KeyFolder, "openai.key")));
-        }
-
-        [Fact]
-        public void BlankField_KeepsTheKey()
-        {
-            Dispatcher.Instance = new Dispatcher(new FakeHost(), new FakeTransport(), new System.Random(1));
-            KeyStore.Set(Provider.OpenAI, "kept-key");
-            Assert.Equal("", ApplyKeyRow(""));
-            Assert.Equal("kept-key", KeyStore.Get(Provider.OpenAI));
+            FakeModMenus.Clear();
+            ModMenusSecrets.Reset();
         }
 
         /// <summary>
-        /// ModMenus fills the field from variables.Get: the key row reads as the placeholder while the chosen
-        /// service has a key, and as the game's own value otherwise. No other variable changes.
+        /// ModMenus keeps a secret in ModConfig\&lt;secretID&gt;.key; each service's row names that service's key file.
         /// </summary>
         [Fact]
-        public void KeyRow_ReadsAsThePlaceholder_OnlyWithAKey()
+        public void SecretIDs_NameTheKeyFiles()
         {
-            string Read(string name, string stored)
+            string root = Path.Combine(Path.GetTempPath(), "LocalLow", "Idol Manager");
+            foreach (Provider provider in (Provider[])Enum.GetValues(typeof(Provider)))
             {
-                string result = stored;
-                variables_Get.Postfix(name, ref result);
-                return result;
+                string[] parts = KeyStore.SecretID(provider).Split('/');
+                string modMenusFile = Path.Combine(Path.Combine(Path.Combine(root, "ModConfig"), parts[0]), parts[1] + ".key");
+                string keyStoreFile = Path.Combine(KeyStore.FolderUnder(root), provider.ToString().ToLowerInvariant() + ".key");
+                Assert.Equal(keyStoreFile, modMenusFile);
+                Assert.True(KeyStore.IsKeySecret(KeyStore.SecretID(provider)));
             }
+            Assert.Equal("Tel AI Mods/anthropic", KeyStore.SecretID(Provider.Anthropic));
+            Assert.False(KeyStore.IsKeySecret("Other Mod/anthropic"));
+            Assert.False(KeyStore.IsKeySecret(null));
+        }
 
-            Assert.Null(Read(Settings.ApiKeyVar, null));
-            Assert.Equal("", Read(Settings.ApiKeyVar, ""));
-            Assert.False(variables_Get.Shown);
+        [Fact]
+        public void ChangedKey_StartsAConnectionTest()
+        {
+            FakeHost host = new();
+            Dispatcher.Instance = new Dispatcher(host, new FakeTransport(), new Random(1));
 
-            KeyStore.Set(Provider.OpenAI, "sk-saved");
-            Assert.Equal(KeyStore.SavedPlaceholder, Read(Settings.ApiKeyVar, ""));
-            Assert.Equal(KeyStore.SavedPlaceholder, Read(Settings.ApiKeyVar, null));
-            Assert.True(variables_Get.Shown);
-            Assert.Null(Read("SomeOtherMod_Name", null));
-            Assert.Equal("1", Read(Settings.EnabledVar, "1"));
+            ModMenusSecrets.OnSecretsChanged(new[] { "Other Mod/key" });
+            Assert.Empty(host.Frames);
+
+            ModMenusSecrets.OnSecretsChanged(new[] { "Other Mod/key", KeyStore.SecretID(Provider.OpenAI) });
+            Assert.Single(host.Frames);
         }
 
         /// <summary>
-        /// The menu showed the placeholder: left alone, Apply keeps the key; cleared, Apply removes it. The save
-        /// gets "" either way.
+        /// A key changed in ModMenus lifts a stop, as any other setting change does.
         /// </summary>
         [Fact]
-        public void ShownPlaceholder_KeepsTheKey_ClearedFieldRemovesIt()
+        public void ChangedKey_LiftsAStop()
         {
-            Dispatcher.Instance = new Dispatcher(new FakeHost(), new FakeTransport(), new System.Random(1));
-            KeyStore.Set(Provider.OpenAI, "sk-saved");
-            string shown = "";
-            variables_Get.Postfix(Settings.ApiKeyVar, ref shown);
-            Assert.Equal("", ApplyKeyRow(shown));
-            Assert.Equal("sk-saved", KeyStore.Get(Provider.OpenAI));
-            Assert.False(variables_Get.Shown);
+            TestEnv.Configure();
+            FakeTransport transport = new();
+            Dispatcher.Instance = new Dispatcher(new FakeHost(), transport, new Random(1));
+            Assert.True(Dispatcher.Instance.Request(new Moment("a test").Add("Title", () => "Song")));
+            transport.Reply(401, "{\"error\":{\"message\":\"invalid x-api-key\"}}");
+            Assert.True(Dispatcher.Instance.Suspended);
 
-            shown = "";
-            variables_Get.Postfix(Settings.ApiKeyVar, ref shown);
-            Assert.Equal("", ApplyKeyRow(""));
-            Assert.Null(KeyStore.Get(Provider.OpenAI));
-            Assert.False(File.Exists(Path.Combine(TestEnv.KeyFolder, "openai.key")));
+            ModMenusSecrets.OnSecretsChanged(new[] { KeyStore.SecretID(Provider.Anthropic) });
+
+            Assert.False(Dispatcher.Instance.Suspended);
         }
 
+        /// <summary>
+        /// The mod listens to ModMenus' event once it's found, once only; an event of another shape is left alone.
+        /// </summary>
         [Fact]
-        public void EachProvider_HasItsOwnKey()
+        public void Listening_TakesOnlyTheEventItKnows()
         {
-            Dispatcher.Instance = new Dispatcher(new FakeHost(), new FakeTransport(), new System.Random(1));
-            TestEnv.Vars[Settings.ProviderVar] = "1";
-            ApplyKeyRow("openai-key");
-            TestEnv.Vars[Settings.ProviderVar] = "0";
-            ApplyKeyRow("anthropic-key");
+            FakeHost host = new();
+            Dispatcher.Instance = new Dispatcher(host, new FakeTransport(), new Random(1));
+            BindingFlags flags = BindingFlags.Public | BindingFlags.Static;
+
+            Assert.False(ModMenusSecrets.TryListen(null));
+            Assert.False(ModMenusSecrets.TryListen(typeof(FakeModMenus).GetEvent(nameof(FakeModMenus.OtherShape), flags)));
+            Assert.True(ModMenusSecrets.TryListen(typeof(FakeModMenus).GetEvent(nameof(FakeModMenus.SecretsChanged), flags)));
+
+            FakeModMenus.Raise(new[] { KeyStore.SecretID(Provider.Compatible) });
+            Assert.Single(host.Frames);
+        }
+
+        /// <summary>
+        /// A save from before has the key's variable empty, and the key in its file: it's used as it is, with
+        /// nothing stopped and no connection test.
+        /// </summary>
+        [Fact]
+        public void UpgradedSave_KeepsUsingTheSavedKey()
+        {
+            TestEnv.Configure(Provider.OpenAI, key: "sk-saved-before");
             KeyStore.ClearCache();
-            Assert.Equal("openai-key", KeyStore.Get(Provider.OpenAI));
-            Assert.Equal("anthropic-key", KeyStore.Get(Provider.Anthropic));
-            Assert.Null(KeyStore.Get(Provider.Compatible));
+            variables.variable.Add(new variables._variable { name = Settings.ApiKeyVar, value = "" });
+            FakeHost host = new();
+            Dispatcher.Instance = new Dispatcher(host, new FakeTransport(), new Random(1));
+
+            variables_SaveFunction.Postfix();
+
+            Assert.Equal("sk-saved-before", Settings.Current().ApiKey);
+            Assert.False(Dispatcher.Instance.Suspended);
+            Assert.Empty(host.Frames);
         }
 
         [Fact]
         public void OtherVariables_AreUntouched()
         {
-            string value = "female_name";
-            variables_Set.Prefix("SomeOtherMod_Name", ref value);
-            Assert.Equal("female_name", value);
+            variables_Set.Prefix("SomeOtherMod_Name", "female_name");
             Assert.False(Directory.Exists(TestEnv.KeyFolder));
         }
 
         /// <summary>
         /// Apply saves every row, changed or not. Pressing it with nothing changed lifts a stop and tests
         /// the connection, so the player can try again after fixing the cause; with nothing stopped it does
-        /// nothing, so it costs nothing.
+        /// nothing, so it costs nothing. The service row tells it was pressed: only Apply saves it.
         /// </summary>
         [Fact]
         public void UnchangedApply_LiftsAStop_AndOnlyThen()
@@ -119,9 +133,11 @@ namespace AIFanChatter.Tests
             TestEnv.Configure();
             FakeHost host = new();
             FakeTransport transport = new();
-            Dispatcher.Instance = new Dispatcher(host, transport, new System.Random(1));
+            Dispatcher.Instance = new Dispatcher(host, transport, new Random(1));
+            string provider = ((int)Provider.Anthropic).ToString();
+            variables.variable.Add(new variables._variable { name = Settings.ProviderVar, value = provider });
 
-            ApplyKeyRow("");
+            variables_Set.Prefix(Settings.ProviderVar, provider);
             Assert.Empty(host.Frames);
 
             Assert.True(Dispatcher.Instance.Request(new Moment("a test").Add("Title", () => "Song")));
@@ -130,11 +146,10 @@ namespace AIFanChatter.Tests
 
             // Other rows saved unchanged don't count as pressing Apply
             variables.variable.Add(new variables._variable { name = Settings.ModelVar, value = "" });
-            string model = "";
-            variables_Set.Prefix(Settings.ModelVar, ref model);
+            variables_Set.Prefix(Settings.ModelVar, "");
             Assert.True(Dispatcher.Instance.Suspended);
 
-            ApplyKeyRow("");
+            variables_Set.Prefix(Settings.ProviderVar, provider);
             Assert.False(Dispatcher.Instance.Suspended);
             Assert.Single(host.Frames);
         }
@@ -143,17 +158,32 @@ namespace AIFanChatter.Tests
         public void SettingChange_StartsAConnectionTestOnTheNextFrame()
         {
             FakeHost host = new();
-            Dispatcher.Instance = new Dispatcher(host, new FakeTransport(), new System.Random(1));
-            string value = "claude-sonnet-5-5";
-            variables_Set.Prefix(Settings.ModelVar, ref value);
+            Dispatcher.Instance = new Dispatcher(host, new FakeTransport(), new Random(1));
+            variables_Set.Prefix(Settings.ModelVar, "claude-sonnet-5-5");
             Assert.Single(host.Frames);
 
             // Setting the same value again (every Apply saves every row) changes nothing
-            Dispatcher.Instance = new Dispatcher(host = new FakeHost(), new FakeTransport(), new System.Random(1));
+            Dispatcher.Instance = new Dispatcher(host = new FakeHost(), new FakeTransport(), new Random(1));
             variables.variable.Add(new variables._variable { name = Settings.ModelVar, value = "same" });
-            value = "same";
-            variables_Set.Prefix(Settings.ModelVar, ref value);
+            variables_Set.Prefix(Settings.ModelVar, "same");
             Assert.Empty(host.Frames);
+        }
+
+        /// <summary>
+        /// Stands in for ModMenus' SecretsChanged event, and one of another shape.
+        /// </summary>
+        public static class FakeModMenus
+        {
+            public static event Action<string[]> SecretsChanged;
+            public static event Action<string> OtherShape;
+
+            public static void Raise(string[] ids) => SecretsChanged?.Invoke(ids);
+
+            public static void Clear()
+            {
+                SecretsChanged = null;
+                OtherShape = null;
+            }
         }
     }
 }

@@ -32,13 +32,22 @@
 		"maxLength": 100
 	},
 	{
-		"type": "input",
-		"varID": "AIFanChatter_APIKey",
-		"labelID": "AIFANCHATTER__MODMENU__APIKEY",
-		"defaultValue": "",
-		"maxLength": 0,
-		"password": true,
-		"reset": false
+		"type": "secret",
+		"secretID": "Tel AI Mods/anthropic",
+		"labelID": "AIFANCHATTER__MODMENU__KEY_ANTHROPIC",
+		"enabledIf": "AIFanChatter_UsesAnthropic"
+	},
+	{
+		"type": "secret",
+		"secretID": "Tel AI Mods/openai",
+		"labelID": "AIFANCHATTER__MODMENU__KEY_OPENAI",
+		"enabledIf": "AIFanChatter_UsesOpenAI"
+	},
+	{
+		"type": "secret",
+		"secretID": "Tel AI Mods/compatible",
+		"labelID": "AIFANCHATTER__MODMENU__KEY_COMPATIBLE",
+		"enabledIf": "AIFanChatter_UsesCompatible"
 	},
 	{
 		"type": "slider",

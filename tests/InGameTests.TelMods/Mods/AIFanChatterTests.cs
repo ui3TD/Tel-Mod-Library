@@ -17,7 +17,7 @@ using UnityEngine.UI;
 namespace InGameTests.TelMods
 {
     /// <summary>
-    /// AI Fan Chatter in the real game: the key row in ModMenus' real menu, a request through the real
+    /// AI Fan Chatter in the real game: the key rows in ModMenus' real menu, a request through the real
     /// transport and clock into the real feed, and the feed and queue across a real save and load. The
     /// unit tests cover the settings, requests, replies, limits and queue timing on stand-ins.
     /// Requests go to a server on this PC; nothing reaches an AI service, and the player's own key is
@@ -33,9 +33,10 @@ namespace InGameTests.TelMods
         private const string KeyVar = Prefix + "APIKey";
 
         /// <summary>
-        /// A key typed into ModMenus' real key field goes to the key file on Apply, the save gets "", the
-        /// reopened field is empty, and a later Apply with the field left blank keeps the key. ModMenus' own
-        /// test checks that password fields show asterisks.
+        /// A key typed into the picked service's secret row in ModMenus' real menu goes on Apply to the key file
+        /// the mod reads, never to the save. The reopened field is empty, with the key's ending under it; a
+        /// later Apply with the field left empty keeps the key, and Remove then Apply removes it. ModMenus' own
+        /// test checks that secret fields show asterisks.
         /// </summary>
         [InGameTest(Suite = ModTest.Suite)]
         private static IEnumerator KeyIsKeptOutOfTheSave(TestContext ctx)
@@ -51,60 +52,52 @@ namespace InGameTests.TelMods
 
             using (TempKeyFolder(mod, out _))
             using (Game.Variable(Prefix + "Enabled", "0"))
+            using (Game.Variable(Prefix + "Provider", "1"))
             using (RestoreVariables())
             {
                 const string typed = "sk-ingame-test-WXYZ";
                 Component[] rows = null;
                 yield return OpenMenu(ctx, popup => rows = popup.GetComponentsInChildren<Transform>(true).Select(t => (Component)t).ToArray());
-                Transform row = rows?.OfType<Transform>().FirstOrDefault(t => t.name == "ModMenuInput_" + KeyVar);
+                // OpenAI's row: Unity's Find would read a '/' in the name as a path, so the row has '\'
+                const string rowName = "ModMenuSecret_Tel AI Mods\\openai";
+                Transform row = rows?.OfType<Transform>().FirstOrDefault(t => t.name == rowName);
                 if (row == null)
                 {
-                    ctx.Fail("The mod menu has no row ModMenuInput_" + KeyVar);
+                    ctx.Fail("The mod menu has no row " + rowName);
                     yield return Game.CloseAllPopups(ctx);
                     yield break;
                 }
+                ctx.Assert(row.gameObject.activeSelf, "OpenAI's key row is hidden with OpenAI picked");
                 TMP_InputField field = row.GetComponentInChildren<TMP_InputField>(true);
+                TextMeshProUGUI status = row.Find("Status").GetComponent<TextMeshProUGUI>();
 
                 // Typing goes through the field's own event, as a player's typing does
                 field.text = typed;
                 yield return Apply(ctx, row);
-                // Read the save's own list: Get shows the placeholder for a saved key
-                string stored = variables.variable.FirstOrDefault(v => v.name == KeyVar)?.value;
-                ctx.Assert(stored == "", "Apply saved the key in the save: " + (stored == null ? "null" : stored.Length + " characters"));
-                // The key file of the service the menu has selected
+                ctx.Assert(!variables.variable.Any(v => v.value != null && v.value.Contains(typed)), "Apply put the key in the save");
+                // The key file the mod reads for OpenAI, which the mod reads back
                 Type store = mod.GetType("AICore.KeyStore", true);
-                Type settings = mod.GetType("AICore.ConnectionSettings", true);
-                string file = (string)AccessTools.Method(store, "FileFor")
-                    .Invoke(null, new[] { AccessTools.Property(settings, "Provider").GetValue(null, null) });
-                ctx.Assert(File.Exists(file) && File.ReadAllText(file) == typed, "Apply didn't write the key file");
+                Type provider = mod.GetType("AICore.Provider", true);
+                object openAI = Enum.Parse(provider, "OpenAI");
+                string file = (string)AccessTools.Method(store, "FileFor").Invoke(null, new[] { openAI });
+                ctx.Assert(File.Exists(file) && File.ReadAllText(file) == typed, "Apply didn't write the key file the mod reads");
+                ctx.Assert((string)AccessTools.Method(store, "Get").Invoke(null, new[] { openAI }) == typed, "The mod doesn't read the key ModMenus saved");
 
-                // ModMenus' own fill shows the placeholder, masked
-                string placeholder = (string)AccessTools.Field(store, "SavedPlaceholder").GetRawConstantValue();
+                // Reopened: empty, masked, with the key's ending under it; applied empty, the key is kept
                 yield return OpenMenu(ctx, _ => { });
-                ctx.Assert(field.text == placeholder, "The reopened field doesn't show the placeholder: " + field.text.Length + " characters");
+                ctx.Assert(field.text == "", "The reopened field holds " + field.text.Length + " characters");
                 ctx.Assert(field.contentType == TMP_InputField.ContentType.Password, "The key field isn't masked");
-
-                // A click into the field selects all of it, so typing replaces the placeholder
-                ctx.Record("onFocusSelectAll", field.onFocusSelectAll);
-                ClickField(field.gameObject);
-                yield return null;
-                yield return null;
-                int from = Math.Min(field.selectionStringAnchorPosition, field.selectionStringFocusPosition);
-                int to = Math.Max(field.selectionStringAnchorPosition, field.selectionStringFocusPosition);
-                ctx.Record("selected", from + " to " + to + " of " + field.text.Length);
-                ctx.Assert(from == 0 && to == field.text.Length, "A click doesn't select the whole placeholder: " + from + " to " + to + " of " + field.text.Length);
-                field.DeactivateInputField();
-
+                ctx.Assert(status.text.Contains("WXYZ"), "The line under the field says '" + status.text + "'");
                 yield return Apply(ctx, row);
-                ctx.Assert(File.Exists(file) && File.ReadAllText(file) == typed, "Applying the placeholder changed the key");
+                ctx.Assert(File.Exists(file) && File.ReadAllText(file) == typed, "Applying the empty field changed the key");
 
-                // Cleared and applied: the key is gone
+                // Remove, then Apply: the key is gone
                 yield return OpenMenu(ctx, _ => { });
-                field.text = "";
+                row.Find("Remove").GetComponent<Button>().onClick.Invoke();
                 yield return Apply(ctx, row);
-                ctx.Assert(!File.Exists(file), "Clearing the field didn't remove the key file");
+                ctx.Assert(!File.Exists(file), "Remove didn't remove the key file");
                 yield return OpenMenu(ctx, _ => { });
-                ctx.Assert(field.text == "", "The field still shows a key after it was removed");
+                ctx.Assert(!row.Find("Remove").gameObject.activeSelf, "Remove still shows after the key was removed");
                 Game.Main.Data.GetComponent<PopupManager>().Close();
             }
             yield return Game.CloseAllPopups(ctx);
@@ -158,7 +151,20 @@ namespace InGameTests.TelMods
                     yield break;
                 }
                 AccessTools.Method(tabType, "OnClick").Invoke(tab, null);
+                // The game's dropdown sets itself up in its first frame shown, and opens its list only after that
+                yield return TestTools.WaitFor(ctx, () => dropdown.gameObject.activeInHierarchy, 2f, "the AI service dropdown to show");
                 yield return null;
+                if (!dropdown.gameObject.activeInHierarchy)
+                {
+                    Type managerType = modMenus.GetType("ModMenus.ModMenusUtils+ModMenuManager", true);
+                    Component manager = popup.GetComponentInChildren(managerType, true);
+                    Component selected = (Component)AccessTools.Field(managerType, "selected").GetValue(manager);
+                    ctx.Fail("The AI service dropdown isn't shown after its tab was clicked: popup active " + popup.activeInHierarchy
+                        + ", page active " + provider.parent.gameObject.activeSelf + ", row active " + provider.gameObject.activeSelf
+                        + ", tab shown " + (selected == null ? "none" : selected.name) + ", open popup " + PopupManager.GetOpenPopupType());
+                    yield return Game.CloseAllPopups(ctx);
+                    yield break;
+                }
                 ctx.Assert(baseUrl.gameObject.activeSelf, "The Base URL row is hidden with OpenAI-compatible saved");
 
                 // Picks in the open list, as the player's clicks make them; nothing is applied
@@ -783,36 +789,29 @@ namespace InGameTests.TelMods
                 found(popup);
         }
 
-        /// <summary>A left click on the middle of a field, as the event system sends it.</summary>
-        private static void ClickField(GameObject target)
-        {
-            UnityEngine.EventSystems.EventSystem system = UnityEngine.EventSystems.EventSystem.current;
-            RectTransform rect = (RectTransform)target.transform;
-            Canvas canvas = rect.GetComponentInParent<Canvas>().rootCanvas;
-            Camera camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
-            var corners = new Vector3[4];
-            rect.GetWorldCorners(corners);
-            Vector2 middle = (RectTransformUtility.WorldToScreenPoint(camera, corners[0]) + RectTransformUtility.WorldToScreenPoint(camera, corners[2])) / 2f;
-            var data = new UnityEngine.EventSystems.PointerEventData(system) { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, position = middle };
-            UnityEngine.EventSystems.ExecuteEvents.Execute(target, data, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
-            UnityEngine.EventSystems.ExecuteEvents.Execute(target, data, UnityEngine.EventSystems.ExecuteEvents.pointerUpHandler);
-            UnityEngine.EventSystems.ExecuteEvents.Execute(target, data, UnityEngine.EventSystems.ExecuteEvents.pointerClickHandler);
-        }
-
         /// <summary>
         /// Presses Apply and waits for the menu to close, so reopening it runs its rows' OnEnable again.
         /// </summary>
         private static IEnumerator Apply(TestContext ctx, Transform row)
         {
             Assembly modMenus = TelMod.ByHarmonyId(ModMenusId).Assembly();
-            Component manager = row.GetComponentInParent(modMenus.GetType("ModMenus.ModMenusUtils+ModMenuManager", true));
+            // From the popup: GetComponentInParent skips a row whose tab isn't the one shown
+            GameObject popup = Game.Main.Data.GetComponent<PopupManager>().GetByType(ModMenuPopup)?.obj;
+            Component manager = popup != null ? popup.GetComponentInChildren(modMenus.GetType("ModMenus.ModMenusUtils+ModMenuManager", true), true) : null;
+            if (manager == null)
+            {
+                ctx.Fail("No open mod menu to apply");
+                yield break;
+            }
             AccessTools.Method(manager.GetType(), "OnApply").Invoke(manager, null);
-            yield return TestTools.WaitFor(ctx, () => PopupManager.GetOpenPopupType() != ModMenuPopup && !row.gameObject.activeInHierarchy, 5f, "the mod menu to close");
+            // Until the popup has finished hiding: one reopened during its fade is switched off when the fade ends.
+            // The row says nothing, as it's hidden all along while another tab is shown.
+            yield return TestTools.WaitFor(ctx, () => PopupManager.GetOpenPopupType() != ModMenuPopup && !popup.activeSelf, 5f, "the mod menu to close");
         }
 
         /// <summary>
-        /// Points the mod's key folder at a temp folder, so the player's own keys are never read or changed.
-        /// With it set, the mod looks in no old key folder either.
+        /// Points the mod's key folder, and ModMenus' secrets with it, at a temp folder, so the player's own keys
+        /// are never read or changed. With it set, the mod looks in no old key folder either.
         /// </summary>
         private static IDisposable TempKeyFolder(Assembly mod, out string folder)
         {
@@ -820,16 +819,27 @@ namespace InGameTests.TelMods
             FieldInfo overrideField = AccessTools.Field(store, "FolderOverride");
             MethodInfo clear = AccessTools.Method(store, "ClearCache");
             object previous = overrideField.GetValue(null);
-            string temp = Path.Combine(Path.GetTempPath(), "AIFanChatterInGame", Guid.NewGuid().ToString("N"));
+            // ModMenus keeps the keys in <its folder>\Tel AI Mods, as the mod does in ModConfig
+            string configFolder = Path.Combine(Path.Combine(Path.GetTempPath(), "AIFanChatterInGame"), Guid.NewGuid().ToString("N"));
+            string temp = Path.Combine(configFolder, (string)AccessTools.Field(store, "SharedFolderName").GetRawConstantValue());
             folder = temp;
             overrideField.SetValue(null, temp);
             clear.Invoke(null, null);
+
+            Type secrets = ModTest.IsActive(ModMenusId) ? TelMod.ByHarmonyId(ModMenusId).Assembly().GetType("ModMenus.SecretStore") : null;
+            FieldInfo secretsField = secrets != null ? AccessTools.Field(secrets, "FolderOverride") : null;
+            MethodInfo secretsClear = secrets != null ? AccessTools.Method(secrets, "ClearCache") : null;
+            object secretsPrevious = secretsField?.GetValue(null);
+            secretsField?.SetValue(null, configFolder);
+            secretsClear?.Invoke(null, null);
             return TestTools.Restore(() =>
             {
                 overrideField.SetValue(null, previous);
                 clear.Invoke(null, null);
-                if (Directory.Exists(temp))
-                    Directory.Delete(temp, true);
+                secretsField?.SetValue(null, secretsPrevious);
+                secretsClear?.Invoke(null, null);
+                if (Directory.Exists(configFolder))
+                    Directory.Delete(configFolder, true);
             });
         }
 

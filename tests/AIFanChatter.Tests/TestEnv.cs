@@ -34,7 +34,6 @@ namespace AIFanChatter.Tests
             KeyStore.ClearCache();
             FeedQueue.Clear();
             Moments.ResetGraduations();
-            variables_Get.Shown = false;
             FeedRelease.Quiet = false;
             variables.variable.Clear();
             TestGame.Clear();

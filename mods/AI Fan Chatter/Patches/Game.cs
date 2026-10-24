@@ -13,16 +13,14 @@ namespace AIFanChatter
     // own errors, so a problem in the mod never stops the game's method.
 
     /// <summary>
-    /// Keeps the API key out of the saves. ModMenus' Apply saves every setting through variables.Set; the
-    /// key goes to its file instead and the save gets "". Runs first, so no other patch on Set sees the
-    /// key. Any change to the mod's settings lets requests run again and tests the connection, and so does
-    /// pressing Apply with nothing changed while requests are stopped.
+    /// Any change to the mod's settings lets requests run again and tests the connection, and so does pressing
+    /// Apply with nothing changed while requests are stopped. The keys are ModMenus' secret rows, which never
+    /// go through the variables (see ModMenusSecrets).
     /// </summary>
     [HarmonyPatch(typeof(variables), nameof(variables.Set))]
-    [HarmonyPriority(Priority.First)]
     public class variables_Set
     {
-        public static void Prefix(string name, ref string value)
+        public static void Prefix(string name, string value)
         {
             if (name == null || !name.StartsWith(Settings.Prefix, StringComparison.Ordinal))
             {
@@ -30,90 +28,54 @@ namespace AIFanChatter
             }
             try
             {
-                bool changed;
-                if (name == Settings.ApiKeyVar)
-                {
-                    // The provider row comes before the key row, so Apply has already saved the provider
-                    changed = KeyStore.Apply(Settings.Provider, value, variables_Get.Shown);
-                    variables_Get.Shown = false;
-                    value = "";
-                }
-                else
-                {
-                    changed = name != FeedStore.OlderPostsVar && name != FeedQueue.QueueVar && variables.Get(name) != value;
-                }
-                if (changed)
+                if (name != FeedStore.OlderPostsVar && name != FeedQueue.QueueVar && variables.Get(name) != value)
                 {
                     Dispatcher.Instance.OnSettingsChanged();
                 }
-                else if (name == Settings.ApiKeyVar)
+                else if (name == Settings.ProviderVar)
                 {
-                    // Apply saves every row, changed or not, and only Apply saves the key row: pressing it
+                    // Apply saves every row, changed or not, and only Apply saves the service row: pressing it
                     // with nothing changed lifts a stop, so the player can try again after fixing the cause
                     Dispatcher.Instance.OnApplied();
                 }
             }
             catch (Exception e)
             {
-                if (name == Settings.ApiKeyVar)
-                {
-                    value = "";
-                }
                 Log.Warn("Couldn't apply setting " + name + ": " + e.Message);
             }
         }
     }
 
     /// <summary>
-    /// Shows that a key is saved without the key ever being in the variables: ModMenus fills each field from
-    /// variables.Get, so while the chosen service has a key, the key row reads as the placeholder, which the
-    /// masked field shows as asterisks. Only what Get returns changes; the save still holds "".
-    /// Also answers the Base URL row's enabledIf (Settings.UsesBaseUrlVar), which nothing saves.
+    /// Answers the enabledIf of the Base URL row and of each service's key row (see Settings.ProviderShownBy),
+    /// which nothing saves: each shows while its service is picked.
     /// </summary>
     [HarmonyPatch(typeof(variables), nameof(variables.Get))]
     [HarmonyPriority(Priority.Last)]
     public class variables_Get
     {
-        /// <summary>The placeholder was handed out since the last Apply, so a blank key field was cleared on purpose.</summary>
-        internal static bool Shown;
-
         public static void Postfix(string name, ref string __result)
         {
-            if (name == Settings.UsesBaseUrlVar)
-            {
-                try
-                {
-                    __result = Settings.UsesBaseUrl ? "1" : "0";
-                }
-                catch (Exception)
-                {
-                    // The row shows, so the address can still be set
-                    __result = "1";
-                }
-                return;
-            }
-            if (name != Settings.ApiKeyVar || !string.IsNullOrEmpty(__result))
+            Provider? shown = Settings.ProviderShownBy(name);
+            if (shown == null)
             {
                 return;
             }
             try
             {
-                if (KeyStore.Has(Settings.Provider))
-                {
-                    __result = KeyStore.SavedPlaceholder;
-                    Shown = true;
-                }
+                __result = Settings.Uses(shown.Value) ? "1" : "0";
             }
             catch (Exception)
             {
-                // The field shows nothing, as without the mod's help
+                // The row shows, so it can still be set
+                __result = "1";
             }
         }
     }
 
     /// <summary>
-    /// A backstop for a key that reached the variables some other way than variables.Set: it moves to the
-    /// key file before the save is written.
+    /// A backstop for a key that reached the key's old variable some other way: it moves to the key file
+    /// before the save is written.
     /// </summary>
     [HarmonyPatch(typeof(variables), nameof(variables.SaveFunction))]
     public class variables_SaveFunction
@@ -132,9 +94,10 @@ namespace AIFanChatter
     }
 
     /// <summary>
-    /// Moves keys saved before the shared key folder into it, from the main menu on. Releases queued
-    /// posts as the game clock runs, from the same tick the game's own systems use. staticVars.SetTime
-    /// isn't patched: it's a one-line setter the runtime may inline.
+    /// Moves keys saved before the shared key folder into it, from the main menu on, and listens for keys
+    /// changed in ModMenus (every mod is loaded by then). Releases queued posts as the game clock runs, from
+    /// the same tick the game's own systems use. staticVars.SetTime isn't patched: it's a one-line setter the
+    /// runtime may inline.
     /// </summary>
     [HarmonyPatch(typeof(mainScript), nameof(mainScript.Start))]
     public class mainScript_Start
@@ -142,6 +105,7 @@ namespace AIFanChatter
         public static void Postfix(mainScript __instance)
         {
             KeyStore.MoveLegacyKeys();
+            ModMenusSecrets.Listen();
             try
             {
                 if (!mainScript.IsMainMenu())

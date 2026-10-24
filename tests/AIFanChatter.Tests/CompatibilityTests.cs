@@ -173,16 +173,19 @@ namespace AIFanChatter.Tests
             Assert.Equal(NotificationType.idol_stat_change, type);
         }
 
+        /// <summary>
+        /// The settings prefix only reads: it can't change what any mod saves.
+        /// </summary>
         [Fact]
-        public void KeyPrefix_RunsFirst()
+        public void SetPrefix_NeverChangesTheValue()
         {
-            HarmonyPriority priority = typeof(variables_Set).GetCustomAttribute<HarmonyPriority>();
-            Assert.Equal(Priority.First, priority.info.priority);
+            MethodInfo prefix = typeof(variables_Set).GetMethod(nameof(variables_Set.Prefix));
+            Assert.All(prefix.GetParameters(), p => Assert.False(p.ParameterType.IsByRef));
         }
 
-        /// <summary>The placeholder is the last word on the key row's value, after any other mod's postfix.</summary>
+        /// <summary>The rows' enabledIf answers are the last word, after any other mod's postfix.</summary>
         [Fact]
-        public void KeyRowPostfix_RunsLast()
+        public void EnabledIfPostfix_RunsLast()
         {
             Assert.Equal(Priority.Last, typeof(variables_Get).GetCustomAttribute<HarmonyPriority>().info.priority);
         }

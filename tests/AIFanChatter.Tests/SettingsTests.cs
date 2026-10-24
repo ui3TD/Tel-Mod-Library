@@ -34,7 +34,6 @@ namespace AIFanChatter.Tests
             Assert.Equal((int)Settings.DefaultProvider, Item(Settings.ProviderVar)["defaultValue"].AsInt);
             Assert.Equal("", Item(Settings.BaseUrlVar)["defaultValue"].Value);
             Assert.Equal("", Item(Settings.ModelVar)["defaultValue"].Value);
-            Assert.Equal("", Item(Settings.ApiKeyVar)["defaultValue"].Value);
             Assert.Equal(Settings.DefaultPerWeek, Item(Settings.PerWeekVar)["defaultValue"].AsInt);
             Assert.Equal(0, Item(Settings.PerWeekVar)["minValue"].AsInt);
             Assert.Equal(Settings.MaxPerWeek, Item(Settings.PerWeekVar)["maxValue"].AsInt);
@@ -50,24 +49,12 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// ModMenus' Reset to Defaults would blank the key field, and Apply would then remove the saved key
-        /// (KeyStore.Apply), so the key row opts out of Reset. Every other row is reset.
+        /// Every row is reset by ModMenus' Reset to Defaults; the keys are secret rows, which Reset leaves alone.
         /// </summary>
         [Fact]
-        public void KeyRow_IsTheOnlyRowResetLeavesAlone()
+        public void NoRow_OptsOutOfReset()
         {
-            Assert.Equal(new[] { Settings.ApiKeyVar }, Items().Where(i => i["reset"].Value == "false").Select(i => i["varID"].Value));
-        }
-
-        /// <summary>
-        /// The key row must come after the provider row: Apply saves rows in order, and the key is filed under
-        /// the provider just saved.
-        /// </summary>
-        [Fact]
-        public void ProviderRow_ComesBeforeKeyRow()
-        {
-            List<string> order = Items().Select(i => i["varID"].Value).ToList();
-            Assert.True(order.IndexOf(Settings.ProviderVar) < order.IndexOf(Settings.ApiKeyVar));
+            Assert.DoesNotContain(Items(), i => i["reset"].Value == "false");
         }
 
         [Fact]
@@ -87,43 +74,52 @@ namespace AIFanChatter.Tests
         }
 
         /// <summary>
-        /// ModMenus (3.0.0 and later) shows the key as asterisks.
+        /// Each service's key is a ModMenus secret row (ModMenus 5.0.0 and later) naming its key file, shown while
+        /// that service is picked. No row uses ModMenus' removed password option.
         /// </summary>
         [Fact]
-        public void KeyField_IsTheOnlyPasswordField()
+        public void KeyRows_AreSecretRows_OnePerService()
         {
-            Assert.True(Item(Settings.ApiKeyVar)["password"].AsBool);
-            Assert.All(Items().Where(i => i["varID"].Value != Settings.ApiKeyVar), i => Assert.False(i["password"].AsBool));
+            List<JSONNode> secrets = Items().Where(i => i["type"].Value == "secret").ToList();
+            Assert.Equal(new[]
+            {
+                (KeyStore.SecretID(Provider.Anthropic), Settings.UsesAnthropicVar),
+                (KeyStore.SecretID(Provider.OpenAI), Settings.UsesOpenAIVar),
+                (KeyStore.SecretID(Provider.Compatible), Settings.UsesCompatibleVar),
+            }, secrets.Select(i => (i["secretID"].Value, i["enabledIf"].Value)));
+            Assert.All(Items(), i => Assert.Equal("", i["password"].Value));
+            Assert.Contains(Items(), i => i["type"].Value == "input" && i["varID"].Value == Settings.ModelVar);
+            Assert.DoesNotContain(Items(), i => i["varID"].Value == Settings.ApiKeyVar);
         }
 
         [Fact]
         public void EverySetting_UsesTheModsPrefix()
         {
-            foreach (JSONNode item in Items().Where(i => i["type"].Value != "text"))
+            foreach (JSONNode item in Items().Where(i => i["type"].Value != "text" && i["type"].Value != "secret"))
             {
                 Assert.StartsWith(Settings.Prefix, item["varID"].Value);
             }
         }
 
         /// <summary>
-        /// Only Base URL is hidden at times: it shows while UsesBaseUrlVar is on, which the mod answers itself.
-        /// Every other setting shows whether or not the mod is on, so the service and key can be set up first.
-        /// No row has UsesBaseUrlVar, so ModMenus never saves it.
+        /// Only Base URL and the keys are hidden at times: each shows while its service is picked, which the mod
+        /// answers itself (see Settings.ProviderShownBy). Every other setting shows whether or not the mod is on,
+        /// so the service and key can be set up first. No row has those variables, so ModMenus never saves them.
         /// </summary>
         [Fact]
-        public void OnlyBaseUrlRow_IsHiddenAtTimes()
+        public void OnlyBaseUrlAndKeyRows_AreHiddenAtTimes()
         {
-            Dictionary<string, string> conditions = Items().Where(i => i["type"].Value != "text").ToDictionary(i => i["varID"].Value, i => i["enabledIf"].Value);
+            Dictionary<string, string> conditions = Items().Where(i => i["type"].Value != "text" && i["type"].Value != "secret").ToDictionary(i => i["varID"].Value, i => i["enabledIf"].Value);
             Assert.Equal(new Dictionary<string, string>
             {
                 [Settings.EnabledVar] = "",
                 [Settings.ProviderVar] = "",
                 [Settings.BaseUrlVar] = Settings.UsesBaseUrlVar,
                 [Settings.ModelVar] = "",
-                [Settings.ApiKeyVar] = "",
                 [Settings.PerWeekVar] = "",
             }, conditions);
             Assert.All(Items().Where(i => i["type"].Value == "text"), i => Assert.Equal("", i["enabledIf"].Value));
+            Assert.All(Items().Where(i => i["enabledIf"].Value != ""), i => Assert.NotNull(Settings.ProviderShownBy(i["enabledIf"].Value)));
         }
     }
 
@@ -264,6 +260,48 @@ namespace AIFanChatter.Tests
 
             Settings.MenuValue = _ => throw new System.InvalidOperationException();
             Assert.Equal("1", Get(null));
+        }
+
+        /// <summary>
+        /// Each key row shows only while its service is picked, following the open menu before Apply, so the line
+        /// under it always tells about the service on screen. If working it out fails, every key row shows.
+        /// </summary>
+        [Fact]
+        public void GetPatch_ShowsOnlyThePickedServicesKeyRow()
+        {
+            string[] Shown()
+            {
+                return new[] { Settings.UsesAnthropicVar, Settings.UsesOpenAIVar, Settings.UsesCompatibleVar }.Select(name =>
+                {
+                    string result = null;
+                    variables_Get.Postfix(name, ref result);
+                    return result;
+                }).ToArray();
+            }
+
+            // Nothing saved: OpenAI, the default
+            Assert.Equal(new[] { "0", "1", "0" }, Shown());
+            TestEnv.Vars[Settings.ProviderVar] = ((int)Provider.Anthropic).ToString();
+            Assert.Equal(new[] { "1", "0", "0" }, Shown());
+
+            Dictionary<string, string> menu = new() { [Settings.ProviderVar] = ((int)Provider.Compatible).ToString() };
+            Settings.MenuValue = varID => menu.TryGetValue(varID, out string value) ? value : null;
+            Assert.Equal(new[] { "0", "0", "1" }, Shown());
+
+            Settings.MenuValue = _ => throw new System.InvalidOperationException();
+            Assert.Equal(new[] { "1", "1", "1" }, Shown());
+        }
+
+        [Fact]
+        public void GetPatch_LeavesOtherVariablesAlone()
+        {
+            TestEnv.Configure(Provider.OpenAI);
+            foreach ((string name, string stored) in new[] { ("SomeOtherMod_Name", null), (Settings.EnabledVar, "1"), (Settings.ApiKeyVar, "") })
+            {
+                string result = stored;
+                variables_Get.Postfix(name, ref result);
+                Assert.Equal(stored, result);
+            }
         }
     }
 }

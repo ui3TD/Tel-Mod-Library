@@ -21,10 +21,32 @@ namespace AIFanChatter
         public const string PerWeekVar = Prefix + "PerWeek";
 
         /// <summary>
-        /// Whether the Base URL row is shown, for its enabledIf. No row has it, so it's never saved; the mod
-        /// answers it in variables.Get (see UsesBaseUrl).
+        /// Whether the Base URL row and each service's key row are shown, for their enabledIf: while that service
+        /// is picked (see Uses). No row has these, so they're never saved; the mod answers them in variables.Get.
         /// </summary>
         public const string UsesBaseUrlVar = Prefix + "UsesBaseURL";
+        public const string UsesAnthropicVar = Prefix + "UsesAnthropic";
+        public const string UsesOpenAIVar = Prefix + "UsesOpenAI";
+        public const string UsesCompatibleVar = Prefix + "UsesCompatible";
+
+        /// <summary>
+        /// The service whose rows a no-row enabledIf variable shows, or null for any other variable.
+        /// </summary>
+        internal static Provider? ProviderShownBy(string varID)
+        {
+            switch (varID)
+            {
+                case UsesBaseUrlVar:
+                case UsesCompatibleVar:
+                    return Provider.Compatible;
+                case UsesAnthropicVar:
+                    return Provider.Anthropic;
+                case UsesOpenAIVar:
+                    return Provider.OpenAI;
+                default:
+                    return null;
+            }
+        }
 
         public const bool DefaultEnabled = false;
         public const Provider DefaultProvider = ConnectionSettings.DefaultProvider;
@@ -70,10 +92,15 @@ namespace AIFanChatter
         });
 
         /// <summary>
-        /// Whether the Base URL row is shown: while OpenAI-compatible is picked, as the open mod menu shows it, so
-        /// the row follows the player's pick before Apply; while the menu is closed, as saved.
+        /// Whether a service is picked, as the open mod menu shows it, so its rows follow the player's pick before
+        /// Apply; while the menu is closed, as saved.
         /// </summary>
-        public static bool UsesBaseUrl => ConnectionSettings.ProviderOf(MenuValue(ProviderVar) ?? Read(ProviderVar)) == Provider.Compatible;
+        public static bool Uses(Provider provider) => ConnectionSettings.ProviderOf(MenuValue(ProviderVar) ?? Read(ProviderVar)) == provider;
+
+        /// <summary>
+        /// Whether the Base URL row is shown: while OpenAI-compatible is picked (see Uses).
+        /// </summary>
+        public static bool UsesBaseUrl => Uses(Provider.Compatible);
 
         public static int PerWeek => ReadInt(PerWeekVar, DefaultPerWeek, 0, MaxPerWeek);
 

@@ -55,51 +55,30 @@ namespace AICore.Tests
         }
 
         /// <summary>
-        /// The field shows a placeholder for a saved key: left alone it keeps the key, cleared it removes the
-        /// key, and a new key replaces it, also one typed after the placeholder.
+        /// A variable holding only spaces is blanked, and never removes the saved key.
         /// </summary>
         [Fact]
-        public void Apply_PlaceholderKeeps_ClearedRemoves_TypedReplaces()
+        public void Scrub_SpacesAlone_KeepTheKey()
         {
-            KeyStore.Set(Provider.OpenAI, "sk-kept");
-            Assert.False(KeyStore.Apply(Provider.OpenAI, KeyStore.SavedPlaceholder, shownSaved: true));
-            Assert.Equal("sk-kept", KeyStore.Get(Provider.OpenAI));
-
-            Assert.True(KeyStore.Apply(Provider.OpenAI, KeyStore.SavedPlaceholder + "sk-new", shownSaved: true));
-            Assert.Equal("sk-new", KeyStore.Get(Provider.OpenAI));
-
-            Assert.True(KeyStore.Apply(Provider.OpenAI, "sk-other", shownSaved: true));
-            Assert.Equal("sk-other", KeyStore.Get(Provider.OpenAI));
-
-            Assert.True(KeyStore.Apply(Provider.OpenAI, "", shownSaved: true));
-            Assert.False(KeyStore.Has(Provider.OpenAI));
+            KeyStore.Set(Provider.Anthropic, "sk-ant-kept");
+            variables.variable.Add(new variables._variable { name = ConnectionSettings.ApiKeyVar, value = "  " });
+            Assert.True(KeyStore.Scrub(variables.variable, Provider.Anthropic));
+            Assert.Equal("", variables.Get(ConnectionSettings.ApiKeyVar));
+            Assert.Equal("sk-ant-kept", KeyStore.Get(Provider.Anthropic));
         }
 
         /// <summary>
-        /// A field that arrives empty without having been shown the placeholder never removes the key; once
-        /// the placeholder was shown, clearing it does.
+        /// ModMenus keeps a secret in ModConfig\&lt;secretID&gt;.key: each provider's secretID names its key file.
         /// </summary>
         [Fact]
-        public void Apply_BlankWithoutThePlaceholder_KeepsTheKey()
+        public void SecretIDs_NameEachProvidersKeyFile()
         {
-            KeyStore.Set(Provider.Anthropic, "sk-ant-kept");
-            Assert.False(KeyStore.Apply(Provider.Anthropic, "  "));
-            Assert.Equal("sk-ant-kept", KeyStore.Get(Provider.Anthropic));
-            Assert.True(KeyStore.Apply(Provider.Anthropic, "  ", shownSaved: true));
-            Assert.False(KeyStore.Has(Provider.Anthropic));
-            // Nothing to remove, and the placeholder alone changes nothing
-            Assert.False(KeyStore.Apply(Provider.Anthropic, "", shownSaved: true));
-            Assert.False(KeyStore.Apply(Provider.Anthropic, KeyStore.SavedPlaceholder, shownSaved: true));
-            Assert.False(KeyStore.Has(Provider.Anthropic));
-        }
-
-        /// <summary>As long as a real key, so the masked field looks like one, and with spaces, so no key equals it.</summary>
-        [Fact]
-        public void Placeholder_IsKeyLength_AndNoKey()
-        {
-            Assert.InRange(KeyStore.SavedPlaceholder.Length, 40, 80);
-            Assert.Contains(" ", KeyStore.SavedPlaceholder);
-            Assert.Equal(KeyStore.SavedPlaceholder, KeyStore.SavedPlaceholder.Trim());
+            Assert.Equal("Tel AI Mods/anthropic", KeyStore.SecretID(Provider.Anthropic));
+            Assert.Equal("Tel AI Mods/openai", KeyStore.SecretID(Provider.OpenAI));
+            Assert.Equal("Tel AI Mods/compatible", KeyStore.SecretID(Provider.Compatible));
+            Assert.True(KeyStore.IsKeySecret("Tel AI Mods/openai"));
+            Assert.False(KeyStore.IsKeySecret("Tel AI Mods/other"));
+            Assert.False(KeyStore.IsKeySecret("tel ai mods/openai"));
         }
 
         [Fact]

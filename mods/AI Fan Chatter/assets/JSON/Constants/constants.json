@@ -32,8 +32,16 @@
 		text: "Model (blank uses gpt-6-luna on OpenAI, claude-haiku-5-5 on Anthropic)"
 	},
 	{
-		id: "AIFANCHATTER__MODMENU__APIKEY",
-		text: "API key (clear to remove)"
+		id: "AIFANCHATTER__MODMENU__KEY_ANTHROPIC",
+		text: "Anthropic API key"
+	},
+	{
+		id: "AIFANCHATTER__MODMENU__KEY_OPENAI",
+		text: "OpenAI API key"
+	},
+	{
+		id: "AIFANCHATTER__MODMENU__KEY_COMPATIBLE",
+		text: "API key (optional)"
 	},
 	{
 		id: "AIFANCHATTER__MODMENU__PERWEEK",

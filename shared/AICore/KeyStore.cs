@@ -11,7 +11,8 @@ namespace AICore
     /// The API keys, one per provider, in plain text files outside the saves and the Mods folder:
     /// %USERPROFILE%\AppData\LocalLow\Glitch Pitch\Idol Manager\ModConfig\Tel AI Mods\. Saves can be
     /// shared or synced and the Mods folder is uploaded and replaced by updates; this folder is neither.
-    /// One key works for every save and every one of Tel's AI mods.
+    /// One key works for every save and every one of Tel's AI mods. The player sets them in ModMenus' secret
+    /// rows, which write these same files (see SecretID).
     /// </summary>
     public static class KeyStore
     {
@@ -256,55 +257,32 @@ namespace AICore
             return text;
         }
 
-        /// <summary>
-        /// What the key field shows while a key is saved, in place of the key: as long as a real key, so the
-        /// masked field shows a key-length row of asterisks, and with spaces, which no service's keys contain,
-        /// so it can never be taken for one.
-        /// </summary>
-        public const string SavedPlaceholder = "a saved key is kept in its own file outside your saves";
-
         public static bool Has(Provider provider) => Get(provider) != null;
 
         /// <summary>
-        /// Handles a value typed into the key field, as ModMenus' Apply saves it: a key is saved for the
-        /// provider. The placeholder keeps the key; text typed after it is the new key. Blank removes the key when the field was showing the placeholder (the player
-        /// cleared it), and otherwise keeps it, so a field that arrived empty never wipes a key. Returns
-        /// whether anything changed. The caller saves "" in the key's variable, so the key never reaches the save.
+        /// The ModMenus secretID of the provider's key: its file in the key folder, under ModMenus' ModConfig
+        /// folder, so the key row and this class read and write the same file.
         /// </summary>
-        /// <param name="shownSaved">The field was given the placeholder since the last Apply.</param>
-        public static bool Apply(Provider provider, string typed, bool shownSaved = false)
+        public static string SecretID(Provider provider) => SharedFolderName + "/" + provider.ToString().ToLowerInvariant();
+
+        /// <summary>
+        /// Whether a ModMenus secretID is one of the keys (see SecretID).
+        /// </summary>
+        public static bool IsKeySecret(string secretID)
         {
-            string value = (typed ?? "").Trim();
-            if (value == SavedPlaceholder)
+            foreach (Provider provider in (Provider[])Enum.GetValues(typeof(Provider)))
             {
-                return false;
-            }
-            // Typed after the placeholder without selecting it first
-            if (value.StartsWith(SavedPlaceholder, StringComparison.Ordinal))
-            {
-                value = value.Substring(SavedPlaceholder.Length).Trim();
-            }
-            if (value == "")
-            {
-                if (!shownSaved)
+                if (secretID == SecretID(provider))
                 {
-                    return false;
+                    return true;
                 }
-                bool had = Has(provider);
-                Delete(provider);
-                return had;
             }
-            if (value == Get(provider))
-            {
-                return false;
-            }
-            Set(provider, value);
-            return true;
+            return false;
         }
 
         /// <summary>
-        /// Moves a key that reached the variables list some other way than variables.Set into the key file,
-        /// and blanks it. Returns whether one was found.
+        /// Moves a key found in the key's old variable into the key file, and blanks it. Returns whether one
+        /// was found.
         /// </summary>
         public static bool Scrub(List<variables._variable> list, Provider provider)
         {
@@ -317,7 +295,12 @@ namespace AICore
             {
                 if (variable != null && variable.name == ConnectionSettings.ApiKeyVar && !string.IsNullOrEmpty(variable.value))
                 {
-                    Apply(provider, variable.value);
+                    // Spaces alone are no key, and never remove one
+                    string key = variable.value.Trim();
+                    if (key != "" && key != Get(provider))
+                    {
+                        Set(provider, key);
+                    }
                     variable.value = "";
                     found = true;
                 }

@@ -215,8 +215,8 @@ namespace UnofficialPatch.Tests
         }
 
         /// <summary>
-        /// The mod changes one instruction: the final "return 0f" returns the cost instead. Transpiling
-        /// again (or a game that already returns the cost) changes nothing.
+        /// The mod changes only the return: the final "return 0f" returns Cost(cost) instead (the call lets the
+        /// player turn the fix off). Transpiling again (or a game that already returns the cost) changes nothing.
         /// </summary>
         [Fact]
         public void Transpiler_ChangesOnlyTheReturn_AndOnlyOnce()
@@ -226,8 +226,10 @@ namespace UnofficialPatch.Tests
             List<CodeInstruction> once = Theaters_GetStaminaCost.Transpiler(PatchProcessor.GetOriginalInstructions(method)).ToList();
             List<CodeInstruction> twice = Theaters_GetStaminaCost.Transpiler(once).ToList();
 
-            Assert.Equal(original.Count, once.Count);
-            Assert.Equal(1, Enumerable.Range(0, original.Count).Count(i => original[i].ToString() != once[i].ToString()));
+            // The return value changed, and one call inserted before the ret
+            Assert.Equal(original.Count + 1, once.Count);
+            Assert.Equal(original.Take(original.Count - 2).Select(ci => ci.ToString()), once.Take(original.Count - 2).Select(ci => ci.ToString()));
+            Assert.Contains(nameof(Theaters_GetStaminaCost.Cost), once[once.Count - 2].ToString());
             Assert.Equal(once.Select(ci => ci.ToString()), twice.Select(ci => ci.ToString()));
             Assert.Empty(Log.Messages);
         }

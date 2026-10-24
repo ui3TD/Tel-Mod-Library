@@ -451,7 +451,9 @@ namespace UnofficialPatch.Tests
             MethodInfo method = AccessTools.Method(typeof(Event_Templates._active_template), "MentalDamageDating");
             (List<string> once, List<string> twice) = FanIdols.Twice(method, (ci, _) => Event_Templates__active_template_MentalDamageDating.Transpiler(ci));
 
-            Assert.Equal(FanIdols.Original(method).Count, once.Count);
+            // Plus the call that lets the player turn the fix off
+            Assert.Equal(FanIdols.Original(method).Count + 1, once.Count);
+            Assert.Single(once, ci => ci.Contains(nameof(Event_Templates__active_template_MentalDamageDating.CheckedTrait)));
             Assert.Equal(once, twice);
         }
     }

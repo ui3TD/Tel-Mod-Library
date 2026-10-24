@@ -7,7 +7,8 @@ using System;
 namespace UnofficialPatch
 {
     // Restores stamina costs for theater schedules. The game works out the cost (5 for a performance, 2 for
-    // manzai, doubled on hard), then returns 0 instead of it; return the cost it worked out.
+    // manzai, doubled on hard), then returns 0 instead of it; return the cost it worked out. Can be turned off in
+    // ModMenus (Settings.TheaterStamina).
     [HarmonyPatch(typeof(Theaters), nameof(Theaters.GetStaminaCost))]
     public class Theaters_GetStaminaCost
     {
@@ -38,12 +39,16 @@ namespace UnofficialPatch
                 return matcher.InstructionEnumeration();
             }
 
-            // Load the cost instead, keeping any jump into this instruction.
+            // Return Cost(cost) instead, keeping any jump into this instruction.
             CodeInstruction loadCost = IlHelpers.LoadOfStore(storeCost);
             matcher.Instruction.opcode = loadCost.opcode;
             matcher.Instruction.operand = loadCost.operand;
+            matcher.Advance(1).Insert(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Theaters_GetStaminaCost), nameof(Cost))));
             return matcher.InstructionEnumeration();
         }
+
+        // The cost the game worked out, or the game's 0 while the fix is turned off.
+        public static float Cost(float cost) => Settings.On(Settings.TheaterStamina) ? cost : 0f;
     }
 
     // Aligns theater revenue timing and payout distribution with the schedule.

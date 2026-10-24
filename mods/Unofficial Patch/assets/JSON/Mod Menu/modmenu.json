@@ -1,0 +1,36 @@
+[
+	{
+		"type": "text",
+		"labelID": "UNOFFICIALPATCH__MODMENU__EXPLAIN"
+	},
+	{
+		"type": "checkbox",
+		"varID": "UnofficialPatch_TheaterStamina",
+		"labelID": "UNOFFICIALPATCH__MODMENU__THEATER_STAMINA",
+		"defaultValue": true
+	},
+	{
+		"type": "checkbox",
+		"varID": "UnofficialPatch_TourFame",
+		"labelID": "UNOFFICIALPATCH__MODMENU__TOUR_FAME",
+		"defaultValue": true
+	},
+	{
+		"type": "checkbox",
+		"varID": "UnofficialPatch_BestEmployer",
+		"labelID": "UNOFFICIALPATCH__MODMENU__BEST_EMPLOYER",
+		"defaultValue": true
+	},
+	{
+		"type": "checkbox",
+		"varID": "UnofficialPatch_SalaryWishes",
+		"labelID": "UNOFFICIALPATCH__MODMENU__SALARY_WISHES",
+		"defaultValue": true
+	},
+	{
+		"type": "checkbox",
+		"varID": "UnofficialPatch_ScandalStamina",
+		"labelID": "UNOFFICIALPATCH__MODMENU__SCANDAL_STAMINA",
+		"defaultValue": true
+	}
+]

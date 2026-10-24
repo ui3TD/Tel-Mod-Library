@@ -59,7 +59,8 @@ namespace UnofficialPatch
     }
 
     // Fixes the tour attendance fame penalty. The game compared the agency's fame points with twice the venue
-    // level, so the penalty never applied; compare the fame level, as the tour description says.
+    // level, so the penalty never applied; compare the fame level, as the tour description says. Can be turned off
+    // in ModMenus (Settings.TourFame).
     [HarmonyPatch(typeof(SEvent_Tour), nameof(SEvent_Tour.GetFamePenalty))]
     public class SEvent_Tour_GetFamePenalty
     {
@@ -88,10 +89,12 @@ namespace UnofficialPatch
             return codes;
         }
 
-        // The fame level, in place of resources.Get(type, useTotal) for fame.
+        // The fame level, in place of resources.Get(type, useTotal) for fame; the game's fame points while the fix
+        // is turned off.
         public static long FameLevel(resources.type type, bool useTotal)
         {
-            return resources.FamePointsToLevel(resources.Get(type, useTotal));
+            long points = resources.Get(type, useTotal);
+            return Settings.On(Settings.TourFame) ? resources.FamePointsToLevel(points) : points;
         }
     }
 }

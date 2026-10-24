@@ -2,7 +2,21 @@
 
 Unofficial Patch fixes bugs in Idol Manager. This page lists every fix, grouped by the part of the game it changes. Each entry says what the game did wrong and what happens now. The Steam page lists only the fixes that change how the game plays.
 
-A fix marked **(changes gameplay)** changes the balance of the game, not just a display or a rare error.
+A fix marked **(changes gameplay)** changes the balance of the game, not just a display or a rare error. A fix marked **(can be turned off)** has a checkbox in ModMenus; see [Settings](#settings).
+
+## Settings
+
+With [ModMenus](https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791) installed, the Unofficial Patch tab in Settings > Mod Settings has a checkbox for each fix below. They are all ticked at first. Unticking one makes that part of the game work as in the original game. A change applies straight away, and each save keeps its own choices unless the tab's "Use in all saves" box is ticked. Without ModMenus, every fix is on.
+
+- **Theater shows cost stamina.** Off: theater shows cost no stamina.
+- **Tour attendance needs fame.** Off: fame never lowers world tour attendance.
+- **Best Employer award can be lost.** Off: the award is won every year.
+- **Salary wishes follow recent pay.** Off: an idol's expected salary is based on everything she has earned since she joined, so it rises until it reaches the game's limit of twice her base salary.
+- **Dating scandals cost mental stamina.** Off: scandal responses cost no mental stamina.
+
+The Best Employer and salary checkboxes both come from one fix: the game never ran its monthly update. Unofficial Patch always runs the monthly update now, and an unticked box skips only its own part of it. If you tick the salary box again after a while, the earnings from the months it was off count as one month.
+
+A checkbox turns off only Unofficial Patch's own fix. If another mod fixes the same bug, unticking the box doesn't undo that mod's fix.
 
 ## Calendar
 
@@ -10,7 +24,7 @@ A fix marked **(changes gameplay)** changes the balance of the game, not just a 
 
 ## Theater
 
-- Theater shows now use stamina. In the game they cost the idols nothing. **(changes gameplay)**
+- Theater shows now use stamina. In the game they cost the idols nothing. **(changes gameplay)** **(can be turned off)**
 - The theater money tooltip now adds subscriptions, skips days off, and covers 7 days instead of 6.
 - Theater revenue statistics are no longer shifted by one day.
 - Theater averages now leave out days off.
@@ -33,7 +47,7 @@ A fix marked **(changes gameplay)** changes the balance of the game, not just a 
 - A show cast with the entire group now gives every idol the same opinion vote, a quarter of the episode's. In the game, the first idol in roster order got a quarter, the second a sixteenth, the third a sixty-fourth, and the rest almost nothing. **(changes gameplay)**
 - The world tour revenue text colour now takes savings into account, and turns red when the tour would lose money.
 - World tour savings: the Most Prolific Group award and cheaper events no longer make extra stops free.
-- World tour attendance now depends on your fame level, so big venues need high fame. **(changes gameplay)**
+- World tour attendance now depends on your fame level, so big venues need high fame. **(changes gameplay)** **(can be turned off)**
 
 ## Singles
 
@@ -44,7 +58,7 @@ A fix marked **(changes gameplay)** changes the balance of the game, not just a 
 
 ## Idols
 
-- The Best Employer award can now be lost: months with injured, depressed, exhausted or underpaid idols count against it. Idols' expected salaries now follow their recent pay. **(changes gameplay)**
+- The Best Employer award can now be lost: months with injured, depressed, exhausted or underpaid idols count against it. Idols' expected salaries now follow their recent pay. **(changes gameplay)** **(can be turned off)**
 - A promoted male producer's small portrait is no longer blank.
 - The English birthday title no longer says "21th birthday". It now reads: Mio turns 21!
 - When two idols dating each other break up, their relationship status is no longer shown as known.
@@ -68,7 +82,7 @@ A fix marked **(changes gameplay)** changes the balance of the game, not just a 
 
 ## Events and dialogues
 
-- Dating scandal responses now cost the idol the mental stamina the game lists: 25, or 50 for making the relationship public after a damaging report. Thick Skin and Shameless idols are spared. In the game no idol ever lost mental stamina from a scandal response. **(changes gameplay)**
+- Dating scandal responses now cost the idol the mental stamina the game lists: 25, or 50 for making the relationship public after a damaging report. Thick Skin and Shameless idols are spared. In the game no idol ever lost mental stamina from a scandal response. **(changes gameplay)** **(can be turned off)**
 - Event and dialogue checks for Influence now check Influence instead of Friendship.
 - Event and dialogue checks for "not" conditions on variables no longer always pass.
 - Event and dialogue checks for having a staffer of a specific type now work.

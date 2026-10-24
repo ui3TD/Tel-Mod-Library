@@ -8,7 +8,8 @@ namespace UnofficialPatch
 {
     // Fixes dating scandals never costing mental stamina. MentalDamageDating should skip Thick Skin and Shameless
     // idols, but tests trait != Thick_Skin || trait != Shameless, which is true for every idol, so it always returns
-    // "". Skip only those two traits. Pattern-based: no change once the test is fixed.
+    // "". Skip only those two traits. Pattern-based: no change once the test is fixed. Can be turned off in
+    // ModMenus (Settings.ScandalStamina).
     [HarmonyPatch(typeof(Event_Templates._active_template), nameof(Event_Templates._active_template.MentalDamageDating))]
     public class Event_Templates__active_template_MentalDamageDating
     {
@@ -28,6 +29,7 @@ namespace UnofficialPatch
                 // Already gone: patched twice, or the game fixed it.
                 return instructions;
             }
+            int firstTrait = matcher.Pos;
             CodeInstruction thickSkin = matcher.InstructionAt(2);
 
             matcher.Advance(3).MatchStartForward(
@@ -44,8 +46,15 @@ namespace UnofficialPatch
             thickSkin.opcode = thickSkin.opcode == OpCodes.Bne_Un ? OpCodes.Beq : OpCodes.Beq_S;
             CodeInstruction shameless = matcher.InstructionAt(2);
             shameless.opcode = shameless.opcode == OpCodes.Beq ? OpCodes.Bne_Un : OpCodes.Bne_Un_S;
+            // The first test reads CheckedTrait(trait), so turning the fix off spares every idol, as the game does.
+            matcher.Start().Advance(firstTrait + 1).Insert(new CodeInstruction(OpCodes.Call,
+                AccessTools.Method(typeof(Event_Templates__active_template_MentalDamageDating), nameof(CheckedTrait))));
             return matcher.InstructionEnumeration();
         }
+
+        // The idol's trait, or Thick Skin (spared) while the fix is turned off.
+        public static traits._trait._type CheckedTrait(traits._trait._type trait) =>
+            Settings.On(Settings.ScandalStamina) ? trait : traits._trait._type.Thick_Skin;
     }
 
     // Fixed event and dialogue checks for Influence to check for Influence instead of Friendship

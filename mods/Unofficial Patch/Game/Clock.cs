@@ -14,6 +14,8 @@ namespace UnofficialPatch
     // Raised on the first tick of the 1st of each month, after onNewDay, as the time loop would have.
     // Compatible without knowing other mods: if anything else raises onNewMonth that day, ours doesn't; and if a mod
     // already ran the Best Employer check that day, the Awards subscriber is skipped.
+    // Each game subscriber can be turned off in ModMenus (Settings.BestEmployer, Settings.SalaryWishes), as in the
+    // game; other mods' subscribers always run.
     public static class MonthlyEvent
     {
         private static readonly FieldInfo OnNewMonthField = AccessTools.Field(typeof(mainScript), "onNewMonth");
@@ -72,7 +74,9 @@ namespace UnofficialPatch
             bool employerCheckDone = StrikesAtDayStart >= 0 && Awards.Checks.Best_Employer_Counter != StrikesAtDayStart;
             foreach (Delegate handler in handlers.GetInvocationList())
             {
-                if (handler.Target is Awards && employerCheckDone)
+                if (handler.Target is Awards && (employerCheckDone || !Settings.On(Settings.BestEmployer)))
+                    continue;
+                if (handler.Target is data_girls && !Settings.On(Settings.SalaryWishes))
                     continue;
                 try
                 {

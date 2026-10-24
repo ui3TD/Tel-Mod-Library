@@ -6,5 +6,29 @@
 	{
 		id: "UNOFFICIALPATCH__BD_TITLE_2",
 		text: "turns @!"
+	},
+	{
+		id: "UNOFFICIALPATCH__MODMENU__EXPLAIN",
+		text: "Off plays as the original game."
+	},
+	{
+		id: "UNOFFICIALPATCH__MODMENU__THEATER_STAMINA",
+		text: "Theater shows cost stamina (off: free)"
+	},
+	{
+		id: "UNOFFICIALPATCH__MODMENU__TOUR_FAME",
+		text: "Tour attendance needs fame (off: fame doesn't matter)"
+	},
+	{
+		id: "UNOFFICIALPATCH__MODMENU__BEST_EMPLOYER",
+		text: "Best Employer award can be lost (off: always won)"
+	},
+	{
+		id: "UNOFFICIALPATCH__MODMENU__SALARY_WISHES",
+		text: "Salary wishes follow recent pay (off: all-time pay)"
+	},
+	{
+		id: "UNOFFICIALPATCH__MODMENU__SCANDAL_STAMINA",
+		text: "Dating scandals cost mental stamina (off: no cost)"
 	}
 ]

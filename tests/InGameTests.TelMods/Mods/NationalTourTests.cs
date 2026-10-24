@@ -53,8 +53,10 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
-        /// The new tour popup shows the map of Japan, and every country marker sits on its
-        /// prefecture (a country the mod has no prefecture for would throw on Reset).
+        /// The new tour popup shows the map of Japan, and every country marker is drawn on the map once the popup
+        /// is open. It's opened as a player does (Special Events, World Tour, Continue) twice: the game resets the
+        /// popup before showing it, the first time at full size and then at the 0.5 its close animation leaves.
+        /// Only the engine's real popup animation and transform hierarchy show where the markers end up.
         /// </summary>
         [InGameTest(Suite = ModTest.Suite)]
         private static IEnumerator NewTourMapAndMarkers(TestContext ctx)
@@ -63,35 +65,39 @@ namespace InGameTests.TelMods
                 yield break;
 
             Type utility = mod.GetType(Utility, true);
-            PopupManager popups = Game.Main.Data.GetComponent<PopupManager>();
+            SpecialEvents_Manager specialEvents = Game.Main.Data.GetComponent<SpecialEvents_Manager>();
             Tour_New_Popup newTour = PopupObject(PopupManager._type.sevent_tour_new).GetComponent<Tour_New_Popup>();
-            popups.Open(PopupManager._type.sevent_tour_new);
-            yield return null;
-            newTour.Reset();
+            for (int open = 1; open <= 2; open++)
+            {
+                ctx.Record("open " + open + " popup scale before Reset", newTour.transform.localScale.x);
+                specialEvents.OpenSpecialEventsPopup();
+                yield return null;
+                specialEvents.OpenTab_WorldTour();
+                specialEvents.Continue();
+                float start = Time.realtimeSinceStartup;
+                while (newTour.transform.localScale.x < 0.999f && Time.realtimeSinceStartup - start < 3f)
+                    yield return null;
+                yield return null;
 
-            Image map = Path(newTour.gameObject, "Panel", "BG")?.GetComponent<Image>();
-            ctx.Assert(map != null, "sevent_tour_new popup has no Panel/BG image");
-            if (map != null)
+                Image map = Path(newTour.gameObject, "Panel", "BG")?.GetComponent<Image>();
+                ctx.Assert(map != null, "sevent_tour_new popup has no Panel/BG image");
+                if (map == null)
+                    yield break;
                 ctx.Assert(map.sprite == Traverse.Create(utility).Field("TOUR_map_2").GetValue<Sprite>(), "The new tour popup shows " + Describe(map.sprite) + ", not National Tour's map of Japan");
 
-            IDictionary prefectures = Traverse.Create(utility).Field("tourLocations").GetValue<IDictionary>();
-            IDictionary positions = Traverse.Create(utility).Field("locationDict").GetValue<IDictionary>();
-            Tour_Country[] countries = newTour.CountriesContainer.GetComponentsInChildren<Tour_Country>();
-            ctx.Record("countries", countries.Length);
-            ctx.Assert(countries.Length > 0, "The new tour popup shows no countries");
-            foreach (Tour_Country country in countries)
-            {
-                object prefecture = prefectures.Contains(country.CountryType) ? prefectures[country.CountryType] : null;
-                if (prefecture == null || !positions.Contains(prefecture))
+                Canvas canvas = map.canvas.rootCanvas;
+                Camera camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+                Tour_Country[] countries = newTour.CountriesContainer.GetComponentsInChildren<Tour_Country>();
+                ctx.Record("open " + open + " countries", countries.Length);
+                ctx.Assert(countries.Length > 0, "The new tour popup shows no countries");
+                foreach (Tour_Country country in countries)
                 {
-                    ctx.Fail(country.CountryType + " has no prefecture position in National Tour");
-                    continue;
+                    Vector2 point = RectTransformUtility.WorldToScreenPoint(camera, country.transform.position);
+                    ctx.Assert(RectTransformUtility.RectangleContainsScreenPoint(map.rectTransform, point, camera),
+                        "Open " + open + ": " + country.CountryType + " is drawn at " + point + ", off the map");
                 }
-                Vector3 expected = (Vector3)positions[prefecture];
-                ctx.Assert(Vector3.Distance(country.transform.position, expected) < 0.01f,
-                    country.CountryType + " is at " + country.transform.position + ", expected " + prefecture + " " + expected);
+                yield return Game.CloseAllPopups(ctx);
             }
-            yield return Game.CloseAllPopups(ctx);
         }
 
         /// <summary>The tour results popup shows the national tour background and its blurred copy.</summary>

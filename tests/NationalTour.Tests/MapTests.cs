@@ -31,13 +31,18 @@ namespace NationalTour.Tests
             Assert.Same(TOUR_map_2, scene.NewTourMap.sprite);
         }
 
+        /// <summary>
+        /// Where a prefecture's pin goes in the popup's own units.
+        /// </summary>
+        private static Vector3 PopupPosition(Prefectures prefecture) => locationDict[prefecture] * POPUP_UNITS_PER_MAP_UNIT;
+
         [Theory]
         [MemberData(nameof(Countries))]
         public void NewTour_PinsEachCountryOnItsPrefecture(Country country)
         {
             Scene scene = new();
             Seams.NewTourReset(scene.NewTour);
-            Assert.Equal(locationDict[tourLocations[country]], scene.PositionOf(country));
+            Assert.Equal(PopupPosition(tourLocations[country]), scene.PositionOf(country));
         }
 
         [Fact]
@@ -46,7 +51,47 @@ namespace NationalTour.Tests
             Scene scene = new();
             Seams.NewTourReset(scene.NewTour);
             Seams.NewTourReset(scene.NewTour);
-            Assert.Equal(locationDict[Prefectures.hokkaido], scene.PositionOf(Country.canada));
+            Assert.Equal(PopupPosition(Prefectures.hokkaido), scene.PositionOf(Country.canada));
+        }
+
+        /// <summary>
+        /// Added in 2.1.2: the game resets the popup at the scale it's at: 1 the first time, 0.5 after its close
+        /// animation, 0.3 at the start of its open animation. Each pin lands on the same spot once the popup is
+        /// full size. 2.1.1 placed them in world units, so they ended up 2 or 3.3 times too far out.
+        /// </summary>
+        [Theory]
+        [InlineData(1f)]
+        [InlineData(0.5f)]
+        [InlineData(0.3f)]
+        public void Pins_DontDependOnThePopupsScale(float scale)
+        {
+            Scene scene = new();
+            Seams.Scales[Seams.TransformOf(scene.NewTour)] = scale;
+
+            Seams.NewTourReset(scene.NewTour);
+
+            foreach (Country country in Enum.GetValues(typeof(Country)))
+            {
+                Vector3 fullSize = scene.PositionOf(country) / scale;
+                Assert.True(Vector3.Distance(PopupPosition(tourLocations[country]), fullSize) < 0.001f, country + " is at " + fullSize + " at full size");
+            }
+        }
+
+        /// <summary>
+        /// Added in 2.1.2: a country the mod has no prefecture for, such as one another mod adds, keeps the game's
+        /// position instead of stopping the popup's Reset.
+        /// </summary>
+        [Fact]
+        public void CountryWithoutAPrefecture_KeepsItsPosition()
+        {
+            Scene scene = new();
+            scene.Countries[Country.canada].CountryType = (Country)999;
+
+            Exception error = Record.Exception(() => Seams.NewTourReset(scene.NewTour));
+
+            Assert.Null(error);
+            Assert.Equal(Scene.VanillaPosition, scene.PositionOf(Country.canada));
+            Assert.Equal(PopupPosition(tourLocations[Country.US]), scene.PositionOf(Country.US));
         }
 
         [Fact]

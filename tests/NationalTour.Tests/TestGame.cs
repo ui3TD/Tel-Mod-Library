@@ -210,6 +210,12 @@ namespace NationalTour.Tests
         public static Camera MainCamera;
 
         public static readonly Dictionary<object, Vector3> Positions = new(new SameObject());
+
+        /// <summary>
+        /// Each transform's scale, as the popup's open and close animations set it; 1 when not set. The fake popup
+        /// sits at the world's origin, so its TransformPoint only scales.
+        /// </summary>
+        public static readonly Dictionary<object, float> Scales = new(new SameObject());
         public static readonly Dictionary<object, float> Alphas = new(new SameObject());
         public static readonly Dictionary<object, Vector2> Sizes = new(new SameObject());
         public static readonly List<StartedTween> Tweens = new();
@@ -262,6 +268,7 @@ namespace NationalTour.Tests
             [AccessTools.Method(typeof(Transform), nameof(Transform.Find), new[] { typeof(string) })] = Stub(nameof(StubFind)),
             [AccessTools.PropertyGetter(typeof(Transform), nameof(Transform.position))] = Stub(nameof(StubGetPosition)),
             [AccessTools.PropertySetter(typeof(Transform), nameof(Transform.position))] = Stub(nameof(StubSetPosition)),
+            [AccessTools.Method(typeof(Transform), nameof(Transform.TransformPoint), new[] { typeof(Vector3) })] = Stub(nameof(StubTransformPoint)),
 
             // Looks
             [AccessTools.PropertySetter(typeof(Image), nameof(Image.sprite))] = Stub(nameof(StubSetSprite)),
@@ -330,6 +337,7 @@ namespace NationalTour.Tests
             Finds = 0;
             Nodes.Clear();
             Positions.Clear();
+            Scales.Clear();
             Alphas.Clear();
             Sizes.Clear();
             Tweens.Clear();
@@ -420,6 +428,7 @@ namespace NationalTour.Tests
 
         private static Vector3 StubGetPosition(Transform transform) => Positions.TryGetValue(transform, out Vector3 position) ? position : Vector3.zero;
         private static void StubSetPosition(Transform transform, Vector3 value) => Positions[transform] = value;
+        private static Vector3 StubTransformPoint(Transform transform, Vector3 point) => point * (Scales.TryGetValue(transform, out float scale) ? scale : 1f);
 
         private static T[] StubGetComponentsInChildren<T>(object owner) =>
             NodeOf(owner).SelfAndDescendants().SelectMany(n => n.Components).OfType<T>().ToArray();

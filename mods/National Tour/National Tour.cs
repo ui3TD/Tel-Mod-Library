@@ -24,10 +24,13 @@ namespace NationalTour
 
             Tour_Country[] componentsInChildren = __instance.CountriesContainer.transform.GetComponentsInChildren<Tour_Country>();
 
+            // Placed in the popup's own units, so the pins land the same at any popup scale: the game resets this
+            // popup while it's still at 0.5 from closing, or at 0.3 while it opens
             foreach(Tour_Country country in componentsInChildren)
             {
-                country.transform.position = locationDict.TryGetValue(tourLocations[country.CountryType], out Vector3 v) ? v : country.transform.position;
-
+                // A country without a prefecture (another mod's) keeps the game's position
+                if (tourLocations.TryGetValue(country.CountryType, out Prefectures prefecture) && locationDict.TryGetValue(prefecture, out Vector3 v))
+                    country.transform.position = __instance.transform.TransformPoint(v * POPUP_UNITS_PER_MAP_UNIT);
             }
         }
     }
@@ -152,6 +155,11 @@ namespace NationalTour
                     { SEvent_Tour._country.russia, Prefectures.kyoto }
                 };
 
+
+        // Where each prefecture's pin goes on the map of Japan, in world units of a 16:9 screen with the new tour
+        // popup fully open. There the popup is 576 units tall for the camera's 10 world units, so times
+        // POPUP_UNITS_PER_MAP_UNIT gives the popup's own units, which are the same at every screen size.
+        public const float POPUP_UNITS_PER_MAP_UNIT = 57.6f;
 
         public static readonly Dictionary<Prefectures, Vector3> locationDict = new()
                 {

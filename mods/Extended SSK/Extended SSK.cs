@@ -49,7 +49,7 @@ namespace ExtendedSSK
                 new CodeMatch(ci => ci.opcode == OpCodes.Blt || ci.opcode == OpCodes.Blt_S || ci.Calls(infix)));
             if (matcher.IsInvalid)
             {
-                Debug.LogError("[Extended SSK] Couldn't find the game's 10-rank limit in GenerateResults; elections keep 10 ranks");
+                Debug.LogError("[Extended SSK] Couldn't find the game's 10-rank limit in GenerateResults; elections keep the game's or the other mod's rank limit");
                 return instructions;
             }
             if (matcher.InstructionAt(1).Calls(infix))
@@ -87,8 +87,10 @@ namespace ExtendedSSK
 
         /// <summary>
         /// Postfix method to recalculate fame bonuses after the original method execution.
+        /// Runs last and only adds the places the list is missing, so values another mod set are kept.
         /// </summary>
         /// <param name="__instance">The instance of SEvent_SSK._SSK being patched.</param>
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(SEvent_SSK._SSK __instance)
         {
             int girlCount = 0;
@@ -101,18 +103,39 @@ namespace ExtendedSSK
             }
             if(girlCount > 10)
             {
-                int limit = GetLimit();
-                List<int> list = __instance.FameBonus;
+                int target = Math.Min(girlCount, GetLimit());
+                List<int> list = __instance.FameBonus ?? new List<int>();
 
                 int fameBaseVal = GetFameBaseVal(__instance);
-                int num = Mathf.RoundToInt(fameBaseVal * 0.056f);
-                for (int i = 10; i < Math.Min(girlCount, limit); i++)
+                for (int i = list.Count; i < target; i++)
                 {
-                    list.Add(num);
-                    num = Mathf.RoundToInt(num * 0.75f);
+                    // Places 1-10 are only missing if another mod shortened the list: the game's rule fills them
+                    if (i == 0)
+                        list.Add(fameBaseVal);
+                    else if (i == 10)
+                        list.Add(Rank11(list[9], fameBaseVal));
+                    else
+                        list.Add(Mathf.RoundToInt(list[i - 1] * 0.75f));
                 }
                 __instance.FameBonus = list;
             }
+        }
+
+        /// <summary>
+        /// 5.6% of the broadcast's base fame. If another mod changed place 10, scaled by the same ratio.
+        /// </summary>
+        private static int Rank11(int place10, int fameBaseVal)
+        {
+            int rank11 = Mathf.RoundToInt(fameBaseVal * 0.056f);
+
+            // The game's place 10, as RecalcFameBonus builds it
+            int gamePlace10 = fameBaseVal;
+            for (int i = 0; i < 9; i++)
+                gamePlace10 = Mathf.RoundToInt(gamePlace10 * 0.75f);
+
+            if (place10 == gamePlace10 || gamePlace10 == 0)
+                return rank11;
+            return (int)Math.Round((double)rank11 * place10 / gamePlace10);
         }
     }
 

@@ -156,6 +156,122 @@ namespace ExtendedSSK.Tests
             List<int> modded = RunRecalc(SEvent_SSK._broadcast.webStream);
             Assert.Equal(vanilla.FameBonus, modded.Take(10));
         }
+
+        /// <summary>
+        /// The 1.3.2 postfix, kept as it was: the mod alone must still give exactly these values.
+        /// </summary>
+        private static List<int> Version132(SEvent_SSK._broadcast broadcast, int girlCount, int limit)
+        {
+            SEvent_SSK._SSK ssk = new() { Broadcast = broadcast };
+            ssk.RecalcFameBonus();
+            List<int> list = ssk.FameBonus;
+            if (girlCount > 10)
+            {
+                int baseVal = (int)AccessTools.Method(typeof(SEvent_SSK._SSK), nameof(SEvent_SSK._SSK.GetFameBaseVal)).Invoke(ssk, null);
+                int num = Mathf.RoundToInt(baseVal * 0.056f);
+                for (int i = 10; i < Math.Min(girlCount, limit); i++)
+                {
+                    list.Add(num);
+                    num = Mathf.RoundToInt(num * 0.75f);
+                }
+            }
+            return list;
+        }
+
+        [Theory]
+        [InlineData(5)]
+        [InlineData(11)]
+        [InlineData(30)]
+        [InlineData(64)]
+        [InlineData(100)]
+        public void ModAlone_GivesThe132Values(int idols)
+        {
+            AddIdols(idols);
+            foreach (SEvent_SSK._broadcast broadcast in Enum.GetValues(typeof(SEvent_SSK._broadcast)))
+                Assert.Equal(Version132(broadcast, idols, defaultRankings), RunRecalc(broadcast));
+        }
+
+        private static SEvent_SSK._SSK GameRecalc(SEvent_SSK._broadcast broadcast)
+        {
+            SEvent_SSK._SSK ssk = new() { Broadcast = broadcast };
+            ssk.RecalcFameBonus();
+            return ssk;
+        }
+
+        /// <summary>
+        /// Another mod already paid 20 places: those stay, and only places 21 and up are added.
+        /// </summary>
+        [Fact]
+        public void AlreadyExtendedList_OnlyGetsTheMissingPlaces()
+        {
+            AddIdols(30);
+            SEvent_SSK._SSK ssk = GameRecalc(SEvent_SSK._broadcast.localTV);
+            for (int i = 10; i < 20; i++)
+                ssk.FameBonus.Add(1000 - i);
+            List<int> theirs = ssk.FameBonus.ToList();
+
+            SSK_RecalcFameBonusPatch.Postfix(ssk);
+
+            Assert.Equal(30, ssk.FameBonus.Count);
+            Assert.Equal(theirs, ssk.FameBonus.Take(20));
+            Assert.Equal(Mathf.RoundToInt(theirs[19] * 0.75f), ssk.FameBonus[20]);
+        }
+
+        /// <summary>
+        /// Another mod left only 5 places: the rest are filled with the game's rule, so the results never run past the list.
+        /// </summary>
+        [Fact]
+        public void ShortenedList_IsFilledToTheTarget()
+        {
+            AddIdols(30);
+            SEvent_SSK._SSK vanilla = GameRecalc(SEvent_SSK._broadcast.nationalTV);
+            SEvent_SSK._SSK ssk = GameRecalc(SEvent_SSK._broadcast.nationalTV);
+            ssk.FameBonus.RemoveRange(5, 5);
+
+            SSK_RecalcFameBonusPatch.Postfix(ssk);
+
+            Assert.Equal(30, ssk.FameBonus.Count);
+            Assert.Equal(vanilla.FameBonus, ssk.FameBonus.Take(10));
+            Assert.Equal(ExpectedRank11(SEvent_SSK._broadcast.nationalTV), ssk.FameBonus[10]);
+        }
+
+        [Fact]
+        public void EmptyList_StartsFromTheBaseValue()
+        {
+            AddIdols(30);
+            SEvent_SSK._SSK vanilla = GameRecalc(SEvent_SSK._broadcast.webStream);
+            SEvent_SSK._SSK ssk = new() { Broadcast = SEvent_SSK._broadcast.webStream, FameBonus = null };
+
+            SSK_RecalcFameBonusPatch.Postfix(ssk);
+
+            Assert.Equal(vanilla.FameBonus, ssk.FameBonus.Take(10));
+            Assert.Equal(30, ssk.FameBonus.Count);
+        }
+
+        /// <summary>
+        /// Another mod doubled the top 10: place 11 is doubled too, so it stays below place 10.
+        /// </summary>
+        [Fact]
+        public void ScaledTopTen_ScalesPlace11()
+        {
+            AddIdols(30);
+            SEvent_SSK._SSK ssk = GameRecalc(SEvent_SSK._broadcast.nationalTV);
+            ssk.FameBonus = ssk.FameBonus.Select(v => v * 2).ToList();
+
+            SSK_RecalcFameBonusPatch.Postfix(ssk);
+
+            int rank11 = ExpectedRank11(SEvent_SSK._broadcast.nationalTV);
+            Assert.Equal(rank11 * 2, ssk.FameBonus[10]);
+            Assert.True(ssk.FameBonus[10] < ssk.FameBonus[9]);
+        }
+
+        [Fact]
+        public void Postfix_RunsAfterOtherMods()
+        {
+            HarmonyPriority priority = AccessTools.Method(typeof(SSK_RecalcFameBonusPatch), nameof(SSK_RecalcFameBonusPatch.Postfix))
+                .GetCustomAttribute<HarmonyPriority>();
+            Assert.Equal(Priority.Last, priority.info.priority);
+        }
     }
 
     public class ResultsLimitTests
@@ -195,7 +311,7 @@ namespace ExtendedSSK.Tests
 
         /// <summary>
         /// If another mod already changed the limit, the code is left as it is and the mod says why
-        /// elections keep 10 ranks.
+        /// elections keep that limit.
         /// </summary>
         [Fact]
         public void Transpiler_LimitNotFound_LeavesTheCodeAndLogs()

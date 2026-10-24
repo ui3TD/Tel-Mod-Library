@@ -321,7 +321,7 @@ namespace ModMenus
 
                 if (GenerateMenuPopup() != null)
                 {
-                    PopupManager.OpenPopup(MOD_MENU_POPUP);
+                    PopupManager.OpenPopup(MenuPopupType);
                 }
             });
         }

@@ -551,6 +551,7 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(GameKeys.Sites), nameof(GameKeys.Sites.GetKeyUp))] = Stub(nameof(SitesGetKeyUp)),
             [AccessTools.Method(typeof(GameKeys.Sites), nameof(GameKeys.Sites.GetKeyUpByName))] = Stub(nameof(SitesGetKeyUpByName)),
             [AccessTools.Method(typeof(GameKeys.Sites), nameof(GameKeys.Sites.GetMouseButtonDown))] = Stub(nameof(SitesGetMouseButtonDown)),
+            [AccessTools.Method(typeof(GameKeys.Sites), "Read")] = Stub(nameof(SitesRead)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.KeybindPressed))] = Stub(nameof(KeybindPressed)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.KeybindHeld))] = Stub(nameof(KeybindHeld)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.KeybindReleased))] = Stub(nameof(KeybindReleased)),
@@ -784,6 +785,9 @@ namespace ModMenus.Tests
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static bool SitesGetMouseButtonDown(int button, string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool SitesRead(string varID, int kind, out bool result) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static bool KeybindPressed(string varID) => throw NotInstalled();

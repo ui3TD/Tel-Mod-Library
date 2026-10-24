@@ -22,10 +22,10 @@ Format, examples and tips: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/ma
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 4.3.1: Safer alongside other mods: errors stay contained, and a popup number clash is handled.
 - 4.3.0: Hotkeys tab: change the game's keys and mods' keys, see keys used twice; debug cheats switch.
 - 4.2.0: Mods can read the open menu's values before Apply, to show or hide their own settings.
 - 4.1.0: Reset to Defaults button; slider steps; settings shown only when needed; number fields.
 - 4.0.0: Each mod's settings get their own tab, sorted A to Z; the menu fits every screen shape.
-- 3.1.0: Long setting labels wrap onto more lines instead of being cut off.
 - 3.0.0: New password option for text fields: API keys and other secrets show as asterisks.
 - 2.0.0: New text field setting, so mods can let players type a name or other text.

@@ -282,7 +282,7 @@ If your mod references ModMenus' DLL, call `ModMenus.ModMenusUtils.MenuValue` di
 - Without ModMenus, `variables.Get(varID)` returns null. If your mod works without ModMenus, give it a default in code that matches the `defaultValue` in your modmenu.json.
 - Values are saved as plain digits whatever the player's language (`"7"`, `"-2"`), so `int.Parse` and `float.Parse` with `CultureInfo.InvariantCulture` read them. A text field's value is the text itself.
 - The game's `variables.Set` turns the exact values `male_name` and `female_name` into a random name, so a text field whose text is exactly one of those saves a random name instead.
-- The menu is registered as popup type 999 (`(PopupManager._type)999`). If your mod adds its own popup, use a different number.
+- The menu is registered as popup type 999 (`(PopupManager._type)999`), or, if another mod already registered a popup as 999, the next number no popup has. If your mod adds its own popup, use a different number.
 
 ## Mistakes in modmenu.json
 

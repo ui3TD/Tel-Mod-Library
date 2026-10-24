@@ -8,14 +8,20 @@ namespace ModMenus
     partial class ModMenusUtils
     {
         /// <summary>
+        /// The popup type the mod menu is registered under: MOD_MENU_POPUP, or the next number no popup has if
+        /// another mod registered a popup under it first.
+        /// </summary>
+        public static PopupManager._type MenuPopupType { get; private set; } = MOD_MENU_POPUP;
+
+        /// <summary>
         /// Generates the main mod menu popup.
         /// </summary>
         /// <returns>The GameObject representing the mod menu popup, or null if it couldn't be built.</returns>
         public static GameObject GenerateMenuPopup()
         {
             PopupManager mainPopupManager = Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>();
-            PopupManager._popup existingPopup = mainPopupManager.GetByType(MOD_MENU_POPUP);
-            if (existingPopup != null)
+            PopupManager._popup existingPopup = mainPopupManager.GetByType(MenuPopupType);
+            if (existingPopup != null && IsModMenu(existingPopup.obj))
                 return existingPopup.obj;
 
             // Adapt existing popup
@@ -39,9 +45,10 @@ namespace ModMenus
             }
 
             // Incorporate popup into game
+            MenuPopupType = FreePopupType(mainPopupManager.popups);
             PopupManager._popup newPopup = new()
             {
-                type = MOD_MENU_POPUP,
+                type = MenuPopupType,
                 obj = modMenuObj,
                 BGBlur = true,
                 BGDarken = true
@@ -50,6 +57,28 @@ namespace ModMenus
             mainPopupManager.popups[mainPopupManager.popups.Length - 1] = newPopup;
 
             return modMenuObj;
+        }
+
+        /// <summary>
+        /// MOD_MENU_POPUP, or, if a popup already has it, the first number after it that no popup has.
+        /// </summary>
+        public static PopupManager._type FreePopupType(PopupManager._popup[] popups)
+        {
+            PopupManager._type type = MOD_MENU_POPUP;
+            while (popups != null && popups.Any(popup => popup != null && popup.type == type))
+            {
+                type++;
+            }
+            return type;
+        }
+
+        /// <summary>
+        /// Whether a popup is the mod menu, not another mod's popup with the same type.
+        /// </summary>
+        private static bool IsModMenu(GameObject popup)
+        {
+            Transform panel = popup == null ? null : popup.transform.Find("Panel");
+            return panel != null && panel.GetComponent<ModMenuManager>() != null;
         }
 
         /// <summary>

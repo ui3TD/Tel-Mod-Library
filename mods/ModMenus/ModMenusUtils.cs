@@ -6,8 +6,8 @@ namespace ModMenus
     partial class ModMenusUtils
     {
         /// <summary>
-        /// The popup type the mod menu is registered under. It's past the game's own popup types;
-        /// other mods adding popups should use a different number.
+        /// The popup type the mod menu is registered under, past the game's own popup types, unless another mod
+        /// already uses it (see MenuPopupType). Other mods adding popups should use a different number.
         /// </summary>
         public const PopupManager._type MOD_MENU_POPUP = (PopupManager._type)999;
 

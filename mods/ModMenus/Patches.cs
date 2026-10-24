@@ -1,4 +1,5 @@
 using HarmonyLib;
+using System;
 using UnityEngine;
 
 namespace ModMenus
@@ -10,19 +11,35 @@ namespace ModMenus
     [HarmonyPatch(typeof(Tabs_Manager), nameof(Tabs_Manager.OpenTab))]
     public class Tabs_Manager_OpenTab
     {
-        public static void Postfix(Tabs_Manager._tab._type Type)
+        /// <summary>
+        /// Not when another mod kept the tab from opening. An error stays here, so the tab still opens and
+        /// other mods' changes to it still run.
+        /// </summary>
+        public static void Postfix(Tabs_Manager._tab._type Type, bool __runOriginal)
         {
-            if (Type != Tabs_Manager._tab._type.settings || !ModMenusUtils.IsGameplayReady())
+            if (!__runOriginal || Type != Tabs_Manager._tab._type.settings)
             {
                 return;
             }
 
-            // The Settings hierarchy is active by the time this postfix runs, so install
-            // the button once without any background retry loop. The heavier mod-menu
-            // popup is generated only if the player actually clicks Mod Settings.
-            if (!ModMenusUtils.TryInstallSettingsButton())
+            try
             {
-                Debug.LogWarning("[ModMenus] Could not install the Mod Settings button in the active in-game Settings tab.");
+                if (!ModMenusUtils.IsGameplayReady())
+                {
+                    return;
+                }
+
+                // The Settings hierarchy is active by the time this postfix runs, so install
+                // the button once without any background retry loop. The heavier mod-menu
+                // popup is generated only if the player actually clicks Mod Settings.
+                if (!ModMenusUtils.TryInstallSettingsButton())
+                {
+                    Debug.LogWarning("[ModMenus] Could not install the Mod Settings button in the active in-game Settings tab.");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[ModMenus] Couldn't add the Mod Settings button: " + e);
             }
         }
     }

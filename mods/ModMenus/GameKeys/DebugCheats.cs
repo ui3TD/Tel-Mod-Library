@@ -1,4 +1,6 @@
 using HarmonyLib;
+using System;
+using UnityEngine;
 
 namespace ModMenus.GameKeys
 {
@@ -13,6 +15,9 @@ namespace ModMenus.GameKeys
 
         /// <summary>The setting when last looked at; null after a game starts or loads.</summary>
         private static string seen;
+
+        /// <summary>Whether an error has been logged since the game started or loaded, so it's logged once, not every frame.</summary>
+        private static bool errorLogged;
 
         /// <summary>
         /// Called every frame: turns debug mode on or off when the setting changes.
@@ -36,14 +41,41 @@ namespace ModMenus.GameKeys
         }
 
         /// <summary>
+        /// Check, called from the game's Controls.Update: an error stays here, so other mods' changes to it still
+        /// run, and it's logged once.
+        /// </summary>
+        public static void CheckSafely()
+        {
+            try
+            {
+                Check();
+            }
+            catch (Exception e)
+            {
+                if (!errorLogged)
+                {
+                    errorLogged = true;
+                    Debug.LogError("[ModMenus] Couldn't check Enable Debug Cheats: " + e);
+                }
+            }
+        }
+
+        /// <summary>
         /// A game starting or loading: its setting is new, so only a ticked box changes anything.
         /// </summary>
-        public static void Forget() => seen = null;
+        public static void Forget()
+        {
+            seen = null;
+            errorLogged = false;
+        }
     }
 
+    /// <summary>
+    /// Also when another mod skipped Controls.Update: this watches a setting, not a key.
+    /// </summary>
     [HarmonyPatch(typeof(Controls), nameof(Controls.Update))]
     public class Controls_Update_DebugCheats
     {
-        public static void Postfix() => DebugCheats.Check();
+        public static void Postfix() => DebugCheats.CheckSafely();
     }
 }

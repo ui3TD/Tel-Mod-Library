@@ -50,11 +50,27 @@ namespace ModMenus.GameKeys
         /// button) loaded just before the Input call; reads of the same key are counted in order. The method is
         /// changed only if it reads exactly the managed keys expected, as many times each: if the game or another
         /// mod has changed one, a count could point at the wrong read, so the whole method is left as it is, with
-        /// a warning, and its rows are hidden.
+        /// a warning, and its rows are hidden. An error leaves the method as it is too: a transpiler that fails
+        /// would stop Harmony changing the method at all, other mods' patches included.
         /// </summary>
         public static IEnumerable<CodeInstruction> Apply(Type type, string method, IEnumerable<CodeInstruction> instructions)
         {
             List<CodeInstruction> code = instructions.ToList();
+            List<CodeInstruction> original = code.Select(instruction => new CodeInstruction(instruction)).ToList();
+            try
+            {
+                return Change(type, method, code);
+            }
+            catch (Exception e)
+            {
+                Changed.RemoveWhere(site => site.Type == type && site.Method == method);
+                Debug.LogError("[ModMenus] Couldn't change the keys " + type.Name + "." + method + " reads, so they are left as they are: " + e);
+                return original;
+            }
+        }
+
+        private static List<CodeInstruction> Change(Type type, string method, List<CodeInstruction> code)
+        {
             List<Site> expected = Rows.Sites.Where(site => site.Type == type && site.Method == method).ToList();
             HashSet<string> managed = new(expected.Select(site => ReadName(site.Kind, site.Key)));
             Dictionary<string, int> seen = new();

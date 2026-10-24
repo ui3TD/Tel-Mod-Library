@@ -19,7 +19,7 @@ namespace MBTIPersonalities
         /// <param name="genTextures">Flag indicating whether textures should be generated.</param>
         public static void Postfix(ref data_girls.girls __result, bool genTextures)
         {
-            if (!genTextures)
+            if (!genTextures || __result == null)
                 return;
 
             if (__result.textureAssets == null || __result.textureAssets.Count == 0)
@@ -75,8 +75,10 @@ namespace MBTIPersonalities
         /// <param name="Prm">Type of parameter being changed.</param>
         /// <param name="__instance">Instance of the birthday popup being patched.</param>
         [HarmonyPriority(Priority.High)]
-        public static void Prefix(data_girls._paramType Prm, ref Birthday_Popup __instance)
+        public static void Prefix(data_girls._paramType Prm, ref Birthday_Popup __instance, out IntjFlags __state)
         {
+            // The flags as they were, put back by the finalizer, in case another mod calls this inside another stat's
+            __state = new IntjFlags { SetVal = patchSetVal_INTJ, Set = patchSet_INTJ };
             if (GetGirlMBTI(__instance.Girl) != MBTI.INTJ)
                 return;
 
@@ -92,10 +94,10 @@ namespace MBTIPersonalities
         /// Harmony patch for calculating parameter changes during birthdays.
         /// Applies the INTJ bonus to stat growth.
         /// </summary>
-        public static void Finalizer()
+        public static void Finalizer(IntjFlags __state)
         {
-            patchSetVal_INTJ = false;
-            patchSet_INTJ = false;
+            patchSetVal_INTJ = __state.SetVal;
+            patchSet_INTJ = __state.Set;
         }
     }
 
@@ -114,7 +116,8 @@ namespace MBTIPersonalities
         /// <param name="__instance">Instance of the girl's parameter being patched.</param>
         public static void Prefix(ref float newVal, data_girls.girls.param __instance)
         {
-            if (!patchSetVal_INTJ)
+            // Only her smart stat, the one the game sets here: another mod's patch may set other stats meanwhile
+            if (!patchSetVal_INTJ || __instance.type != data_girls._paramType.smart)
                 return;
 
             float paramVal = __instance.val;

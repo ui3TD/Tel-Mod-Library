@@ -85,7 +85,7 @@ namespace MBTIPersonalities
 
         public static void Infix(JSONNode jsonnode, data_girls_textures._textureAsset textureAsset)
         {
-            if (jsonnode[MBTINodeID] == null)
+            if (jsonnode == null || textureAsset == null || jsonnode[MBTINodeID] == null)
                 return;
 
             string mbtiString = jsonnode[MBTINodeID];

@@ -3,6 +3,10 @@ using static MBTIPersonalities.MBTIPersonalities;
 
 namespace MBTIPersonalities
 {
+    // Each prefix saves the flags as they were and its finalizer puts them back, rather than clearing them:
+    // the game never calls one of these inside another, but another mod might, and clearing would switch the
+    // outer calculation's bonuses off for the rest of it.
+
     /// <summary>
     /// Harmony patch for getting the girl coefficient for a business proposal.
     /// Applies MBTI-related bonuses to the proposal.
@@ -15,8 +19,9 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the proposal.
         /// </summary>
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out StatFlags __state)
         {
+            __state = StatFlags.Save();
             patchGetVal = true;
         }
 
@@ -25,9 +30,9 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the proposal.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Finalizer()
+        public static void Finalizer(StatFlags __state)
         {
-            patchGetVal = false;
+            __state.Restore();
         }
     }
 
@@ -43,8 +48,9 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the parameter value.
         /// </summary>
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out StatFlags __state)
         {
+            __state = StatFlags.Save();
             patchGetVal = true;
             isShow = true;
         }
@@ -54,10 +60,9 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the parameter value.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Finalizer()
+        public static void Finalizer(StatFlags __state)
         {
-            patchGetVal = false;
-            isShow = false;
+            __state.Restore();
         }
     }
 
@@ -73,8 +78,9 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the parameters.
         /// </summary>
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out StatFlags __state)
         {
+            __state = StatFlags.Save();
             patchGetVal = true;
             isShow = true;
         }
@@ -84,10 +90,9 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the parameters.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Finalizer()
+        public static void Finalizer(StatFlags __state)
         {
-            patchGetVal = false;
-            isShow = false;
+            __state.Restore();
         }
     }
 
@@ -104,8 +109,9 @@ namespace MBTIPersonalities
         /// </summary>
         /// <param name="__instance">Instance of the single being patched.</param>
         [HarmonyPriority(Priority.First)]
-        public static void Prefix(singles._single __instance)
+        public static void Prefix(singles._single __instance, out StatFlags __state)
         {
+            __state = StatFlags.Save();
             patchGetVal = true;
 
             isRisky = __instance.GetRiskyMarketing() != null;
@@ -116,10 +122,9 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the parameters and handles risky marketing.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Finalizer()
+        public static void Finalizer(StatFlags __state)
         {
-            patchGetVal = false;
-            isRisky = false;
+            __state.Restore();
         }
     }
 
@@ -135,8 +140,9 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the skill value.
         /// </summary>
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out StatFlags __state)
         {
+            __state = StatFlags.Save();
             patchGetVal = true;
         }
 
@@ -145,9 +151,9 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the skill value.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Finalizer()
+        public static void Finalizer(StatFlags __state)
         {
-            patchGetVal = false;
+            __state.Restore();
         }
     }
 
@@ -163,19 +169,20 @@ namespace MBTIPersonalities
         /// Applies MBTI-related bonuses to the skill value.
         /// </summary>
         [HarmonyPriority(Priority.First)]
-        public static void Prefix()
+        public static void Prefix(out StatFlags __state)
         {
+            __state = StatFlags.Save();
             patchGetVal = true;
         }
+
         /// <summary>
         /// Harmony patch for getting the skill value for a concert MC.
         /// Applies MBTI-related bonuses to the skill value.
         /// </summary>
         [HarmonyPriority(Priority.VeryLow)]
-        public static void Finalizer()
+        public static void Finalizer(StatFlags __state)
         {
-
-            patchGetVal = false;
+            __state.Restore();
         }
     }
 

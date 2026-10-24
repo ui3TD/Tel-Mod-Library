@@ -27,7 +27,11 @@ namespace MBTIPersonalities
 
             string txt = "\n" + ExtensionMethods.color(Text(constantTitlePrefix + mBTI.ToString()) + ": ", mainScript.blue) + Text(constantDescPrefix + mBTI.ToString());
 
-            TextMeshProUGUI textComponent = __instance.Extras_Container.transform.Find("Text(Clone)").GetComponent<TextMeshProUGUI>();
+            // Another mod may have rebuilt the tab without the game's first text block
+            Transform textBlock = __instance.Extras_Container is null ? null : __instance.Extras_Container.transform.Find("Text(Clone)");
+            TextMeshProUGUI textComponent = textBlock is null ? null : textBlock.GetComponent<TextMeshProUGUI>();
+            if (textComponent is null)
+                return;
             textComponent.text += txt;
             textComponent.text = textComponent.text.Replace(mainScript.blue, mainScript.black);
             LayoutRebuilder.ForceRebuildLayoutImmediate(__instance.Extras_Container.GetComponent<RectTransform>());
@@ -55,8 +59,23 @@ namespace MBTIPersonalities
             string title = " / " + Text(constantTitlePrefix + mBTI.ToString());
             string desc = "\n" + Text(constantDescPrefix + mBTI.ToString());
 
-            __instance.Special_Skill_Title.GetComponent<TextMeshProUGUI>().text += title;
-            __instance.Special_Skill_Description.GetComponent<TextMeshProUGUI>().text += desc;
+            // Added once: if another mod skipped the game's ShowTrait, the texts weren't rewritten and already have them
+            AddOnce(__instance.Special_Skill_Title.GetComponent<TextMeshProUGUI>(), title);
+            AddOnce(__instance.Special_Skill_Description.GetComponent<TextMeshProUGUI>(), desc);
+        }
+
+        private static void AddOnce(TextMeshProUGUI text, string addition)
+        {
+            string current = text.text;
+            string added = WithAddition(current, addition);
+            if (added != current)
+                text.text = added;
+        }
+
+        /// <summary>The text with the addition at the end, unless it already ends with it.</summary>
+        public static string WithAddition(string text, string addition)
+        {
+            return text != null && text.EndsWith(addition) ? text : text + addition;
         }
     }
 
@@ -75,6 +94,7 @@ namespace MBTIPersonalities
         /// <param name="__result">Tooltip text to be displayed.</param>
         public static void Postfix(GirlProfileOnHover __instance, ref string __result)
         {
+            // GetGirlMBTI gives None for no idol, so nothing is added
             MBTI mBTI = GetGirlMBTI(__instance.girl);
             if (mBTI == MBTI.None)
                 return;

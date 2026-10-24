@@ -153,11 +153,11 @@ namespace MBTIPersonalities.Tests
         [Fact]
         public void WhenTheGameSucceeds_FlagsAreCleared()
         {
-            WithFlag(on => patchGetVal = on, () =>
-            {
-                Business__proposal_GetGirlCoeff.Finalizer();
-                Assert.False(patchGetVal);
-            });
+            ClearAllFlags();
+            Business__proposal_GetGirlCoeff.Prefix(out StatFlags state);
+            Assert.True(patchGetVal);
+            Business__proposal_GetGirlCoeff.Finalizer(state);
+            Assert.False(patchGetVal);
         }
     }
 }

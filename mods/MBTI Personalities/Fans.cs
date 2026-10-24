@@ -45,8 +45,10 @@ namespace MBTIPersonalities
         /// Applies the INFP bonus to handshake events.
         /// </summary>
         /// <param name="single">Single instance being patched.</param>
-        public static void Prefix(singles._single single)
+        public static void Prefix(singles._single single, out bool __state)
         {
+            // The flag as it was, put back by the finalizer, in case another mod calls this inside another sale
+            __state = patchGetFan_Count_INFP;
             if(single.IsGroupHS() || single.IsIndividualHS())
             {
                 patchGetFan_Count_INFP = true;
@@ -57,9 +59,9 @@ namespace MBTIPersonalities
         /// Harmony patch for generating sales for a single.
         /// Applies the INFP bonus to handshake events.
         /// </summary>
-        public static void Finalizer()
+        public static void Finalizer(bool __state)
         {
-            patchGetFan_Count_INFP = false;
+            patchGetFan_Count_INFP = __state;
         }
     }
 
@@ -101,8 +103,10 @@ namespace MBTIPersonalities
         /// Harmony patch for generating results for the SSK event.
         /// Applies the ENFJ bonus to vote counts.
         /// </summary>
-        public static void Prefix()
+        public static void Prefix(out bool __state)
         {
+            // The flag as it was, put back by the finalizer, in case another mod calls this inside another election
+            __state = patchGetFan_Count_ENFJ;
             patchGetFan_Count_ENFJ = true;
         }
 
@@ -110,9 +114,9 @@ namespace MBTIPersonalities
         /// Harmony patch for generating results for the SSK event.
         /// Applies the ENFJ bonus to vote counts.
         /// </summary>
-        public static void Finalizer()
+        public static void Finalizer(bool __state)
         {
-            patchGetFan_Count_ENFJ = false;
+            patchGetFan_Count_ENFJ = __state;
         }
     }
 

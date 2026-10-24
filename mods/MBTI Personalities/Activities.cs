@@ -22,7 +22,11 @@ namespace MBTIPersonalities
         {
             // AccidentSuccessChance takes no song, so the song comes from the concert popup. That's right today
             // because the game only calls it from the popup while it plays a song.
-            Concert_Popup popup = Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>().GetByType(PopupManager._type.sevent_concert).obj.GetComponent<Concert_Popup>();
+            // Another mod may work out the odds with no concert popup open: then there's no song, so no bonus
+            PopupManager._popup concertPopup = Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>().GetByType(PopupManager._type.sevent_concert);
+            Concert_Popup popup = concertPopup?.obj is null ? null : concertPopup.obj.GetComponent<Concert_Popup>();
+            if (popup is null || popup.CurrentSong == null)
+                return;
             List<data_girls.girls> girls = popup.CurrentSong.GetGirls(true);
             MBTI mBTI;
 
@@ -103,31 +107,30 @@ namespace MBTIPersonalities
         /// Reduces the stamina cost if the girl has the ENFP MBTI type.
         /// </summary>
         /// <param name="_proposal">Business proposal being set up.</param>
-        /// <param name="__state">Original stamina cost state.</param>
+        /// <param name="__state">How much stamina was taken off for the popup.</param>
         public static void Prefix(business._proposal _proposal, out int? __state)
         {
             __state = null;
-            if (GetGirlMBTI(_proposal.girl) != MBTI.ENFP)
+            if (_proposal == null || GetGirlMBTI(_proposal.girl) != MBTI.ENFP)
                 return;
 
-            __state = _proposal.stamina;
-            _proposal.stamina = Mathf.RoundToInt(_proposal.stamina * (1 - ENFPBonus));
-
+            int lowered = Mathf.RoundToInt(_proposal.stamina * (1 - ENFPBonus));
+            __state = _proposal.stamina - lowered;
+            _proposal.stamina = lowered;
         }
 
         /// <summary>
-        /// Harmony patch for setting up a business proposal.
-        /// Reduces the stamina cost if the girl has the ENFP MBTI type.
+        /// Puts back only what the prefix took off, so other mods that lower it for the popup too
+        /// (Traits Expansion's Thespian, for one), or change it for good, all end up right in any order.
         /// </summary>
         /// <param name="_proposal">Business proposal being set up.</param>
-        /// <param name="__state">Original stamina cost state.</param>
+        /// <param name="__state">How much stamina was taken off for the popup.</param>
         public static void Finalizer(business._proposal _proposal, int? __state)
         {
-            if (__state == null)
+            if (__state == null || _proposal == null)
                 return;
 
-            _proposal.stamina = __state.Value;
-
+            _proposal.stamina += __state.Value;
         }
     }
 
@@ -143,9 +146,10 @@ namespace MBTIPersonalities
         /// Reduces the stamina cost if the girl has the ENFP MBTI type.
         /// </summary>
         /// <param name="__instance">Instance of the business being patched.</param>
-        public static void Prefix(business __instance)
+        /// <param name="__runOriginal">False if another mod skipped the game's Accept: then the offer isn't taken, so it isn't lowered.</param>
+        public static void Prefix(business __instance, bool __runOriginal)
         {
-            if (GetGirlMBTI(__instance.ActiveProposal.girl) != MBTI.ENFP)
+            if (!__runOriginal || __instance.ActiveProposal == null || GetGirlMBTI(__instance.ActiveProposal.girl) != MBTI.ENFP)
                 return;
 
             __instance.ActiveProposal.stamina = Mathf.RoundToInt(__instance.ActiveProposal.stamina * (1 - ENFPBonus));

@@ -46,6 +46,34 @@ namespace MBTIPersonalities
         public static bool isRisky = false;
         public static bool isShow = false;
 
+        /// <summary>
+        /// The INTJ birthday flags as the birthday prefix found them, for its finalizer to put back.
+        /// </summary>
+        public struct IntjFlags
+        {
+            public bool SetVal;
+            public bool Set;
+        }
+
+        /// <summary>
+        /// The stat-calculation flags as a prefix found them, for its finalizer to put back.
+        /// </summary>
+        public struct StatFlags
+        {
+            public bool GetVal;
+            public bool Show;
+            public bool Risky;
+
+            public static StatFlags Save() => new() { GetVal = patchGetVal, Show = isShow, Risky = isRisky };
+
+            public void Restore()
+            {
+                patchGetVal = GetVal;
+                isShow = Show;
+                isRisky = Risky;
+            }
+        }
+
         // Types set in unique idols' params.json, by UniqueIdolKey. Reading the files again overwrites, never duplicates.
         public static Dictionary<string, MBTI> UniqueIdolTypes = new();
         public static Dictionary<int, MBTI> MBTIReferenceDict = new();
@@ -117,6 +145,10 @@ namespace MBTIPersonalities
         /// <returns>MBTI type assigned to the idol.</returns>
         public static MBTI GetGirlMBTI(data_girls.girls girls)
         {
+            // A job offer with no idol, a café dish whose idol has left, a stat with no idol: no type, so no bonus
+            if (girls == null)
+                return MBTI.None;
+
             if (MBTIReferenceDict.TryGetValue(girls.id, out MBTI mbti))
             {
                 return mbti;
@@ -135,6 +167,9 @@ namespace MBTIPersonalities
         /// <param name="mbti">MBTI type to assign to the idol.</param>
         public static void SetGirlMBTI(data_girls.girls girls, MBTI mbti)
         {
+            if (girls == null)
+                return;
+
             MBTIReferenceDict[girls.id] = mbti;
             // One type per idol: a second one would be saved too, and the last one wins on load.
             // "None" was written by older versions for an unreadable "mbti" in params.json.

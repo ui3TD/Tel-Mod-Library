@@ -245,7 +245,7 @@ namespace MBTIPersonalities.Tests
             business biz = (business)FormatterServices.GetUninitializedObject(typeof(business));
             biz.ActiveProposal = new business._proposal { girl = Make(MBTI.ENFP), stamina = 20 };
 
-            business_Accept.Prefix(biz);
+            business_Accept.Prefix(biz, true);
             Assert.Equal(18, biz.ActiveProposal.stamina);
         }
 
@@ -268,10 +268,27 @@ namespace MBTIPersonalities.Tests
             business._proposal proposal = new() { girl = Make(MBTI.ENFP), stamina = 0 };
 
             Business_Popup_Set.Prefix(proposal, out int? state);
-            proposal.stamina = 5;
+            Assert.NotNull(state);
             Business_Popup_Set.Finalizer(proposal, state);
 
             Assert.Equal(0, proposal.stamina);
+        }
+
+        /// <summary>
+        /// Only what ENFP took off is put back, so a lasting change another mod makes while the popup
+        /// is set up is kept.
+        /// </summary>
+        [Fact]
+        public void OtherModsChangeDuringThePopup_Kept()
+        {
+            business._proposal proposal = new() { girl = Make(MBTI.ENFP), stamina = 20 };
+
+            Business_Popup_Set.Prefix(proposal, out int? state);
+            Assert.Equal(18, proposal.stamina);
+            proposal.stamina += 5;
+            Business_Popup_Set.Finalizer(proposal, state);
+
+            Assert.Equal(25, proposal.stamina);
         }
     }
 

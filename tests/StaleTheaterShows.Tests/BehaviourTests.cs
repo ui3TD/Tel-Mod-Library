@@ -189,6 +189,18 @@ namespace StaleTheaterShows.Tests
             Assert.Equal(0.001f, Coeff(1000, price: 30000, vanilla: 0.001f));
         }
 
+        /// <summary>
+        /// Added in 1.4.1: the floor doesn't raise another mod's coefficient that is already below it.
+        /// </summary>
+        [Theory]
+        [InlineData(0f)]
+        [InlineData(0.0005f)]
+        public void OtherModsCoefficientBelowTheFloor_IsKept(float incoming)
+        {
+            TestGame.Reset(hard);
+            Assert.Equal(incoming, Coeff(1000, vanilla: incoming));
+        }
+
         [Fact]
         public void Easy_DoesNotDecay()
         {
@@ -377,12 +389,85 @@ namespace StaleTheaterShows.Tests
 
             int index = Assert.Single(Enumerable.Range(0, patched.Count), i => patched[i].Calls(infix));
 
-            // if (Ticket_Price > 40000) return 0; <label> this.Infix(); num = ...; num *= GetPriceCoeff(...)
-            Assert.Equal(OpCodes.Ret, patched[index - 2].opcode);
+            // if (Ticket_Price > 40000) return 0; <label> num = Infix(num, this); num *= GetPriceCoeff(...)
+            Assert.Equal(OpCodes.Ret, patched[index - 3].opcode);
+            Assert.Equal(OpCodes.Ldloc_0, patched[index - 2].opcode);
             Assert.Equal(OpCodes.Ldarg_0, patched[index - 1].opcode);
-            Label target = Assert.Single(patched[index - 1].labels);
+            Label target = Assert.Single(patched[index - 2].labels);
             Assert.Contains(patched, i => i.Branches(out Label? branch) && branch == target);
             Assert.Equal(OpCodes.Stloc_0, patched[index + 1].opcode);
+        }
+
+        /// <summary>
+        /// Vanilla's multiplier as the mod works it out matches the game's own code: 32,000 fans at a ¥3,500
+        /// ticket draw 160 × the multiplier, with no rounding and under capacity.
+        /// </summary>
+        [Theory]
+        [InlineData(_type.performance, null)]
+        [InlineData(_type.manzai, null)]
+        [InlineData(_type.performance, casual)]
+        [InlineData(_type.manzai, casual)]
+        [InlineData(_type.performance, hardcore)]
+        [InlineData(_type.manzai, hardcore)]
+        [InlineData(_type.performance, teen)]
+        [InlineData(_type.manzai, teen)]
+        [InlineData(_type.performance, adult)]
+        [InlineData(_type.manzai, adult)]
+        [InlineData(_type.performance, youngAdult)]
+        [InlineData(_type.manzai, youngAdult)]
+        [InlineData(_type.performance, male)]
+        [InlineData(_type.manzai, female)]
+        public void VanillaMultiplier_MatchesTheGame(_type show, resources.fanType? target)
+        {
+            TestGame.Reset(easy);
+            TestGame.SetFans(target ?? hardcore, 32000);
+            Theaters._theater theater = TestGame.Theater(show, target);
+
+            float vanilla = Theaters__theater_GetNumberOfVisitors.VanillaMultiplier(theater);
+
+            Assert.Equal(UnityEngine.Mathf.RoundToInt(160f * vanilla), VanillaGame.GetNumberOfVisitors(theater));
+        }
+
+        /// <summary>
+        /// Added in 1.4.1: another mod's change to the game's multiplier is kept in proportion.
+        /// </summary>
+        [Theory]
+        [InlineData(_type.performance, casual)]
+        [InlineData(_type.manzai, null)]
+        [InlineData(_type.manzai, adult)]
+        public void OtherModsMultiplier_IsKeptInProportion(_type show, resources.fanType? target)
+        {
+            TestGame.Reset(easy);
+            Theaters._theater theater = TestGame.Theater(show, target);
+            float vanilla = Theaters__theater_GetNumberOfVisitors.VanillaMultiplier(theater);
+            float mod = Theaters__theater_GetNumberOfVisitors.ModMultiplier(theater);
+
+            Assert.Equal(mod, Theaters__theater_GetNumberOfVisitors.Infix(vanilla, theater));
+            Assert.Equal(mod * 1.5f, Theaters__theater_GetNumberOfVisitors.Infix(vanilla * 1.5f, theater), 5);
+            Assert.Equal(0f, Theaters__theater_GetNumberOfVisitors.Infix(0f, theater));
+        }
+
+        /// <summary>
+        /// The game's GetNumberOfVisitors as it is without the mod.
+        /// </summary>
+        private static class VanillaGame
+        {
+            private static readonly Lazy<bool> Installed = new(() =>
+            {
+                Harmony.ReversePatch(
+                    AccessTools.Method(typeof(Theaters._theater), nameof(Theaters._theater.GetNumberOfVisitors)),
+                    new HarmonyMethod(AccessTools.Method(typeof(VanillaGame), nameof(Copy))));
+                return true;
+            });
+
+            public static int GetNumberOfVisitors(Theaters._theater instance)
+            {
+                _ = Installed.Value;
+                return Copy(instance);
+            }
+
+            [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+            private static int Copy(Theaters._theater instance) => throw new NotImplementedException("Reverse patch not applied");
         }
 
         /// <summary>

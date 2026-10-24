@@ -68,12 +68,8 @@ namespace StaleTheater
                     output *= GetStaleness(daysSinceSingle, DECAYTIME_NORMAL);
                 }
             }
-            if (output < 0.001f)
-            {
-                output = 0.001f;
-            }
-
-            __result = output;
+            // Staleness stops at 0.1%, or at the incoming value if another mod already set it lower
+            __result = Mathf.Max(output, Mathf.Min(__result, 0.001f));
         }
 
         // Starts flat, falls through the middle and levels off at STALE_MIN.
@@ -107,7 +103,7 @@ namespace StaleTheater
     [HarmonyPatch(typeof(Theaters._theater), nameof(Theaters._theater.GetNumberOfVisitors))]
     public class Theaters__theater_GetNumberOfVisitors
     {
-        // Before num *= GetPriceCoeff(Ticket_Price), replace the game's fan-type multiplier: num = Infix(this).
+        // Before num *= GetPriceCoeff(Ticket_Price), adjust the game's fan-type multiplier: num = Infix(num, this).
         // That statement is where the ticket-price check (over 40000 sells nothing) jumps to.
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
@@ -127,19 +123,62 @@ namespace StaleTheater
                 Debug.LogError("[Stale Theater Shows] Couldn't find where the game applies the ticket price to visitors; attendance uses the game's multipliers");
                 return instructions;
             }
+            CodeInstruction loadMultiplier = matcher.Instruction;
             CodeInstruction storeMultiplier = matcher.InstructionAt(6);
 
             // Take over the jump target, so the normal path runs the new multiplier
-            CodeInstruction loadThis = new(OpCodes.Ldarg_0);
-            loadThis.MoveLabelsFrom(matcher.Instruction);
+            CodeInstruction loadGameMultiplier = new(loadMultiplier.opcode, loadMultiplier.operand);
+            loadGameMultiplier.MoveLabelsFrom(loadMultiplier);
             matcher.Insert(
-                loadThis,
+                loadGameMultiplier,
+                new CodeInstruction(OpCodes.Ldarg_0),
                 new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Theaters__theater_GetNumberOfVisitors), nameof(Infix))),
                 new CodeInstruction(storeMultiplier.opcode, storeMultiplier.operand));
             return matcher.InstructionEnumeration();
         }
 
-        public static float Infix(Theaters._theater __this)
+        /// <summary>
+        /// The mod's multiplier when the game's is vanilla's. If another mod changed the game's multiplier,
+        /// its change is kept in proportion: 1.5x vanilla becomes 1.5x the mod's.
+        /// </summary>
+        public static float Infix(float gameMultiplier, Theaters._theater __this)
+        {
+            float multiplier = ModMultiplier(__this);
+            float vanilla = VanillaMultiplier(__this);
+            if (Math.Abs(gameMultiplier - vanilla) <= vanilla * 1e-6f)
+            {
+                return multiplier;
+            }
+            return gameMultiplier * multiplier / vanilla;
+        }
+
+        /// <summary>
+        /// Vanilla's fan-type multiplier in GetNumberOfVisitors. Never 0.
+        /// </summary>
+        public static float VanillaMultiplier(Theaters._theater __this)
+        {
+            Theaters._theater._schedule schedule = __this.GetSchedule();
+            bool manzai = __this.Doing_Now == Theaters._theater._schedule._type.manzai;
+            if (schedule.FanType_Everyone)
+            {
+                return manzai ? 0.1f : 0.2f;
+            }
+
+            float multiplier = schedule.FanType switch
+            {
+                resources.fanType.casual => 0.3f,
+                resources.fanType.teen => 0.5f,
+                resources.fanType.hardcore => 1f,
+                _ => 0.75f
+            };
+            if (manzai && schedule.FanType != resources.fanType.hardcore)
+            {
+                multiplier *= 0.75f;
+            }
+            return multiplier;
+        }
+
+        public static float ModMultiplier(Theaters._theater __this)
         {
             float multiplier;
             Theaters._theater._schedule schedule = __this.GetSchedule();

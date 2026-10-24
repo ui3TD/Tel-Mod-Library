@@ -1,0 +1,34 @@
+[
+	{
+		id: "MENUHOTKEYS__MODMENU__IDOLS",
+		text: "Open Idols"
+	},
+	{
+		id: "MENUHOTKEYS__MODMENU__STAFF",
+		text: "Open Staff"
+	},
+	{
+		id: "MENUHOTKEYS__MODMENU__ACTIVITIES",
+		text: "Open Activities"
+	},
+	{
+		id: "MENUHOTKEYS__MODMENU__SINGLES",
+		text: "Open Singles"
+	},
+	{
+		id: "MENUHOTKEYS__MODMENU__MEDIA",
+		text: "Open Media"
+	},
+	{
+		id: "MENUHOTKEYS__MODMENU__SPECIALEVENTS",
+		text: "Open Special Events"
+	},
+	{
+		id: "MENUHOTKEYS__MODMENU__RESEARCH",
+		text: "Open Research"
+	},
+	{
+		id: "MENUHOTKEYS__MODMENU__POLICIES",
+		text: "Open Policies"
+	}
+]

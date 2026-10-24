@@ -17,7 +17,7 @@ namespace MenuHotkeys.Tests
         public void InfoJsonDescription_SaysWhatTheModDoes()
         {
             string csproj = File.ReadAllText(ModFile("Menu Hotkeys.csproj"));
-            Assert.Equal("Home row on the keyboard (asdfg...) are hotkeys for the main menu.", Regex.Match(csproj, "<ModDescription>(.+)</ModDescription>").Groups[1].Value);
+            Assert.Equal("Home row on the keyboard (asdfg...) are hotkeys for the main menu. Change them on the Hotkeys tab of ModMenus.", Regex.Match(csproj, "<ModDescription>(.+)</ModDescription>").Groups[1].Value);
         }
 
         /// <summary>

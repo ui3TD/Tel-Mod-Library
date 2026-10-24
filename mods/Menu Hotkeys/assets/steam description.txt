@@ -12,7 +12,10 @@ H - Special Events
 J - Research
 K - Policies
 
+To change these keys, install [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314791]ModMenus[/url] and open the Hotkeys tab of its Mod Settings menu. Without it, the keys are as listed above.
+
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 1.1.0: The keys can be changed on the Hotkeys tab of ModMenus.
 - 1.0.1: Internal tidy-up of the hotkey code; no change in game.

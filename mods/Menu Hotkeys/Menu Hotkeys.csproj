@@ -3,9 +3,9 @@
 		<!--Define the mod's info.json-->
 		<ModName>Menu Hotkeys</ModName>
 		<HarmonyID>com.tel.menuhotkeys</HarmonyID>
-		<ModDescription>Home row on the keyboard (asdfg...) are hotkeys for the main menu.</ModDescription>
+		<ModDescription>Home row on the keyboard (asdfg...) are hotkeys for the main menu. Change them on the Hotkeys tab of ModMenus.</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>1.0.1</Version>
+		<Version>1.1.0</Version>
 		<WorkshopID>2976589114</WorkshopID>
 		<Tags>["gameplay"]</Tags>
 

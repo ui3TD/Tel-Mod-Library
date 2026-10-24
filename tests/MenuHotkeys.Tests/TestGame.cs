@@ -130,17 +130,26 @@ namespace MenuHotkeys.Tests
             [AccessTools.Method(typeof(Object), "op_Equality")] = Stub(nameof(StubEquality)),
             [AccessTools.Method(typeof(Object), "op_Inequality")] = Stub(nameof(StubInequality)),
             [AccessTools.Method(typeof(Tabs_Manager), nameof(Tabs_Manager.OpenTab))] = Stub(nameof(StubOpenTab)),
+            [AccessTools.Method(typeof(ModMenusKeys), nameof(ModMenusKeys.Pressed))] = Stub(nameof(Pressed)),
         };
 
         private static readonly Lazy<bool> Installed = new(() =>
         {
             Harmony.ReversePatch(AccessTools.Method(typeof(Controls_Update), nameof(Controls_Update.Postfix)),
                 new HarmonyMethod(typeof(Seams), nameof(UpdatePostfix)), AccessTools.Method(typeof(Seams), nameof(Redirect)), ilmanipulator: null);
+            Harmony.ReversePatch(AccessTools.Method(typeof(ModMenusKeys), nameof(ModMenusKeys.Pressed)),
+                new HarmonyMethod(typeof(Seams), nameof(Pressed)), AccessTools.Method(typeof(Seams), nameof(Redirect)), ilmanipulator: null);
             return true;
         });
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void UpdatePostfix() => throw new InvalidOperationException("Call Seams.Reset first");
+
+        /// <summary>
+        /// ModMenusKeys.Pressed, reading the test's keys.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool Pressed(string varID, KeyCode key) => throw new InvalidOperationException("Call Seams.Reset first");
 
         /// <summary>
         /// Installs the stubs once per test run and clears the fake objects of earlier tests.
@@ -152,6 +161,8 @@ namespace MenuHotkeys.Tests
             KeysDown.Clear();
             OpenedTabs.Clear();
             Components.Clear();
+            // No ModMenus: it isn't loaded in tests
+            ModMenusKeys.Reset(looked: true);
         }
 
         /// <summary>

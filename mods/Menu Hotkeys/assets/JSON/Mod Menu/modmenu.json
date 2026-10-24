@@ -1,0 +1,50 @@
+[
+	{
+		"type": "keybind",
+		"varID": "MenuHotkeys_Idols",
+		"labelID": "MENUHOTKEYS__MODMENU__IDOLS",
+		"defaultValue": "A"
+	},
+	{
+		"type": "keybind",
+		"varID": "MenuHotkeys_Staff",
+		"labelID": "MENUHOTKEYS__MODMENU__STAFF",
+		"defaultValue": "S"
+	},
+	{
+		"type": "keybind",
+		"varID": "MenuHotkeys_Activities",
+		"labelID": "MENUHOTKEYS__MODMENU__ACTIVITIES",
+		"defaultValue": "D"
+	},
+	{
+		"type": "keybind",
+		"varID": "MenuHotkeys_Singles",
+		"labelID": "MENUHOTKEYS__MODMENU__SINGLES",
+		"defaultValue": "F"
+	},
+	{
+		"type": "keybind",
+		"varID": "MenuHotkeys_Media",
+		"labelID": "MENUHOTKEYS__MODMENU__MEDIA",
+		"defaultValue": "G"
+	},
+	{
+		"type": "keybind",
+		"varID": "MenuHotkeys_SpecialEvents",
+		"labelID": "MENUHOTKEYS__MODMENU__SPECIALEVENTS",
+		"defaultValue": "H"
+	},
+	{
+		"type": "keybind",
+		"varID": "MenuHotkeys_Research",
+		"labelID": "MENUHOTKEYS__MODMENU__RESEARCH",
+		"defaultValue": "J"
+	},
+	{
+		"type": "keybind",
+		"varID": "MenuHotkeys_Policies",
+		"labelID": "MENUHOTKEYS__MODMENU__POLICIES",
+		"defaultValue": "K"
+	}
+]

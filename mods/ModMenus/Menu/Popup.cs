@@ -1,0 +1,140 @@
+using System;
+using UnityEngine;
+using UnityEngine.UI;
+using System.Linq;
+
+namespace ModMenus
+{
+    partial class ModMenusUtils
+    {
+        /// <summary>
+        /// Generates the main mod menu popup.
+        /// </summary>
+        /// <returns>The GameObject representing the mod menu popup, or null if it couldn't be built.</returns>
+        public static GameObject GenerateMenuPopup()
+        {
+            PopupManager mainPopupManager = Camera.main.GetComponent<mainScript>().Data.GetComponent<PopupManager>();
+            PopupManager._popup existingPopup = mainPopupManager.GetByType(MOD_MENU_POPUP);
+            if (existingPopup != null)
+                return existingPopup.obj;
+
+            // Adapt existing popup
+            GameObject originalModMenuObj = mainPopupManager.GetByType(PopupManager._type.settings_difficulty).obj;
+            GameObject modMenuObj = UnityEngine.Object.Instantiate(originalModMenuObj);
+            modMenuObj.transform.SetParent(originalModMenuObj.transform.parent, false);
+            modMenuObj.name = POPUP_OBJ_NAME;
+
+            // The popup is only registered once it's fully built. If building fails (the game's own settings
+            // popup has changed, say), the half-built copy is removed, so the next click tries again cleanly
+            // instead of leaving another copy behind each time.
+            try
+            {
+                BuildMenuPopup(modMenuObj);
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Object.Destroy(modMenuObj);
+                Debug.LogError("[ModMenus] Couldn't build the Mod Settings menu: " + e);
+                return null;
+            }
+
+            // Incorporate popup into game
+            PopupManager._popup newPopup = new()
+            {
+                type = MOD_MENU_POPUP,
+                obj = modMenuObj,
+                BGBlur = true,
+                BGDarken = true
+            };
+            Array.Resize(ref mainPopupManager.popups, mainPopupManager.popups.Length + 1);
+            mainPopupManager.popups[mainPopupManager.popups.Length - 1] = newPopup;
+
+            return modMenuObj;
+        }
+
+        /// <summary>
+        /// Turns a copy of the game's difficulty settings popup into the mod menu.
+        /// </summary>
+        private static void BuildMenuPopup(GameObject modMenuObj)
+        {
+            // Remove old child objects
+            Transform panelTransform = modMenuObj.transform.Find("Panel");
+            Transform panelSettingsContainerTransform = panelTransform.Find("Settings_Container");
+            if (panelSettingsContainerTransform != null)
+            {
+                UnityEngine.Object.DestroyImmediate(modMenuObj.GetComponent<Settings_Difficulty>());
+                UnityEngine.Object.DestroyImmediate(panelSettingsContainerTransform.gameObject);
+            }
+
+            // Replace buttons
+            GameObject oldApplyButton = modMenuObj.transform.Find("Apply").gameObject;
+            GameObject oldCancelButton = modMenuObj.transform.Find("Cancel").gameObject;
+            GameObject applyButton = CloneButton(oldApplyButton, oldApplyButton.transform.parent, APPLYBUTTON_OBJ_NAME, APPLY_LABEL, new Color(0.2f, 0.7f, 0.2f), true);
+            GameObject cancelButton = CloneButton(oldCancelButton, oldCancelButton.transform.parent, CANCELBUTTON_OBJ_NAME, CANCEL_LABEL, true);
+            // The game's blue button, so it isn't taken for Cancel or Apply
+            GameObject resetButton = CloneButton(applyButton, applyButton.transform.parent, RESETBUTTON_OBJ_NAME, RESET_LABEL);
+            Image resetImage = resetButton.GetComponent<Image>();
+            Sprite blueButton = Resources.FindObjectsOfTypeAll<Sprite>().FirstOrDefault(s => s.name == BLUE_BUTTON_SPRITE && resetImage.sprite != null && s.rect.size == resetImage.sprite.rect.size);
+            if (blueButton != null)
+            {
+                resetImage.sprite = blueButton;
+            }
+
+            // Attach custom component to Panel
+            ModMenuManager panelModMenuManager = panelTransform.gameObject.AddComponent<ModMenuManager>();
+            applyButton.GetComponent<Button>().onClick.AddListener(panelModMenuManager.OnApply);
+            cancelButton.GetComponent<Button>().onClick.AddListener(panelModMenuManager.OnCancel);
+            resetButton.GetComponent<Button>().onClick.AddListener(panelModMenuManager.OnReset);
+
+            // The settings first, so they're still the panel's first scroll area; then the tabs on the left, and
+            // a line between them. Each page of settings is a child of the settings' container.
+            GameObject menuContentContainer = GenerateScrollArea(panelTransform, SCROLLRECT_OBJ_NAME, MENUCONTENT_OBJ_NAME, 0, true, out ScrollRect settingsScroll);
+            GameObject tabContainer = GenerateScrollArea(panelTransform, TABS_SCROLLRECT_OBJ_NAME, TAB_CONTAINER_OBJ_NAME, TAB_SPACING, false, out ScrollRect tabScroll);
+            GameObject divider = AddDivider(panelTransform);
+            panelModMenuManager.scroll = settingsScroll;
+            panelModMenuManager.tabScroll = tabScroll;
+
+            // An open list stays where it is while the rows scroll under it, so scrolling closes it first
+            settingsScroll.onValueChanged.AddListener(_ => panelModMenuManager.CloseDropdownLists());
+
+            // An open dropdown's list moves here, the popup's last child, so it shows above every row and the
+            // buttons and isn't cut off by the scroll area. It moves back into its row when it closes.
+            GameObject dropdownLayer = new(DROPDOWN_LAYER_OBJ_NAME, typeof(RectTransform));
+            dropdownLayer.transform.SetParent(modMenuObj.transform, false);
+            SetRectTransform(dropdownLayer.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            dropdownLayer.transform.SetAsLastSibling();
+
+            // The panel and buttons fit the screen whenever the menu opens or the screen changes size
+            ModMenuLayout layout = modMenuObj.AddComponent<ModMenuLayout>();
+            layout.panel = (RectTransform)panelTransform;
+            layout.apply = (RectTransform)applyButton.transform;
+            layout.cancel = (RectTransform)cancelButton.transform;
+            layout.reset = (RectTransform)resetButton.transform;
+            layout.buttonHeight = layout.apply.rect.height;
+            layout.tabColumn = (RectTransform)tabScroll.transform;
+            layout.settingsArea = (RectTransform)settingsScroll.transform;
+            layout.divider = (RectTransform)divider.transform;
+            layout.manager = panelModMenuManager;
+
+            // Generate Menu Contents
+            AddMenuItems(panelModMenuManager, menuContentContainer.transform, tabContainer.transform, dropdownLayer.transform);
+
+            // With no mod's settings shown, there's nothing to reset
+            resetButton.GetComponent<Button>().interactable = panelModMenuManager.selected != null;
+        }
+
+        /// <summary>
+        /// The line between the tabs and the settings: the menu's blue, faded. ModMenuLayout places it.
+        /// </summary>
+        private static GameObject AddDivider(Transform panel)
+        {
+            GameObject divider = new(DIVIDER_OBJ_NAME, typeof(RectTransform), typeof(Image));
+            divider.transform.SetParent(panel, false);
+            Image image = divider.GetComponent<Image>();
+            Color32 blue = mainScript.blue32;
+            image.color = new Color32(blue.r, blue.g, blue.b, 77);
+            image.raycastTarget = false;
+            return divider;
+        }
+    }
+}

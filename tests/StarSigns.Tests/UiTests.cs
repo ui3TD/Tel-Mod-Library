@@ -107,6 +107,22 @@ namespace StarSigns.Tests
                 "The trait label's colour is now " + code[firstColour - 1]);
         }
 
+        /// <summary>
+        /// Another mod rebuilt the tab without the game's first text block: nothing is added and nothing breaks.
+        /// </summary>
+        [Fact]
+        public void NoTraitBlock_LeftAlone()
+        {
+            Seams.MissingChildren.Add("Text(Clone)");
+            Profile_Popup popup = TestGame.Component<Profile_Popup>();
+            popup.Girl = TestGame.Idol(Zodiac.Leo);
+            popup.Extras_Container = TestGame.Component<GameObject>();
+
+            Seams.ProfileExtrasPostfix(popup);
+
+            Assert.Empty(Seams.LayoutsRebuilt);
+        }
+
         [Fact]
         public void RebuildsTheLayout()
         {
@@ -137,6 +153,31 @@ namespace StarSigns.Tests
             else
                 Audition_Data_Card_Show.Postfix(ref card);
             return Seams.TextOf(text);
+        }
+
+        /// <summary>
+        /// If another mod skipped the game's Show, the age text still has the sign from last time; it's not added twice.
+        /// </summary>
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void AgeNotRewritten_SignAddedOnce(bool fast)
+        {
+            Audition_Data_Card card = TestGame.Component<Audition_Data_Card>();
+            card.Girl = new Auditions.data._girl { girl = TestGame.Idol(Zodiac.Leo) };
+            card.Age = TestGame.Component<GameObject>();
+            TextMeshProUGUI text = Seams.ComponentOf<TextMeshProUGUI>(card.Age);
+            Seams.SetText(text, "Age: 20");
+
+            for (int i = 0; i < 2; i++)
+            {
+                if (fast)
+                    Audition_Data_Card_Show_Fast.Postfix(ref card);
+                else
+                    Audition_Data_Card_Show.Postfix(ref card);
+            }
+
+            Assert.Equal("Age: 20 (Leo)", Seams.TextOf(text));
         }
 
         [Theory]

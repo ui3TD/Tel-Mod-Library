@@ -24,7 +24,11 @@ namespace StarSigns
 
             string txt = "\n" + ExtensionMethods.color(Language.Data[CONSTANT_SIGN_PREFIX + zodiac.ToString().ToUpper()] + ": ", mainScript.blue) + Language.Data[CONSTANT_DESC_PREFIX + zodiac.ToString().ToUpper()];
 
-            TextMeshProUGUI textComponent = __instance.Extras_Container.transform.Find("Text(Clone)").GetComponent<TextMeshProUGUI>();
+            // Another mod may have rebuilt the tab without the game's first text block
+            Transform textBlock = __instance.Extras_Container is null ? null : __instance.Extras_Container.transform.Find("Text(Clone)");
+            TextMeshProUGUI textComponent = textBlock is null ? null : textBlock.GetComponent<TextMeshProUGUI>();
+            if (textComponent is null)
+                return;
             textComponent.text += txt;
             textComponent.text = textComponent.text.Replace(mainScript.blue, mainScript.black);
             LayoutRebuilder.ForceRebuildLayoutImmediate(__instance.Extras_Container.GetComponent<RectTransform>());
@@ -34,6 +38,7 @@ namespace StarSigns
 
 
     // Show on audition card
+    // Added once: if another mod skipped the game's Show, the age text wasn't rewritten and already has the sign
     [HarmonyPatch(typeof(Audition_Data_Card), nameof(Audition_Data_Card.Show))]
     public class Audition_Data_Card_Show
     {
@@ -45,7 +50,14 @@ namespace StarSigns
 
             string txt = " (" + Language.Data[CONSTANT_SIGN_PREFIX + zodiac.ToString().ToUpper()] + ")";
 
-            __instance.Age.GetComponent<TextMeshProUGUI>().text += txt;
+            AddToAge(__instance, txt);
+        }
+
+        public static void AddToAge(Audition_Data_Card card, string txt)
+        {
+            TextMeshProUGUI age = card.Age.GetComponent<TextMeshProUGUI>();
+            if (!age.text.EndsWith(txt))
+                age.text += txt;
         }
     }
 
@@ -61,19 +73,45 @@ namespace StarSigns
 
             string txt = " (" + Language.Data[CONSTANT_SIGN_PREFIX + zodiac.ToString().ToUpper()] + ")";
 
-            __instance.Age.GetComponent<TextMeshProUGUI>().text += txt;
+            Audition_Data_Card_Show.AddToAge(__instance, txt);
         }
     }
 
 
     // Dynamic relationships changes
+    // An error here would stop the rest of the game's weekly relationship update, so it's logged (once) and the week goes on
     [HarmonyPatch(typeof(Relationships), nameof(Relationships.Do_Dynamic))]
     public class Relationships_Do_Dynamic
     {
+        private static bool loggedError;
+
         public static void Postfix()
         {
+            try
+            {
+                AddWeeklyBonuses();
+            }
+            catch (Exception e)
+            {
+                if (!loggedError)
+                {
+                    loggedError = true;
+                    Debug.LogError("[Star Signs] Couldn't add this week's star sign relationship bonuses: " + e);
+                }
+            }
+        }
+
+        private static void AddWeeklyBonuses()
+        {
+            if (Relationships.RelationshipsData == null)
+                return;
+
             foreach (Relationships._relationship relationship in Relationships.RelationshipsData)
             {
+                // A pair missing an idol (left by another mod) has nothing to add to
+                if (relationship?.Girls == null || relationship.Girls.Count < 2 || relationship.Girls[0] == null || relationship.Girls[1] == null)
+                    continue;
+
                 if(relationship.Girls[0] == relationship.Girls[1])
                     continue;
 
@@ -274,7 +312,7 @@ namespace StarSigns
 
         public static void Infix(JSONNode jsonnode, data_girls_textures._textureAsset textureAsset)
         {
-            if (jsonnode["starsign"] == null)
+            if (textureAsset == null || jsonnode == null || jsonnode["starsign"] == null)
                 return;
 
             string zodiacStr = jsonnode["starsign"];
@@ -288,12 +326,14 @@ namespace StarSigns
     }
 
     // Load texture on generation
+    // Runs last, so the sign is set after other mods' birthday changes; the age they gave is kept
     [HarmonyPatch(typeof(data_girls), nameof(data_girls.GenerateGirl))]
     public class data_girls_GenerateGirl
     {
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(ref data_girls.girls __result, bool genTextures)
         {
-            if (!genTextures)
+            if (!genTextures || __result == null)
                 return;
 
             if (__result.textureAssets == null || __result.textureAssets.Count == 0)

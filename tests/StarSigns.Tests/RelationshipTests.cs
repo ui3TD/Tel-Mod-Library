@@ -1,3 +1,5 @@
+using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using Xunit;
 using static StarSigns.StarSigns;
@@ -219,6 +221,51 @@ namespace StarSigns.Tests
 
             Week(idol, other);
             Assert.Empty(Seams.ChancesRolled);
+        }
+
+        /// <summary>
+        /// A pair missing an idol (left by another mod) is skipped; the other pairs still get their bonus.
+        /// </summary>
+        [Fact]
+        public void PairMissingAnIdol_Skipped()
+        {
+            Seams.Chance = _ => true;
+            Relationships._relationship broken = new();
+            broken.Girls.Add(TestGame.Idol(Zodiac.Pisces));
+            broken.Girls.Add(null);
+            Relationships.RelationshipsData.Add(broken);
+
+            Assert.Equal(Bonus, Week(TestGame.Idol(Zodiac.Pisces), TestGame.Idol(Plain)), 5);
+            Assert.Equal(0f, broken.Temp);
+        }
+
+        public static bool BrokenCheck() => throw new InvalidOperationException("broken patch");
+
+        /// <summary>
+        /// An error would stop the rest of the game's weekly relationship update, so it's logged once and the week goes on.
+        /// </summary>
+        [Fact]
+        public void Error_LoggedOnce()
+        {
+            Seams.Chance = _ => true;
+            data_girls.girls aries = TestGame.Idol(Zodiac.Aries);
+            TestGame.Pair(aries, TestGame.Idol(Plain));
+            Harmony standIn = new("tests.StarSigns.StandIn");
+            try
+            {
+                // The error comes from inside the bonus check; a small game method like Is_Pushed would be inlined there in release builds
+                standIn.Patch(AccessTools.Method(typeof(Relationships_Do_Dynamic), "CheckZodiacBonus"),
+                    prefix: new HarmonyMethod(typeof(WeeklyBonusTests), nameof(BrokenCheck)));
+                TestGame.CallPrivate(TestGame.Component<Relationships>(), typeof(Relationships), "Do_Dynamic");
+                TestGame.CallPrivate(TestGame.Component<Relationships>(), typeof(Relationships), "Do_Dynamic");
+            }
+            finally
+            {
+                standIn.UnpatchSelf();
+            }
+
+            string error = Assert.Single(Log.Messages);
+            Assert.StartsWith("[Star Signs] Couldn't add this week's star sign relationship bonuses", error);
         }
 
         [Fact]

@@ -241,6 +241,8 @@ namespace StarSigns.Tests
         private static readonly Dictionary<object, Dictionary<Type, object>> Components = new(new SameObject());
         private static readonly Dictionary<object, string> Texts = new(new SameObject());
         public static readonly List<string> FoundChildren = new();
+        /// <summary>Names Transform.Find doesn't find, as when another mod rebuilt the parent.</summary>
+        public static readonly HashSet<string> MissingChildren = new();
         public static readonly List<RectTransform> LayoutsRebuilt = new();
 
         private static readonly Dictionary<MethodBase, MethodInfo> Redirects = new()
@@ -257,6 +259,8 @@ namespace StarSigns.Tests
 
         private static readonly MethodBase[] Patched =
         {
+            // First: it's small enough to be inlined into the postfixes below if they're compiled before it
+            AccessTools.Method(typeof(Audition_Data_Card_Show), nameof(Audition_Data_Card_Show.AddToAge)),
             AccessTools.Method(typeof(Relationships_Do_Dynamic), "CheckZodiacBonus"),
             AccessTools.Method(typeof(Relationships__clique_AddBulliedGirl), nameof(Relationships__clique_AddBulliedGirl.Prefix)),
             AccessTools.Method(typeof(data_girls_GenerateGirl), nameof(data_girls_GenerateGirl.Postfix)),
@@ -317,6 +321,7 @@ namespace StarSigns.Tests
             Components.Clear();
             Texts.Clear();
             FoundChildren.Clear();
+            MissingChildren.Clear();
             LayoutsRebuilt.Clear();
             Log.Messages.Clear();
 
@@ -430,7 +435,7 @@ namespace StarSigns.Tests
         private static Transform StubFind(Transform parent, string name)
         {
             FoundChildren.Add(name);
-            return Child(parent, name);
+            return MissingChildren.Contains(name) ? null : Child(parent, name);
         }
 
         private static T StubGetComponent<T>(object owner) => ComponentOf<T>(owner);

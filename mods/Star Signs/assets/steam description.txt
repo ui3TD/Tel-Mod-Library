@@ -23,6 +23,7 @@ You can make unique idols have a specific zodiac star sign by adding a 'starsign
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 1.1.3: Safer alongside mods that change profiles, audition cards, relationships or idol packs.
 - 1.1.2: Its warning about an unknown star sign in an idol pack now names the mod.
 - 1.1.1: Less work each day with many idols; an error can't leave Leo/Aquarius bonuses stuck on.
 - 1.1.0: Unique idols keep their set age; misspelled star signs no longer break idol generation.

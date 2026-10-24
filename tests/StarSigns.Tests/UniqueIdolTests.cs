@@ -68,6 +68,13 @@ namespace StarSigns.Tests
         }
 
         [Fact]
+        public void NoBodyAsset_RecordsNothing()
+        {
+            data_girls_textures_LoadAssetsData.Infix(JSON.Parse("{ \"starsign\": \"Leo\" }"), null);
+            Assert.Empty(UniqueIdolSigns);
+        }
+
+        [Fact]
         public void NoStarsign_RecordsNothing()
         {
             Load("{ \"left\": 10, \"top\": 20 }");
@@ -268,6 +275,26 @@ namespace StarSigns.Tests
             DateTime birthday = TestGame.Birthday(Zodiac.Leo);
 
             Assert.Equal(birthday, Generate(Generated(birthday), genTextures: false).birthday);
+        }
+
+        [Fact]
+        public void NoGirl_LeftAlone()
+        {
+            Record(Zodiac.Capricorn);
+            data_girls.girls girl = null;
+            data_girls_GenerateGirl.Postfix(ref girl, true);
+            Assert.Null(girl);
+        }
+
+        /// <summary>
+        /// The sign is set after other mods' birthday changes, so it isn't overwritten and keeps the age they gave.
+        /// </summary>
+        [Fact]
+        public void RunsAfterOtherMods()
+        {
+            HarmonyPriority priority = AccessTools.Method(typeof(data_girls_GenerateGirl), nameof(data_girls_GenerateGirl.Postfix))
+                .GetCustomAttribute<HarmonyPriority>();
+            Assert.Equal(Priority.Last, priority?.info.priority);
         }
 
         [Fact]

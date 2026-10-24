@@ -44,7 +44,7 @@ namespace HarmonyChecker.Tests
             string dll = MakeDir("dll", withPicture: true);
             string mod = MakeDir("mod", withPicture: true);
 
-            Assert.Equal(Path.Combine(dll, GoldButton.Button.RelativePath), GoldButton.FindFile(GoldButton.Button.RelativePath, dll, new[] { mod }));
+            Assert.Equal(Path.Combine(dll, GoldButton.Button.RelativePath), ModPicture.FindFile(GoldButton.Button.RelativePath, dll, new[] { mod }));
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace HarmonyChecker.Tests
             string dll = MakeDir("dll", withPicture: false);
             string mod = MakeDir("mod", withPicture: true);
 
-            Assert.Equal(Path.Combine(mod, GoldButton.Button.RelativePath), GoldButton.FindFile(GoldButton.Button.RelativePath, dll, new[] { null, "", mod }));
+            Assert.Equal(Path.Combine(mod, GoldButton.Button.RelativePath), ModPicture.FindFile(GoldButton.Button.RelativePath, dll, new[] { null, "", mod }));
         }
 
         [Fact]
@@ -61,7 +61,7 @@ namespace HarmonyChecker.Tests
         {
             string dll = MakeDir("dll", withPicture: false);
 
-            Assert.Null(GoldButton.FindFile(GoldButton.Button.RelativePath, dll, new string[0]));
+            Assert.Null(ModPicture.FindFile(GoldButton.Button.RelativePath, dll, new string[0]));
         }
 
         /// <summary>

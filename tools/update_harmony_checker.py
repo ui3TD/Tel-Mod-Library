@@ -25,7 +25,7 @@ import sys
 from _common import CHANGELOG_HEADING, REPO, fetch_details, git, trim_changelog
 
 MOD_DIR = os.path.join(REPO, "mods", "Harmony Checker")
-SOURCE = os.path.join(MOD_DIR, "Harmony Checker.cs")
+SOURCE = os.path.join(MOD_DIR, "UpdateButton.cs")
 CSPROJ = os.path.join(MOD_DIR, "Harmony Checker.csproj")
 DESCRIPTION = os.path.join(MOD_DIR, "assets", "steam description.txt")
 TESTS = os.path.join(REPO, "tests", "HarmonyChecker.Tests", "HarmonyChecker.Tests.csproj")

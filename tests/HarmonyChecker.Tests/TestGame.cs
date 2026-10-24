@@ -459,7 +459,7 @@ namespace HarmonyChecker.Tests
             OnSetOffsetMax = null;
             Tooltips.Clear();
             Cursors.Clear();
-            IMHIUpdate.ShowBadge = (modsButton, outdated, installed) => Badges.Add((modsButton, outdated, installed));
+            HarmonyCheckerStatus.ShowBadge = (modsButton, outdated, installed) => Badges.Add((modsButton, outdated, installed));
             OkPicture = Fake<Sprite>();
             OutdatedPicture = Fake<Sprite>();
             StatusBadge.Picture = outdated => outdated ? OutdatedPicture : OkPicture;

@@ -89,7 +89,8 @@ namespace InGameTests.TelMods
             else
             {
                 // Apply saves every row, so put every variable back afterwards.
-                var before = items.Select(i => Traverse.Create(i).Field("varID").GetValue<string>()).Distinct()
+                // Secret rows have no variable
+                var before = items.Select(i => Traverse.Create(i).Field("varID").GetValue<string>()).Where(id => id != null).Distinct()
                     .ToDictionary(id => id, variables.Get);
                 using (TestTools.Restore(() =>
                 {
@@ -441,14 +442,14 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
-        /// A menu with text fields: one with a default, one limited to 5 characters, a password field, and a
-        /// checkbox under them.
+        /// A menu with text fields: one with a default, one limited to 5 characters, a secret, and a checkbox
+        /// under them.
         /// </summary>
         private const string InputMenu = @"[
             { ""type"": ""text"", ""labelID"": ""Text fields"" },
             { ""type"": ""input"", ""varID"": ""ModMenusTest_Name"", ""labelID"": ""Agency motto"", ""defaultValue"": ""Hello"" },
             { ""type"": ""input"", ""varID"": ""ModMenusTest_Short"", ""labelID"": ""Five characters at most"", ""maxLength"": 5 },
-            { ""type"": ""input"", ""varID"": ""ModMenusTest_Secret"", ""labelID"": ""Secret"", ""password"": true },
+            { ""type"": ""secret"", ""secretID"": ""ModMenusTest/key"", ""labelID"": ""Secret"" },
             { ""type"": ""checkbox"", ""varID"": ""ModMenusTest_Check1"", ""labelID"": ""Checkbox"" }
         ]";
 
@@ -456,15 +457,18 @@ namespace InGameTests.TelMods
         /// A text field is a copy of the game's rival name field, cut loose from the rival popup: typing in it
         /// changes only the setting, Tab doesn't jump to the rival's fields, and the game's hotkeys are off
         /// while the menu is open. It shows its default, takes typing (Japanese too) up to its limit, is what a
-        /// click on it hits, and fits its row. A password field shows asterisks. Apply saves the text as typed;
-        /// Cancel throws it away.
+        /// click on it hits, and fits its row. Apply saves the text as typed; Cancel throws it away. A secret's
+        /// field draws its hint while empty and only asterisks once typed in; its row, with the line under the
+        /// field, fits; and once a secret is saved, its Remove button is what a click on it hits. The secret
+        /// goes to its file (in a temp folder), never to the variables, and the field reopens empty.
         /// </summary>
         [InGameTest(Suite = ModTest.Suite)]
         private static IEnumerator TextFieldsTakeTypingAndSave(TestContext ctx)
         {
-            if (!ModTest.Require(ctx, HarmonyId, out _))
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
                 yield break;
 
+            using (TempSecretFolder(mod, out string secretFile))
             using (AddTestMod(InputMenu))
             {
                 var opened = new List<GameObject>();
@@ -491,8 +495,10 @@ namespace InGameTests.TelMods
                 }
                 TMP_InputField name = nameRow.GetComponentInChildren<TMP_InputField>(true);
                 TMP_InputField limited = shortRow.GetComponentInChildren<TMP_InputField>(true);
-                TMP_InputField secret = menu.Find("ModMenuInput_ModMenusTest_Secret")?.GetComponentInChildren<TMP_InputField>(true);
-                ctx.Assert(secret != null && secret.contentType == TMP_InputField.ContentType.Password, "The password field isn't a password field");
+                RectTransform secretRow = (RectTransform)menu.Find("ModMenuSecret_ModMenusTest\\key");
+                TMP_InputField secret = secretRow?.GetComponentInChildren<TMP_InputField>(true);
+                ctx.Assert(secret != null && secret.contentType == TMP_InputField.ContentType.Password, "The secret field isn't masked");
+                ctx.Assert(secret != null && secret.text == "" && secret.placeholder != null && secret.placeholder.enabled, "The empty secret field doesn't draw its hint");
                 ctx.Assert(name.contentType == TMP_InputField.ContentType.Standard, "A plain text field is " + name.contentType);
 
                 // Cut loose from the rival popup
@@ -528,6 +534,12 @@ namespace InGameTests.TelMods
                 yield return null;
                 foreach (RectTransform row in new[] { nameRow, shortRow })
                     AssertFieldFitsAndTakesClicks(ctx, row);
+                if (secretRow != null)
+                {
+                    ScrollIntoView(ctx, secretRow);
+                    yield return null;
+                    AssertFieldFitsAndTakesClicks(ctx, secretRow);
+                }
                 var corners = new Vector3[4];
                 float previousBottom = float.MaxValue;
                 // A hidden row (the note of an unticked "Use in all saves") keeps where it last was, out of the layout
@@ -567,24 +579,42 @@ namespace InGameTests.TelMods
                 yield return new WaitForSecondsRealtime(0.5f);
                 ctx.Assert(name.text == "Hello" && limited.text == "", "After Cancel the fields show '" + name.text + "' and '" + limited.text + "'");
 
-                // Apply saves the text as typed, and the menu reopens showing it. The password field draws only asterisks.
+                // Apply saves the text as typed, and the menu reopens showing it. The secret field draws only asterisks.
+                const string typedSecret = "key-42-abcdefghWXYZ";
                 yield return TypeInto(name, "Bye", "!");
                 if (secret != null)
                 {
-                    yield return TypeInto(secret, null, "key-42");
-                    ctx.Assert(secret.text == "key-42", "The password field holds '" + secret.text + "', expected what was typed");
-                    ctx.Assert(!secret.textComponent.text.Contains("key") && secret.textComponent.text.Contains("*"), "The password field draws '" + secret.textComponent.text + "'");
+                    yield return TypeInto(secret, null, typedSecret);
+                    ctx.Assert(secret.text == typedSecret, "The secret field holds " + secret.text.Length + " characters, expected what was typed");
+                    ctx.Assert(!secret.textComponent.text.Contains("key") && secret.textComponent.text.Contains("*"), "The secret field draws '" + secret.textComponent.text + "'");
                 }
                 Type managerType = AccessTools.TypeByName("ModMenus.ModMenusUtils+ModMenuManager");
                 AccessTools.Method(managerType, "OnApply").Invoke(popup.GetComponentInChildren(managerType, true), null);
                 ctx.Assert(variables.Get("ModMenusTest_Name") == "Bye!", "Apply saved '" + variables.Get("ModMenusTest_Name") + "', expected 'Bye!'");
                 ctx.Assert(variables.Get("ModMenusTest_Short") == "", "Apply saved the empty field as '" + (variables.Get("ModMenusTest_Short") ?? "nothing") + "'");
-                ctx.Assert(variables.Get("ModMenusTest_Secret") == "key-42", "Apply saved the password field as '" + (variables.Get("ModMenusTest_Secret") ?? "nothing") + "'");
+                ctx.Assert(File.Exists(secretFile) && File.ReadAllText(secretFile) == typedSecret, "Apply didn't save the secret in its file");
+                ctx.Assert(!variables.variable.Any(v => v.value != null && v.value.Contains(typedSecret)), "Apply put the secret in the variables");
                 yield return Game.CloseAllPopups(ctx);
                 reopened.Clear();
                 yield return OpenModSettings(ctx, reopened);
                 yield return new WaitForSecondsRealtime(0.5f);
                 ctx.Assert(name.text == "Bye!", "After Apply the menu reopened showing '" + name.text + "'");
+                if (secret != null)
+                {
+                    ctx.Assert(secret.text == "", "The reopened secret field holds " + secret.text.Length + " characters");
+                    Transform remove = secretRow.Find("Remove");
+                    ctx.Assert(remove != null && remove.gameObject.activeSelf, "No Remove button with a secret saved");
+                    if (remove != null && remove.gameObject.activeSelf)
+                    {
+                        ScrollIntoView(ctx, secretRow);
+                        yield return null;
+                        Canvas.ForceUpdateCanvases();
+                        GameObject hit = TopHit(ScreenRect((RectTransform)remove).center);
+                        ctx.Assert(hit != null && hit.transform.IsChildOf(remove), "A click on Remove would hit " + (hit != null ? hit.name : "nothing"));
+                        ctx.Assert(Inside(DrawnRect(secretRow), ScreenRect(secretRow)), "The secret row draws outside itself: " + DrawnRect(secretRow) + ", the row is " + ScreenRect(secretRow));
+                    }
+                    yield return Screenshot(Path.Combine(shots, "3-secret-saved.png"));
+                }
 
                 yield return Game.CloseAllPopups(ctx);
                 Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
@@ -1344,6 +1374,29 @@ namespace InGameTests.TelMods
             ctx.Assert(ScreenRect(field).height >= 15 && ScreenRect(field).width >= 100, row.name + "'s field is too small to click: " + ScreenRect(field));
             GameObject hit = TopHit(ScreenRect(field).center);
             ctx.Assert(hit != null && hit.transform.IsChildOf(field), row.name + ": a click on the field would hit " + (hit != null ? hit.name : "nothing"));
+        }
+
+        /// <summary>
+        /// Points ModMenus' secrets at a temp folder, so the player's own are never read or changed.
+        /// </summary>
+        /// <param name="file">Where the test menu's secret is saved.</param>
+        private static IDisposable TempSecretFolder(Assembly mod, out string file)
+        {
+            Type store = mod.GetType("ModMenus.SecretStore", true);
+            FieldInfo overrideField = AccessTools.Field(store, "FolderOverride");
+            MethodInfo clear = AccessTools.Method(store, "ClearCache");
+            object previous = overrideField.GetValue(null);
+            string temp = Path.Combine(Path.GetTempPath(), "ModMenusInGameSecrets", Guid.NewGuid().ToString("N"));
+            file = Path.Combine(Path.Combine(temp, "ModMenusTest"), "key.key");
+            overrideField.SetValue(null, temp);
+            clear.Invoke(null, null);
+            return TestTools.Restore(() =>
+            {
+                overrideField.SetValue(null, previous);
+                clear.Invoke(null, null);
+                if (Directory.Exists(temp))
+                    Directory.Delete(temp, true);
+            });
         }
 
         /// <summary>

@@ -166,20 +166,28 @@ namespace ModMenus
 
         /// <summary>
         /// Adds a tab's "Use in all saves" box, under the tab's title, the note under it that shows while it's
-        /// ticked, and a line under them that separates them from the mod's rows. It isn't a setting: Reset leaves
-        /// it alone, and Apply keeps it in SharedSettings, not in the save.
+        /// ticked, a line saying secrets are in every save on a tab that has one, and a line under them that
+        /// separates them from the mod's rows. It isn't a setting: Reset leaves it alone, and Apply keeps it in
+        /// SharedSettings, not in the save.
         /// </summary>
         /// <param name="tabID">The tab, as SharedSettings keeps it.</param>
-        /// <param name="hasHidden">Whether the tab has a row with "password": true, which the note says isn't shared.</param>
+        /// <param name="hasSecret">Whether the tab has a secret row, which is the same in every save whether the box is ticked or not.</param>
         /// <param name="parentTransform">Where the row goes: the tab's page.</param>
-        public static GameObject AddScopeRow(string tabID, bool hasHidden, Transform parentTransform)
+        public static GameObject AddScopeRow(string tabID, bool hasSecret, Transform parentTransform)
         {
             GameObject row = CopyCheckbox(SCOPE_ROW_OBJ_NAME, EVERY_SAVE_LABEL, ShownText(EVERY_SAVE_LABEL), parentTransform);
             Checkbox_Text check = row.GetComponent<Checkbox_Text>();
 
-            GameObject note = AddMenuText(hasHidden ? EVERY_SAVE_HIDDEN_NOTE : EVERY_SAVE_NOTE, parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
+            GameObject note = AddMenuText(EVERY_SAVE_NOTE, parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
             note.name = SCOPE_NOTE_OBJ_NAME;
             note.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            if (hasSecret)
+            {
+                GameObject secretNote = AddMenuText(EVERY_SAVE_SECRET_NOTE, parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
+                secretNote.name = SCOPE_SECRET_NOTE_OBJ_NAME;
+                secretNote.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            }
 
             // As thick as the line between the tabs and the settings
             GameObject line = new(SCOPE_LINE_OBJ_NAME, typeof(RectTransform), typeof(Image));
@@ -311,10 +319,9 @@ namespace ModMenus
         /// <param name="labelID">The label ID for the text field.</param>
         /// <param name="def">The default text.</param>
         /// <param name="maxLength">The most characters the player can type, or 0 for no limit.</param>
-        /// <param name="password">Whether the field shows asterisks instead of what's typed, for secrets such as keys.</param>
         /// <param name="parentTransform">The parent transform to add the text field to.</param>
         /// <returns>The GameObject representing the text field element.</returns>
-        public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, bool password, Transform parentTransform)
+        public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, Transform parentTransform)
         {
             string labelText = Language.Data.TryGetValue(labelID, out string tx) ? tx : labelID;
 
@@ -345,11 +352,6 @@ namespace ModMenus
             // Configure field events; vanilla's would rename the rival
             TMP_InputField modInputField = modField.GetComponent<TMP_InputField>();
             modInputField.characterLimit = maxLength;
-            if (password)
-            {
-                // Only the display changes: Apply still saves the text as typed
-                modInputField.contentType = TMP_InputField.ContentType.Password;
-            }
             modInputField.onValueChanged = new TMP_InputField.OnChangeEvent();
             modInputField.onValueChanged.AddListener(modInputMenuItem.onUpdateInput);
             modInputMenuItem.inputField = modInputField;

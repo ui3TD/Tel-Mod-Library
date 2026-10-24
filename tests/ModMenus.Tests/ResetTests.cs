@@ -22,7 +22,7 @@ namespace ModMenus.Tests
                     { "type": "checkbox", "varID": "A_Loud", "labelID": "TEST__LOUD", "defaultValue": true },
                     { "type": "dropdown", "varID": "A_Pick", "labelID": "TEST__PICK", "itemIDList": ["TEST__FIRST", "TEST__SECOND", "TEST__THIRD"], "defaultValue": 1 },
                     { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO", "defaultValue": "Hello" },
-                    { "type": "input", "varID": "A_Key", "labelID": "TEST__MOTTO", "password": true },
+                    { "type": "secret", "secretID": "Mod A/key", "labelID": "TEST__MOTTO" },
                     { "type": "input", "varID": "A_Name", "labelID": "TEST__MOTTO", "defaultValue": "Hikari", "reset": false }
                 ]
                 """);
@@ -38,7 +38,7 @@ namespace ModMenus.Tests
             menu.Click("A_Loud");
             menu.Select("A_Pick", 2);
             menu.Type("A_Motto", "Changed");
-            menu.Type("A_Key", "secret");
+            menu.TypeSecret("Mod A/key", "secret");
             menu.Type("A_Name", "Sora");
         }
 
@@ -58,18 +58,43 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
-        /// Password fields are reset like any other; only "reset": false keeps a row as it is.
+        /// Rows with "reset": false keep what they show, and so do secrets, which have no default.
         /// </summary>
         [Fact]
-        public void ResetsPasswordFieldsButNotRowsThatOptOut()
+        public void LeavesSecretsAndRowsThatOptOut()
         {
             Menu menu = OpenMenu();
             ChangeModA(menu);
 
             menu.Reset();
 
-            Assert.Equal("", menu.FieldText("A_Key"));
+            Assert.Equal("secret", menu.Secret("Mod A/key").secretTyped);
             Assert.Equal(("Sora", "Sora"), (menu.FieldText("A_Name"), menu.Item("A_Name").tempText));
+        }
+
+        /// <summary>
+        /// Reset and Apply keep a saved secret, and a pending removal stays pending.
+        /// </summary>
+        [Fact]
+        public void KeepsASavedSecretAndAPendingRemoval()
+        {
+            TestGame.SaveSecret("Mod A/key", "sk-saved-one-0000");
+            TestGame.SaveSecret("Mod A/other", "sk-saved-two-0000");
+            TestGame.AddMod("Mod A", """
+                [
+                    { "type": "secret", "secretID": "Mod A/key", "labelID": "TEST__MOTTO" },
+                    { "type": "secret", "secretID": "Mod A/other", "labelID": "TEST__MOTTO" }
+                ]
+                """);
+            Menu menu = TestGame.BuildMenu();
+            menu.Open();
+            menu.ClickRemove("Mod A/other");
+
+            menu.Reset();
+            menu.Apply();
+
+            Assert.Equal("sk-saved-one-0000", TestGame.SecretFile("Mod A/key"));
+            Assert.Null(TestGame.SecretFile("Mod A/other"));
         }
 
         [Fact]
@@ -187,23 +212,24 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
-        /// AI Fan Chatter removes its saved key when its key field is applied empty after showing that a key is
-        /// saved, so its key row opts out: Reset leaves what the field shows.
+        /// AI Fan Chatter's keys are secret rows: Reset and Apply on its tab keep every service's saved key.
         /// </summary>
         [Fact]
-        public void AIFanChattersKeyFieldIsNotReset()
+        public void AIFanChattersKeysSurviveReset()
         {
             TestGame.AddShippedMod("AI Fan Chatter");
-            TestGame.Save("AIFanChatter_APIKey", "a saved key is kept in its own file outside your saves");
+            TestGame.SaveSecret("Tel AI Mods/anthropic", "sk-ant-saved-0000");
+            TestGame.SaveSecret("Tel AI Mods/openai", "sk-openai-saved-0000");
             Menu menu = TestGame.BuildMenu();
             menu.Open();
             menu.Click("AIFanChatter_Enabled");
 
             menu.Reset();
+            menu.Apply();
 
-            Assert.Equal(TMP_InputField.ContentType.Password, menu.Field("AIFanChatter_APIKey").contentType);
-            Assert.Equal("a saved key is kept in its own file outside your saves", menu.Item("AIFanChatter_APIKey").tempText);
-            Assert.Equal(0, menu.Item("AIFanChatter_Enabled").tempValue);
+            Assert.Equal("0", TestGame.Saved("AIFanChatter_Enabled"));
+            Assert.Equal("sk-ant-saved-0000", TestGame.SecretFile("Tel AI Mods/anthropic"));
+            Assert.Equal("sk-openai-saved-0000", TestGame.SecretFile("Tel AI Mods/openai"));
         }
     }
 }

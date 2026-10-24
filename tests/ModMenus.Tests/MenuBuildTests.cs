@@ -394,19 +394,19 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
-        /// A password field shows asterisks; Apply still saves the text as typed.
+        /// A text field shows what's typed: masking is for secret rows. "password": false, which never did
+        /// anything, is harmless.
         /// </summary>
         [Theory]
-        [InlineData("", TMP_InputField.ContentType.Standard)]
-        [InlineData(""", "password": false""", TMP_InputField.ContentType.Standard)]
-        [InlineData(""", "password": true""", TMP_InputField.ContentType.Password)]
-        public void TextFieldIsMaskedOnlyWhenItAsks(string passwordField, TMP_InputField.ContentType expected)
+        [InlineData("")]
+        [InlineData(""", "password": false""")]
+        public void TextFieldShowsWhatsTyped(string passwordField)
         {
             Menu menu = Build($$"""[ { "type": "input", "varID": "A_Key", "labelID": "TEST__MOTTO"{{passwordField}} } ]""");
 
-            Assert.Equal(expected, menu.Field("A_Key").contentType);
-            menu.Type("A_Key", "secret-123");
-            Assert.Equal("secret-123", menu.Item("A_Key").tempText);
+            Assert.Equal(TMP_InputField.ContentType.Standard, menu.Field("A_Key").contentType);
+            menu.Type("A_Key", "typed-123");
+            Assert.Equal("typed-123", menu.Item("A_Key").tempText);
         }
 
         /// <summary>
@@ -455,6 +455,7 @@ namespace ModMenus.Tests
             JSON_TYPE_DROPDOWN => MENU_DROPDOWN_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
             JSON_TYPE_INPUT => MENU_INPUT_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
             JSON_TYPE_KEYBIND => MENU_KEYBIND_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
+            JSON_TYPE_SECRET => SecretRowName(item[JSON_FIELD_SECRETID]),
             string type => "unknown type " + type,
         };
 

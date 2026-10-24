@@ -257,19 +257,30 @@ namespace ModMenus
 
             /// <summary>
             /// Handles the apply action for the mod menu, saving every setting on every page, shown or not, and
-            /// the settings of the tabs whose "Use in all saves" box is ticked (see SaveSharedTabs).
+            /// the settings of the tabs whose "Use in all saves" box is ticked (see SaveSharedTabs). Secrets go
+            /// to their own files (see ApplySecret), and mods are told which changed once everything is saved.
             /// </summary>
             public void OnApply()
             {
                 CloseDropdownLists();
+                List<string> changedSecrets = new();
                 foreach(ModMenuItem item in GetComponentsInChildren<ModMenuItem>(true))
                 {
+                    if (item.secretID != null)
+                    {
+                        if (item.ApplySecret())
+                        {
+                            changedSecrets.Add(item.secretID);
+                        }
+                        continue;
+                    }
                     // A number field still being typed in hasn't been checked yet
                     item.Validate();
                     variables.Set(item.varID, item.CurrentValue);
                 }
                 // After the save's own copy: if the file can't be written, this save still has every change
                 SaveSharedTabs();
+                RaiseSecretsChanged(changedSecrets);
                 PopupManager.Close_();
             }
 
@@ -286,9 +297,9 @@ namespace ModMenus
             }
 
             /// <summary>
-            /// Keeps each ticked tab's settings, except rows with "password": true, for every save; an unticked
-            /// tab's are no longer shared, and each save keeps the values it has. Shared settings no row shows
-            /// (their mod is off) are kept, and so are tabs this menu doesn't have.
+            /// Keeps each ticked tab's settings for every save; an unticked tab's are no longer shared, and each
+            /// save keeps the values it has. Secret rows have no varID, so they're never here. Shared settings
+            /// no row shows (their mod is off) are kept, and so are tabs this menu doesn't have.
             /// </summary>
             private void SaveSharedTabs()
             {
@@ -325,7 +336,7 @@ namespace ModMenus
                     }
                     foreach (ModMenuItem item in row.page.GetComponentsInChildren<ModMenuItem>(true))
                     {
-                        if (item.varID != null && !item.password)
+                        if (item.varID != null)
                         {
                             values[item.varID] = item.CurrentValue;
                         }

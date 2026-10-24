@@ -108,6 +108,8 @@ namespace ModMenus
             {
                 resetImage.sprite = blueButton;
             }
+            // Rows copy it for their own buttons (see AddMenuSecret)
+            buttonTemplate = resetButton;
 
             // Attach custom component to Panel
             ModMenuManager panelModMenuManager = panelTransform.gameObject.AddComponent<ModMenuManager>();

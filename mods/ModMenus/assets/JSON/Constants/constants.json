@@ -20,8 +20,40 @@
 		text: "Also used for new games. Synced by Steam Cloud."
 	},
 	{
-		id: "MODMENU__EVERY_SAVE_HIDDEN_NOTE",
-		text: "Also used for new games. Synced by Steam Cloud. Hidden fields are not shared."
+		id: "MODMENU__EVERY_SAVE_SECRET_NOTE",
+		text: "API keys and other secret fields are used in every save on this PC. Steam Cloud doesn't sync them."
+	},
+	{
+		id: "MODMENU__SECRET_HINT_NEW",
+		text: "Paste your key"
+	},
+	{
+		id: "MODMENU__SECRET_HINT_REPLACE",
+		text: "Paste a new key to replace it"
+	},
+	{
+		id: "MODMENU__SECRET_REMOVE",
+		text: "Remove"
+	},
+	{
+		id: "MODMENU__SECRET_UNDO",
+		text: "Undo"
+	},
+	{
+		id: "MODMENU__SECRET_NONE",
+		text: "No key saved"
+	},
+	{
+		id: "MODMENU__SECRET_SAVED",
+		text: "A key is saved"
+	},
+	{
+		id: "MODMENU__SECRET_SAVED_ENDING",
+		text: "Saved key ending in ...{0}"
+	},
+	{
+		id: "MODMENU__SECRET_REMOVING",
+		text: "The saved key is removed when you press Apply."
 	},
 	{
 		id: "MODMENU__HOTKEYS",

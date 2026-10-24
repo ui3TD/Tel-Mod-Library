@@ -90,7 +90,7 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
-        /// The game's field lets only a number be typed. A password option can't apply as well, so it's ignored.
+        /// The game's field lets only a number be typed.
         /// </summary>
         [Fact]
         public void TheGamesFieldTakesOnlyANumber()
@@ -99,7 +99,6 @@ namespace ModMenus.Tests
                 [
                     { "type": "input", "varID": "A_Int", "labelID": "TEST__MOTTO", "inputType": "integer" },
                     { "type": "input", "varID": "A_Dec", "labelID": "TEST__MOTTO", "inputType": "decimal" },
-                    { "type": "input", "varID": "A_Pin", "labelID": "TEST__MOTTO", "inputType": "integer", "password": true },
                     { "type": "input", "varID": "A_Text", "labelID": "TEST__MOTTO", "inputType": "words" }
                 ]
                 """);
@@ -107,9 +106,7 @@ namespace ModMenus.Tests
 
             Assert.Equal(TMP_InputField.ContentType.IntegerNumber, menu.Field("A_Int").contentType);
             Assert.Equal(TMP_InputField.ContentType.DecimalNumber, menu.Field("A_Dec").contentType);
-            Assert.Equal(TMP_InputField.ContentType.IntegerNumber, menu.Field("A_Pin").contentType);
             Assert.Equal(TMP_InputField.ContentType.Standard, menu.Field("A_Text").contentType);
-            Assert.Contains(Log.Messages, m => m == "[ModMenus] The text field A_Pin takes a number, so its password option is ignored.");
         }
 
         [Fact]

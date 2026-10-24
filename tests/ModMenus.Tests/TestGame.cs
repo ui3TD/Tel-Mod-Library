@@ -55,6 +55,11 @@ namespace ModMenus.Tests
         /// </summary>
         public static readonly string SharedDir = Path.Combine(Path.GetTempPath(), "ModMenus.Tests.Shared");
 
+        /// <summary>
+        /// Where secrets are kept during tests, never the player's ModConfig folder.
+        /// </summary>
+        public static readonly string SecretDir = Path.Combine(Path.GetTempPath(), "ModMenus.Tests.Secrets");
+
         public static void Reset()
         {
             Seams.Reset();
@@ -71,11 +76,16 @@ namespace ModMenus.Tests
                 Directory.Delete(SharedDir, recursive: true);
             SharedSettings.FolderOverride = SharedDir;
             SharedSettings.ForgetLogged();
+            if (Directory.Exists(SecretDir))
+                Directory.Delete(SecretDir, recursive: true);
+            SecretStore.FolderOverride = SecretDir;
+            SecretStore.ClearCache();
 
             Checked = Seams.Fake<Sprite>();
             Empty = Seams.Fake<Sprite>();
             Seams.SettingsPopup = VanillaSettings();
             Seams.TextField = Seams.Prefab(RivalFirstNameField);
+            ModMenusUtils.buttonTemplate = Seams.Prefab(GameButton);
         }
 
         /// <summary>
@@ -99,11 +109,19 @@ namespace ModMenus.Tests
         /// </summary>
         public static Mods._mod AddShippedMod(string folder)
         {
+            LoadShippedTexts(folder);
+            return AddModAt(folder, Path.Combine(RepoRoot(), "mods", folder, "assets"), enabled: true);
+        }
+
+        /// <summary>
+        /// Loads one of our mods' constants into the language table, as the game does, without installing it.
+        /// </summary>
+        public static void LoadShippedTexts(string folder)
+        {
             string path = Path.Combine(RepoRoot(), "mods", folder, "assets");
             SimpleJSON.JSONNode constants = mainScript.ProcessInboundData(File.ReadAllText(Path.Combine(path, "JSON", "Constants", "constants.json")));
             for (int i = 0; i < constants.Count; i++)
                 Language.Data[constants[i]["id"]] = constants[i]["text"];
-            return AddModAt(folder, path, enabled: true);
         }
 
         private static Mods._mod AddModAt(string title, string path, bool enabled)
@@ -139,6 +157,25 @@ namespace ModMenus.Tests
         }
 
         public static string Saved(string varID) => variables.Get(varID);
+
+        /// <summary>
+        /// Saves a secret's file directly, as an earlier Apply or another mod would have.
+        /// </summary>
+        public static void SaveSecret(string secretID, string value)
+        {
+            string path = SecretStore.PathFor(secretID);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllText(path, value);
+        }
+
+        /// <summary>
+        /// A secret's file as saved, or null if there is none.
+        /// </summary>
+        public static string SecretFile(string secretID)
+        {
+            string path = SecretStore.PathFor(secretID);
+            return File.Exists(path) ? File.ReadAllText(path) : null;
+        }
 
         /// <summary>
         /// Saves a setting directly; variables.Set's first write of a name raises the task system's event.
@@ -233,6 +270,23 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
+        /// The menu's Reset to Defaults button, a copy of the game's, which rows copy for their own buttons: its
+        /// image and its label, which follows the game's language. Its click resets the menu.
+        /// </summary>
+        private static GameObject GameButton()
+        {
+            GameObject root = Seams.NewObject(RESETBUTTON_OBJ_NAME);
+            Seams.Add<Image>(root);
+            Button button = Seams.Add<Button>(root);
+            button.onClick = new Button.ButtonClickedEvent();
+            button.onClick.AddListener(() => throw new InvalidOperationException("The Reset button's listener ran"));
+            GameObject text = Seams.NewObject("Text", root);
+            Seams.Add<Lang_Button>(text).Constant = RESET_LABEL;
+            Seams.Add<TextMeshProUGUI>(text);
+            return root;
+        }
+
+        /// <summary>
         /// The rival name popup's first name field, which the mod copies for text fields: its label, and its
         /// text and underline in a masked container. Tab moves to the last name field, and typing renames the rival.
         /// </summary>
@@ -298,7 +352,7 @@ namespace ModMenus.Tests
         /// </summary>
         public List<GameObject> AllRows => Seams.ChildrenOf(Content).SelectMany(c => IsPage(c) ? Seams.ChildrenOf(c) : new List<GameObject> { c }).ToList();
 
-        public static bool IsScopeRow(GameObject row) => Seams.NameOf(row) is SCOPE_ROW_OBJ_NAME or SCOPE_NOTE_OBJ_NAME or SCOPE_LINE_OBJ_NAME;
+        public static bool IsScopeRow(GameObject row) => Seams.NameOf(row) is SCOPE_ROW_OBJ_NAME or SCOPE_NOTE_OBJ_NAME or SCOPE_SECRET_NOTE_OBJ_NAME or SCOPE_LINE_OBJ_NAME;
 
         /// <summary>
         /// Each page's "Use in all saves" box, in tab order.
@@ -443,6 +497,41 @@ namespace ModMenus.Tests
             Seams.SetInputText(field, text);
             Seams.Fire(field.onValueChanged, text);
         }
+
+        /// <summary>
+        /// A secret row's item, found by its secretID.
+        /// </summary>
+        public ModMenuItem Secret(string secretID) => Assert.Single(Items, item => item.secretID == secretID);
+
+        public GameObject SecretRow(string secretID) => Seams.OwnerOf(Secret(secretID));
+
+        public TMP_InputField SecretField(string secretID) => Secret(secretID).secretField;
+
+        /// <summary>
+        /// Types into a secret's field, as each key press does.
+        /// </summary>
+        public void TypeSecret(string secretID, string text)
+        {
+            TMP_InputField field = SecretField(secretID);
+            Seams.SetInputText(field, text);
+            Seams.Fire(field.onValueChanged, text);
+        }
+
+        /// <summary>
+        /// Clicks a secret's Remove (or Undo) button.
+        /// </summary>
+        public void ClickRemove(string secretID) => Seams.Fire(Secret(secretID).secretButton.onClick);
+
+        /// <summary>
+        /// Whether a secret's Remove button shows.
+        /// </summary>
+        public bool RemoveShown(string secretID) => Seams.IsActive(Seams.OwnerOf(Secret(secretID).secretButton));
+
+        public string SecretStatusText(string secretID) => Secret(secretID).secretStatus.text;
+
+        public string SecretHintText(string secretID) => Secret(secretID).secretHint.text;
+
+        public string SecretButtonText(string secretID) => Secret(secretID).secretButtonText.text;
 
         /// <summary>
         /// Types into a text field and leaves it, as clicking elsewhere does.
@@ -617,6 +706,15 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuDropdown))] = Stub(nameof(AddMenuDropdown)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.PlaceDropdownInRow))] = Stub(nameof(PlaceDropdownInRow)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuInput))] = Stub(nameof(AddMenuInput)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuSecret))] = Stub(nameof(AddMenuSecret)),
+            [AccessTools.Method(typeof(ModMenusUtils), "AddRowButton")] = Stub(nameof(AddRowButton)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.CloneButton), new[] { typeof(GameObject), typeof(Transform), typeof(string), typeof(string), typeof(bool), typeof(bool) })] = Stub(nameof(CloneButton)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.CloneButton), new[] { typeof(GameObject), typeof(Transform), typeof(string), typeof(string), typeof(Color), typeof(bool), typeof(bool) })] = Stub(nameof(CloneButtonColored)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.ShowSecret))] = Stub(nameof(ItemShowSecret)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderSecret))] = Stub(nameof(ItemRenderSecret)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onTypeSecret))] = Stub(nameof(ItemOnTypeSecret)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onClickSecretButton))] = Stub(nameof(ItemOnClickSecretButton)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.ApplySecret))] = Stub(nameof(ItemApplySecret)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddLabelWrap))] = Stub(nameof(AddLabelWrap)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddRowOptions))] = Stub(nameof(AddRowOptions)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.MakeNumberField))] = Stub(nameof(MakeNumberField)),
@@ -735,6 +833,8 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(CustomDropdown), nameof(CustomDropdown.SetupDropdown))] = Stub(nameof(StubSetupDropdown)),
             [AccessTools.Method(typeof(CustomDropdown), nameof(CustomDropdown.ChangeDropdownInfo))] = Stub(nameof(ChangeDropdownInfo)),
             [AccessTools.PropertySetter(typeof(TMP_InputField), nameof(TMP_InputField.characterLimit))] = Stub(nameof(StubSetCharacterLimit)),
+            [AccessTools.PropertySetter(typeof(TMP_InputField), nameof(TMP_InputField.placeholder))] = Stub(nameof(StubSetPlaceholder)),
+            [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.enableAutoSizing))] = Stub(nameof(StubSetAutoSizing)),
             [AccessTools.Method(typeof(TMP_InputField), nameof(TMP_InputField.SetTextWithoutNotify))] = Stub(nameof(SetInputText)),
             [AccessTools.Method(typeof(PopupManager), nameof(PopupManager.GetObject))] = Stub(nameof(StubGetPopup)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.VanillaTextField))] = Stub(nameof(StubTextField)),
@@ -803,7 +903,7 @@ namespace ModMenus.Tests
         public static GameObject CopyCheckbox(string name, string labelID, string labelText, Transform parentTransform) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static GameObject AddScopeRow(string tabID, bool hasHidden, Transform parentTransform) => throw NotInstalled();
+        public static GameObject AddScopeRow(string tabID, bool hasSecret, Transform parentTransform) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ScopeShow(ModMenuScopeRow instance, bool value) => throw NotInstalled();
@@ -822,7 +922,34 @@ namespace ModMenus.Tests
         public static void PlaceDropdownInRow(RectTransform dropdown, float labelHeight) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, bool password, Transform parentTransform) => throw NotInstalled();
+        public static GameObject AddMenuInput(string varID, string labelID, string def, int maxLength, Transform parentTransform) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject AddMenuSecret(string secretID, string labelID, Transform parentTransform) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject AddRowButton(string name, string labelID, Transform parent, out TextMeshProUGUI label) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject CloneButton(GameObject oldButton, Transform parent, string buttonName, string label, bool removeOrig, bool removeSprite) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject CloneButtonColored(GameObject oldButton, Transform parent, string buttonName, string label, Color col, bool removeOrig, bool removeSprite) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemShowSecret(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemRenderSecret(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemOnTypeSecret(ModMenuItem instance, string val) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemOnClickSecretButton(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool ItemApplySecret(ModMenuItem instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void AddLabelWrap(GameObject row, TextMeshProUGUI label, RectTransform box, RectTransform[] below) => throw NotInstalled();
@@ -1421,5 +1548,7 @@ namespace ModMenus.Tests
         }
 
         private static void StubSetCharacterLimit(TMP_InputField field, int value) => AccessTools.FieldRefAccess<TMP_InputField, int>("m_CharacterLimit")(field) = value;
+        private static void StubSetPlaceholder(TMP_InputField field, Graphic value) => AccessTools.FieldRefAccess<TMP_InputField, Graphic>("m_Placeholder")(field) = value;
+        private static void StubSetAutoSizing(TMP_Text text, bool value) => AccessTools.FieldRefAccess<TMP_Text, bool>("m_enableAutoSizing")(text) = value;
     }
 }

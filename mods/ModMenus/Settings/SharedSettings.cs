@@ -11,8 +11,8 @@ namespace ModMenus
     /// <summary>
     /// The settings of the tabs whose "Use in all saves" box is ticked, kept in one file beside the saves:
     /// %USERPROFILE%\AppData\LocalLow\Glitch Pitch\Idol Manager\data\modmenus_settings.txt. Steam Cloud syncs
-    /// everything in that folder, so the settings follow the player to other computers. Rows with "password": true
-    /// are never written here.
+    /// everything in that folder, so the settings follow the player to other computers. Secret rows are never
+    /// written here: they're kept in ModConfig, outside that folder (see SecretStore).
     /// </summary>
     /// <remarks>
     /// Plain text rather than JSON: the game's JSON reader drops empty strings, so an empty text field would read

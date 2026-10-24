@@ -21,7 +21,7 @@ The file is an array of UI elements, shown in order:
 ]
 ```
 
-Supported element types are text, sliders, checkboxes, dropdowns, text fields and keys. Each one's `labelID` is the ID of a text entry defined in `JSON/Constants/constants.json`.
+Supported element types are text, sliders, checkboxes, dropdowns, text fields, secrets and keys. Each one's `labelID` is the ID of a text entry defined in `JSON/Constants/constants.json`.
 
 ## How your settings appear
 
@@ -30,7 +30,7 @@ Supported element types are text, sliders, checkboxes, dropdowns, text fields an
 - A name too long for its tab is shown on two lines, ending in "…". The name at the top of your settings is always shown in full.
 - Apply saves every mod's settings, including those on tabs the player never opened. Cancel throws away every change.
 - Every tab has a "Use in all saves" box under its name, above your rows. While it's ticked, Apply also saves the tab's settings for all the player's saves and new games (see [How settings are stored](#how-settings-are-stored)).
-- Reset to Defaults sets the settings on the shown tab back to their defaults. Nothing is saved until the player presses Apply, and Cancel throws the defaults away. Rows with `"reset": false` keep their value. Reset doesn't untick "Use in all saves", so on a tab where it's ticked, Apply saves the defaults for all saves.
+- Reset to Defaults sets the settings on the shown tab back to their defaults. Nothing is saved until the player presses Apply, and Cancel throws the defaults away. Rows with `"reset": false` keep their value, and so do secrets. Reset doesn't untick "Use in all saves", so on a tab where it's ticked, Apply saves the defaults for all saves.
 - The menu fits the player's screen. A mod that makes the game's popups narrower than about 600 units cuts off the right end of sliders.
 - Keys (`"type": "keybind"`) are not on your tab. Every mod's keys are on one tab, Hotkeys, first in the column, under each mod's name; the game's own keys come first, under "Idol Manager". A text row just above a key goes with it, so it can head your keys. If all your rows are keys, your mod has no tab of its own. Reset to Defaults on the Hotkeys tab resets every mod's keys.
 
@@ -122,7 +122,6 @@ Text field elements let the player type free text, and output it to an in-game v
 - **labelID**: ID for text defined in `JSON/Constants/constants.json`
 - **defaultValue**: Optional string. Default: empty
 - **maxLength**: Optional integer, the most characters the player can type. Default: no limit
-- **password**: Optional boolean. When true, the field shows asterisks instead of what's typed, for API keys and other secrets. The value is still saved exactly as typed, in the save file, so a mod that must keep a secret out of saves has to move it elsewhere itself. It is never written to the file for "Use in all saves", so it is never shared between saves or synced by Steam Cloud; this holds for any row with `"password": true`, a number field's too. Default: false
 - **inputType**: Optional. `"integer"` lets the player type only a whole number, and `"decimal"` only a number with a decimal point. Without it, the field takes any text.
 - **minValue** and **maxValue**: Optional numbers, for a field with `inputType`. Each one works without the other.
 
@@ -131,7 +130,6 @@ A field with `inputType`:
 - When the player leaves the field, a number outside `minValue` and `maxValue` moves to the nearest limit, and a decimal in an `"integer"` field is rounded. An empty field goes back to the last number it held. Apply checks the field the same way, even if the player is still typing in it.
 - Its value is saved as plain digits (`"42"`, `"-3"`, `"0.5"`), like a slider's.
 - Its default is `defaultValue`, checked the same way. Without a `defaultValue`, it is 0, or the nearest limit if 0 is outside them.
-- The `password` option is ignored, because the field can only show the number.
 
 ```json
 {
@@ -144,6 +142,61 @@ A field with `inputType`:
 	"defaultValue": "500"
 }
 ```
+
+## type: secret
+
+```json
+{
+	"type": "secret",
+	"secretID": "My Mod/apikey",
+	"labelID": "MYMOD__MODMENU__APIKEY"
+}
+```
+
+Secret elements are for API keys, passwords and other secrets. The field shows asterisks and is write-only: it's empty every time the menu opens, and a saved secret is never shown again.
+
+- **secretID**: Where the secret is kept: a name, or a folder and a name separated by `/` (`"My Mod/apikey"`). Each part has only letters, digits, spaces, `-`, `_` and `.`, and doesn't start or end with a space or a dot. The secret is saved in `%USERPROFILE%\AppData\LocalLow\Glitch Pitch\Idol Manager\ModConfig\<secretID>.key`, here `ModConfig\My Mod\apikey.key`. Rows in several mods can use the same folder, or the same secret.
+- **labelID**: ID for text defined in `JSON/Constants/constants.json`
+- A secret row has no `varID`, `defaultValue` or `maxLength`. The options for every row (`ignore`, `enabledIf`) work as usual.
+
+What the player sees:
+
+- A grey hint in the empty field: "Paste your key", or "Paste a new key to replace it" once one is saved.
+- A line under the field. It says "No key saved", or "Saved key ending in ...x7Qa" for a secret of 16 characters or more. A shorter secret, such as a PIN, shows only "A key is saved", because its last characters would give most of it away.
+- A Remove button beside the field while a secret is saved. Pressing it changes it to Undo, and the line says the key is removed when the player presses Apply. Cancel or Undo keeps the secret.
+
+What Apply does:
+
+- Text typed in the field replaces the saved secret. Spaces at either end are dropped.
+- An empty field keeps the saved secret.
+- After Remove, Apply deletes the file. Typing a new secret after Remove cancels the removal, and Apply saves the new one.
+
+How secrets are kept:
+
+- A secret is never in a save, in the game's variables, or in the "Use in all saves" file, and Steam Cloud doesn't sync the `ModConfig` folder. So one secret works for every save on that PC, whether "Use in all saves" is ticked or not. A tab with a secret row says so under its "Use in all saves" box.
+- The file is plain text, not encrypted. Tell players where it is, and suggest a key with a spending limit where the service offers one.
+- Reset to Defaults leaves secrets alone, and `MenuValue` never returns them.
+
+Read a secret in your mod with `ModMenusUtils.GetSecret(secretID)`. It returns the secret, or null when none is saved. The file is read again only when it changes, so call `GetSecret` whenever you need the secret instead of keeping a copy. `ModMenusUtils.HasSecret(secretID)` says whether one is saved.
+
+To act when the player changes a secret, such as testing a new key, add a handler to `ModMenusUtils.SecretsChanged`, an `Action<string[]>` event. After an Apply that changed any secret, once every other setting is saved, it's raised with the IDs of the secrets that changed. A handler that throws is logged, and the other handlers still run.
+
+```csharp
+/// <summary>ModMenus' secrets, found by name so the mod also runs without ModMenus.</summary>
+private static void ListenForKeyChanges()
+{
+    EventInfo changed = AppDomain.CurrentDomain.GetAssemblies()
+        .Select(assembly => assembly.GetType("ModMenus.ModMenusUtils"))
+        .FirstOrDefault(type => type != null)?.GetEvent("SecretsChanged");
+    changed?.AddEventHandler(null, new Action<string[]>(ids =>
+    {
+        if (ids.Contains("My Mod/apikey"))
+            TestTheKey();
+    }));
+}
+```
+
+Add the handler once, when the game starts (for example in a `mainScript.Start` postfix), when every mod is loaded. Without ModMenus, your mod can read the same file itself: it's UTF-8 text holding only the secret. If your mod references ModMenus' DLL, use `ModMenus.ModMenusUtils.GetSecret` and `SecretsChanged` directly instead.
 
 ## type: keybind
 
@@ -196,7 +249,7 @@ These go on any element, alongside its `type`:
 
 - **ignore**: Optional boolean. When true, the element is left out of the menu. Useful for testing. Default: false
 - **enabledIf**: Optional varID of another setting. The row is shown only while that setting is on (see below).
-- **reset**: Optional boolean. When false, Reset to Defaults leaves the row as it is. Use it for rows the player wouldn't want reset, such as a typed name, or a key your mod removes when the field is applied empty. Default: true
+- **reset**: Optional boolean. When false, Reset to Defaults leaves the row as it is. Use it for rows the player wouldn't want reset, such as a typed name. Default: true
 
 ### Showing a setting only when another is on (`enabledIf`)
 
@@ -279,9 +332,10 @@ If your mod references ModMenus' DLL, call `ModMenus.ModMenusUtils.MenuValue` di
 ## How settings are stored
 
 - Settings are saved in the player's save file, so each save has its own. A new game starts with none saved.
-- A tab whose "Use in all saves" box is ticked also has its settings saved in `data\modmenus_settings.txt`, beside the saves in `%USERPROFILE%\AppData\LocalLow\Glitch Pitch\Idol Manager\`. Steam Cloud syncs that folder, so the settings follow the player to other computers. The file holds every row on the tab except rows with `"password": true`, which are never in it. The Hotkeys tab's box covers every mod's keys; your tab's box covers your other rows.
+- A tab whose "Use in all saves" box is ticked also has its settings saved in `data\modmenus_settings.txt`, beside the saves in `%USERPROFILE%\AppData\LocalLow\Glitch Pitch\Idol Manager\`. Steam Cloud syncs that folder, so the settings follow the player to other computers. The file holds every row on the tab except secrets. The Hotkeys tab's box covers every mod's keys; your tab's box covers your other rows.
 - When a game starts or a save loads, ModMenus gives each setting on a tab whose box is ticked the value from that file, replacing the save's. Every other setting with no saved value yet gets its default (the `defaultValue`, or the default described above for each type); other saved values are never changed. So with ModMenus installed, `variables.Get(varID)` returns your setting from the start.
 - While a tab's box is ticked, no save can keep different settings for that tab. When the player unticks it, each save keeps the settings it has at that moment.
+- Secrets are kept apart from every other setting, in their own files, the same for every save (see [type: secret](#type-secret)).
 - If a mod is turned off, its values in the file stay there for when it's back, but they aren't put into saves.
 - Without ModMenus, `variables.Get(varID)` returns null. If your mod works without ModMenus, give it a default in code that matches the `defaultValue` in your modmenu.json.
 - Values are saved as plain digits whatever the player's language (`"7"`, `"-2"`), so `int.Parse` and `float.Parse` with `CultureInfo.InvariantCulture` read them. A text field's value is the text itself.
@@ -295,7 +349,8 @@ ModMenus skips what it can't use and writes a warning to the BepInEx log, starti
 - A file that isn't valid JSON, or isn't a list (`[ ... ]`), is left out; other mods' settings still show.
 - A slider whose `defaultValue` is outside its range is left out.
 - A slider whose `step` isn't a whole number of at least 1 moves in steps of 1.
-- A text field with both `inputType` and `password` ignores `password`.
+- A text field with `"password": true` is left out. Text fields have no password option, so the row can't show or share a secret; use a [secret](#type-secret) row.
+- A secret whose `secretID` isn't a name, or a folder and a name, of the allowed characters is left out.
 - A dropdown whose saved or default choice is past the end of its list shows its last item.
 - A key whose `defaultValue` isn't a key starts with no key.
 
@@ -304,6 +359,7 @@ ModMenus skips what it can't use and writes a warning to the BepInEx log, starti
 - Retrieve values using `variables.Get(varID)`, where `varID` is the element's varID.
 - While the menu is open, `ModMenusUtils.MenuValue(varID)` gives what it shows, applied or not (see [Showing a setting for a value your mod works out](#showing-a-setting-for-a-value-your-mod-works-out-menuvalue)).
 - Implement null checks for `variables.Get(varID)` to handle cases where ModMenus is not installed, or the value was edited by hand.
+- Read secrets with `GetSecret`: they're never in the variables.
 - Read keys with `KeybindPressed` rather than `variables.Get`: it handles modifiers, defaults and the menu being open.
 - To add vertical spacing, use a text element with an empty labelID (`""`).
 - Always define text in `constants.json` for translation support. If absolutely necessary, ModMenus can handle raw text from labelID or itemIDList fields.

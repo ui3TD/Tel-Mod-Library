@@ -41,11 +41,15 @@ namespace ModMenus
                 {
                     ShowKeybind(SavedKeybind());
                 }
+                if (secretField != null)
+                {
+                    ShowSecret();
+                }
             }
 
             /// <summary>
             /// Shows the setting's default, unless its row has "reset": false, and keeps it until it's changed.
-            /// Called by Reset for every item on the shown tab.
+            /// Called by Reset for every item on the shown tab. A secret has no default, so Reset leaves it alone.
             /// </summary>
             public void ShowDefault()
             {
@@ -438,9 +442,6 @@ namespace ModMenus
 
             /// <summary>Whether Reset leaves the setting as it is: "reset": false.</summary>
             public bool noReset;
-
-            /// <summary>Whether the row has "password": true, so it's never in the settings used in all saves.</summary>
-            public bool password;
 
             /// <summary>
             /// A number field's type, "integer" or "decimal", and its limits; null for every other item.

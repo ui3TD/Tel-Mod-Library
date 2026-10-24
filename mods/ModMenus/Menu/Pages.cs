@@ -152,7 +152,7 @@ namespace ModMenus
             titleRow.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             JSONArray jsonArray = menu.Items;
-            AddScopeRow(menu.Mod.Title, HasHiddenField(jsonArray), parentTransform);
+            AddScopeRow(menu.Mod.Title, HasSecretField(jsonArray), parentTransform);
             for (int i = 0; i < jsonArray.Count; i++)
             {
                 AddMenuRow(jsonArray[i], parentTransform, dropdownLayer);
@@ -162,18 +162,17 @@ namespace ModMenus
         }
 
         /// <summary>
-        /// Whether a menu has a row with "password": true, whose value is never shared between saves.
+        /// The text field option that masked a field until ModMenus 5.0.0; secret rows replaced it.
         /// </summary>
-        public static bool HasHiddenField(JSONArray items)
+        private const string REMOVED_FIELD_PASSWORD = "password";
+
+        /// <summary>
+        /// Whether a text field still has "password": true, which ModMenus 5.0.0 removed. Its row is left out:
+        /// built without the option, the field would show its secret and share it in all saves.
+        /// </summary>
+        public static bool UsesRemovedPassword(JSONNode item)
         {
-            // Not TryGetDefault: reading a missing list adds an empty one to the item, and the row is built from it after
-            for (int i = 0; i < items.Count; i++)
-            {
-                JSONNode item = items[i];
-                if (!string.IsNullOrEmpty(item[JSON_FIELD_VARID]) && !item[JSON_FIELD_IGNORE].AsBool && item[JSON_FIELD_PASSWORD].AsBool)
-                    return true;
-            }
-            return false;
+            return (string)item[JSON_FIELD_TYPE] == JSON_TYPE_INPUT && !string.IsNullOrEmpty(item[REMOVED_FIELD_PASSWORD]) && item[REMOVED_FIELD_PASSWORD].AsBool;
         }
 
         /// <summary>
@@ -254,7 +253,22 @@ namespace ModMenus
                         return null;
 
                     id = item[JSON_FIELD_VARID];
-                    row = AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, item[JSON_FIELD_PASSWORD].AsBool, parentTransform);
+                    if (UsesRemovedPassword(item))
+                    {
+                        Debug.LogError("[ModMenus] The text field " + id + " uses password, which was removed in ModMenus 5.0.0, so it's left out. Use \"type\": \"secret\" instead.");
+                        return null;
+                    }
+                    row = AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, parentTransform);
+                    break;
+
+                case JSON_TYPE_SECRET:
+                    id = item[JSON_FIELD_SECRETID];
+                    if (!SecretStore.IsValidID(id))
+                    {
+                        Debug.LogError("[ModMenus] The secret row " + label + " is left out: its secretID \"" + id + "\" isn't a name, or a folder and a name, of letters, digits, spaces, '-', '_' and '.'.");
+                        return null;
+                    }
+                    row = AddMenuSecret(id, label, parentTransform);
                     break;
 
                 case JSON_TYPE_KEYBIND:
@@ -279,8 +293,7 @@ namespace ModMenus
 
         /// <summary>
         /// Gives a row the options any item can have, which the row builders don't take: a slider's step, a
-        /// number field's limits, "reset": false, "password": true (which also keeps a number field out of the
-        /// settings used in all saves), and enabledIf.
+        /// number field's limits, "reset": false, and enabledIf.
         /// </summary>
         public static void AddRowOptions(JSONNode item, GameObject row)
         {
@@ -289,7 +302,6 @@ namespace ModMenus
             {
                 // Only an explicit false: a missing field reads as false too
                 menuItem.noReset = !string.IsNullOrEmpty(item[JSON_FIELD_RESET]) && !item[JSON_FIELD_RESET].AsBool;
-                menuItem.password = item[JSON_FIELD_PASSWORD].AsBool;
 
                 if (menuItem.settingsSlider != null)
                 {
@@ -302,10 +314,6 @@ namespace ModMenus
                 if (menuItem.inputField != null && GetNumberField(item, out string inputType, out float? min, out float? max))
                 {
                     MakeNumberField(menuItem, inputType, min, max);
-                    if (item[JSON_FIELD_PASSWORD].AsBool)
-                    {
-                        Debug.LogWarning("[ModMenus] The text field " + menuItem.varID + " takes a number, so its password option is ignored.");
-                    }
                 }
             }
 
@@ -318,7 +326,7 @@ namespace ModMenus
 
         /// <summary>
         /// Makes a text field take only a number: the game's field lets only a number be typed, and leaving the
-        /// field moves it inside its limits (see ValidNumber). This replaces the password option.
+        /// field moves it inside its limits (see ValidNumber).
         /// </summary>
         public static void MakeNumberField(ModMenuItem menuItem, string inputType, float? min, float? max)
         {

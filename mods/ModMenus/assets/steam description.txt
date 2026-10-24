@@ -16,21 +16,21 @@ Change any of the game's keys on the Hotkeys tab, the debug cheats included: cli
 
 [h2]Use in all saves[/h2]
 Tick Use in all saves at the top of a tab to use that tab's settings in all your saves and new games. Steam Cloud syncs them to your other computers. While it's ticked, every save uses the same settings for that tab. Untick it and each save keeps the settings it has then.
-Hidden text fields, such as API keys, are never shared between saves or synced by Steam Cloud, even when Use in all saves is ticked.
+API keys and other secrets are kept on your PC outside your saves: one key works in every save, and Steam Cloud never syncs it.
 
 [h2]For Modders[/h2]
-ModMenus reads 'JSON/Mod Menu/modmenu.json' in your mod to build its settings menu. Supported elements: text, sliders (with optional steps), checkboxes, dropdowns, text fields (with optional number checking), and keys. Any row can be shown only while another setting is on.
+ModMenus reads 'JSON/Mod Menu/modmenu.json' in your mod to build its settings menu. Supported elements: text, sliders (with optional steps), checkboxes, dropdowns, text fields (with optional number checking), secret fields for API keys, and keys. Any row can be shown only while another setting is on.
 
 Format, examples and tips: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/ModMenus.md]ModMenus modding guide[/url]
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 5.0.0: API key fields show the end of the saved key and have a Remove button; keys stay out of saves
 - 4.4.0: Use in all saves box on each tab: its settings go to every save, synced by Steam Cloud.
 - 4.3.1: Safer alongside other mods: errors stay contained, and a popup number clash is handled.
 - 4.3.0: Hotkeys tab: change the game's keys and mods' keys, see keys used twice; debug cheats switch.
 - 4.2.0: Mods can read the open menu's values before Apply, to show or hide their own settings.
-- 4.1.0: Reset to Defaults button; slider steps; settings shown only when needed; number fields.
 - 4.0.0: Each mod's settings get their own tab, sorted A to Z; the menu fits every screen shape.
 - 3.0.0: New password option for text fields: API keys and other secrets show as asterisks.
 - 2.0.0: New text field setting, so mods can let players type a name or other text.

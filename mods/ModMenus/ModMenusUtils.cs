@@ -18,10 +18,11 @@ namespace ModMenus
 
         public const string NO_SETTINGS_LABEL = "MODMENU__NO_SETTINGS";
 
-        // A tab's "Use in all saves" box, and the note under it while it's ticked
+        // A tab's "Use in all saves" box, the note under it while it's ticked, and the line about secrets
+        // on a tab that has one, whether the box is ticked or not
         public const string EVERY_SAVE_LABEL = "MODMENU__EVERY_SAVE";
         public const string EVERY_SAVE_NOTE = "MODMENU__EVERY_SAVE_NOTE";
-        public const string EVERY_SAVE_HIDDEN_NOTE = "MODMENU__EVERY_SAVE_HIDDEN_NOTE";
+        public const string EVERY_SAVE_SECRET_NOTE = "MODMENU__EVERY_SAVE_SECRET_NOTE";
 
         // Each row is as tall as what it draws, so the gaps between rows are all MENUITEM_SPACING.
         // A blank text row is MENUITEM_HEIGHT; a text row is as tall as its lines.
@@ -76,7 +77,6 @@ namespace ModMenus
         public const string JSON_FIELD_IGNORE = "ignore";
         public const string JSON_FIELD_LIST = "itemIDList";
         public const string JSON_FIELD_MAXLEN = "maxLength";
-        public const string JSON_FIELD_PASSWORD = "password";
         public const string JSON_FIELD_STEP = "step";
         public const string JSON_FIELD_ENABLEDIF = "enabledIf";
         public const string JSON_FIELD_INPUTTYPE = "inputType";
@@ -115,6 +115,7 @@ namespace ModMenus
         public const string DIVIDER_OBJ_NAME = "ModMenuDivider";
         public const string SCOPE_ROW_OBJ_NAME = "ModMenuEverySave";
         public const string SCOPE_NOTE_OBJ_NAME = "ModMenuEverySaveNote";
+        public const string SCOPE_SECRET_NOTE_OBJ_NAME = "ModMenuEverySaveSecretNote";
         public const string SCOPE_LINE_OBJ_NAME = "ModMenuEverySaveLine";
     }
 }

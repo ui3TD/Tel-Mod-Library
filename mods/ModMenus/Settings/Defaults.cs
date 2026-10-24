@@ -12,8 +12,7 @@ namespace ModMenus
         /// <summary>
         /// Gives every setting in the enabled mods' menus the value it starts the game with: the one used in all
         /// saves, if its tab's "Use in all saves" box is ticked (see SharedSettings), replacing the save's;
-        /// otherwise the saved one, or the default if none is saved. Rows with "password": true never take a
-        /// shared value.
+        /// otherwise the saved one, or the default if none is saved. Secret rows have no variable (see SecretStore).
         /// </summary>
         public static void ApplySavedSettings()
         {
@@ -32,7 +31,7 @@ namespace ModMenus
                         if (!TryGetDefault(settings[i], out string varID, out string value))
                             continue;
 
-                        if (!settings[i][JSON_FIELD_PASSWORD].AsBool && shared.TryGetValue(varID, out string sharedValue))
+                        if (shared.TryGetValue(varID, out string sharedValue))
                         {
                             SetDirectly(varID, sharedValue);
                         }
@@ -69,7 +68,8 @@ namespace ModMenus
         /// <summary>
         /// The value a setting starts at, written as Apply would save it. Only settings the menu shows have one:
         /// text, ignored items, items missing their varID or labelID, sliders whose default is outside their
-        /// range and dropdowns without items are left out, as they are from the menu. A slider's default moves
+        /// range, dropdowns without items and text fields with the removed password option are left out, as they
+        /// are from the menu. Secret rows have no varID, so they never have one. A slider's default moves
         /// to its nearest step, and a number field's is checked as typing is.
         /// </summary>
         public static bool TryGetDefault(JSONNode item, out string varID, out string value)
@@ -108,6 +108,8 @@ namespace ModMenus
                     return true;
 
                 case JSON_TYPE_INPUT:
+                    if (UsesRemovedPassword(item))
+                        return false;
                     value = GetNumberField(item, out string inputType, out float? low, out float? high)
                         ? NumberDefault(GetInputDefault(item), inputType == JSON_INPUT_INTEGER, low, high)
                         : GetInputDefault(item);

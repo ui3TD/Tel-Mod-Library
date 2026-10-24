@@ -177,6 +177,22 @@ namespace ModMenus.Tests
             }
         }
 
+        /// <summary>
+        /// Our secret rows have IDs ModMenus can keep, and no row uses the removed password option, which would
+        /// leave the row out.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(MenuFiles))]
+        public void SecretRowsHaveValidIDsAndNoRowUsesPassword(string menu)
+        {
+            foreach (JSONNode item in Items(menu))
+            {
+                Assert.False(ModMenusUtils.UsesRemovedPassword(item), $"{item[ModMenusUtils.JSON_FIELD_VARID]} uses password");
+                if (item[ModMenusUtils.JSON_FIELD_TYPE].Value == ModMenusUtils.JSON_TYPE_SECRET)
+                    Assert.True(SecretStore.IsValidID(item[ModMenusUtils.JSON_FIELD_SECRETID]), $"secretID {item[ModMenusUtils.JSON_FIELD_SECRETID]}");
+            }
+        }
+
         [Fact]
         public void SettingIdsAreUniqueAcrossMods()
         {

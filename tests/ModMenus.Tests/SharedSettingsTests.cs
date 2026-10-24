@@ -9,7 +9,7 @@ namespace ModMenus.Tests
 {
     /// <summary>
     /// Added in 4.4.0: each tab's "Use in all saves" box. Apply keeps a ticked tab's settings in a file beside the
-    /// saves, which every save and new game then takes when it starts; rows with "password": true are never in it.
+    /// saves, which every save and new game then takes when it starts. Secrets are never in it.
     /// </summary>
     public class SharedSettingsTests
     {
@@ -25,7 +25,7 @@ namespace ModMenus.Tests
                 { "type": "slider", "varID": "A_Volume", "labelID": "TEST__VOLUME", "minValue": 1, "maxValue": 20, "defaultValue": 5 },
                 { "type": "checkbox", "varID": "A_Loud", "labelID": "TEST__LOUD", "defaultValue": true },
                 { "type": "input", "varID": "A_Motto", "labelID": "TEST__MOTTO", "defaultValue": "Hello" },
-                { "type": "input", "varID": "A_Key", "labelID": "TEST__MOTTO", "password": true },
+                { "type": "secret", "secretID": "Mod A/key", "labelID": "TEST__MOTTO" },
                 { "type": "keybind", "varID": "A_Pause", "labelID": "TEST__PICK", "defaultValue": "Space" }
             ]
             """;
@@ -75,7 +75,7 @@ namespace ModMenus.Tests
             // The line separates the box and its note from the mod's rows
             Assert.Equal(new[] { "ModMenuText_MODMENU__HOTKEYS", SCOPE_ROW_OBJ_NAME, SCOPE_NOTE_OBJ_NAME, SCOPE_LINE_OBJ_NAME }, menu.AllShownRowNames.Take(4));
             menu.ClickTab("Mod A");
-            Assert.Equal(new[] { "ModMenuText_Mod A", SCOPE_ROW_OBJ_NAME, SCOPE_NOTE_OBJ_NAME, SCOPE_LINE_OBJ_NAME, "ModMenuSlider_A_Volume" }, menu.AllShownRowNames.Take(5));
+            Assert.Equal(new[] { "ModMenuText_Mod A", SCOPE_ROW_OBJ_NAME, SCOPE_NOTE_OBJ_NAME, SCOPE_SECRET_NOTE_OBJ_NAME, SCOPE_LINE_OBJ_NAME, "ModMenuSlider_A_Volume" }, menu.AllShownRowNames.Take(6));
             Assert.Equal(3, menu.ScopeRows.Count);
             foreach (string tab in new[] { "Hotkeys", "Mod A", "Mod B" })
             {
@@ -98,35 +98,78 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
-        /// Only a tab with a row with "password": true says that row isn't shared.
+        /// A tab with a secret row says, ticked or not, that secrets are the same in every save. The note under the
+        /// box is the same on every tab.
         /// </summary>
         [Fact]
-        public void TheNoteSaysHiddenFieldsAreNotSharedOnlyWhereTheTabHasOne()
+        public void OnlyATabWithASecretSaysSecretsAreInEverySave()
         {
             Menu menu = OpenMenu();
 
-            Assert.Equal(EVERY_SAVE_HIDDEN_NOTE, Seams.GetComponent<TextMeshProUGUI>(menu.ScopeRow("Mod A").note).text);
-            Assert.Equal(EVERY_SAVE_NOTE, Seams.GetComponent<TextMeshProUGUI>(menu.ScopeRow("Mod B").note).text);
-            Assert.Equal(EVERY_SAVE_NOTE, Seams.GetComponent<TextMeshProUGUI>(menu.ScopeRow("Hotkeys").note).text);
+            foreach (string tab in new[] { "Hotkeys", "Mod A", "Mod B" })
+                Assert.Equal(EVERY_SAVE_NOTE, Seams.GetComponent<TextMeshProUGUI>(menu.ScopeRow(tab).note).text);
+            menu.ClickTab("Mod A");
+            Assert.Contains(SCOPE_SECRET_NOTE_OBJ_NAME, menu.AllShownRowNames);
+            menu.ClickTab("Mod B");
+            Assert.DoesNotContain(SCOPE_SECRET_NOTE_OBJ_NAME, menu.AllShownRowNames);
+            menu.ClickTab("Hotkeys");
+            Assert.DoesNotContain(SCOPE_SECRET_NOTE_OBJ_NAME, menu.AllShownRowNames);
+        }
+
+        /// <summary>
+        /// The line about secrets shows whether the box is ticked or not.
+        /// </summary>
+        [Fact]
+        public void TheSecretLineShowsTickedOrNot()
+        {
+            Menu menu = OpenMenu();
+            menu.ClickTab("Mod A");
+            UnityEngine.GameObject line = Assert.Single(menu.AllRows, row => Seams.NameOf(row) == SCOPE_SECRET_NOTE_OBJ_NAME);
+
+            Assert.True(Seams.IsActive(line));
+            menu.ClickScope("Mod A");
+            Assert.True(Seams.IsActive(line));
+            Assert.Equal(EVERY_SAVE_SECRET_NOTE, Seams.GetComponent<TextMeshProUGUI>(line).text);
+        }
+
+        /// <summary>
+        /// Ticking or unticking the box never touches a secret, and neither does a save loading.
+        /// </summary>
+        [Fact]
+        public void TheBoxNeverChangesASecret()
+        {
+            TestGame.SaveSecret("Mod A/key", "sk-saved-key-0000");
+            Menu menu = OpenMenu();
+            menu.ClickScope("Mod A");
+            menu.Apply();
+
+            menu = Reopen();
+            menu.ClickScope("Mod A");
+            menu.Apply();
+            LoadSave();
+
+            Assert.Equal("sk-saved-key-0000", TestGame.SecretFile("Mod A/key"));
         }
 
         [Fact]
-        public void ApplyKeepsATickedTabsSettingsExceptPasswordRowsAndKeys()
+        public void ApplyKeepsATickedTabsSettingsButNotSecretsOrKeys()
         {
             Menu menu = OpenMenu();
             menu.ClickTab("Mod A");
             menu.Drag("A_Volume", 1f);
             menu.Type("A_Motto", "Changed");
-            menu.Type("A_Key", "secret");
+            menu.TypeSecret("Mod A/key", "sk-typed-key-0000");
             menu.ClickScope("Mod A");
 
             menu.Apply();
 
             Assert.Equal(new[] { "Mod A" }, File().Keys);
             Assert.Equal(new Dictionary<string, string> { ["A_Volume"] = "20", ["A_Loud"] = "1", ["A_Motto"] = "Changed" }, File()["Mod A"]);
-            Assert.DoesNotContain("secret", System.IO.File.ReadAllText(SharedSettings.FilePath));
-            // The save has every change, the password field's too, as before
-            Assert.Equal(("20", "secret"), (TestGame.Saved("A_Volume"), TestGame.Saved("A_Key")));
+            Assert.DoesNotContain("sk-typed", System.IO.File.ReadAllText(SharedSettings.FilePath));
+            // The secret is in its own file, not in the save
+            Assert.Equal("20", TestGame.Saved("A_Volume"));
+            Assert.DoesNotContain(variables.variable, v => v.value != null && v.value.Contains("sk-typed"));
+            Assert.Equal("sk-typed-key-0000", TestGame.SecretFile("Mod A/key"));
         }
 
         [Fact]
@@ -176,11 +219,11 @@ namespace ModMenus.Tests
             menu.ClickScope("Mod A");
             menu.Apply();
 
-            LoadSave(("A_Volume", "3"), ("A_Key", "other"), ("B_Level", "40"));
+            LoadSave(("A_Volume", "3"), ("B_Level", "40"));
 
             Assert.Equal("20", TestGame.Saved("A_Volume"));
-            // Not shared: the password row and the unticked tab keep the save's own values
-            Assert.Equal(("other", "40"), (TestGame.Saved("A_Key"), TestGame.Saved("B_Level")));
+            // Not shared: the unticked tab keeps the save's own values
+            Assert.Equal("40", TestGame.Saved("B_Level"));
         }
 
         [Fact]
@@ -194,7 +237,7 @@ namespace ModMenus.Tests
 
             LoadSave();
 
-            Assert.Equal(("Ours", "", "7"), (TestGame.Saved("A_Motto"), TestGame.Saved("A_Key"), TestGame.Saved("B_Level")));
+            Assert.Equal(("Ours", "7"), (TestGame.Saved("A_Motto"), TestGame.Saved("B_Level")));
         }
 
         /// <summary>
@@ -312,32 +355,58 @@ namespace ModMenus.Tests
             Assert.Equal(new Dictionary<string, string> { ["Z_Key"] = "K", ["B_Jump"] = "H" }, File()[HOTKEYS_LABEL]);
         }
 
+        private const string ModP = """
+            [
+                { "type": "input", "varID": "P_Key", "labelID": "TEST__MOTTO", "password": true },
+                { "type": "slider", "varID": "P_Volume", "labelID": "TEST__VOLUME" }
+            ]
+            """;
+
         /// <summary>
-        /// A password row's value in the file (written by hand, say) never reaches a save.
+        /// A text field that still has the removed password option is left out, so a save's value for it is never
+        /// shared...
         /// </summary>
         [Fact]
-        public void APasswordRowNeverTakesASharedValue()
+        public void ARemovedPasswordRowIsNeverShared()
         {
-            SharedSettings.Save(new() { ["Mod A"] = new() { ["A_Key"] = "leaked", ["A_Volume"] = "8" } });
-            TestGame.AddMod("Mod A", ModA);
+            TestGame.AddMod("Mod P", ModP);
+            TestGame.Save("P_Key", "mine");
+            Menu menu = Reopen();
+            menu.ClickScope("Mod P");
 
-            LoadSave(("A_Key", "mine"));
+            menu.Apply();
 
-            Assert.Equal(("mine", "8"), (TestGame.Saved("A_Key"), TestGame.Saved("A_Volume")));
+            Assert.Equal(new Dictionary<string, string> { ["P_Volume"] = "50" }, File()["Mod P"]);
+        }
+
+        /// <summary>
+        /// ...and never takes a shared value or a starting value, even from a file written by hand.
+        /// </summary>
+        [Fact]
+        public void ARemovedPasswordRowNeverTakesASharedValue()
+        {
+            SharedSettings.Save(new() { ["Mod P"] = new() { ["P_Key"] = "leaked", ["P_Volume"] = "8" } });
+            TestGame.AddMod("Mod P", ModP);
+
+            LoadSave(("P_Key", "mine"));
+            Assert.Equal(("mine", "8"), (TestGame.Saved("P_Key"), TestGame.Saved("P_Volume")));
+            LoadSave();
+            Assert.Null(TestGame.Saved("P_Key"));
         }
 
         [Fact]
-        public void AIFanChattersKeyIsNeverShared()
+        public void AIFanChattersKeysAreNeverShared()
         {
             TestGame.AddShippedMod("AI Fan Chatter");
             Menu menu = Reopen();
-            menu.Type("AIFanChatter_APIKey", "sk-secret");
+            menu.TypeSecret("Tel AI Mods/openai", "sk-typed-key-0000");
             menu.ClickScope("AI Fan Chatter");
 
             menu.Apply();
 
-            Assert.DoesNotContain("AIFanChatter_APIKey", File()["AI Fan Chatter"].Keys);
+            Assert.DoesNotContain("sk-typed", System.IO.File.ReadAllText(SharedSettings.FilePath));
             Assert.Contains("AIFanChatter_PerWeek", File()["AI Fan Chatter"].Keys);
+            Assert.Equal("sk-typed-key-0000", TestGame.SecretFile("Tel AI Mods/openai"));
         }
 
         [Fact]
@@ -347,7 +416,7 @@ namespace ModMenus.Tests
 
             Assert.Equal("Use in all saves", ShownText(EVERY_SAVE_LABEL));
             Assert.Equal("Also used for new games. Synced by Steam Cloud.", ShownText(EVERY_SAVE_NOTE));
-            Assert.Equal("Also used for new games. Synced by Steam Cloud. Hidden fields are not shared.", ShownText(EVERY_SAVE_HIDDEN_NOTE));
+            Assert.Equal("API keys and other secret fields are used in every save on this PC. Steam Cloud doesn't sync them.", ShownText(EVERY_SAVE_SECRET_NOTE));
         }
 
         /// <summary>

@@ -102,6 +102,24 @@ namespace FastForward.Tests
             Assert.Equal((Color)mainScript.white32, LabelColor(Main.TimeControls_Normal));
         }
 
+        /// <summary>
+        /// Added in 1.4.0: with ModMenus, the player's key from its key row switches it on, and 4 doesn't.
+        /// </summary>
+        [Fact]
+        public void TheKeyRowsKey_SwitchesOnSuperFast()
+        {
+            Seams.TimeSetState(Main, mainScript._time_state.normal);
+            ModMenusKeys.HasKeybind = varID => varID == Controls_Update.KEY_VAR;
+            ModMenusKeys.KeybindPressed = varID => false;
+
+            Press(KeyCode.Alpha4);
+            Assert.Equal(mainScript._time_state.normal, staticVars.timeState);
+
+            ModMenusKeys.KeybindPressed = varID => varID == Controls_Update.KEY_VAR;
+            Press(KeyCode.L);
+            Assert.Equal((mainScript._time_state.fast, 1000d), (staticVars.timeState, staticVars.dateTimeAddMinutesPerSecond));
+        }
+
         [Fact]
         public void Pressing4_UsesSpeedSetting()
         {

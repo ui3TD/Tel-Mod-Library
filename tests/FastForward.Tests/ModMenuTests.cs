@@ -11,17 +11,28 @@ namespace FastForward.Tests
     /// </summary>
     public class ModMenuTests
     {
-        private static SimpleJSON.JSONNode Setting([CallerFilePath] string testFile = "")
+        private static SimpleJSON.JSONNode Setting(string varID, [CallerFilePath] string testFile = "")
         {
             string menu = Path.Combine(Path.GetDirectoryName(testFile), "..", "..", "mods", "FastForward", "assets", "JSON", "Mod Menu", "modmenu.json");
             SimpleJSON.JSONArray items = SimpleJSON.JSON.Parse(File.ReadAllText(menu)).AsArray;
-            return Enumerable.Range(0, items.Count).Select(i => items[i]).Single(i => i["varID"].Value == FastForward.VARID);
+            return Enumerable.Range(0, items.Count).Select(i => items[i]).Single(i => i["varID"].Value == varID);
         }
 
         [Fact]
         public void CodeDefault_MatchesTheModMenu()
         {
-            Assert.Equal(FastForward.DEFAULT_MULTIPLIER, Setting()["defaultValue"].AsDouble);
+            Assert.Equal(FastForward.DEFAULT_MULTIPLIER, Setting(FastForward.VARID)["defaultValue"].AsDouble);
+        }
+
+        /// <summary>
+        /// Added in 1.4.0: the super-fast key is a key row, 4 unless the player changes it.
+        /// </summary>
+        [Fact]
+        public void TheKeyIsAKeyRowWithTheCodesDefault()
+        {
+            SimpleJSON.JSONNode key = Setting(Controls_Update.KEY_VAR);
+
+            Assert.Equal(("keybind", "Alpha4"), (key["type"].Value, key["defaultValue"].Value));
         }
     }
 }

@@ -2,6 +2,10 @@
 	{
 		id: "FASTFORWARD__MODMENU__MULT",
 		text: "Speed Multiplier"
+	},
+	{
+		id: "FASTFORWARD__MODMENU__KEY",
+		text: "Super fast speed"
 	}
 
 ]

@@ -116,6 +116,7 @@ namespace FastForward.Tests
             [AccessTools.Method(typeof(mainScript), nameof(mainScript.Time_SetState))] = Stub(nameof(TimeSetState)),
             [AccessTools.Method(typeof(FastForward), nameof(FastForward.ApplySuperFast))] = Stub(nameof(ApplySuperFast)),
             [AccessTools.Method(typeof(FastForward), nameof(FastForward.SetFastButtonColor))] = Stub(nameof(SetFastButtonColor)),
+            [AccessTools.Method(typeof(ModMenusKeys), nameof(ModMenusKeys.Pressed))] = Stub(nameof(Pressed)),
         };
 
         private static readonly Lazy<bool> Installed = new(() =>
@@ -125,6 +126,7 @@ namespace FastForward.Tests
             Copy(AccessTools.Method(typeof(FastForward), nameof(FastForward.ApplySuperFast)), nameof(ApplySuperFast));
             Copy(AccessTools.Method(typeof(TimeControlButton_OnClick), nameof(TimeControlButton_OnClick.Prefix)), nameof(OnClickPrefix));
             Copy(AccessTools.Method(typeof(Controls_Update), nameof(Controls_Update.Postfix)), nameof(UpdatePostfix));
+            Copy(AccessTools.Method(typeof(ModMenusKeys), nameof(ModMenusKeys.Pressed)), nameof(Pressed));
             return true;
         });
 
@@ -146,6 +148,9 @@ namespace FastForward.Tests
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void UpdatePostfix() => throw NotInstalled();
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool Pressed(string varID, KeyCode key) => throw NotInstalled();
+
         private static Exception NotInstalled() => new InvalidOperationException("Call Seams.Reset first");
 
         /// <summary>
@@ -158,6 +163,8 @@ namespace FastForward.Tests
             KeysDown.Clear();
             Components.Clear();
             Colors.Clear();
+            // No ModMenus: it isn't loaded in tests
+            ModMenusKeys.Reset(looked: true);
         }
 
         /// <summary>

@@ -108,15 +108,19 @@ namespace FastForward
     [HarmonyPatch(typeof(Controls), nameof(Controls.Update))]
     public class Controls_Update
     {
+        /// <summary>The key row for the super-fast key in ModMenus, where the player can change it from 4.</summary>
+        public const string KEY_VAR = "FastForward_Key";
+
         /// <summary>
-        /// Postfix method to add hotkey functionality for speeding up time when pressing the '4' key.
+        /// Postfix method to add hotkey functionality for speeding up time when pressing the super-fast key: 4,
+        /// unless the player changes it on ModMenus' Hotkeys tab.
         /// </summary>
         public static void Postfix()
         {
             if (mainScript.IsBlockingHotkeys())
                 return;
 
-            if (Input.GetKeyDown(KeyCode.Alpha4))
+            if (ModMenusKeys.Pressed(KEY_VAR, KeyCode.Alpha4))
             {
                 ApplySuperFast(Camera.main != null ? Camera.main.GetComponent<mainScript>() : null);
             }

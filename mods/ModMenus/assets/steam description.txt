@@ -14,6 +14,10 @@ Try one of these mods to see it in action:
 [h2]Hotkeys[/h2]
 Change any of the game's keys on the Hotkeys tab, the debug cheats included: click a key's box, then press the new key. Keys from other mods are there too. A key used twice where both work is marked in red. Tick Enable Debug Cheats to use the cheat keys without pressing F7 five times.
 
+[h2]Use in all saves[/h2]
+Tick Use in all saves at the top of a tab to use that tab's settings in all your saves and new games. Steam Cloud syncs them to your other computers. While it's ticked, every save uses the same settings for that tab. Untick it and each save keeps the settings it has then.
+Hidden text fields, such as API keys, are never shared between saves or synced by Steam Cloud, even when Use in all saves is ticked.
+
 [h2]For Modders[/h2]
 ModMenus reads 'JSON/Mod Menu/modmenu.json' in your mod to build its settings menu. Supported elements: text, sliders (with optional steps), checkboxes, dropdowns, text fields (with optional number checking), and keys. Any row can be shown only while another setting is on.
 
@@ -22,6 +26,7 @@ Format, examples and tips: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/ma
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 4.4.0: Use in all saves box on each tab: its settings go to every save, synced by Steam Cloud.
 - 4.3.1: Safer alongside other mods: errors stay contained, and a popup number clash is handled.
 - 4.3.0: Hotkeys tab: change the game's keys and mods' keys, see keys used twice; debug cheats switch.
 - 4.2.0: Mods can read the open menu's values before Apply, to show or hide their own settings.

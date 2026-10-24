@@ -50,6 +50,11 @@ namespace ModMenus.Tests
 
         private static readonly string ModsDir = Path.Combine(Path.GetTempPath(), "ModMenus.Tests");
 
+        /// <summary>
+        /// Where the settings used in all saves are kept during tests, never the player's data folder.
+        /// </summary>
+        public static readonly string SharedDir = Path.Combine(Path.GetTempPath(), "ModMenus.Tests.Shared");
+
         public static void Reset()
         {
             Seams.Reset();
@@ -62,6 +67,10 @@ namespace ModMenus.Tests
                 Language.Data[label.Key] = label.Value;
             if (Directory.Exists(ModsDir))
                 Directory.Delete(ModsDir, recursive: true);
+            if (Directory.Exists(SharedDir))
+                Directory.Delete(SharedDir, recursive: true);
+            SharedSettings.FolderOverride = SharedDir;
+            SharedSettings.ForgetLogged();
 
             Checked = Seams.Fake<Sprite>();
             Empty = Seams.Fake<Sprite>();
@@ -279,16 +288,44 @@ namespace ModMenus.Tests
 
         /// <summary>
         /// The rows of every page, shown or not, in tab order and then from the top of each page down; or the
-        /// rows straight in the menu when there are no pages.
+        /// rows straight in the menu when there are no pages. Every page's "Use in all saves" box, its note and
+        /// the line under them are left out (see AllRows), so these are the title and the mod's own rows.
         /// </summary>
-        public List<GameObject> Rows => Seams.ChildrenOf(Content).SelectMany(c => IsPage(c) ? Seams.ChildrenOf(c) : new List<GameObject> { c }).ToList();
+        public List<GameObject> Rows => AllRows.Where(row => !IsScopeRow(row)).ToList();
+
+        /// <summary>
+        /// Every row of every page, with each page's "Use in all saves" box, its note and the line under them.
+        /// </summary>
+        public List<GameObject> AllRows => Seams.ChildrenOf(Content).SelectMany(c => IsPage(c) ? Seams.ChildrenOf(c) : new List<GameObject> { c }).ToList();
+
+        public static bool IsScopeRow(GameObject row) => Seams.NameOf(row) is SCOPE_ROW_OBJ_NAME or SCOPE_NOTE_OBJ_NAME or SCOPE_LINE_OBJ_NAME;
+
+        /// <summary>
+        /// Each page's "Use in all saves" box, in tab order.
+        /// </summary>
+        public List<ModMenuScopeRow> ScopeRows => AllRows.Select(Seams.GetComponent<ModMenuScopeRow>).Where(row => row is not null).ToList();
+
+        /// <summary>
+        /// The "Use in all saves" box on the tab showing this name.
+        /// </summary>
+        public ModMenuScopeRow ScopeRow(string tabText) => Seams.GetComponentInChildren<ModMenuScopeRow>(Tab(tabText).page);
+
+        /// <summary>
+        /// Clicks the "Use in all saves" box on the tab showing this name.
+        /// </summary>
+        public void ClickScope(string tabText) => Seams.Fire(Seams.GetComponentInChildren<Button>(Seams.OwnerOf(ScopeRow(tabText))).onClick);
+
+        /// <summary>
+        /// Every row of the shown page, in order, with its "Use in all saves" box, its note and the line under them.
+        /// </summary>
+        public List<string> AllShownRowNames => Seams.ChildrenOf(ShownPage).Select(Seams.NameOf).ToList();
 
         /// <summary>
         /// The page shown: the only one active.
         /// </summary>
         public GameObject ShownPage => Assert.Single(Pages, Seams.IsActive);
 
-        public List<string> ShownRowNames => Seams.ChildrenOf(ShownPage).Select(Seams.NameOf).ToList();
+        public List<string> ShownRowNames => Seams.ChildrenOf(ShownPage).Where(row => !IsScopeRow(row)).Select(Seams.NameOf).ToList();
 
         public List<ModMenuTab> Tabs => Seams.ChildrenOf(TabContainer).Select(Seams.GetComponent<ModMenuTab>).ToList();
 
@@ -335,7 +372,7 @@ namespace ModMenus.Tests
         /// <summary>
         /// The rows of the shown page the player sees: those not hidden by enabledIf.
         /// </summary>
-        public List<string> VisibleRowNames => Seams.ChildrenOf(ShownPage).Where(Seams.IsActive).Select(Seams.NameOf).ToList();
+        public List<string> VisibleRowNames => Seams.ChildrenOf(ShownPage).Where(row => Seams.IsActive(row) && !IsScopeRow(row)).Select(Seams.NameOf).ToList();
 
         /// <summary>
         /// Whether a setting's row is shown, rather than hidden by enabledIf.
@@ -364,9 +401,16 @@ namespace ModMenus.Tests
         /// <summary>
         /// Whether the checkbox shows a tick.
         /// </summary>
-        public bool IsTicked(string varID)
+        public bool IsTicked(string varID) => IsDrawnTicked(Checkbox(varID));
+
+        /// <summary>
+        /// Whether the "Use in all saves" box on the tab showing this name is drawn ticked.
+        /// </summary>
+        public bool IsScopeTicked(string tabText) => IsDrawnTicked(Seams.GetComponent<Checkbox_Text>(Seams.OwnerOf(ScopeRow(tabText))));
+
+        private static bool IsDrawnTicked(Checkbox_Text checkbox)
         {
-            Sprite shown = Seams.GetComponent<Image>(Checkbox(varID).Checkbox).sprite;
+            Sprite shown = Seams.GetComponent<Image>(checkbox.Checkbox).sprite;
             Assert.True(ReferenceEquals(shown, TestGame.Checked) || ReferenceEquals(shown, TestGame.Empty), "The checkbox was never drawn");
             return ReferenceEquals(shown, TestGame.Checked);
         }
@@ -566,6 +610,10 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuText))] = Stub(nameof(AddMenuText)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuSlider))] = Stub(nameof(AddMenuSlider)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuCheckbox))] = Stub(nameof(AddMenuCheckbox)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.CopyCheckbox))] = Stub(nameof(CopyCheckbox)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddScopeRow))] = Stub(nameof(AddScopeRow)),
+            [AccessTools.Method(typeof(ModMenuScopeRow), nameof(ModMenuScopeRow.Show))] = Stub(nameof(ScopeShow)),
+            [AccessTools.Method(typeof(ModMenuScopeRow), nameof(ModMenuScopeRow.OnClick))] = Stub(nameof(ScopeOnClick)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuDropdown))] = Stub(nameof(AddMenuDropdown)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.PlaceDropdownInRow))] = Stub(nameof(PlaceDropdownInRow)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuInput))] = Stub(nameof(AddMenuInput)),
@@ -606,6 +654,8 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnApply))] = Stub(nameof(ManagerOnApply)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnCancel))] = Stub(nameof(ManagerOnCancel)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnReset))] = Stub(nameof(ManagerOnReset)),
+            [AccessTools.Method(typeof(ModMenuManager), "ShowSharedTabs")] = Stub(nameof(ManagerShowSharedTabs)),
+            [AccessTools.Method(typeof(ModMenuManager), "SaveSharedTabs")] = Stub(nameof(ManagerSaveSharedTabs)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnSettingChanged))] = Stub(nameof(ManagerOnSettingChanged)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.RefreshConditions))] = Stub(nameof(ManagerRefreshConditions)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.RefreshClashes))] = Stub(nameof(ManagerRefreshClashes)),
@@ -748,6 +798,24 @@ namespace ModMenus.Tests
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static GameObject AddMenuCheckbox(string varID, string labelID, bool def, Transform parentTransform) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject CopyCheckbox(string name, string labelID, string labelText, Transform parentTransform) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject AddScopeRow(string tabID, bool hasHidden, Transform parentTransform) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ScopeShow(ModMenuScopeRow instance, bool value) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ScopeOnClick(ModMenuScopeRow instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerShowSharedTabs(ModMenuManager instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerSaveSharedTabs(ModMenuManager instance) => throw NotInstalled();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static GameObject AddMenuDropdown(string varID, string labelID, string[] itemLabelIDs, int def, Transform parentTransform, Transform dropdownLayer) => throw NotInstalled();

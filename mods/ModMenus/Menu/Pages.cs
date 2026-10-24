@@ -133,7 +133,7 @@ namespace ModMenus
         }
 
         /// <summary>
-        /// Adds a mod's page: its name, then its rows in file order.
+        /// Adds a mod's page: its name, its "Use in all saves" box (see AddScopeRow), then its rows in file order.
         /// </summary>
         /// <param name="menu">The mod and its settings.</param>
         /// <param name="pageParent">Where the page goes: the settings' scroll area.</param>
@@ -152,12 +152,28 @@ namespace ModMenus
             titleRow.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             JSONArray jsonArray = menu.Items;
+            AddScopeRow(menu.Mod.Title, HasHiddenField(jsonArray), parentTransform);
             for (int i = 0; i < jsonArray.Count; i++)
             {
                 AddMenuRow(jsonArray[i], parentTransform, dropdownLayer);
             }
 
             return page;
+        }
+
+        /// <summary>
+        /// Whether a menu has a row with "password": true, whose value is never shared between saves.
+        /// </summary>
+        public static bool HasHiddenField(JSONArray items)
+        {
+            // Not TryGetDefault: reading a missing list adds an empty one to the item, and the row is built from it after
+            for (int i = 0; i < items.Count; i++)
+            {
+                JSONNode item = items[i];
+                if (!string.IsNullOrEmpty(item[JSON_FIELD_VARID]) && !item[JSON_FIELD_IGNORE].AsBool && item[JSON_FIELD_PASSWORD].AsBool)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -263,7 +279,8 @@ namespace ModMenus
 
         /// <summary>
         /// Gives a row the options any item can have, which the row builders don't take: a slider's step, a
-        /// number field's limits, "reset": false, and enabledIf.
+        /// number field's limits, "reset": false, "password": true (which also keeps a number field out of the
+        /// settings used in all saves), and enabledIf.
         /// </summary>
         public static void AddRowOptions(JSONNode item, GameObject row)
         {
@@ -272,6 +289,7 @@ namespace ModMenus
             {
                 // Only an explicit false: a missing field reads as false too
                 menuItem.noReset = !string.IsNullOrEmpty(item[JSON_FIELD_RESET]) && !item[JSON_FIELD_RESET].AsBool;
+                menuItem.password = item[JSON_FIELD_PASSWORD].AsBool;
 
                 if (menuItem.settingsSlider != null)
                 {

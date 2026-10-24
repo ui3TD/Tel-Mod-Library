@@ -120,19 +120,8 @@ namespace ModMenus
             // Define default value
             bool savedValue = TryParseSetting(variables.Get(varID), out float savedFloat) ? savedFloat != 0 : def;
 
-            // Set up main object
-            GameObject existingUIObj = PopupManager.GetObject(PopupManager._type.main_menu_settings).transform.Find("Panel").Find("Tabs").Find("TabButton (3)").GetComponent<TabButton>().TabToOpen;
-            GameObject existingCheckbox = existingUIObj.transform.Find("Run In Background").gameObject;
-            GameObject modCheckbox = UnityEngine.Object.Instantiate(existingCheckbox, parentTransform);
-            RectTransform modCheckboxRect = modCheckbox.GetComponent<RectTransform>();
-            SetRectTransform(modCheckboxRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            modCheckboxRect.sizeDelta = new Vector2(400f, CHECKBOX_HEIGHT);
-            modCheckbox.name = MENU_CHECKBOX_OBJ_NAME + "_" + varID;
-
-            // Configure Checkbox_Text
+            GameObject modCheckbox = CopyCheckbox(MENU_CHECKBOX_OBJ_NAME + "_" + varID, labelID, labelText, parentTransform);
             Checkbox_Text modCheckboxCheck = modCheckbox.GetComponent<Checkbox_Text>();
-            modCheckboxCheck.Title.GetComponent<Lang_Button>().Constant = labelID;
-            modCheckboxCheck.Title.GetComponent<TextMeshProUGUI>().text = labelText;
 
             // Configure ModMenuItem
             ModMenuItem modCheckboxMenuItem = modCheckbox.AddComponent<ModMenuItem>();
@@ -149,6 +138,69 @@ namespace ModMenus
             AddLabelWrap(modCheckbox, modCheckboxCheck.Title.GetComponent<TextMeshProUGUI>(), (RectTransform)modCheckbox.transform.Find("Checkbox"));
 
             return modCheckbox;
+        }
+
+        /// <summary>
+        /// A copy of the game's Run In Background checkbox with this label, as wide as a row. Its click does
+        /// nothing until the caller adds what it does.
+        /// </summary>
+        public static GameObject CopyCheckbox(string name, string labelID, string labelText, Transform parentTransform)
+        {
+            GameObject existingUIObj = PopupManager.GetObject(PopupManager._type.main_menu_settings).transform.Find("Panel").Find("Tabs").Find("TabButton (3)").GetComponent<TabButton>().TabToOpen;
+            GameObject existingCheckbox = existingUIObj.transform.Find("Run In Background").gameObject;
+            GameObject modCheckbox = UnityEngine.Object.Instantiate(existingCheckbox, parentTransform);
+            RectTransform modCheckboxRect = modCheckbox.GetComponent<RectTransform>();
+            SetRectTransform(modCheckboxRect, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            modCheckboxRect.sizeDelta = new Vector2(400f, CHECKBOX_HEIGHT);
+            modCheckbox.name = name;
+
+            Checkbox_Text modCheckboxCheck = modCheckbox.GetComponent<Checkbox_Text>();
+            modCheckboxCheck.Title.GetComponent<Lang_Button>().Constant = labelID;
+            modCheckboxCheck.Title.GetComponent<TextMeshProUGUI>().text = labelText;
+
+            // Vanilla's would turn Run In Background on or off
+            Button button = modCheckbox.GetComponentInChildren<Button>();
+            button.onClick = new Button.ButtonClickedEvent();
+            return modCheckbox;
+        }
+
+        /// <summary>
+        /// Adds a tab's "Use in all saves" box, under the tab's title, the note under it that shows while it's
+        /// ticked, and a line under them that separates them from the mod's rows. It isn't a setting: Reset leaves
+        /// it alone, and Apply keeps it in SharedSettings, not in the save.
+        /// </summary>
+        /// <param name="tabID">The tab, as SharedSettings keeps it.</param>
+        /// <param name="hasHidden">Whether the tab has a row with "password": true, which the note says isn't shared.</param>
+        /// <param name="parentTransform">Where the row goes: the tab's page.</param>
+        public static GameObject AddScopeRow(string tabID, bool hasHidden, Transform parentTransform)
+        {
+            GameObject row = CopyCheckbox(SCOPE_ROW_OBJ_NAME, EVERY_SAVE_LABEL, ShownText(EVERY_SAVE_LABEL), parentTransform);
+            Checkbox_Text check = row.GetComponent<Checkbox_Text>();
+
+            GameObject note = AddMenuText(hasHidden ? EVERY_SAVE_HIDDEN_NOTE : EVERY_SAVE_NOTE, parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
+            note.name = SCOPE_NOTE_OBJ_NAME;
+            note.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            // As thick as the line between the tabs and the settings
+            GameObject line = new(SCOPE_LINE_OBJ_NAME, typeof(RectTransform), typeof(Image));
+            line.transform.SetParent(parentTransform, false);
+            ((RectTransform)line.transform).sizeDelta = new Vector2(200, 1);
+            Image lineImage = line.GetComponent<Image>();
+            lineImage.color = DividerColor();
+            lineImage.raycastTarget = false;
+
+            ModMenuScopeRow scope = row.AddComponent<ModMenuScopeRow>();
+            scope.tabID = tabID;
+            scope.page = parentTransform;
+            scope.checkboxText = check;
+            scope.note = note;
+            scope.Show(false);
+
+            Button button = row.GetComponentInChildren<Button>();
+            button.onClick.AddListener(scope.OnClick);
+
+            AddLabelWrap(row, check.Title.GetComponent<TextMeshProUGUI>(), (RectTransform)row.transform.Find("Checkbox"));
+            return row;
         }
 
         /// <summary>

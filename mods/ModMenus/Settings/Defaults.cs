@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using SimpleJSON;
 using System.IO;
@@ -9,10 +10,12 @@ namespace ModMenus
     partial class ModMenusUtils
     {
         /// <summary>
-        /// Saves the default of every setting in the enabled mods' menus that has no saved value yet.
-        /// Saved values are never changed.
+        /// Gives every setting in the enabled mods' menus the value it starts the game with: the one used in all
+        /// saves, if its tab's "Use in all saves" box is ticked (see SharedSettings), replacing the save's;
+        /// otherwise the saved one, or the default if none is saved. Rows with "password": true never take a
+        /// shared value.
         /// </summary>
-        public static void SaveMissingDefaults()
+        public static void ApplySavedSettings()
         {
             // The enabled mods may have changed since the keys' defaults were read
             ForgetKeybindDefaults();
@@ -20,24 +23,47 @@ namespace ModMenus
             // This runs while a game is starting or loading, so nothing may escape into the game's own code
             try
             {
+                Dictionary<string, string> shared = SharedSettings.Values(SharedSettings.Load());
                 foreach (MenuSource menu in FindMenus())
                 {
                     JSONArray settings = menu.Items;
                     for (int i = 0; i < settings.Count; i++)
                     {
-                        if (!TryGetDefault(settings[i], out string varID, out string value) || variables.Get(varID) != null)
+                        if (!TryGetDefault(settings[i], out string varID, out string value))
                             continue;
 
-                        // Not variables.Set: it also logs every setting and raises the game's task events,
-                        // which may not be ready while the scene is starting.
-                        variables.variable.Add(new variables._variable { name = varID, value = value });
+                        if (!settings[i][JSON_FIELD_PASSWORD].AsBool && shared.TryGetValue(varID, out string sharedValue))
+                        {
+                            SetDirectly(varID, sharedValue);
+                        }
+                        else if (variables.Get(varID) == null)
+                        {
+                            SetDirectly(varID, value);
+                        }
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.LogError("[ModMenus] Couldn't save the settings' defaults: " + e);
+                Debug.LogError("[ModMenus] Couldn't set the settings' starting values: " + e);
             }
+        }
+
+        /// <summary>
+        /// Saves a setting without variables.Set: it also logs every setting and raises the game's task events,
+        /// which may not be ready while the scene is starting.
+        /// </summary>
+        private static void SetDirectly(string varID, string value)
+        {
+            foreach (variables._variable saved in variables.variable)
+            {
+                if (saved != null && saved.name == varID)
+                {
+                    saved.value = value;
+                    return;
+                }
+            }
+            variables.variable.Add(new variables._variable { name = varID, value = value });
         }
 
         /// <summary>

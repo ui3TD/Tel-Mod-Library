@@ -40,7 +40,7 @@ namespace ModMenus.Tests
         {
             TestGame.AddMod("Mod A", MenuJson);
 
-            ModMenusUtils.SaveMissingDefaults();
+            ModMenusUtils.ApplySavedSettings();
 
             Assert.Equal(new Dictionary<string, string>
             {
@@ -76,7 +76,7 @@ namespace ModMenus.Tests
             Dictionary<string, string> applied = AllSaved();
 
             variables.variable.Clear();
-            ModMenusUtils.SaveMissingDefaults();
+            ModMenusUtils.ApplySavedSettings();
 
             Assert.Equal(applied, AllSaved());
         }
@@ -88,7 +88,7 @@ namespace ModMenus.Tests
             TestGame.Save("A_Volume", "12");
             TestGame.Save("A_Loud", "0");
 
-            ModMenusUtils.SaveMissingDefaults();
+            ModMenusUtils.ApplySavedSettings();
 
             Assert.Equal("12", TestGame.Saved("A_Volume"));
             Assert.Equal("0", TestGame.Saved("A_Loud"));
@@ -117,7 +117,7 @@ namespace ModMenus.Tests
                 ]
                 """);
 
-            ModMenusUtils.SaveMissingDefaults();
+            ModMenusUtils.ApplySavedSettings();
 
             Assert.Empty(variables.variable);
         }
@@ -129,7 +129,7 @@ namespace ModMenus.Tests
             TestGame.AddMod("Mod B", """[ { "type": "checkbox", "varID": """);
             TestGame.AddMod("Mod C", """[ { "type": "checkbox", "varID": "C_Loud", "labelID": "TEST__LOUD" } ]""");
 
-            ModMenusUtils.SaveMissingDefaults();
+            ModMenusUtils.ApplySavedSettings();
 
             Assert.Equal(new Dictionary<string, string> { ["C_Loud"] = "0" }, AllSaved());
         }
@@ -160,7 +160,7 @@ namespace ModMenus.Tests
             TestGame.AddShippedMod(mod);
             Menu menu = TestGame.BuildMenu();
 
-            ModMenusUtils.SaveMissingDefaults();
+            ModMenusUtils.ApplySavedSettings();
 
             Assert.Equal(menu.Items.Select(i => i.varID).OrderBy(id => id), AllSaved().Keys.OrderBy(id => id));
         }

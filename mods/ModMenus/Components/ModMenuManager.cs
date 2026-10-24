@@ -41,7 +41,8 @@ namespace ModMenus
 
             /// <summary>
             /// Called when the mod menu is enabled. Every page shows the saved settings, whether or not
-            /// its tab is shown; what was changed and not applied is gone.
+            /// its tab is shown, and whether its "Use in all saves" box is ticked; what was changed and not
+            /// applied is gone.
             /// </summary>
             public void OnEnable()
             {
@@ -56,6 +57,7 @@ namespace ModMenus
                     item.ShowSaved();
                 }
                 settingAll = false;
+                ShowSharedTabs();
                 RefreshConditions();
                 RefreshClashes();
                 if (scroll != null)
@@ -254,7 +256,8 @@ namespace ModMenus
             }
 
             /// <summary>
-            /// Handles the apply action for the mod menu, saving every setting on every page, shown or not.
+            /// Handles the apply action for the mod menu, saving every setting on every page, shown or not, and
+            /// the settings of the tabs whose "Use in all saves" box is ticked (see SaveSharedTabs).
             /// </summary>
             public void OnApply()
             {
@@ -265,7 +268,71 @@ namespace ModMenus
                     item.Validate();
                     variables.Set(item.varID, item.CurrentValue);
                 }
+                // After the save's own copy: if the file can't be written, this save still has every change
+                SaveSharedTabs();
                 PopupManager.Close_();
+            }
+
+            /// <summary>
+            /// Ticks the "Use in all saves" box of each tab whose settings are shared.
+            /// </summary>
+            private void ShowSharedTabs()
+            {
+                Dictionary<string, Dictionary<string, string>> shared = SharedSettings.Load();
+                foreach (ModMenuScopeRow row in GetComponentsInChildren<ModMenuScopeRow>(true))
+                {
+                    row.Show(shared.ContainsKey(row.tabID));
+                }
+            }
+
+            /// <summary>
+            /// Keeps each ticked tab's settings, except rows with "password": true, for every save; an unticked
+            /// tab's are no longer shared, and each save keeps the values it has. Shared settings no row shows
+            /// (their mod is off) are kept, and so are tabs this menu doesn't have.
+            /// </summary>
+            private void SaveSharedTabs()
+            {
+                ModMenuScopeRow[] rows = GetComponentsInChildren<ModMenuScopeRow>(true);
+                if (rows.Length == 0)
+                {
+                    return;
+                }
+                HashSet<string> shown = new();
+                foreach (ModMenuItem item in GetComponentsInChildren<ModMenuItem>(true))
+                {
+                    shown.Add(item.varID);
+                }
+
+                Dictionary<string, Dictionary<string, string>> shared = SharedSettings.Load();
+                foreach (ModMenuScopeRow row in rows)
+                {
+                    shared.TryGetValue(row.tabID, out Dictionary<string, string> before);
+                    shared.Remove(row.tabID);
+                    if (!row.ticked)
+                    {
+                        continue;
+                    }
+                    Dictionary<string, string> values = new();
+                    if (before != null)
+                    {
+                        foreach (KeyValuePair<string, string> setting in before)
+                        {
+                            if (!shown.Contains(setting.Key))
+                            {
+                                values[setting.Key] = setting.Value;
+                            }
+                        }
+                    }
+                    foreach (ModMenuItem item in row.page.GetComponentsInChildren<ModMenuItem>(true))
+                    {
+                        if (item.varID != null && !item.password)
+                        {
+                            values[item.varID] = item.CurrentValue;
+                        }
+                    }
+                    shared[row.tabID] = values;
+                }
+                SharedSettings.Save(shared);
             }
 
         }

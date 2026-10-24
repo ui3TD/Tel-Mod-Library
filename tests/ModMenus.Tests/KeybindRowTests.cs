@@ -352,7 +352,7 @@ namespace ModMenus.Tests
             TestGame.AddMod("Mod A", ModA);
             TestGame.AddMod("Mod C", """[ { "type": "keybind", "varID": "C_Bad", "labelID": "TEST__LOUD", "defaultValue": "Banana" } ]""");
 
-            SaveMissingDefaults();
+            ApplySavedSettings();
 
             Assert.Equal(("Space", "F5", KEY_NONE), (TestGame.Saved("A_Pause"), TestGame.Saved("A_Save"), TestGame.Saved("C_Bad")));
         }

@@ -160,10 +160,18 @@ namespace ModMenus
             GameObject divider = new(DIVIDER_OBJ_NAME, typeof(RectTransform), typeof(Image));
             divider.transform.SetParent(panel, false);
             Image image = divider.GetComponent<Image>();
-            Color32 blue = mainScript.blue32;
-            image.color = new Color32(blue.r, blue.g, blue.b, 77);
+            image.color = DividerColor();
             image.raycastTarget = false;
             return divider;
+        }
+
+        /// <summary>
+        /// The colour of the menu's lines: the game's blue, faint.
+        /// </summary>
+        public static Color32 DividerColor()
+        {
+            Color32 blue = mainScript.blue32;
+            return new Color32(blue.r, blue.g, blue.b, 77);
         }
     }
 }

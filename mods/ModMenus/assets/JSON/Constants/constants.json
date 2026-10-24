@@ -12,6 +12,18 @@
 		text: "Reset to Defaults"
 	},
 	{
+		id: "MODMENU__EVERY_SAVE",
+		text: "Use in all saves"
+	},
+	{
+		id: "MODMENU__EVERY_SAVE_NOTE",
+		text: "Also used for new games. Synced by Steam Cloud."
+	},
+	{
+		id: "MODMENU__EVERY_SAVE_HIDDEN_NOTE",
+		text: "Also used for new games. Synced by Steam Cloud. Hidden fields are not shared."
+	},
+	{
 		id: "MODMENU__HOTKEYS",
 		text: "Hotkeys"
 	},

@@ -18,6 +18,11 @@ namespace ModMenus
 
         public const string NO_SETTINGS_LABEL = "MODMENU__NO_SETTINGS";
 
+        // A tab's "Use in all saves" box, and the note under it while it's ticked
+        public const string EVERY_SAVE_LABEL = "MODMENU__EVERY_SAVE";
+        public const string EVERY_SAVE_NOTE = "MODMENU__EVERY_SAVE_NOTE";
+        public const string EVERY_SAVE_HIDDEN_NOTE = "MODMENU__EVERY_SAVE_HIDDEN_NOTE";
+
         // Each row is as tall as what it draws, so the gaps between rows are all MENUITEM_SPACING.
         // A blank text row is MENUITEM_HEIGHT; a text row is as tall as its lines.
         public const int MENUITEM_HEIGHT = 40;
@@ -108,5 +113,8 @@ namespace ModMenus
         public const string TAB_OBJ_NAME = "ModMenuTab";
         public const string PAGE_OBJ_NAME = "ModMenuPage";
         public const string DIVIDER_OBJ_NAME = "ModMenuDivider";
+        public const string SCOPE_ROW_OBJ_NAME = "ModMenuEverySave";
+        public const string SCOPE_NOTE_OBJ_NAME = "ModMenuEverySaveNote";
+        public const string SCOPE_LINE_OBJ_NAME = "ModMenuEverySaveLine";
     }
 }

@@ -29,7 +29,8 @@ Supported element types are text, sliders, checkboxes, dropdowns, text fields an
 - The tab shows your mod's `title` from `info.json` (or the text it names in `constants.json`). Tabs are in alphabetical order of these names.
 - A name too long for its tab is shown on two lines, ending in "…". The name at the top of your settings is always shown in full.
 - Apply saves every mod's settings, including those on tabs the player never opened. Cancel throws away every change.
-- Reset to Defaults sets the settings on the shown tab back to their defaults. Nothing is saved until the player presses Apply, and Cancel throws the defaults away. Rows with `"reset": false` keep their value.
+- Every tab has a "Use in all saves" box under its name, above your rows. While it's ticked, Apply also saves the tab's settings for all the player's saves and new games (see [How settings are stored](#how-settings-are-stored)).
+- Reset to Defaults sets the settings on the shown tab back to their defaults. Nothing is saved until the player presses Apply, and Cancel throws the defaults away. Rows with `"reset": false` keep their value. Reset doesn't untick "Use in all saves", so on a tab where it's ticked, Apply saves the defaults for all saves.
 - The menu fits the player's screen. A mod that makes the game's popups narrower than about 600 units cuts off the right end of sliders.
 - Keys (`"type": "keybind"`) are not on your tab. Every mod's keys are on one tab, Hotkeys, first in the column, under each mod's name; the game's own keys come first, under "Idol Manager". A text row just above a key goes with it, so it can head your keys. If all your rows are keys, your mod has no tab of its own. Reset to Defaults on the Hotkeys tab resets every mod's keys.
 
@@ -121,7 +122,7 @@ Text field elements let the player type free text, and output it to an in-game v
 - **labelID**: ID for text defined in `JSON/Constants/constants.json`
 - **defaultValue**: Optional string. Default: empty
 - **maxLength**: Optional integer, the most characters the player can type. Default: no limit
-- **password**: Optional boolean. When true, the field shows asterisks instead of what's typed, for API keys and other secrets. The value is still saved exactly as typed, in the save file, so a mod that must keep a secret out of saves has to move it elsewhere itself. Default: false
+- **password**: Optional boolean. When true, the field shows asterisks instead of what's typed, for API keys and other secrets. The value is still saved exactly as typed, in the save file, so a mod that must keep a secret out of saves has to move it elsewhere itself. It is never written to the file for "Use in all saves", so it is never shared between saves or synced by Steam Cloud; this holds for any row with `"password": true`, a number field's too. Default: false
 - **inputType**: Optional. `"integer"` lets the player type only a whole number, and `"decimal"` only a number with a decimal point. Without it, the field takes any text.
 - **minValue** and **maxValue**: Optional numbers, for a field with `inputType`. Each one works without the other.
 
@@ -278,7 +279,10 @@ If your mod references ModMenus' DLL, call `ModMenus.ModMenusUtils.MenuValue` di
 ## How settings are stored
 
 - Settings are saved in the player's save file, so each save has its own. A new game starts with none saved.
-- When a game starts or a save loads, ModMenus saves the default of every setting that has no saved value yet (the `defaultValue`, or the default described above for each type). Saved values are never changed. So with ModMenus installed, `variables.Get(varID)` returns your setting from the start.
+- A tab whose "Use in all saves" box is ticked also has its settings saved in `data\modmenus_settings.txt`, beside the saves in `%USERPROFILE%\AppData\LocalLow\Glitch Pitch\Idol Manager\`. Steam Cloud syncs that folder, so the settings follow the player to other computers. The file holds every row on the tab except rows with `"password": true`, which are never in it. The Hotkeys tab's box covers every mod's keys; your tab's box covers your other rows.
+- When a game starts or a save loads, ModMenus gives each setting on a tab whose box is ticked the value from that file, replacing the save's. Every other setting with no saved value yet gets its default (the `defaultValue`, or the default described above for each type); other saved values are never changed. So with ModMenus installed, `variables.Get(varID)` returns your setting from the start.
+- While a tab's box is ticked, no save can keep different settings for that tab. When the player unticks it, each save keeps the settings it has at that moment.
+- If a mod is turned off, its values in the file stay there for when it's back, but they aren't put into saves.
 - Without ModMenus, `variables.Get(varID)` returns null. If your mod works without ModMenus, give it a default in code that matches the `defaultValue` in your modmenu.json.
 - Values are saved as plain digits whatever the player's language (`"7"`, `"-2"`), so `int.Parse` and `float.Parse` with `CultureInfo.InvariantCulture` read them. A text field's value is the text itself.
 - The game's `variables.Set` turns the exact values `male_name` and `female_name` into a random name, so a text field whose text is exactly one of those saves a random name instead.

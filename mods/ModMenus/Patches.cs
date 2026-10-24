@@ -46,29 +46,29 @@ namespace ModMenus
 
     /// <summary>
     /// Every new game and every loaded scene starts with no settings (variables.Awake clears them).
-    /// The defaults are saved straight away, so mods read the menu's default even if the player
-    /// never opens Mod Settings.
+    /// The settings used in all saves and the defaults are saved straight away, so mods read them even if
+    /// the player never opens Mod Settings.
     /// </summary>
     [HarmonyPatch(typeof(variables), nameof(variables.Awake))]
     public class variables_Awake
     {
         public static void Postfix()
         {
-            ModMenusUtils.SaveMissingDefaults();
+            ModMenusUtils.ApplySavedSettings();
             GameKeys.DebugCheats.Forget();
         }
     }
 
     /// <summary>
     /// Loading a save replaces the settings with the saved ones, which may be from before a mod was
-    /// installed or gained a setting.
+    /// installed or gained a setting, and which the settings used in all saves replace.
     /// </summary>
     [HarmonyPatch(typeof(variables), nameof(variables.LoadFunction))]
     public class variables_LoadFunction
     {
         public static void Postfix()
         {
-            ModMenusUtils.SaveMissingDefaults();
+            ModMenusUtils.ApplySavedSettings();
             GameKeys.DebugCheats.Forget();
         }
     }

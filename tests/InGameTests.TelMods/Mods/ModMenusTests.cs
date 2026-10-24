@@ -341,7 +341,8 @@ namespace InGameTests.TelMods
                         "ModMenuCheckbox_ModMenusTest_Check3", "ModMenuSlider_ModMenusTest_Slider3", "ModMenuCheckbox_ModMenusTest_Check4", "ModMenuSlider_ModMenusTest_Slider4",
                         "ModMenuCheckbox_ModMenusTest_Check5", "ModMenuSlider_ModMenusTest_Slider5", "ModMenuCheckbox_ModMenusTest_Check6", "ModMenuSlider_ModMenusTest_Slider6",
                         "ModMenuCheckbox_ModMenusTest_Check7", "ModMenuSlider_ModMenusTest_Slider7", "ModMenuDropdown_ModMenusTest_Bottom" };
-                    string[] actual = rows.Skip(title).Take(expected.Length).Select(r => r.name).ToArray();
+                    List<string> modRows = ModRows(menu).Select(r => r.name).ToList();
+                    string[] actual = modRows.Skip(modRows.IndexOf("ModMenuText_" + TestModTitle)).Take(expected.Length).ToArray();
                     ctx.Assert(actual.SequenceEqual(expected), "The test mod's rows are " + string.Join(", ", actual));
                 }
 
@@ -350,10 +351,12 @@ namespace InGameTests.TelMods
                 Canvas.ForceUpdateCanvases();
                 var corners = new Vector3[4];
                 float previousBottom = float.MaxValue;
-                for (int i = 0; i < rows.Count; i++)
+                // A hidden row (the note of an unticked "Use in all saves") keeps where it last was, out of the layout
+                List<RectTransform> shown = rows.Where(r => r.gameObject.activeSelf).ToList();
+                for (int i = 0; i < shown.Count; i++)
                 {
-                    rows[i].GetWorldCorners(corners);
-                    ctx.Assert(corners[1].y <= previousBottom + 0.01f, rows[i].name + " overlaps the row above it");
+                    shown[i].GetWorldCorners(corners);
+                    ctx.Assert(corners[1].y <= previousBottom + 0.01f, shown[i].name + " overlaps the row above it");
                     previousBottom = corners[0].y;
                 }
                 ctx.Record("rows", rows.Count);
@@ -527,7 +530,8 @@ namespace InGameTests.TelMods
                     AssertFieldFitsAndTakesClicks(ctx, row);
                 var corners = new Vector3[4];
                 float previousBottom = float.MaxValue;
-                foreach (RectTransform row in menu.Cast<Transform>().Cast<RectTransform>())
+                // A hidden row (the note of an unticked "Use in all saves") keeps where it last was, out of the layout
+                foreach (RectTransform row in menu.Cast<Transform>().Cast<RectTransform>().Where(r => r.gameObject.activeSelf))
                 {
                     row.GetWorldCorners(corners);
                     ctx.Assert(corners[1].y <= previousBottom + 0.01f, row.name + " overlaps the row above it");
@@ -612,7 +616,8 @@ namespace InGameTests.TelMods
         /// draws nothing). A slider's track starts at the left edge, like the labels and boxes. The menu keeps the
         /// same margin on every side of the panel, and either side of the line between the tabs and the settings.
         /// A label too long for one line wraps inside its row, above its control, and a dropdown's box goes back
-        /// under its wrapped label when its list closes.
+        /// under its wrapped label when its list closes. The "Use in all saves" box is ticked first, so it and the
+        /// note it shows are measured like the other rows, and its label fits on one line.
         /// </summary>
         [InGameTest(Suite = ModTest.Suite)]
         private static IEnumerator RowsAreEvenlySpacedAndAligned(TestContext ctx)
@@ -632,10 +637,13 @@ namespace InGameTests.TelMods
                 GameObject popup = opened[0];
                 yield return new WaitForSecondsRealtime(0.5f);
                 yield return ShowTab(ctx, popup, TestModName);
+                Transform menu = PageOf(popup, TestModName);
+                // Ticked but never applied: closing the menu throws it away, so nothing is shared
+                RectTransform everySave = (RectTransform)menu.Find("ModMenuEverySave");
+                everySave.GetComponentInChildren<Button>().onClick.Invoke();
                 yield return new WaitForSecondsRealtime(0.5f);
                 Canvas.ForceUpdateCanvases();
                 float unit = popup.GetComponentInParent<Canvas>().rootCanvas.scaleFactor;
-                Transform menu = PageOf(popup, TestModName);
                 float halfGap = menu.GetComponent<VerticalLayoutGroup>().spacing / 2;
 
                 // The same margin on every side of the panel, and either side of the line between the two columns
@@ -719,6 +727,14 @@ namespace InGameTests.TelMods
                     if (control != null)
                         ctx.Assert(ScreenRect((RectTransform)control).yMax <= text.yMin + unit, row.name + "'s control overlaps its label: its top is " + ((ScreenRect((RectTransform)control).yMax - text.yMin) / unit).ToString("0.0") + " above the label's last line");
                 }
+                // The "Use in all saves" label is short enough for one line
+                ScrollToMiddle(everySave);
+                yield return null;
+                Rect everySaveText = TextRect(LabelOf(everySave));
+                ctx.Record("everySaveLabel", everySaveText + " row " + ScreenRect(everySave));
+                ctx.Assert(everySaveText.height < 1.5f * 15 * unit, "The Use in all saves label takes more than one line: " + (everySaveText.height / unit).ToString("0.0") + " tall");
+                ctx.Assert(menu.Find("ModMenuEverySaveNote").gameObject.activeSelf, "Ticking Use in all saves didn't show its note");
+
                 RectTransform longDropdownRow = rows.First(r => r.name == "ModMenuDropdown_ModMenusTest_LongDropdown");
                 ScrollToMiddle(longDropdownRow);
                 CustomDropdown longDropdown = longDropdownRow.GetComponentInChildren<CustomDropdown>(true);
@@ -1086,12 +1102,12 @@ namespace InGameTests.TelMods
 
                 // Hidden rows leave no gap; ticking shows them, spaced like the others
                 AssertVisibleRowsEvenlySpaced(ctx, page, spacing, unit, "with the box unticked");
-                ctx.Assert(page.Cast<Transform>().Count(t => t.gameObject.activeSelf) == 4, "Expected the title and 3 rows shown with the box unticked");
+                ctx.Assert(ModRows(page).Count(t => t.gameObject.activeSelf) == 4, "Expected the title and 3 rows shown with the box unticked");
                 Button tick = page.Find("ModMenuCheckbox_ModMenusTest_Check1").GetComponentInChildren<Button>();
                 Click(tick.gameObject);
                 yield return new WaitForSecondsRealtime(0.5f);
                 Canvas.ForceUpdateCanvases();
-                ctx.Assert(page.Cast<Transform>().All(t => t.gameObject.activeSelf), "Ticking the box didn't show every row");
+                ctx.Assert(ModRows(page).All(t => t.gameObject.activeSelf), "Ticking the box didn't show every row");
                 AssertVisibleRowsEvenlySpaced(ctx, page, spacing, unit, "with the box ticked");
                 RectTransform textRow = (RectTransform)page.Cast<Transform>().First(t => t.name.StartsWith("ModMenuText_A text row", StringComparison.Ordinal));
                 ctx.Assert(textRow.rect.height > 30, "The wrapped text row shown again is " + textRow.rect.height + " tall, as if on one line");
@@ -1456,6 +1472,12 @@ namespace InGameTests.TelMods
             scroll.verticalNormalizedPosition = best;
             Canvas.ForceUpdateCanvases();
         }
+
+        /// <summary>
+        /// A page's title and the mod's rows, without the "Use in all saves" box, its note and the line under them.
+        /// </summary>
+        private static IEnumerable<Transform> ModRows(Transform page) =>
+            page.Cast<Transform>().Where(t => !t.name.StartsWith("ModMenuEverySave", StringComparison.Ordinal));
 
         /// <summary>The label ModMenus wraps in this row.</summary>
         private static TextMeshProUGUI LabelOf(RectTransform row) =>

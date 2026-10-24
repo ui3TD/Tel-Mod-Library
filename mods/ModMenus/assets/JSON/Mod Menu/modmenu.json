@@ -1,0 +1,369 @@
+[
+	{
+		"type": "checkbox",
+		"varID": "ModMenus_EnableDebugCheats",
+		"labelID": "MODMENU__ENABLE_DEBUG_CHEATS",
+		"defaultValue": false
+	},
+	{
+		"type": "text",
+		"labelID": "MODMENU__KEY__SECTION_TIME"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_Pause",
+		"labelID": "MODMENU__KEY__PAUSE",
+		"defaultValue": "Space",
+		"enabledIf": "ModMenus_HasKey_Pause"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_SpeedPaused",
+		"labelID": "MODMENU__KEY__SPEEDPAUSED",
+		"defaultValue": "Alpha1",
+		"enabledIf": "ModMenus_HasKey_SpeedPaused"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_SpeedNormal",
+		"labelID": "MODMENU__KEY__SPEEDNORMAL",
+		"defaultValue": "Alpha2",
+		"enabledIf": "ModMenus_HasKey_SpeedNormal"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_SpeedFast",
+		"labelID": "MODMENU__KEY__SPEEDFAST",
+		"defaultValue": "Alpha3",
+		"enabledIf": "ModMenus_HasKey_SpeedFast"
+	},
+	{
+		"type": "text",
+		"labelID": "MODMENU__KEY__SECTION_TABS"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_NextTab",
+		"labelID": "MODMENU__KEY__NEXTTAB",
+		"defaultValue": "Tab",
+		"enabledIf": "ModMenus_HasKey_NextTab"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_NextTab2",
+		"labelID": "MODMENU__KEY__NEXTTAB2",
+		"defaultValue": "PageDown",
+		"enabledIf": "ModMenus_HasKey_NextTab2"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_NextTabMouse",
+		"labelID": "MODMENU__KEY__NEXTTABMOUSE",
+		"defaultValue": "Mouse2",
+		"enabledIf": "ModMenus_HasKey_NextTabMouse"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_PrevTab",
+		"labelID": "MODMENU__KEY__PREVTAB",
+		"defaultValue": "PageUp",
+		"enabledIf": "ModMenus_HasKey_PrevTab"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_FirstTab",
+		"labelID": "MODMENU__KEY__FIRSTTAB",
+		"defaultValue": "Home",
+		"enabledIf": "ModMenus_HasKey_FirstTab"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_LastTab",
+		"labelID": "MODMENU__KEY__LASTTAB",
+		"defaultValue": "End",
+		"enabledIf": "ModMenus_HasKey_LastTab"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CloseTab",
+		"labelID": "MODMENU__KEY__CLOSETAB",
+		"defaultValue": "Escape",
+		"enabledIf": "ModMenus_HasKey_CloseTab"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CloseTabMouse",
+		"labelID": "MODMENU__KEY__CLOSETABMOUSE",
+		"defaultValue": "Mouse1",
+		"enabledIf": "ModMenus_HasKey_CloseTabMouse"
+	},
+	{
+		"type": "text",
+		"labelID": "MODMENU__KEY__SECTION_AGENCY"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_ScrollUp",
+		"labelID": "MODMENU__KEY__SCROLLUP",
+		"defaultValue": "UpArrow",
+		"enabledIf": "ModMenus_HasKey_ScrollUp"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_ScrollDown",
+		"labelID": "MODMENU__KEY__SCROLLDOWN",
+		"defaultValue": "DownArrow",
+		"enabledIf": "ModMenus_HasKey_ScrollDown"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_ZoomOut",
+		"labelID": "MODMENU__KEY__ZOOMOUT",
+		"defaultValue": "Z",
+		"enabledIf": "ModMenus_HasKey_ZoomOut"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_Mute",
+		"labelID": "MODMENU__KEY__MUTE",
+		"defaultValue": "M",
+		"enabledIf": "ModMenus_HasKey_Mute"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_Promotion",
+		"labelID": "MODMENU__KEY__PROMOTION",
+		"defaultValue": "Z",
+		"enabledIf": "ModMenus_HasKey_Promotion"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_Performance",
+		"labelID": "MODMENU__KEY__PERFORMANCE",
+		"defaultValue": "X",
+		"enabledIf": "ModMenus_HasKey_Performance"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_Spa",
+		"labelID": "MODMENU__KEY__SPA",
+		"defaultValue": "C",
+		"enabledIf": "ModMenus_HasKey_Spa"
+	},
+	{
+		"type": "text",
+		"labelID": "MODMENU__KEY__SECTION_SAVE"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_QuickSave",
+		"labelID": "MODMENU__KEY__QUICKSAVE",
+		"defaultValue": "F5",
+		"enabledIf": "ModMenus_HasKey_QuickSave"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_QuickLoad",
+		"labelID": "MODMENU__KEY__QUICKLOAD",
+		"defaultValue": "F9",
+		"enabledIf": "ModMenus_HasKey_QuickLoad"
+	},
+	{
+		"type": "text",
+		"labelID": "MODMENU__KEY__SECTION_DIALOGUE"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_DialogueUp",
+		"labelID": "MODMENU__KEY__DIALOGUEUP",
+		"defaultValue": "UpArrow",
+		"enabledIf": "ModMenus_HasKey_DialogueUp"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_DialogueDown",
+		"labelID": "MODMENU__KEY__DIALOGUEDOWN",
+		"defaultValue": "DownArrow",
+		"enabledIf": "ModMenus_HasKey_DialogueDown"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_DialogueConfirm",
+		"labelID": "MODMENU__KEY__DIALOGUECONFIRM",
+		"defaultValue": "Return",
+		"enabledIf": "ModMenus_HasKey_DialogueConfirm"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_DialogueConfirm2",
+		"labelID": "MODMENU__KEY__DIALOGUECONFIRM2",
+		"defaultValue": "Space",
+		"enabledIf": "ModMenus_HasKey_DialogueConfirm2"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_DialogueNext",
+		"labelID": "MODMENU__KEY__DIALOGUENEXT",
+		"defaultValue": "KeypadEnter",
+		"enabledIf": "ModMenus_HasKey_DialogueNext"
+	},
+	{
+		"type": "text",
+		"labelID": "MODMENU__KEY__SECTION_POPUPS"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CloseProfile",
+		"labelID": "MODMENU__KEY__CLOSEPROFILE",
+		"defaultValue": "Escape",
+		"enabledIf": "ModMenus_HasKey_CloseProfile"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_SkipCredits",
+		"labelID": "MODMENU__KEY__SKIPCREDITS",
+		"defaultValue": "Escape",
+		"enabledIf": "ModMenus_HasKey_SkipCredits"
+	},
+	{
+		"type": "text",
+		"labelID": "MODMENU__KEY__SECTION_DEBUG"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_DebugPanel",
+		"labelID": "MODMENU__KEY__DEBUGPANEL",
+		"defaultValue": "F7",
+		"enabledIf": "ModMenus_HasKey_DebugPanel"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_SkipDialogue",
+		"labelID": "MODMENU__KEY__SKIPDIALOGUE",
+		"defaultValue": "Escape",
+		"enabledIf": "ModMenus_HasKey_SkipDialogue"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_DialogueLauncher",
+		"labelID": "MODMENU__KEY__DIALOGUELAUNCHER",
+		"defaultValue": "BackQuote",
+		"enabledIf": "ModMenus_HasKey_DialogueLauncher"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_WordCount",
+		"labelID": "MODMENU__KEY__WORDCOUNT",
+		"defaultValue": "F4",
+		"enabledIf": "ModMenus_HasKey_WordCount"
+	},
+	{
+		"type": "text",
+		"labelID": "MODMENU__KEY__SECTION_CHEATS"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatLocalAudition",
+		"labelID": "MODMENU__KEY__CHEATLOCALAUDITION",
+		"defaultValue": "Z",
+		"enabledIf": "ModMenus_HasKey_CheatLocalAudition"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatRegionalAudition",
+		"labelID": "MODMENU__KEY__CHEATREGIONALAUDITION",
+		"defaultValue": "X",
+		"enabledIf": "ModMenus_HasKey_CheatRegionalAudition"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatNationwideAudition",
+		"labelID": "MODMENU__KEY__CHEATNATIONWIDEAUDITION",
+		"defaultValue": "C",
+		"enabledIf": "ModMenus_HasKey_CheatNationwideAudition"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatSlower",
+		"labelID": "MODMENU__KEY__CHEATSLOWER",
+		"defaultValue": "Q",
+		"enabledIf": "ModMenus_HasKey_CheatSlower"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatDefaultSpeed",
+		"labelID": "MODMENU__KEY__CHEATDEFAULTSPEED",
+		"defaultValue": "W",
+		"enabledIf": "ModMenus_HasKey_CheatDefaultSpeed"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatFaster",
+		"labelID": "MODMENU__KEY__CHEATFASTER",
+		"defaultValue": "E",
+		"enabledIf": "ModMenus_HasKey_CheatFaster"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatRelationship",
+		"labelID": "MODMENU__KEY__CHEATRELATIONSHIP",
+		"defaultValue": "B",
+		"enabledIf": "ModMenus_HasKey_CheatRelationship"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatFans",
+		"labelID": "MODMENU__KEY__CHEATFANS",
+		"defaultValue": "F",
+		"enabledIf": "ModMenus_HasKey_CheatFans"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatFame",
+		"labelID": "MODMENU__KEY__CHEATFAME",
+		"defaultValue": "S",
+		"enabledIf": "ModMenus_HasKey_CheatFame"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatMoney",
+		"labelID": "MODMENU__KEY__CHEATMONEY",
+		"defaultValue": "Y",
+		"enabledIf": "ModMenus_HasKey_CheatMoney"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatScandal",
+		"labelID": "MODMENU__KEY__CHEATSCANDAL",
+		"defaultValue": "F4",
+		"enabledIf": "ModMenus_HasKey_CheatScandal"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatExperience",
+		"labelID": "MODMENU__KEY__CHEATEXPERIENCE",
+		"defaultValue": "U",
+		"enabledIf": "ModMenus_HasKey_CheatExperience"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatResearch",
+		"labelID": "MODMENU__KEY__CHEATRESEARCH",
+		"defaultValue": "P",
+		"enabledIf": "ModMenus_HasKey_CheatResearch"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatEventCooldowns",
+		"labelID": "MODMENU__KEY__CHEATEVENTCOOLDOWNS",
+		"defaultValue": "F2",
+		"enabledIf": "ModMenus_HasKey_CheatEventCooldowns"
+	},
+	{
+		"type": "keybind",
+		"varID": "ModMenus_Key_CheatStamina",
+		"labelID": "MODMENU__KEY__CHEATSTAMINA",
+		"defaultValue": "F3",
+		"enabledIf": "ModMenus_HasKey_CheatStamina"
+	}
+]

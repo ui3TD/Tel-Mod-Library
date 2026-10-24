@@ -10,6 +10,249 @@
 	{
 		id: "MODMENU__RESET",
 		text: "Reset to Defaults"
+	},
+	{
+		id: "MODMENU__HOTKEYS",
+		text: "Hotkeys"
+	},
+	{
+		id: "MODMENU__GAME_KEYS",
+		text: "Idol Manager"
+	},
+	{
+		id: "MODMENU__PRESS_A_KEY",
+		text: "Press a key…"
+	},
+	{
+		id: "MODMENU__KEY_NONE",
+		text: "Not set"
+	},
+	{
+		id: "MODMENU__ALSO_USED_BY",
+		text: "Also used by: {0}"
+	},
+	{
+		id: "MODMENU__ENABLE_DEBUG_CHEATS",
+		text: "Enable Debug Cheats"
+	},
+	{
+		id: "MODMENU__KEY__SECTION_TIME",
+		text: "Time"
+	},
+	{
+		id: "MODMENU__KEY__PAUSE",
+		text: "Pause / resume"
+	},
+	{
+		id: "MODMENU__KEY__SPEEDPAUSED",
+		text: "Speed: paused"
+	},
+	{
+		id: "MODMENU__KEY__SPEEDNORMAL",
+		text: "Speed: normal"
+	},
+	{
+		id: "MODMENU__KEY__SPEEDFAST",
+		text: "Speed: fast"
+	},
+	{
+		id: "MODMENU__KEY__SECTION_TABS",
+		text: "Tabs"
+	},
+	{
+		id: "MODMENU__KEY__NEXTTAB",
+		text: "Next tab"
+	},
+	{
+		id: "MODMENU__KEY__NEXTTAB2",
+		text: "Next tab (second key)"
+	},
+	{
+		id: "MODMENU__KEY__NEXTTABMOUSE",
+		text: "Next tab (mouse)"
+	},
+	{
+		id: "MODMENU__KEY__PREVTAB",
+		text: "Previous tab"
+	},
+	{
+		id: "MODMENU__KEY__FIRSTTAB",
+		text: "First tab"
+	},
+	{
+		id: "MODMENU__KEY__LASTTAB",
+		text: "Last tab"
+	},
+	{
+		id: "MODMENU__KEY__CLOSETAB",
+		text: "Close the tab, or open Settings"
+	},
+	{
+		id: "MODMENU__KEY__CLOSETABMOUSE",
+		text: "Close the tab, or reopen the last one (mouse)"
+	},
+	{
+		id: "MODMENU__KEY__SECTION_AGENCY",
+		text: "Agency"
+	},
+	{
+		id: "MODMENU__KEY__SCROLLUP",
+		text: "Scroll the agency up"
+	},
+	{
+		id: "MODMENU__KEY__SCROLLDOWN",
+		text: "Scroll the agency down"
+	},
+	{
+		id: "MODMENU__KEY__ZOOMOUT",
+		text: "Zoom out"
+	},
+	{
+		id: "MODMENU__KEY__MUTE",
+		text: "Mute / unmute"
+	},
+	{
+		id: "MODMENU__KEY__PROMOTION",
+		text: "Add a promotion activity"
+	},
+	{
+		id: "MODMENU__KEY__PERFORMANCE",
+		text: "Add a performance activity"
+	},
+	{
+		id: "MODMENU__KEY__SPA",
+		text: "Add a spa treatment activity"
+	},
+	{
+		id: "MODMENU__KEY__SECTION_SAVE",
+		text: "Save and load"
+	},
+	{
+		id: "MODMENU__KEY__QUICKSAVE",
+		text: "Quicksave"
+	},
+	{
+		id: "MODMENU__KEY__QUICKLOAD",
+		text: "Quickload"
+	},
+	{
+		id: "MODMENU__KEY__SECTION_DIALOGUE",
+		text: "Dialogue"
+	},
+	{
+		id: "MODMENU__KEY__DIALOGUEUP",
+		text: "Previous choice"
+	},
+	{
+		id: "MODMENU__KEY__DIALOGUEDOWN",
+		text: "Next choice"
+	},
+	{
+		id: "MODMENU__KEY__DIALOGUECONFIRM",
+		text: "Pick the choice, or show the next line"
+	},
+	{
+		id: "MODMENU__KEY__DIALOGUECONFIRM2",
+		text: "Pick the choice, or show the next line (second key)"
+	},
+	{
+		id: "MODMENU__KEY__DIALOGUENEXT",
+		text: "Show the next line (number pad)"
+	},
+	{
+		id: "MODMENU__KEY__SECTION_POPUPS",
+		text: "Popups"
+	},
+	{
+		id: "MODMENU__KEY__CLOSEPROFILE",
+		text: "Close an idol's profile"
+	},
+	{
+		id: "MODMENU__KEY__SKIPCREDITS",
+		text: "Skip the credits"
+	},
+	{
+		id: "MODMENU__KEY__SECTION_DEBUG",
+		text: "Debug mode"
+	},
+	{
+		id: "MODMENU__KEY__DEBUGPANEL",
+		text: "Debug mode (press 5 times), then the debug panel"
+	},
+	{
+		id: "MODMENU__KEY__SKIPDIALOGUE",
+		text: "Skip the dialogue"
+	},
+	{
+		id: "MODMENU__KEY__DIALOGUELAUNCHER",
+		text: "Start any dialogue"
+	},
+	{
+		id: "MODMENU__KEY__WORDCOUNT",
+		text: "Count the game's words (log)"
+	},
+	{
+		id: "MODMENU__KEY__SECTION_CHEATS",
+		text: "Debug cheats"
+	},
+	{
+		id: "MODMENU__KEY__CHEATLOCALAUDITION",
+		text: "Hold a local audition"
+	},
+	{
+		id: "MODMENU__KEY__CHEATREGIONALAUDITION",
+		text: "Hold a regional audition"
+	},
+	{
+		id: "MODMENU__KEY__CHEATNATIONWIDEAUDITION",
+		text: "Hold a nationwide audition"
+	},
+	{
+		id: "MODMENU__KEY__CHEATSLOWER",
+		text: "Slow time down"
+	},
+	{
+		id: "MODMENU__KEY__CHEATDEFAULTSPEED",
+		text: "Normal time speed"
+	},
+	{
+		id: "MODMENU__KEY__CHEATFASTER",
+		text: "Speed time up"
+	},
+	{
+		id: "MODMENU__KEY__CHEATRELATIONSHIP",
+		text: "Random relationship event"
+	},
+	{
+		id: "MODMENU__KEY__CHEATFANS",
+		text: "+100 fans"
+	},
+	{
+		id: "MODMENU__KEY__CHEATFAME",
+		text: "Every idol up one fame level"
+	},
+	{
+		id: "MODMENU__KEY__CHEATMONEY",
+		text: "+1,000,000 money"
+	},
+	{
+		id: "MODMENU__KEY__CHEATSCANDAL",
+		text: "Scandal points to 0"
+	},
+	{
+		id: "MODMENU__KEY__CHEATEXPERIENCE",
+		text: "Up one level in every genre, lyrics, choreography, marketing and show genre"
+	},
+	{
+		id: "MODMENU__KEY__CHEATRESEARCH",
+		text: "+10,000 points in every research"
+	},
+	{
+		id: "MODMENU__KEY__CHEATEVENTCOOLDOWNS",
+		text: "Special events can happen again"
+	},
+	{
+		id: "MODMENU__KEY__CHEATSTAMINA",
+		text: "Every idol +100 stamina"
 	}
-
 ]

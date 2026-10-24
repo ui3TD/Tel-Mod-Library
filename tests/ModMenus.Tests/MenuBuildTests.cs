@@ -447,11 +447,23 @@ namespace ModMenus.Tests
             }
         }
 
+        private static string RowName(JSONNode item) => (string)item[JSON_FIELD_TYPE] switch
+        {
+            JSON_TYPE_TEXT => MENU_TEXT_OBJ_NAME + "_" + item[JSON_FIELD_LABELID],
+            JSON_TYPE_SLIDER => MENU_SLIDER_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
+            JSON_TYPE_CHECKBOX => MENU_CHECKBOX_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
+            JSON_TYPE_DROPDOWN => MENU_DROPDOWN_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
+            JSON_TYPE_INPUT => MENU_INPUT_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
+            JSON_TYPE_KEYBIND => MENU_KEYBIND_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
+            string type => "unknown type " + type,
+        };
+
         public static IEnumerable<object[]> ShippedMods() =>
             ShippedMenuTests.MenuFiles().Select(f => new object[] { ((string)f[0]).Split(Path.DirectorySeparatorChar)[0] });
 
         /// <summary>
-        /// Every item our mods show gets a row, and each slider opens at its default with its label from constants.json.
+        /// Every item our mods show gets a row, on the Hotkeys tab for keys, and each slider and key opens at its
+        /// default, sliders with their label from constants.json.
         /// </summary>
         [Theory]
         [MemberData(nameof(ShippedMods))]
@@ -465,17 +477,26 @@ namespace ModMenus.Tests
             Menu menu = TestGame.BuildMenu();
             menu.Open();
 
-            List<string> expected = new() { MENU_TEXT_OBJ_NAME + "_" + mod };
-            expected.AddRange(shown.Select(item => (string)item[JSON_FIELD_TYPE] switch
+            // Keys, with the text above them, are on the Hotkeys tab, under the mod's heading; the rest on the mod's own
+            SplitMenu(new MenuSource { Mod = Mods._Mods.Single(), Items = items }, out JSONArray keys, out JSONArray others);
+            List<string> expected = new();
+            if (keys.Count > 0)
             {
-                JSON_TYPE_TEXT => MENU_TEXT_OBJ_NAME + "_" + item[JSON_FIELD_LABELID],
-                JSON_TYPE_SLIDER => MENU_SLIDER_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
-                JSON_TYPE_CHECKBOX => MENU_CHECKBOX_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
-                JSON_TYPE_DROPDOWN => MENU_DROPDOWN_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
-                JSON_TYPE_INPUT => MENU_INPUT_OBJ_NAME + "_" + item[JSON_FIELD_VARID],
-                string type => "unknown type " + type,
-            }));
+                expected.Add(MENU_TEXT_OBJ_NAME + "_" + HOTKEYS_LABEL);
+                expected.Add(SECTION_OBJ_NAME + "_" + Mods._Mods.Single().ModName);
+                expected.AddRange(Enumerable.Range(0, keys.Count).Select(i => RowName(keys[i])));
+            }
+            if (keys.Count == 0 || HasSetting(others))
+            {
+                expected.Add(MENU_TEXT_OBJ_NAME + "_" + mod);
+                expected.AddRange(Enumerable.Range(0, others.Count).Select(i => RowName(others[i])));
+            }
             Assert.Equal(expected, menu.RowNames.Where(r => r != MENU_TEXT_OBJ_NAME + "_"));
+            foreach (JSONNode key in shown.Where(i => i[JSON_FIELD_TYPE].Value == JSON_TYPE_KEYBIND))
+            {
+                Assert.Equal(GetKeybindDefault(key), menu.Item(key[JSON_FIELD_VARID]).tempText);
+                Assert.NotEqual(KEY_NONE, GetKeybindDefault(key));
+            }
 
             foreach (JSONNode slider in shown.Where(i => i[JSON_FIELD_TYPE].Value == JSON_TYPE_SLIDER))
             {

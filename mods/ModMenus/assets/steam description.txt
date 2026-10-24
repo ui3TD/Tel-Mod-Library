@@ -3,6 +3,9 @@ Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyInt
 
 ModMenus provides a UI menu to manage the settings of other mods. Each mod gets its own tab, so you can go straight to its settings.
 
+[h2]Hotkeys[/h2]
+Change any of the game's keys on the Hotkeys tab, the debug cheats included: click a key's box, then press the new key. Keys from other mods are there too. A key used twice where both work is marked in red. Tick Enable Debug Cheats to use the cheat keys without pressing F7 five times.
+
 Try one of these mods to see it in action:
 [list]
 [*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2990120915]Targeted Auditions[/url] (formerly called Audition Age Limits)
@@ -12,13 +15,14 @@ Try one of these mods to see it in action:
 [/list]
 
 [h2]For Modders[/h2]
-ModMenus reads 'JSON/Mod Menu/modmenu.json' in your mod to build its settings menu. Supported elements: text, sliders (with optional steps), checkboxes, dropdowns, and text fields (with optional number checking). Any row can be shown only while another setting is on.
+ModMenus reads 'JSON/Mod Menu/modmenu.json' in your mod to build its settings menu. Supported elements: text, sliders (with optional steps), checkboxes, dropdowns, text fields (with optional number checking), and keys. Any row can be shown only while another setting is on.
 
 Format, examples and tips: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/main/docs/ModMenus.md]ModMenus modding guide[/url]
 
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 4.3.0: Hotkeys tab: change the game's keys and mods' keys, see keys used twice; debug cheats switch.
 - 4.2.0: Mods can read the open menu's values before Apply, to show or hide their own settings.
 - 4.1.0: Reset to Defaults button; slider steps; settings shown only when needed; number fields.
 - 4.0.0: Each mod's settings get their own tab, sorted A to Z; the menu fits every screen shape.

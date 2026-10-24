@@ -21,7 +21,7 @@ The file is an array of UI elements, shown in order:
 ]
 ```
 
-Supported element types are text, sliders, checkboxes, dropdowns and text fields. Each one's `labelID` is the ID of a text entry defined in `JSON/Constants/constants.json`.
+Supported element types are text, sliders, checkboxes, dropdowns, text fields and keys. Each one's `labelID` is the ID of a text entry defined in `JSON/Constants/constants.json`.
 
 ## How your settings appear
 
@@ -31,6 +31,7 @@ Supported element types are text, sliders, checkboxes, dropdowns and text fields
 - Apply saves every mod's settings, including those on tabs the player never opened. Cancel throws away every change.
 - Reset to Defaults sets the settings on the shown tab back to their defaults. Nothing is saved until the player presses Apply, and Cancel throws the defaults away. Rows with `"reset": false` keep their value.
 - The menu fits the player's screen. A mod that makes the game's popups narrower than about 600 units cuts off the right end of sliders.
+- Keys (`"type": "keybind"`) are not on your tab. Every mod's keys are on one tab, Hotkeys, first in the column, under each mod's name; the game's own keys come first, under "Idol Manager". A text row just above a key goes with it, so it can head your keys. If all your rows are keys, your mod has no tab of its own. Reset to Defaults on the Hotkeys tab resets every mod's keys.
 
 ## type: text
 
@@ -143,6 +144,51 @@ A field with `inputType`:
 }
 ```
 
+## type: keybind
+
+```json
+{
+	"type": "keybind",
+	"varID": "MyMod_JumpKey",
+	"labelID": "MYMOD__MODMENU__JUMP",
+	"defaultValue": "J"
+}
+```
+
+Key elements let the player pick a key for your mod. The row shows the key in a box. Clicking the box waits for a key: the next key pressed, with any Ctrl, Shift or Alt held, becomes the row's key. Right, middle and extra mouse buttons count as keys; a left click anywhere else stops the wait. The × beside the box leaves the row with no key.
+
+- **varID**: ID for the in-game variable storing the key
+- **labelID**: ID for text defined in `JSON/Constants/constants.json`
+- **defaultValue**: Optional. The key, as a Unity `KeyCode` name (`"J"`, `"Alpha4"` for the 4 above the letters, `"F5"`, `"Mouse2"` for the middle button), after any of `Ctrl+`, `Shift+` and `Alt+` (`"Ctrl+J"`). Default: no key
+
+Read the key in your mod with `ModMenusUtils.KeybindPressed(varID)` (pressed this frame), `KeybindHeld(varID)` (held down) or `KeybindReleased(varID)` (let go this frame), instead of `Input.GetKeyDown` and the others:
+
+- They read the player's key, or the row's default if none is saved, so they work on the main menu too.
+- A key with modifiers is pressed only with exactly those modifiers held. A key without modifiers isn't pressed while the modifiers held make it another row's key: with Ctrl+F and F both used, Ctrl+F isn't also F.
+- They return false while the Mod Settings menu is open, and until the key that was just picked is let go, so the key pressed to pick a row doesn't also do what it's for.
+- They return false if no enabled mod has a key row with that varID. `ModMenusUtils.HasKeybind(varID)` says whether one does, so your mod can use its own key without ModMenus:
+
+```csharp
+/// <summary>ModMenus' key rows, found by name so the mod also runs without ModMenus.</summary>
+private static bool JumpPressed()
+{
+    Type utils = AppDomain.CurrentDomain.GetAssemblies()
+        .Select(assembly => assembly.GetType("ModMenus.ModMenusUtils"))
+        .FirstOrDefault(type => type != null);
+    MethodInfo has = utils?.GetMethod("HasKeybind");
+    MethodInfo pressed = utils?.GetMethod("KeybindPressed");
+    if (has != null && pressed != null && (bool)has.Invoke(null, new object[] { "MyMod_JumpKey" }))
+        return (bool)pressed.Invoke(null, new object[] { "MyMod_JumpKey" });
+    return Input.GetKeyDown(KeyCode.J);
+}
+```
+
+Look the methods up once and keep them, as this runs every frame. If your mod references ModMenus' DLL, call `ModMenus.ModMenusUtils.KeybindPressed` directly instead.
+
+A key that another shown key row also has is marked on both rows, in red under the box, with the other rows' names. Your keys count as working on the agency screen: they're marked against the game's keys that work there too, but not against keys that only work elsewhere, such as in a dialogue. The player can still apply keys used twice.
+
+The key is saved by its name, as in `defaultValue`: `"Ctrl+J"`, or `"None"` for no key.
+
 ## Options for every row
 
 These go on any element, alongside its `type`:
@@ -247,11 +293,13 @@ ModMenus skips what it can't use and writes a warning to the BepInEx log, starti
 - A slider whose `step` isn't a whole number of at least 1 moves in steps of 1.
 - A text field with both `inputType` and `password` ignores `password`.
 - A dropdown whose saved or default choice is past the end of its list shows its last item.
+- A key whose `defaultValue` isn't a key starts with no key.
 
 ## Tips
 
 - Retrieve values using `variables.Get(varID)`, where `varID` is the element's varID.
 - While the menu is open, `ModMenusUtils.MenuValue(varID)` gives what it shows, applied or not (see [Showing a setting for a value your mod works out](#showing-a-setting-for-a-value-your-mod-works-out-menuvalue)).
 - Implement null checks for `variables.Get(varID)` to handle cases where ModMenus is not installed, or the value was edited by hand.
+- Read keys with `KeybindPressed` rather than `variables.Get`: it handles modifiers, defaults and the menu being open.
 - To add vertical spacing, use a text element with an empty labelID (`""`).
 - Always define text in `constants.json` for translation support. If absolutely necessary, ModMenus can handle raw text from labelID or itemIDList fields.

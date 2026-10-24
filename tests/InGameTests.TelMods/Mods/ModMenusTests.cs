@@ -1117,6 +1117,138 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
+        /// Two test mods' keys, with long labels, which other rows also use: Space is the game's pause key, and
+        /// both mods have it, so each row names several others and its line wraps.
+        /// </summary>
+        private static readonly string[] KeyMenus =
+        {
+            @"[
+                { ""type"": ""text"", ""labelID"": ""Keys of the first test mod"" },
+                { ""type"": ""keybind"", ""varID"": ""ModMenusTest_KeyA"", ""labelID"": ""A key whose label is long enough to need a second line in the menu"", ""defaultValue"": ""Space"" },
+                { ""type"": ""keybind"", ""varID"": ""ModMenusTest_KeyCombo"", ""labelID"": ""A key with modifiers"", ""defaultValue"": ""Ctrl+Shift+F12"" }
+            ]",
+            @"[ { ""type"": ""keybind"", ""varID"": ""ModMenusTest_KeyB"", ""labelID"": ""Another key, which has the same key as several other rows"", ""defaultValue"": ""Space"" } ]",
+        };
+
+        /// <summary>
+        /// The game's keys go through ModMenus in the real game: with the real mod list ModMenus has every game
+        /// key row, and the game's methods, patched by the game's Harmony, still read each key through its row,
+        /// so every row is shown. Key rows draw inside themselves: the box, the × and the red line naming the
+        /// rows with the same key, wrapped under the box; a click reaches the box and the ×. Rows with a red line
+        /// grow, and the Hotkeys page stays evenly spaced; each mod's heading is drawn. Screenshot:
+        /// %TEMP%\ModMenusKeyScreens.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator KeyRowsWorkAndDrawInTheGame(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+
+            // The game's keys: ModMenus has each row, and the game still reads it through the row
+            Type rowsType = mod.GetType("ModMenus.GameKeys.Rows", true);
+            MethodInfo hasKeybind = AccessTools.Method(mod.GetType("ModMenus.ModMenusUtils", true), "HasKeybind");
+            string prefix = (string)AccessTools.Field(rowsType, "PREFIX").GetValue(null);
+            string hasPrefix = (string)AccessTools.Field(rowsType, "HAS_PREFIX").GetValue(null);
+            IEnumerable rows = (IEnumerable)AccessTools.Field(rowsType, "All").GetValue(null);
+            int gameKeys = 0;
+            foreach (object row in rows)
+            {
+                string varID = Traverse.Create(row).Field("VarID").GetValue<string>();
+                gameKeys++;
+                ctx.Assert((bool)hasKeybind.Invoke(null, new object[] { varID }), "ModMenus has no key row " + varID + " with the game's mods loaded");
+                ctx.Assert(variables.Get(hasPrefix + varID.Substring(prefix.Length)) == "1", "The game doesn't read " + varID + "'s key through its row, so the row is hidden");
+            }
+            ctx.Record("gameKeys", gameKeys);
+
+            using (AddTestMods(new[] { "ModMenus Test Keys", "ModMenus Test More Keys" }, new[] { "com.test.modmenustestkeys", "com.test.modmenustestmorekeys" }, KeyMenus))
+            {
+                var opened = new List<GameObject>();
+                yield return OpenModSettings(ctx, opened);
+                if (opened.Count == 0)
+                {
+                    Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                    yield break;
+                }
+                GameObject popup = opened[0];
+                yield return new WaitForSecondsRealtime(0.5f);
+                yield return ShowTab(ctx, popup, "Hotkeys");
+                yield return new WaitForSecondsRealtime(0.5f);
+                Canvas.ForceUpdateCanvases();
+                float unit = popup.GetComponentInParent<Canvas>().rootCanvas.scaleFactor;
+                Transform page = PageOf(popup, "Hotkeys");
+                if (page == null)
+                {
+                    yield return Game.CloseAllPopups(ctx);
+                    Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+                    yield break;
+                }
+
+                AssertVisibleRowsEvenlySpaced(ctx, page, page.GetComponent<VerticalLayoutGroup>().spacing, unit, "on the Hotkeys tab");
+
+                List<Transform> headings = page.Cast<Transform>().Where(t => t.name.StartsWith("ModMenuSection_", StringComparison.Ordinal)).ToList();
+                ctx.Assert(headings.Count > 0 && headings[0].GetComponent<TextMeshProUGUI>().text == "Idol Manager",
+                    "The Hotkeys tab doesn't start with the game's keys under Idol Manager: " + string.Join(", ", headings.Select(h => h.GetComponent<TextMeshProUGUI>().text).ToArray()));
+                ctx.Assert(Find(popup.transform, "ModMenuTab_" + Mods._Mods.First(m => m.Path != null && File.Exists(Path.Combine(m.Path, MenuFile))
+                    && File.ReadAllText(Path.Combine(m.Path, MenuFile)).Contains("ModMenus_EnableDebugCheats")).ModName).FirstOrDefault() == null, "ModMenus has a tab of its own");
+                foreach (Transform heading in headings)
+                {
+                    TextMeshProUGUI text = heading.GetComponent<TextMeshProUGUI>();
+                    ScrollIntoView(ctx, (RectTransform)heading);
+                    ctx.Assert(Inside(TextRect(text), ScreenRect((RectTransform)heading)), heading.name + "'s name '" + text.text + "' is drawn outside it");
+                }
+
+                string shots = Path.Combine(Path.GetTempPath(), "ModMenusKeyScreens");
+                Directory.CreateDirectory(shots);
+                foreach (string varID in new[] { "ModMenusTest_KeyA", "ModMenusTest_KeyB", "ModMenusTest_KeyCombo", prefix + "Pause" })
+                {
+                    RectTransform row = (RectTransform)page.Find("ModMenuKeybind_" + varID);
+                    if (row == null)
+                    {
+                        ctx.Fail("No key row " + varID + " on the Hotkeys tab");
+                        continue;
+                    }
+                    ScrollToMiddle(row);
+                    yield return new WaitForSecondsRealtime(0.3f);
+                    Canvas.ForceUpdateCanvases();
+
+                    RectTransform box = (RectTransform)row.Find("Box");
+                    RectTransform clear = (RectTransform)row.Find("Clear");
+                    TextMeshProUGUI clash = row.Find("Clash").GetComponent<TextMeshProUGUI>();
+                    ctx.Record(varID, "row " + ScreenRect(row) + " drawn " + DrawnRect(row) + " clash '" + clash.text + "' " + (clash.gameObject.activeSelf ? TextRect(clash).ToString() : "hidden"));
+                    ctx.Assert(Inside(DrawnRect(row), ScreenRect(row)), varID + " draws outside its row: " + DrawnRect(row) + ", the row is " + ScreenRect(row));
+                    foreach (RectTransform control in new[] { box, clear })
+                    {
+                        GameObject hit = TopHit(ScreenRect(control).center);
+                        ctx.Assert(hit != null && hit.transform.IsChildOf(control), varID + ": a click on its " + control.name + " would hit " + (hit != null ? hit.name : "nothing"));
+                    }
+                    TextMeshProUGUI keyText = box.GetComponentInChildren<TextMeshProUGUI>();
+                    ctx.Assert(Inside(TextRect(keyText), ScreenRect(box)), varID + "'s key '" + keyText.text + "' is drawn outside its box");
+
+                    bool clashes = varID != "ModMenusTest_KeyCombo";
+                    ctx.Assert(clash.gameObject.activeSelf == clashes, varID + (clashes ? " isn't marked as used twice" : " is marked as used twice: " + clash.text));
+                    if (clashes)
+                    {
+                        Rect line = TextRect(clash);
+                        ctx.Assert(line.yMax <= ScreenRect(box).yMin + 1, varID + "'s red line isn't under its box");
+                        ctx.Assert(clash.textInfo.lineCount >= 1 && clash.textInfo.lineCount <= 2, varID + "'s red line has " + clash.textInfo.lineCount + " lines, expected 1 or 2");
+                        ctx.Assert(line.xMax <= ScreenRect(row).xMax + 1, varID + "'s red line runs past its row");
+                    }
+                    if (varID == "ModMenusTest_KeyA")
+                    {
+                        // The game's keys are named after the game, whatever ModMenus' folder is called
+                        ctx.Assert(clash.text.Contains("Pause / resume (Idol Manager)"), "ModMenusTest_KeyA's red line doesn't name the game's pause key under the game's name: " + clash.text);
+                        ctx.Assert(clash.textInfo.lineCount == 2, "ModMenusTest_KeyA names two rows with long labels, but its red line is on " + clash.textInfo.lineCount + " line");
+                        yield return new WaitForEndOfFrame();
+                        yield return Screenshot(Path.Combine(shots, "key rows.png"));
+                    }
+                }
+
+                yield return Game.CloseAllPopups(ctx);
+                Tabs_Manager.OpenTab_(Tabs_Manager._tab._type.closed);
+            }
+        }
+
+        /// <summary>
         /// The shown rows of a page sit one under another with the page's spacing between them, so a hidden row
         /// leaves no gap.
         /// </summary>
@@ -1416,8 +1548,14 @@ namespace InGameTests.TelMods
                 string file = Path.Combine(mod.Path, MenuFile);
                 if (!File.Exists(file))
                     continue;
-                yield return new KeyValuePair<string, string>("ModMenuText_" + mod.Title, mod.Title);
-                foreach (JSONNode item in JSON.Parse(File.ReadAllText(file)).AsArray)
+                JSONArray rows = JSON.Parse(File.ReadAllText(file)).AsArray;
+                // Keys are on the Hotkeys tab, and so are all of ModMenus' own rows: a mod has a page with its
+                // title only for its other settings
+                bool own = Enumerable.Range(0, rows.Count).Any(i => rows[i]["varID"].Value == "ModMenus_EnableDebugCheats");
+                bool ownPage = !own && Enumerable.Range(0, rows.Count).Select(i => rows[i]).Any(i => i["type"].Value != "text" && i["type"].Value != "keybind" && !i["ignore"].AsBool);
+                if (ownPage)
+                    yield return new KeyValuePair<string, string>("ModMenuText_" + mod.Title, mod.Title);
+                foreach (JSONNode item in rows)
                 {
                     string type = item["type"];
                     string varId = item["varID"];
@@ -1431,6 +1569,7 @@ namespace InGameTests.TelMods
                         "checkbox" => "ModMenuCheckbox_",
                         "dropdown" => "ModMenuDropdown_",
                         "input" => "ModMenuInput_",
+                        "keybind" => "ModMenuKeybind_",
                         _ => null,
                     };
                     if (prefix != null)

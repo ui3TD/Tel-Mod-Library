@@ -49,6 +49,7 @@ namespace ModMenus
         public static void Postfix()
         {
             ModMenusUtils.SaveMissingDefaults();
+            GameKeys.DebugCheats.Forget();
         }
     }
 
@@ -62,13 +63,14 @@ namespace ModMenus
         public static void Postfix()
         {
             ModMenusUtils.SaveMissingDefaults();
+            GameKeys.DebugCheats.Forget();
         }
     }
 
     /// <summary>
     /// Utility class containing methods for creating and managing mod menu elements.
     /// </summary>
-    class ModMenusUtils
+    partial class ModMenusUtils
     {
         /// <summary>
         /// The popup type the mod menu is registered under. It's past the game's own popup types;
@@ -860,8 +862,8 @@ namespace ModMenus
         }
 
         /// <summary>
-        /// Builds the menu: a page of settings and a tab for each mod with a menu, then shows the tab the
-        /// player last used, or the first one.
+        /// Builds the menu: the Hotkeys tab with every mod's keys, if any mod has one, then a page of settings
+        /// and a tab for each mod with other settings; then shows the tab the player last used, or the first one.
         /// </summary>
         /// <param name="manager">The menu's manager, which switches pages when a tab is clicked.</param>
         /// <param name="pageParent">Where the pages go: the settings' scroll area.</param>
@@ -880,8 +882,31 @@ namespace ModMenus
                 return;
             }
 
-            List<string> modNames = new();
+            // Every mod's keys are on one tab, so a key used twice is easy to see and change
+            List<MenuSource> sections = new();
+            List<MenuSource> pages = new();
             foreach (MenuSource menu in menus)
+            {
+                SplitMenu(menu, out JSONArray keys, out JSONArray others);
+                if (keys.Count > 0)
+                {
+                    sections.Add(new MenuSource { Mod = menu.Mod, Items = keys, Title = ShownText(SectionTitle(menu)) });
+                }
+                if (keys.Count == 0 || HasSetting(others))
+                {
+                    pages.Add(new MenuSource { Mod = menu.Mod, Items = others, Title = menu.Title });
+                }
+            }
+
+            List<string> modNames = new();
+            if (sections.Count > 0)
+            {
+                MenuSource hotkeys = HotkeysMenu();
+                GameObject page = AddHotkeysPage(hotkeys, OrderKeybindSections(sections), pageParent, dropdownLayer);
+                manager.tabs.Add(AddMenuTab(hotkeys, page, manager, tabParent));
+                modNames.Add(hotkeys.Mod.ModName);
+            }
+            foreach (MenuSource menu in pages)
             {
                 GameObject page = AddMenuPage(menu, pageParent, dropdownLayer);
                 manager.tabs.Add(AddMenuTab(menu, page, manager, tabParent));
@@ -933,87 +958,111 @@ namespace ModMenus
             JSONArray jsonArray = menu.Items;
             for (int i = 0; i < jsonArray.Count; i++)
             {
-                JSONNode item = jsonArray[i];
-                string type = item[JSON_FIELD_TYPE];
-                string label = item[JSON_FIELD_LABELID];
-
-                // Text without a label is a blank row, the documented way to add spacing.
-                // (The game's JSON parser drops empty strings, so an empty labelID reads as missing.)
-                if (string.IsNullOrEmpty(type) || (string.IsNullOrEmpty(label) && type != JSON_TYPE_TEXT) || item[JSON_FIELD_IGNORE].AsBool) continue;
-                string id;
-                GameObject row = null;
-
-                switch (type)
-                {
-                    case JSON_TYPE_TEXT:
-                        row = AddMenuText(label ?? "", parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
-
-                        // As tall as its lines, so long text doesn't run into the next row. A blank one keeps its height: it's a spacer.
-                        if (!string.IsNullOrEmpty(label))
-                            row.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                        break;
-
-                    case JSON_TYPE_SLIDER:
-                        if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
-                            continue;
-
-                        id = item[JSON_FIELD_VARID];
-                        GetSliderRange(item, out float minValue, out float maxValue, out float defaultFloat);
-
-                        row = AddMenuSlider(id, label, minValue, maxValue, defaultFloat, parentTransform);
-                        break;
-
-                    case JSON_TYPE_CHECKBOX:
-                        if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
-                            continue;
-
-                        id = item[JSON_FIELD_VARID];
-                        bool defaultBool = false;
-                        if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
-                        {
-                            defaultBool = item[JSON_FIELD_DEF].AsBool;
-                        }
-
-                        row = AddMenuCheckbox(id, label, defaultBool, parentTransform);
-                        break;
-
-                    case JSON_TYPE_DROPDOWN:
-                        if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]) || string.IsNullOrEmpty(item[JSON_FIELD_LIST].ToString()) || item[JSON_FIELD_LIST].AsArray == null)
-                            continue;
-
-                        id = item[JSON_FIELD_VARID];
-                        int defaultSelect = 0;
-                        if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
-                        {
-                            defaultSelect = item[JSON_FIELD_DEF].AsInt;
-                        }
-
-                        JSONArray jsonArrayItems = item[JSON_FIELD_LIST].AsArray;
-                        string[] itemList = new string[jsonArrayItems.Count];
-                        for (int j = 0; j < jsonArrayItems.Count; j++)
-                        {
-                            itemList[j] = jsonArrayItems[j];
-                        }
-
-                        row = AddMenuDropdown(id, label, itemList, defaultSelect, parentTransform, dropdownLayer);
-                        break;
-
-                    case JSON_TYPE_INPUT:
-                        if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
-                            continue;
-
-                        id = item[JSON_FIELD_VARID];
-                        row = AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, item[JSON_FIELD_PASSWORD].AsBool, parentTransform);
-                        break;
-                }
-
-                if (row != null)
-                {
-                    AddRowOptions(item, row);
-                }
+                AddMenuRow(jsonArray[i], parentTransform, dropdownLayer);
             }
 
             return page;
+        }
+
+        /// <summary>
+        /// Adds a row for an item of a mod's menu file, with the options any row can have (see AddRowOptions).
+        /// </summary>
+        /// <param name="item">The item from the mod's menu file.</param>
+        /// <param name="parentTransform">Where the row goes: a page.</param>
+        /// <param name="dropdownLayer">Where an open dropdown's list goes, above every row (see AddMenuDropdown).</param>
+        /// <returns>The row, or null if the item has none (it's ignored, or misses its varID or labelID).</returns>
+        public static GameObject AddMenuRow(JSONNode item, Transform parentTransform, Transform dropdownLayer)
+        {
+            string type = item[JSON_FIELD_TYPE];
+            string label = item[JSON_FIELD_LABELID];
+
+            // Text without a label is a blank row, the documented way to add spacing.
+            // (The game's JSON parser drops empty strings, so an empty labelID reads as missing.)
+            if (string.IsNullOrEmpty(type) || (string.IsNullOrEmpty(label) && type != JSON_TYPE_TEXT) || item[JSON_FIELD_IGNORE].AsBool) return null;
+            string id;
+            GameObject row = null;
+
+            switch (type)
+            {
+                case JSON_TYPE_TEXT:
+                    row = AddMenuText(label ?? "", parentTransform, TEXT_SIZE, mainScript.blue32, TextAlignmentOptions.Left);
+
+                    // As tall as its lines, so long text doesn't run into the next row. A blank one keeps its height: it's a spacer.
+                    if (!string.IsNullOrEmpty(label))
+                        row.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                    break;
+
+                case JSON_TYPE_SLIDER:
+                    if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
+                        return null;
+
+                    id = item[JSON_FIELD_VARID];
+                    GetSliderRange(item, out float minValue, out float maxValue, out float defaultFloat);
+
+                    row = AddMenuSlider(id, label, minValue, maxValue, defaultFloat, parentTransform);
+                    break;
+
+                case JSON_TYPE_CHECKBOX:
+                    if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
+                        return null;
+
+                    id = item[JSON_FIELD_VARID];
+                    bool defaultBool = false;
+                    if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
+                    {
+                        defaultBool = item[JSON_FIELD_DEF].AsBool;
+                    }
+
+                    row = AddMenuCheckbox(id, label, defaultBool, parentTransform);
+                    break;
+
+                case JSON_TYPE_DROPDOWN:
+                    if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]) || string.IsNullOrEmpty(item[JSON_FIELD_LIST].ToString()) || item[JSON_FIELD_LIST].AsArray == null)
+                        return null;
+
+                    id = item[JSON_FIELD_VARID];
+                    int defaultSelect = 0;
+                    if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]))
+                    {
+                        defaultSelect = item[JSON_FIELD_DEF].AsInt;
+                    }
+
+                    JSONArray jsonArrayItems = item[JSON_FIELD_LIST].AsArray;
+                    string[] itemList = new string[jsonArrayItems.Count];
+                    for (int j = 0; j < jsonArrayItems.Count; j++)
+                    {
+                        itemList[j] = jsonArrayItems[j];
+                    }
+
+                    row = AddMenuDropdown(id, label, itemList, defaultSelect, parentTransform, dropdownLayer);
+                    break;
+
+                case JSON_TYPE_INPUT:
+                    if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
+                        return null;
+
+                    id = item[JSON_FIELD_VARID];
+                    row = AddMenuInput(id, label, GetInputDefault(item), item[JSON_FIELD_MAXLEN].AsInt, item[JSON_FIELD_PASSWORD].AsBool, parentTransform);
+                    break;
+
+                case JSON_TYPE_KEYBIND:
+                    if (string.IsNullOrEmpty(item[JSON_FIELD_VARID]))
+                        return null;
+
+                    id = item[JSON_FIELD_VARID];
+                    if (!string.IsNullOrEmpty(item[JSON_FIELD_DEF]) && !TryParseKeybind(item[JSON_FIELD_DEF], out _))
+                    {
+                        Debug.LogWarning("[ModMenus] The key " + id + "'s defaultValue \"" + (string)item[JSON_FIELD_DEF] + "\" isn't a key, so it starts unset.");
+                    }
+                    row = AddMenuKeybind(id, label, GetKeybindDefault(item), parentTransform);
+                    break;
+            }
+
+            if (row != null)
+            {
+                AddRowOptions(item, row);
+            }
+            return row;
         }
 
         /// <summary>
@@ -1133,6 +1182,9 @@ namespace ModMenus
         /// </summary>
         public static void SaveMissingDefaults()
         {
+            // The enabled mods may have changed since the keys' defaults were read
+            ForgetKeybindDefaults();
+
             // This runs while a game is starting or loading, so nothing may escape into the game's own code
             try
             {
@@ -1201,6 +1253,10 @@ namespace ModMenus
                     value = GetNumberField(item, out string inputType, out float? low, out float? high)
                         ? NumberDefault(GetInputDefault(item), inputType == JSON_INPUT_INTEGER, low, high)
                         : GetInputDefault(item);
+                    return true;
+
+                case JSON_TYPE_KEYBIND:
+                    value = GetKeybindDefault(item);
                     return true;
 
                 default:
@@ -1525,26 +1581,7 @@ namespace ModMenus
             // Tab would jump to the rival's last name field
             UnityEngine.Object.DestroyImmediate(modField.GetComponent<InputField_Tab>());
 
-            // The field's label moves out of the field to the top of the row, so only the field takes clicks
-            Transform title = modField.transform.Find("Title");
-            title.SetParent(modInput.transform, false);
-            SetRectTransform((RectTransform)title, Vector2.up, Vector2.one, new Vector2(0, -LABEL_HEIGHT), Vector2.zero);
-            title.GetComponent<Lang_Button>().Constant = labelID;
-            title.GetComponent<TextMeshProUGUI>().text = labelText;
-
-            // The field is a white box under the label, the width of a dropdown's box, with the blue underline
-            // along its bottom. What's typed is dark, so it doesn't read as another label.
-            SetRectTransform((RectTransform)modField.transform, Vector2.up, Vector2.up, new Vector2(0, -LABEL_HEIGHT - BOX_HEIGHT), new Vector2(BOX_WIDTH, -LABEL_HEIGHT), Vector2.up);
-            modField.GetComponent<Image>().color = Color.white;
-            Transform textArea = modField.transform.Find("Container");
-            SetRectTransform((RectTransform)textArea, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            Transform text = textArea.Find("Text");
-            SetRectTransform((RectTransform)text, Vector2.zero, Vector2.one, new Vector2(8, 2), new Vector2(-8, 0));
-            TextMeshProUGUI textTMP = text.GetComponent<TextMeshProUGUI>();
-            textTMP.fontSize = TEXT_SIZE;
-            textTMP.color = mainScript.black32;
-            textTMP.alignment = TextAlignmentOptions.Left;
-            SetRectTransform((RectTransform)textArea.Find("Image"), Vector2.zero, Vector2.right, Vector2.zero, new Vector2(0, 2));
+            TextMeshProUGUI title = PlaceTextBox(modInput, modField, labelID, labelText);
 
             // Configure ModMenuItem
             ModMenuItem modInputMenuItem = modInput.AddComponent<ModMenuItem>();
@@ -1564,9 +1601,39 @@ namespace ModMenus
             modInputField.onValueChanged.AddListener(modInputMenuItem.onUpdateInput);
             modInputMenuItem.inputField = modInputField;
 
-            AddLabelWrap(modInput, title.GetComponent<TextMeshProUGUI>(), null, (RectTransform)modField.transform);
+            AddLabelWrap(modInput, title, null, (RectTransform)modField.transform);
 
             return modInput;
+        }
+
+        /// <summary>
+        /// Lays out a copy of the game's text field in its row: the field's label moves to the top of the row,
+        /// and the field is a white box under it with dark text.
+        /// </summary>
+        /// <returns>The label.</returns>
+        public static TextMeshProUGUI PlaceTextBox(GameObject row, GameObject field, string labelID, string labelText)
+        {
+            // The field's label moves out of the field to the top of the row, so only the field takes clicks
+            Transform title = field.transform.Find("Title");
+            title.SetParent(row.transform, false);
+            SetRectTransform((RectTransform)title, Vector2.up, Vector2.one, new Vector2(0, -LABEL_HEIGHT), Vector2.zero);
+            title.GetComponent<Lang_Button>().Constant = labelID;
+            title.GetComponent<TextMeshProUGUI>().text = labelText;
+
+            // The field is a white box under the label, the width of a dropdown's box, with the blue underline
+            // along its bottom. What's typed is dark, so it doesn't read as another label.
+            SetRectTransform((RectTransform)field.transform, Vector2.up, Vector2.up, new Vector2(0, -LABEL_HEIGHT - BOX_HEIGHT), new Vector2(BOX_WIDTH, -LABEL_HEIGHT), Vector2.up);
+            field.GetComponent<Image>().color = Color.white;
+            Transform textArea = field.transform.Find("Container");
+            SetRectTransform((RectTransform)textArea, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            Transform text = textArea.Find("Text");
+            SetRectTransform((RectTransform)text, Vector2.zero, Vector2.one, new Vector2(8, 2), new Vector2(-8, 0));
+            TextMeshProUGUI textTMP = text.GetComponent<TextMeshProUGUI>();
+            textTMP.fontSize = TEXT_SIZE;
+            textTMP.color = mainScript.black32;
+            textTMP.alignment = TextAlignmentOptions.Left;
+            SetRectTransform((RectTransform)textArea.Find("Image"), Vector2.zero, Vector2.right, Vector2.zero, new Vector2(0, 2));
+            return title.GetComponent<TextMeshProUGUI>();
         }
 
         /// <summary>
@@ -1858,7 +1925,7 @@ namespace ModMenus
         /// <summary>
         /// Manages the mod menu functionality: the tabs, the page shown, and Apply and Cancel.
         /// </summary>
-        public class ModMenuManager : MonoBehaviour
+        public partial class ModMenuManager : MonoBehaviour
         {
             /// <summary>
             /// The mod whose tab the player last showed, so the menu reopens on it, even after the menu is
@@ -1906,6 +1973,7 @@ namespace ModMenus
                 }
                 settingAll = false;
                 RefreshConditions();
+                RefreshClashes();
                 if (scroll != null)
                 {
                     scroll.verticalNormalizedPosition = 1;
@@ -1915,7 +1983,8 @@ namespace ModMenus
             }
 
             /// <summary>
-            /// Called when the menu closes: MenuValue has nothing to read until it opens again.
+            /// Called when the menu closes: MenuValue has nothing to read until it opens again, and a key row
+            /// waiting for a key stops waiting.
             /// </summary>
             public void OnDisable()
             {
@@ -1923,6 +1992,7 @@ namespace ModMenus
                 {
                     open = null;
                 }
+                ModMenuItem.StopAnyListening();
             }
 
             public void LateUpdate()
@@ -2019,16 +2089,19 @@ namespace ModMenus
                 }
                 settingAll = false;
                 RefreshConditions();
+                RefreshClashes();
             }
 
             /// <summary>
-            /// Called when the player changes a setting, which may show or hide rows with enabledIf.
+            /// Called when the player changes a setting, which may show or hide rows with enabledIf, and give
+            /// keys a clash or take one away.
             /// </summary>
             public void OnSettingChanged()
             {
                 if (!settingAll)
                 {
                     RefreshConditions();
+                    RefreshClashes();
                 }
             }
 
@@ -2084,6 +2157,7 @@ namespace ModMenus
                     }
                     condition.gameObject.SetActive(shown);
                 }
+                RefreshSections();
             }
 
             /// <summary>
@@ -2245,7 +2319,7 @@ namespace ModMenus
         /// Represents a single item in the mod menu. Its controls are set when it's built, as its page may be
         /// hidden; nothing happens when its page shows, so changes not yet applied stay as they are.
         /// </summary>
-        public class ModMenuItem : MonoBehaviour
+        public partial class ModMenuItem : MonoBehaviour
         {
             /// <summary>
             /// Shows the saved setting, or the default if none is saved, and keeps it until it's changed.
@@ -2269,6 +2343,10 @@ namespace ModMenus
                 if (inputField != null)
                 {
                     RenderInput();
+                }
+                if (keybindBox != null)
+                {
+                    ShowKeybind(SavedKeybind());
                 }
             }
 
@@ -2299,10 +2377,14 @@ namespace ModMenus
                 {
                     ShowInputText(defText);
                 }
+                if (keybindBox != null)
+                {
+                    ShowKeybind(defText);
+                }
             }
 
             /// <summary>
-            /// What Apply saves: a text field's text, or the other items' number.
+            /// What Apply saves: a text field's text, a key's name (see FormatKeybind), or the other items' number.
             /// </summary>
             public string CurrentValue => tempText ?? FormatSetting(tempValue);
 
@@ -2312,6 +2394,11 @@ namespace ModMenus
             /// </summary>
             public void LateUpdate()
             {
+                if (keybindBox != null)
+                {
+                    PollKeybind();
+                    return;
+                }
                 if (customDropdown == null || (!customDropdown.isOn && !listMoved))
                 {
                     return;
@@ -2635,7 +2722,7 @@ namespace ModMenus
             public float defValue;
 
             /// <summary>
-            /// A text field's text, which Apply saves, and its default. Null for every other item.
+            /// A text field's text or a key's name, which Apply saves, and its default. Null for every other item.
             /// </summary>
             public string tempText;
             public string defText;

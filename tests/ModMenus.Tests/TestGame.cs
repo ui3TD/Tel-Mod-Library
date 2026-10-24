@@ -544,6 +544,23 @@ namespace ModMenus.Tests
         {
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuItems))] = Stub(nameof(AddMenuItems)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuPage))] = Stub(nameof(AddMenuPage)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuRow))] = Stub(nameof(AddMenuRow)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.HasKeybind))] = Stub(nameof(HasKeybind)),
+            [AccessTools.Method(typeof(GameKeys.Sites), nameof(GameKeys.Sites.GetKeyDown))] = Stub(nameof(SitesGetKeyDown)),
+            [AccessTools.Method(typeof(GameKeys.Sites), nameof(GameKeys.Sites.GetKey))] = Stub(nameof(SitesGetKey)),
+            [AccessTools.Method(typeof(GameKeys.Sites), nameof(GameKeys.Sites.GetKeyUp))] = Stub(nameof(SitesGetKeyUp)),
+            [AccessTools.Method(typeof(GameKeys.Sites), nameof(GameKeys.Sites.GetKeyUpByName))] = Stub(nameof(SitesGetKeyUpByName)),
+            [AccessTools.Method(typeof(GameKeys.Sites), nameof(GameKeys.Sites.GetMouseButtonDown))] = Stub(nameof(SitesGetMouseButtonDown)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.KeybindPressed))] = Stub(nameof(KeybindPressed)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.KeybindHeld))] = Stub(nameof(KeybindHeld)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.KeybindReleased))] = Stub(nameof(KeybindReleased)),
+            [AccessTools.Method(typeof(ModMenusUtils), "KeybindHappened")] = Stub(nameof(KeybindHappened)),
+            [AccessTools.Method(typeof(ModMenusUtils), "RefreshKeybinds")] = Stub(nameof(RefreshKeybinds)),
+            [AccessTools.Method(typeof(ModMenusUtils), "HeldModifiers")] = Stub(nameof(HeldModifiers)),
+            [AccessTools.Method(typeof(ModMenusUtils), "AnyKeyHeld")] = Stub(nameof(AnyKeyHeld)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddHotkeysPage))] = Stub(nameof(AddHotkeysPage)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuKeybind))] = Stub(nameof(AddMenuKeybind)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.PlaceTextBox))] = Stub(nameof(PlaceTextBox)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuTab))] = Stub(nameof(AddMenuTab)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuText))] = Stub(nameof(AddMenuText)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.AddMenuSlider))] = Stub(nameof(AddMenuSlider)),
@@ -573,6 +590,16 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onClickCheck))] = Stub(nameof(ItemOnClickCheck)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onUpdateSlider))] = Stub(nameof(ItemOnUpdateSlider)),
             [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onUpdateDropdown))] = Stub(nameof(ItemOnUpdateDropdown)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.SavedKeybind))] = Stub(nameof(ItemSavedKeybind)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.ShowKeybind))] = Stub(nameof(ItemShowKeybind)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.RenderKeybind))] = Stub(nameof(ItemRenderKeybind)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onClickKeybind))] = Stub(nameof(ItemOnClickKeybind)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.onClearKeybind))] = Stub(nameof(ItemOnClearKeybind)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.StopListening))] = Stub(nameof(ItemStopListening)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.StopAnyListening))] = Stub(nameof(ItemStopAnyListening)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.PollKeybind))] = Stub(nameof(ItemPollKeybind)),
+            [AccessTools.Method(typeof(ModMenuItem), "TakeKey")] = Stub(nameof(ItemTakeKey)),
+            [AccessTools.Method(typeof(ModMenuItem), nameof(ModMenuItem.ShowClash))] = Stub(nameof(ItemShowClash)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnEnable))] = Stub(nameof(ManagerOnEnable)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnDisable))] = Stub(nameof(ManagerOnDisable)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnApply))] = Stub(nameof(ManagerOnApply)),
@@ -580,6 +607,8 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnReset))] = Stub(nameof(ManagerOnReset)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.OnSettingChanged))] = Stub(nameof(ManagerOnSettingChanged)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.RefreshConditions))] = Stub(nameof(ManagerRefreshConditions)),
+            [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.RefreshClashes))] = Stub(nameof(ManagerRefreshClashes)),
+            [AccessTools.Method(typeof(ModMenuManager), "RefreshSections")] = Stub(nameof(ManagerRefreshSections)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.ShowPage))] = Stub(nameof(ManagerShowPage)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.RenderTabs))] = Stub(nameof(ManagerRenderTabs)),
             [AccessTools.Method(typeof(ModMenuManager), nameof(ModMenuManager.CloseDropdownLists))] = Stub(nameof(ManagerCloseDropdownLists)),
@@ -614,6 +643,19 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(Transform), nameof(Transform.SetAsFirstSibling))] = Stub(nameof(StubSetAsFirstSibling)),
             [AccessTools.Method(typeof(Object), nameof(Object.DestroyImmediate), new[] { typeof(Object) })] = Stub(nameof(StubDestroyImmediate)),
             [AccessTools.Method(typeof(GameObject), nameof(GameObject.SetActive))] = Stub(nameof(StubSetActive)),
+            [AccessTools.PropertyGetter(typeof(GameObject), nameof(GameObject.activeSelf))] = Stub(nameof(IsActive)),
+
+            // Keys: the keyboard and the frame are set by the test
+            [AccessTools.Method(typeof(Input), nameof(Input.GetKeyDown), new[] { typeof(KeyCode) })] = Stub(nameof(StubGetKeyDown)),
+            [AccessTools.Method(typeof(Input), nameof(Input.GetKey), new[] { typeof(KeyCode) })] = Stub(nameof(StubGetKey)),
+            [AccessTools.Method(typeof(Input), nameof(Input.GetKeyUp), new[] { typeof(KeyCode) })] = Stub(nameof(StubGetKeyUp)),
+            [AccessTools.Method(typeof(Input), nameof(Input.GetKeyUp), new[] { typeof(string) })] = Stub(nameof(StubGetKeyUpByName)),
+            [AccessTools.Method(typeof(Input), nameof(Input.GetMouseButtonDown), new[] { typeof(int) })] = Stub(nameof(StubGetMouseButtonDown)),
+            [AccessTools.PropertyGetter(typeof(Time), nameof(Time.frameCount))] = Stub(nameof(StubFrame)),
+            [AccessTools.Method(typeof(ModMenusUtils), "Deselect")] = Stub(nameof(StubDeselect)),
+            [AccessTools.Method(typeof(ModMenusUtils), "GrowRow")] = Stub(nameof(StubGrowRow)),
+            // The copied text field has no caret: the game's draws one only once it has been on
+            [AccessTools.Method(typeof(ModMenusUtils), "RemoveCaret")] = Stub(nameof(StubRemoveCaret)),
 
             // Layout and looks
             [AccessTools.Method(typeof(ModMenusUtils), "SetRectTransform", new[] { typeof(RectTransform), typeof(Vector2), typeof(Vector2), typeof(Vector2), typeof(Vector2) })] = Stub(nameof(StubSetRect)),
@@ -666,6 +708,20 @@ namespace ModMenus.Tests
             [Generic(typeof(Enumerable), nameof(Enumerable.FirstOrDefault), 2)] = Stub(nameof(StubFirstOrDefault)),
         };
 
+        /// <summary>
+        /// The keyboard: keys held, and keys pressed and let go this frame. Frame is Time.frameCount.
+        /// </summary>
+        public static readonly HashSet<KeyCode> KeysHeld = new();
+        public static readonly HashSet<KeyCode> KeysDown = new();
+        public static readonly HashSet<KeyCode> KeysUp = new();
+        public static int Frame;
+
+        /// <summary>
+        /// How much each row grew (GrowRow).
+        /// </summary>
+        public static readonly Dictionary<object, float> Growth = new(new SameObject());
+        public static int Deselected;
+
         private static readonly Lazy<bool> Installed = new(() =>
         {
             foreach (KeyValuePair<MethodBase, MethodInfo> copy in Copies)
@@ -710,6 +766,93 @@ namespace ModMenus.Tests
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static string MenuValue(string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool HasKeybind(string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool SitesGetKeyDown(KeyCode key, string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool SitesGetKey(KeyCode key, string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool SitesGetKeyUp(KeyCode key, string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool SitesGetKeyUpByName(string name, string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool SitesGetMouseButtonDown(int button, string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool KeybindPressed(string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool KeybindHeld(string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool KeybindReleased(string varID) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool KeybindHappened(string varID, int kind) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void RefreshKeybinds() => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static KeyModifiers HeldModifiers() => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static bool AnyKeyHeld() => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject AddMenuRow(SimpleJSON.JSONNode item, Transform parentTransform, Transform dropdownLayer) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject AddHotkeysPage(MenuSource hotkeys, List<MenuSource> sections, Transform pageParent, Transform dropdownLayer) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject AddMenuKeybind(string varID, string labelID, string def, Transform parentTransform) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static TextMeshProUGUI PlaceTextBox(GameObject row, GameObject field, string labelID, string labelText) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static string ItemSavedKeybind(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemShowKeybind(ModMenuItem instance, string value) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemRenderKeybind(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemOnClickKeybind(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemOnClearKeybind(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemStopListening(ModMenuItem instance, bool suppress) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemStopAnyListening() => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemPollKeybind(ModMenuItem instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemTakeKey(ModMenuItem instance, Keybind keybind) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ItemShowClash(ModMenuItem instance, string others) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerRefreshClashes(ModMenuManager instance) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void ManagerRefreshSections(ModMenuManager instance) => throw NotInstalled();
 
         /// <summary>
         /// AddMenuDropdown's lambda that finds the settings popup's Screen tab by name.
@@ -848,7 +991,21 @@ namespace ModMenus.Tests
             Prefabs.Clear();
             SliderValues.Clear();
             Log.Messages.Clear();
+            KeysHeld.Clear();
+            KeysDown.Clear();
+            KeysUp.Clear();
+            Frame = 1;
+            Growth.Clear();
+            Deselected = 0;
+            ListeningField.SetValue(null, null);
+            ModMenusUtils.ForgetKeybindDefaults();
+            AccessTools.Field(typeof(ModMenusUtils), "keysSuppressed").SetValue(null, false);
         }
+
+        private static readonly FieldInfo ListeningField = AccessTools.Field(typeof(ModMenuItem), "listening");
+
+        /// <summary>The key row waiting for a key, or null.</summary>
+        public static ModMenuItem Listening => (ModMenuItem)ListeningField.GetValue(null);
 
         /// <summary>
         /// Unity objects can't be constructed outside the game. The code under test only reads the fields the tests set.
@@ -1175,6 +1332,21 @@ namespace ModMenus.Tests
         }
 
         private static GameObject StubTextField() => TextField;
+
+        private static bool StubGetKeyDown(KeyCode key) => KeysDown.Contains(key);
+        private static bool StubGetKey(KeyCode key) => KeysHeld.Contains(key);
+        private static bool StubGetKeyUp(KeyCode key) => KeysUp.Contains(key);
+        private static bool StubGetKeyUpByName(string name) => KeysUp.Contains((KeyCode)Enum.Parse(typeof(KeyCode), name, true));
+        private static bool StubGetMouseButtonDown(int button) => KeysDown.Contains(KeyCode.Mouse0 + button);
+        private static int StubFrame() => Frame;
+        private static void StubDeselect() => Deselected++;
+        private static void StubRemoveCaret(GameObject box) { }
+
+        private static void StubGrowRow(RectTransform row, float delta)
+        {
+            Growth.TryGetValue(row, out float grown);
+            Growth[row] = grown + delta;
+        }
 
         private static void StubSetCharacterLimit(TMP_InputField field, int value) => AccessTools.FieldRefAccess<TMP_InputField, int>("m_CharacterLimit")(field) = value;
     }

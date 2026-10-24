@@ -184,7 +184,7 @@ namespace ModMenus
 
         /// <summary>
         /// Finds the vanilla Settings button by its stable GameObject name.
-        /// This intentionally does not use Save & Quit/Main Menu or any modded button
+        /// This intentionally does not use Save &amp; Quit/Main Menu or any modded button
         /// as a fallback ordering anchor.
         /// </summary>
         private static Transform FindSettingsButton(Transform settingsContainer)

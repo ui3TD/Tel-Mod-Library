@@ -297,6 +297,7 @@ namespace UnofficialPatch.Tests
             (AccessTools.Method(typeof(Room_Cafe), nameof(Room_Cafe.RenderGirls)), nameof(StubRenderGirls)),
             (AccessTools.Method(typeof(Cafes._cafe), nameof(Cafes._cafe.GetFansToAdd)), nameof(StubCafeFans)),
             (AccessTools.Method(typeof(agency._room), nameof(agency._room.CancelJob)), nameof(StubCancelJob)),
+            (AccessTools.Method(typeof(agency._room), nameof(agency._room.assign), new[] { typeof(SEvent_Tour.tour) }), nameof(StubAssignRoom)),
             (AccessTools.Method(typeof(resources), nameof(resources._OnFansChange)), nameof(StubFansDisplay)),
             (AccessTools.Method(typeof(data_girls), "UpdateFansDisplay"), nameof(StubFansDisplay)),
         };
@@ -323,6 +324,9 @@ namespace UnofficialPatch.Tests
             AccessTools.Method(typeof(data_girls), nameof(data_girls.AddFans), new[] { typeof(long), typeof(resources.fanType?), typeof(List<data_girls.girls>), typeof(data_girls.girls) }),
             AccessTools.Method(typeof(Event_Templates._active_template), "AddMentalStamina"),
             AccessTools.Method(typeof(mainScript_TimeProgress), nameof(mainScript_TimeProgress.Report)),
+            AccessTools.Method(typeof(LeftoverTours), nameof(LeftoverTours.Notify)),
+            AccessTools.Method(typeof(LeftoverTours), nameof(LeftoverTours.Cancel)),
+            AccessTools.Method(typeof(LeftoverTours), nameof(LeftoverTours.OnAssign)),
         };
 
         /// <summary>
@@ -368,6 +372,8 @@ namespace UnofficialPatch.Tests
             ParamsAdded.Clear();
             Notifications.Clear();
             NotificationsFail = false;
+            CancelledJobs.Clear();
+            RoomsAssigned.Clear();
             ColorsSet.Clear();
             Images.Clear();
             Fills.Clear();
@@ -502,7 +508,13 @@ namespace UnofficialPatch.Tests
         private static int StubCafeFans(Cafes._cafe cafe) => 0;
 
         // Cancelling a job reads the scene's agency.
-        private static void StubCancelJob(agency._room room) { }
+        // Rooms whose job was cancelled, and the tours rooms were given, since the last Reset.
+        public static readonly List<agency._room> CancelledJobs = new();
+        public static readonly List<(agency._room room, SEvent_Tour.tour tour)> RoomsAssigned = new();
+
+        private static void StubCancelJob(agency._room room) => CancelledJobs.Add(room);
+
+        private static void StubAssignRoom(agency._room room, SEvent_Tour.tour tour) => RoomsAssigned.Add((room, tour));
 
         // The fan count display is read through Camera.main.
         private static void StubFansDisplay() { }

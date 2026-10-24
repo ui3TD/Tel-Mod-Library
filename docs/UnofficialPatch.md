@@ -48,6 +48,7 @@ A checkbox turns off only Unofficial Patch's own fix. If another mod fixes the s
 - The world tour revenue text colour now takes savings into account, and turns red when the tour would lose money.
 - World tour savings: the Most Prolific Group award and cheaper events no longer make extra stops free.
 - World tour attendance now depends on your fame level, so big venues need high fame. **(changes gameplay)** **(can be turned off)**
+- A save can hold an unfinished tour that isn't the tour in production, for example after removing a mod that runs two tours at once. That tour's event card now acts on its own tour. In the game, its Launch and Cancel launched or cancelled the other tour, and dropping it on a room staffed the other tour. With no tour in production, its Launch crashed and its Cancel ended an unrelated room's job, such as an idol's training. Now, with no other tour in production, it becomes the tour in production when you use its card, and Launch and Cancel then work as usual. While another tour is in production, Cancel cancels it alone, dropping it on a room staffs it, and Launch waits with a message.
 
 ## Singles
 

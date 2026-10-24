@@ -17,7 +17,7 @@ v2.0 of this mod has been revamped to be dependent on IM-HarmonyIntegration. If 
 [h3]Removing the mod[/h3]
 Your saves keep working without the mod. National tours then show as world tours to the countries they stand in for.
 
-If a world tour and a national tour are both in production, finish or cancel one of them before you remove the mod. Otherwise the other one blocks the World Tour tab.
+If a world tour and a national tour are both in production, finish or cancel one of them before you remove the mod. Otherwise the other one blocks the World Tour tab. Unofficial Patch 1.14.2 or later repairs a save where that happened.
 
 [h3]Why these prefectures?[/h3]
 I wanted to preserve the original costs and regional discounts. Where there were costly distant countries in the World Tour, there are costly distant prefectures in the National Tour. Where there were regional discounts in the World Tour, there are regional discounts in the National Tour.

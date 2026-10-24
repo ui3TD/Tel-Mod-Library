@@ -43,6 +43,7 @@ namespace UnofficialPatch.Tests
                     nameof(Awards_OnDestroy),
                     nameof(Concert_New_Popup_OnCancel),
                     nameof(data_girls_textures_SetSprite),
+                    nameof(DragAndDropManager_OnMouseUp_Tour),
                     nameof(GirlButtonSmall_UpdateData),
                     nameof(Popup_Audition_Close),
                     nameof(Popup_Audition_LoadCards),

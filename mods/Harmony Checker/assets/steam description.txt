@@ -1,7 +1,5 @@
-[h1]This mod does NOT install IM-HarmonyIntegration[/h1]
-This mod only checks whether IM-HI works.
-
-[h2]You must manually install it from here:[/h2]
+[h1]IMPORTANT: This mod does NOT install IM-HarmonyIntegration[/h1]
+This mod only checks whether IM-HI works. You must manually install it from here:
 [b][url=https://github.com/ui3TD/IM-HarmonyIntegration]Install IM-HI[/url][/b]
 
 [h2]For Modders[/h2]

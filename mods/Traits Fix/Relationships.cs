@@ -24,10 +24,29 @@ namespace TraitFix
         }
     }
 
+    // An error here would stop the rest of the game's weekly relationship update, so it's logged (once) and the week goes on
     [HarmonyPatch(typeof(Relationships), nameof(Relationships.Do_Dynamic))]
     public class Relationships_Do_Dynamic
     {
+        private static bool loggedError;
+
         public static void Postfix()
+        {
+            try
+            {
+                ApplyWeeklyTraitChanges();
+            }
+            catch (System.Exception e)
+            {
+                if (!loggedError)
+                {
+                    loggedError = true;
+                    UnityEngine.Debug.LogError("[Traits Fix] Couldn't apply this week's trait relationship changes: " + e);
+                }
+            }
+        }
+
+        private static void ApplyWeeklyTraitChanges()
         {
             if (Relationships.RelationshipsData == null)
                 return;

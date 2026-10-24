@@ -7,10 +7,10 @@ namespace TraitFix
     [HarmonyPatch(typeof(data_girls), nameof(data_girls.AgeDeterioration))]
     public class Data_girls_AgeDeterioration
     {
-        // Live Fast: double random post-peak deterioration.
-        public static void Postfix()
+        // Live Fast: double random post-peak deterioration. Not if another mod turned ageing off.
+        public static void Postfix(bool __runOriginal)
         {
-            if (data_girls.girl == null)
+            if (!__runOriginal || data_girls.girl == null)
                 return;
 
             foreach (data_girls.girls girl in data_girls.girl)

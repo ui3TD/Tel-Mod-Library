@@ -5,12 +5,15 @@ using static TraitFix.TraitsFix;
 
 namespace TraitFix
 {
+    // Trait effects below don't apply when another mod skipped the game's method (__runOriginal is false):
+    // nothing happened for the trait to add to.
     [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.AddCastParam))]
     public class Shows__show_AddCastParam
     {
-        public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, Shows._show __instance)
+        public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, Shows._show __instance, bool __runOriginal)
         {
-            if (type == data_girls._paramType.teamChemistry
+            if (!__runOriginal
+                || type == data_girls._paramType.teamChemistry
                 || __instance?.medium == null
                 || __instance.medium.media_type != Shows._param._media_type.internet
                 || !HasMemeQueen(girlList)
@@ -27,9 +30,10 @@ namespace TraitFix
     [HarmonyPatch(typeof(Show_Popup), nameof(Show_Popup.AddCastParam))]
     public class Show_Popup_AddCastParam
     {
-        public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, List<data_girls.girls.param> ___girlParams, Shows._param ___medium)
+        public static void Postfix(data_girls._paramType type, List<data_girls.girls> girlList, List<data_girls.girls.param> ___girlParams, Shows._param ___medium, bool __runOriginal)
         {
-            if (type == data_girls._paramType.teamChemistry
+            if (!__runOriginal
+                || type == data_girls._paramType.teamChemistry
                 || ___medium == null
                 || ___medium.media_type != Shows._param._media_type.internet
                 || !HasMemeQueen(girlList)
@@ -87,8 +91,10 @@ namespace TraitFix
     [HarmonyPatch(typeof(Shows._show), nameof(Shows._show.SetStamina))]
     public class Shows__show_SetStamina
     {
-        public static void Postfix(Shows._show __instance)
+        public static void Postfix(Shows._show __instance, bool __runOriginal)
         {
+            if (!__runOriginal)
+                return;
             List<data_girls.girls> cast = __instance?.GetCast();
             if (cast == null || cast.Count == 0)
                 return;
@@ -116,9 +122,9 @@ namespace TraitFix
     [HarmonyPatch(typeof(singles), nameof(singles.ReleaseSingle))]
     public class Singles_ReleaseSingle
     {
-        public static void Postfix(singles._single single)
+        public static void Postfix(singles._single single, bool __runOriginal)
         {
-            if (single?.girls == null)
+            if (!__runOriginal || single?.girls == null)
                 return;
 
             bool hasHandshake = single.IsIndividualHS() || single.IsGroupHS();
@@ -142,9 +148,9 @@ namespace TraitFix
             __state = __instance?.Tour != null && __instance.Tour.GetAverageAttendance() < PERFECTIONIST_TOUR_ATT;
         }
 
-        public static void Postfix(bool __state)
+        public static void Postfix(bool __state, bool __runOriginal)
         {
-            if (!__state)
+            if (!__runOriginal || !__state)
                 return;
             List<data_girls.girls> activeGirls = data_girls.GetActiveGirls();
             if (activeGirls == null)
@@ -158,12 +164,20 @@ namespace TraitFix
         }
     }
 
+    // Only for the call that finishes the concert: not if another mod skipped the game's Finish,
+    // and not again if Finish is called on a concert that was already finished
     [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Finish))]
     public class SEvent_Concerts__concert_Finish
     {
-        public static void Postfix(SEvent_Concerts._concert __instance)
+        public static void Prefix(SEvent_Concerts._concert __instance, out bool __state)
         {
-            if (__instance == null || __instance.Hype >= PERFECTIONIST_HYPE)
+            __state = __instance != null && __instance.Status == SEvent_Tour.tour._status.finished;
+        }
+
+        public static void Postfix(SEvent_Concerts._concert __instance, bool __runOriginal, bool __state)
+        {
+            if (!__runOriginal || __state || __instance == null || __instance.Status != SEvent_Tour.tour._status.finished
+                || __instance.Hype >= PERFECTIONIST_HYPE)
                 return;
             List<data_girls.girls> girls = __instance.GetGirls(true);
             if (girls == null)

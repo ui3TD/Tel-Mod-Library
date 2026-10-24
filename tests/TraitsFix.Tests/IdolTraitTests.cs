@@ -20,17 +20,25 @@ namespace TraitsFixTests
             data_girls.girls fast = TestGame.Hire(TestGame.Idol(Live_fast));
             TestGame.Hire(TestGame.Idol());
 
-            Data_girls_AgeDeterioration.Postfix();
+            Data_girls_AgeDeterioration.Postfix(true);
 
             Assert.Equal(new[] { fast }, Seams.Deteriorated);
             Assert.Equal(2, LIVEFAST_DETERIORATION);
         }
 
         [Fact]
+        public void AgeingSkipped_NoExtraRoll()
+        {
+            TestGame.Hire(TestGame.Idol(Live_fast));
+            Data_girls_AgeDeterioration.Postfix(false);
+            Assert.Empty(Seams.Deteriorated);
+        }
+
+        [Fact]
         public void GraduatedLiveFast_Skipped()
         {
             TestGame.Hire(TestGame.Idol(Live_fast)).status = data_girls._status.graduated;
-            Data_girls_AgeDeterioration.Postfix();
+            Data_girls_AgeDeterioration.Postfix(true);
             Assert.Empty(Seams.Deteriorated);
         }
 
@@ -38,9 +46,9 @@ namespace TraitsFixTests
         public void NoIdols_NoError()
         {
             data_girls.girl = null;
-            Data_girls_AgeDeterioration.Postfix();
+            Data_girls_AgeDeterioration.Postfix(true);
             data_girls.girl = new() { null };
-            Data_girls_AgeDeterioration.Postfix();
+            Data_girls_AgeDeterioration.Postfix(true);
             Assert.Empty(Seams.Deteriorated);
         }
     }

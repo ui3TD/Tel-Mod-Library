@@ -79,7 +79,7 @@ namespace TraitsFixTests
         {
             Shows._show show = new() { medium = Medium(Shows._param._media_type.internet) };
             show.girlParams.Add(new data_girls.girls.param { type = teamChemistry, _val = 40f });
-            Shows__show_AddCastParam.Postfix(teamChemistry, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, show);
+            Shows__show_AddCastParam.Postfix(teamChemistry, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, show, true);
             Assert.Equal(40f, show.girlParams[0].val);
         }
 
@@ -91,22 +91,33 @@ namespace TraitsFixTests
         {
             Shows._show show = new() { medium = Medium(Shows._param._media_type.internet) };
             show.girlParams.Add(new data_girls.girls.param { type = cool, _val = 40f });
-            Shows__show_AddCastParam.Postfix(cute, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, show);
+            Shows__show_AddCastParam.Postfix(cute, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, show, true);
             Assert.Equal(40f, show.girlParams[0].val);
+        }
+
+        /// <summary>
+        /// If another mod skipped the game's AddCastParam, nothing was added, so the last stat isn't raised again.
+        /// </summary>
+        [Fact]
+        public void CastParamSkipped_Unchanged()
+        {
+            List<data_girls.girls.param> girlParams = new() { new data_girls.girls.param { type = cool, _val = 40f } };
+            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, girlParams, Medium(Shows._param._media_type.internet), false);
+            Assert.Equal(40f, girlParams[0].val);
         }
 
         [Fact]
         public void ShowPopup_Plus10()
         {
             List<data_girls.girls.param> girlParams = new() { new data_girls.girls.param { type = cool, _val = 40f } };
-            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, girlParams, Medium(Shows._param._media_type.internet));
+            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, girlParams, Medium(Shows._param._media_type.internet), true);
             Assert.Equal(50f, girlParams[0].val);
 
-            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, girlParams, Medium(Shows._param._media_type.tv));
-            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol() }, girlParams, Medium(Shows._param._media_type.internet));
-            Show_Popup_AddCastParam.Postfix(teamChemistry, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, girlParams, Medium(Shows._param._media_type.internet));
-            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, new List<data_girls.girls.param>(), Medium(Shows._param._media_type.internet));
-            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, girlParams, null);
+            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, girlParams, Medium(Shows._param._media_type.tv), true);
+            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol() }, girlParams, Medium(Shows._param._media_type.internet), true);
+            Show_Popup_AddCastParam.Postfix(teamChemistry, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, girlParams, Medium(Shows._param._media_type.internet), true);
+            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, new List<data_girls.girls.param>(), Medium(Shows._param._media_type.internet), true);
+            Show_Popup_AddCastParam.Postfix(cool, new List<data_girls.girls> { TestGame.Idol(Meme_queen) }, girlParams, null, true);
             Assert.Equal(50f, girlParams[0].val);
         }
 
@@ -214,12 +225,19 @@ namespace TraitsFixTests
         }
 
         [Fact]
+        public void StaminaSkipped_NoExtra()
+        {
+            Shows__show_SetStamina.Postfix(Show(TestGame.Idol(Annoying), TestGame.Idol()), false);
+            Assert.Empty(Seams.ParamsAdded);
+        }
+
+        [Fact]
         public void OthersSpendExtra20Percent()
         {
             data_girls.girls annoying = TestGame.Idol(Annoying);
             data_girls.girls other = TestGame.Idol();
 
-            Shows__show_SetStamina.Postfix(Show(annoying, other));
+            Shows__show_SetStamina.Postfix(Show(annoying, other), true);
 
             Assert.Equal(new[] { (other, physicalStamina, -3f) }, Seams.ParamsAdded);
             Assert.Equal(0.2f, ANNOYING_MODIFIER);
@@ -232,7 +250,7 @@ namespace TraitsFixTests
             data_girls.girls second = TestGame.Idol(Annoying);
             data_girls.girls other = TestGame.Idol();
 
-            Shows__show_SetStamina.Postfix(Show(first, second, other));
+            Shows__show_SetStamina.Postfix(Show(first, second, other), true);
 
             Assert.Equal(new[] { (first, physicalStamina, -2f), (second, physicalStamina, -2f), (other, physicalStamina, -2f) }, Seams.ParamsAdded);
         }
@@ -242,7 +260,7 @@ namespace TraitsFixTests
         {
             data_girls.girls annoying = TestGame.Idol(Annoying);
             annoying.status = data_girls._status.hiatus;
-            Shows__show_SetStamina.Postfix(Show(annoying, TestGame.Idol()));
+            Shows__show_SetStamina.Postfix(Show(annoying, TestGame.Idol()), true);
             Assert.Empty(Seams.ParamsAdded);
         }
 
@@ -251,15 +269,15 @@ namespace TraitsFixTests
         {
             data_girls.girls other = TestGame.Idol();
             other.status = data_girls._status.injured;
-            Shows__show_SetStamina.Postfix(Show(TestGame.Idol(Annoying), other));
+            Shows__show_SetStamina.Postfix(Show(TestGame.Idol(Annoying), other), true);
             Assert.Empty(Seams.ParamsAdded);
         }
 
         [Fact]
         public void NoAnnoying_OrNoShow_NoEffect()
         {
-            Shows__show_SetStamina.Postfix(Show(TestGame.Idol(), TestGame.Idol()));
-            Shows__show_SetStamina.Postfix(null);
+            Shows__show_SetStamina.Postfix(Show(TestGame.Idol(), TestGame.Idol()), true);
+            Shows__show_SetStamina.Postfix(null, true);
             Assert.Empty(Seams.ParamsAdded);
         }
     }
@@ -295,7 +313,7 @@ namespace TraitsFixTests
             data_girls.girls girl = WithFans(Misandry);
             Seams.Chance = _ => true;
 
-            Singles_ReleaseSingle.Postfix(Single(individual, group, girl, TestGame.Idol()));
+            Singles_ReleaseSingle.Postfix(Single(individual, group, girl, TestGame.Idol()), true);
 
             Assert.Equal(new float[] { 20 }, Seams.ChancesRolled);
             Assert.Equal(new[] { -1 }, girl.Fans[0].Vals);
@@ -304,10 +322,20 @@ namespace TraitsFixTests
         }
 
         [Fact]
+        public void ReleaseSkipped_NoRoll()
+        {
+            data_girls.girls girl = WithFans(Misandry);
+            Seams.Chance = _ => true;
+            Singles_ReleaseSingle.Postfix(Single(true, false, girl), false);
+            Assert.Empty(Seams.ChancesRolled);
+            Assert.Empty(girl.Fans[0].Vals);
+        }
+
+        [Fact]
         public void LostRoll_Unchanged()
         {
             data_girls.girls girl = WithFans(Misandry);
-            Singles_ReleaseSingle.Postfix(Single(true, false, girl));
+            Singles_ReleaseSingle.Postfix(Single(true, false, girl), true);
             Assert.Single(Seams.ChancesRolled);
             Assert.Empty(girl.Fans[0].Vals);
         }
@@ -316,7 +344,7 @@ namespace TraitsFixTests
         public void NoHandshakes_NoRoll()
         {
             Seams.Chance = _ => true;
-            Singles_ReleaseSingle.Postfix(Single(false, false, WithFans(Misandry)));
+            Singles_ReleaseSingle.Postfix(Single(false, false, WithFans(Misandry)), true);
             Assert.Empty(Seams.ChancesRolled);
         }
 
@@ -327,8 +355,8 @@ namespace TraitsFixTests
             sick.status = data_girls._status.depressed;
             Seams.Chance = _ => true;
 
-            Singles_ReleaseSingle.Postfix(Single(true, true, sick, WithFans(None), null));
-            Singles_ReleaseSingle.Postfix(null);
+            Singles_ReleaseSingle.Postfix(Single(true, true, sick, WithFans(None), null), true);
+            Singles_ReleaseSingle.Postfix(null, true);
             Assert.Empty(Seams.ChancesRolled);
         }
     }
@@ -358,7 +386,7 @@ namespace TraitsFixTests
             bool state = false;
             SEvent_Tour_FinishTour.Prefix(tourEvent, ref state);
             tourEvent.Tour = null;
-            SEvent_Tour_FinishTour.Postfix(state);
+            SEvent_Tour_FinishTour.Postfix(state, true);
         }
 
         [Fact]
@@ -395,13 +423,13 @@ namespace TraitsFixTests
             Assert.False(state);
             SEvent_Tour_FinishTour.Prefix(null, ref state);
             Assert.False(state);
-            SEvent_Tour_FinishTour.Postfix(state);
+            SEvent_Tour_FinishTour.Postfix(state, true);
             Assert.Equal(100f, TestGame.Stat(perfectionist, mentalStamina));
         }
 
         private static SEvent_Concerts._concert Concert(float hype, data_girls.girls center)
         {
-            SEvent_Concerts._concert concert = new() { Hype = hype };
+            SEvent_Concerts._concert concert = new() { Hype = hype, Status = SEvent_Tour.tour._status.finished };
             concert.SetListItems.Add(new SEvent_Concerts._concert._song { Center = center });
             return concert;
         }
@@ -412,18 +440,53 @@ namespace TraitsFixTests
             data_girls.girls performer = TestGame.Hire(TestGame.Idol(Perfectionist));
             data_girls.girls offstage = TestGame.Hire(TestGame.Idol(Perfectionist));
 
-            SEvent_Concerts__concert_Finish.Postfix(Concert(99f, performer));
+            SEvent_Concerts__concert_Finish.Postfix(Concert(99f, performer), true, false);
 
             Assert.Equal(80f, TestGame.Stat(performer, mentalStamina));
             Assert.Equal(100f, TestGame.Stat(offstage, mentalStamina));
         }
 
         [Fact]
+        public void TourFinishSkipped_Unchanged()
+        {
+            data_girls.girls perfectionist = TestGame.Hire(TestGame.Idol(Perfectionist));
+            bool state = false;
+            SEvent_Tour_FinishTour.Prefix(TourEvent(50), ref state);
+            SEvent_Tour_FinishTour.Postfix(state, false);
+            Assert.Equal(100f, TestGame.Stat(perfectionist, mentalStamina));
+        }
+
+        /// <summary>
+        /// Perfectionist loses mental once per concert: not again if Finish runs on a finished concert,
+        /// and not if another mod skipped the game's Finish.
+        /// </summary>
+        [Fact]
+        public void ConcertFinish_OnceAndNotWhenSkipped()
+        {
+            data_girls.girls performer = TestGame.Hire(TestGame.Idol(Perfectionist));
+            SEvent_Concerts._concert concert = Concert(99f, performer);
+            concert.Status = SEvent_Tour.tour._status.working;
+            for (int call = 0; call < 2; call++)
+            {
+                SEvent_Concerts__concert_Finish.Prefix(concert, out bool alreadyFinished);
+                concert.Status = SEvent_Tour.tour._status.finished;
+                SEvent_Concerts__concert_Finish.Postfix(concert, true, alreadyFinished);
+            }
+            Assert.Equal(80f, TestGame.Stat(performer, mentalStamina));
+
+            SEvent_Concerts._concert skipped = Concert(99f, performer);
+            skipped.Status = SEvent_Tour.tour._status.working;
+            SEvent_Concerts__concert_Finish.Prefix(skipped, out bool before);
+            SEvent_Concerts__concert_Finish.Postfix(skipped, false, before);
+            Assert.Equal(80f, TestGame.Stat(performer, mentalStamina));
+        }
+
+        [Fact]
         public void FullHypeConcert_Unchanged()
         {
             data_girls.girls performer = TestGame.Hire(TestGame.Idol(Perfectionist));
-            SEvent_Concerts__concert_Finish.Postfix(Concert(100f, performer));
-            SEvent_Concerts__concert_Finish.Postfix(null);
+            SEvent_Concerts__concert_Finish.Postfix(Concert(100f, performer), true, false);
+            SEvent_Concerts__concert_Finish.Postfix(null, true, false);
             Assert.Equal(100f, TestGame.Stat(performer, mentalStamina));
         }
     }

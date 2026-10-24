@@ -9,9 +9,26 @@ namespace TraitFix
     // Runs once a week, after every idol's own dating update. Each Indiscreet idol gets one leak roll, so
     // leaks grow with the number of Indiscreet idols, not with the number of secret relationships.
     [HarmonyPatch(typeof(data_girls), nameof(data_girls.UpdateDatingStatus))]
+    // An error here would stop the rest of the game's new week, so it's logged (once) and the week goes on.
     public class Data_girls_UpdateDatingStatus
     {
-        public static void Postfix() => RollIndiscreetLeaks();
+        private static bool loggedError;
+
+        public static void Postfix()
+        {
+            try
+            {
+                RollIndiscreetLeaks();
+            }
+            catch (Exception e)
+            {
+                if (!loggedError)
+                {
+                    loggedError = true;
+                    Debug.LogError("[Traits Fix] Couldn't roll this week's Indiscreet leaks: " + e);
+                }
+            }
+        }
     }
 
     // Last, so other mods' patches see the leak event as the active one, as they would see any event whose

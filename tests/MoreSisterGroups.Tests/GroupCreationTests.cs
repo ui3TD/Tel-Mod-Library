@@ -104,5 +104,22 @@ namespace MoreSisterGroups.Tests
 
             Assert.Equal(2, result);
         }
+
+        /// <summary>
+        /// Added in 1.1.1: only the game's own value (10 per active group) is replaced, so another mod's requirement,
+        /// lower or higher, stands.
+        /// </summary>
+        [Theory]
+        [InlineData(5)]
+        [InlineData(25)]
+        public void AnotherModsRequirement_IsKept(int anotherMods)
+        {
+            TestGame.Reset();
+            int result = anotherMods;
+
+            Groups_GetIdolsNeededForNewGroup.Postfix(ref result);
+
+            Assert.Equal(anotherMods, result);
+        }
     }
 }

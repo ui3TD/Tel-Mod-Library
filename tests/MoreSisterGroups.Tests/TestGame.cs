@@ -42,7 +42,6 @@ namespace MoreSisterGroups.Tests
             Groups.Groups_ = new List<Groups._group>();
             data_girls.girl = new List<data_girls.girls>();
             singles.Singles = new List<singles._single>();
-            Utility.groupSales = null;
             Utility.singleSales = null;
             staticVars.dateTime = new DateTime(2020, 6, 1);
             return Group();

@@ -2,7 +2,9 @@ using HarmonyLib;
 using SisterGroups;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using Xunit;
 using static singles._single._status;
@@ -29,32 +31,13 @@ namespace MoreSisterGroups.Tests
 
         public static TheoryData<string> ReleaseSteps => new() { "AddOpinion", "GenerateSales" };
 
-        /// <summary>
-        /// Runs the action between the release step's prefix and finalizer, as if inside the game's method.
-        /// (Neither method runs outside the game.)
-        /// </summary>
-        private static void During(string step, singles._single single, Action action)
-        {
-            Utility.ReleaseContext state = null;
-            if (step == "AddOpinion")
-                singles_AddOpinion.Prefix(single);
-            else
-                singles_GenerateSales.Prefix(single, out state);
-            try
-            {
-                action();
-            }
-            finally
-            {
-                if (step == "AddOpinion")
-                    singles_AddOpinion.Finalizer();
-                else
-                    singles_GenerateSales.Finalizer(state);
-            }
-        }
-
         private static void SameSingles(IEnumerable<singles._single> expected, IEnumerable<singles._single> actual) =>
             Assert.Equal(expected, actual, TestGame.SameObject<singles._single>());
+
+        /// <summary>
+        /// The release step's own call, as the transpiler makes it: the latest 3 released singles of the single's group.
+        /// </summary>
+        private static List<singles._single> History(singles._single releasing) => Utility.LatestReleasedSinglesOf(3, releasing);
 
         /// <summary>
         /// Both release steps work out their penalty from the latest 3 released singles.
@@ -67,9 +50,67 @@ namespace MoreSisterGroups.Tests
             Assert.True(TestGame.Calls(AccessTools.Method(typeof(singles), step), latest));
         }
 
+        /// <summary>
+        /// Added in 1.1.1: only the release step's own call becomes the same-group one, with the step's single
+        /// (its first argument) passed after the count.
+        /// </summary>
         [Theory]
         [MemberData(nameof(ReleaseSteps))]
-        public void DuringRelease_OnlyTheSameGroupsSinglesCount(string step)
+        public void ReleaseStep_ItsOwnCallBecomesTheSameGroupHistory(string step)
+        {
+            MethodInfo original = AccessTools.Method(typeof(singles), step);
+            MethodInfo latest = AccessTools.Method(typeof(singles), nameof(singles.GetLatestReleasedSingles), new[] { typeof(int) });
+            MethodInfo sameGroup = AccessTools.Method(typeof(Utility), nameof(Utility.LatestReleasedSinglesOf));
+
+            List<CodeInstruction> patched = Utility.SameGroupHistory(PatchProcessor.GetOriginalInstructions(original), step).ToList();
+
+            Assert.DoesNotContain(patched, i => i.Calls(latest));
+            int call = Assert.Single(Enumerable.Range(0, patched.Count), i => patched[i].Calls(sameGroup));
+            Assert.Equal(OpCodes.Ldarg_1, patched[call - 1].opcode);
+            Assert.Equal(typeof(singles._single), original.GetParameters()[0].ParameterType);
+        }
+
+        /// <summary>
+        /// Added in 1.1.1: applied twice (two copies of the patch), the second pass leaves the step as the first made it.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(ReleaseSteps))]
+        public void ReleaseStep_PatchedTwice_ChangesOnce(string step)
+        {
+            List<CodeInstruction> once = Utility.SameGroupHistory(PatchProcessor.GetOriginalInstructions(AccessTools.Method(typeof(singles), step)), step).ToList();
+
+            List<CodeInstruction> twice = Utility.SameGroupHistory(once, step).ToList();
+
+            Assert.Equal(once.Select(i => i.ToString()), twice.Select(i => i.ToString()));
+        }
+
+        /// <summary>
+        /// Added in 1.1.1: if the step doesn't have exactly one such call (the game code changed, or another mod
+        /// rewrote it), its code is left as it is and the mod says why.
+        /// </summary>
+        [Fact]
+        public void ReleaseStepWithoutTheCall_IsLeftAloneAndLogged()
+        {
+            UnityEngine.ILogHandler gameLog = UnityEngine.Debug.unityLogger.logHandler;
+            LogRecorder log = new();
+            UnityEngine.Debug.unityLogger.logHandler = log;
+            try
+            {
+                List<CodeInstruction> instructions = PatchProcessor.GetOriginalInstructions(AccessTools.Method(typeof(singles), nameof(singles.GetSaturationCoeff)));
+
+                List<CodeInstruction> patched = Utility.SameGroupHistory(instructions, "GetSaturationCoeff").ToList();
+
+                Assert.Equal(instructions.Select(i => i.ToString()), patched.Select(i => i.ToString()));
+                Assert.Contains(log.Messages, m => m.StartsWith("[More Sister Groups] Found 0 calls"));
+            }
+            finally
+            {
+                UnityEngine.Debug.unityLogger.logHandler = gameLog;
+            }
+        }
+
+        [Fact]
+        public void ReleaseHistory_OnlyTheSameGroupsSinglesCount()
         {
             singles._single s1 = TestGame.Single(sister);
             TestGame.Single(other);
@@ -80,43 +121,38 @@ namespace MoreSisterGroups.Tests
             TestGame.Single(other);
             singles._single releasing = TestGame.Single(sister, status: working);
 
-            During(step, releasing, () =>
-                SameSingles(new[] { s3, s2, s1 }, singles.GetLatestReleasedSingles(3)));
+            SameSingles(new[] { s3, s2, s1 }, History(releasing));
         }
 
-        [Theory]
-        [MemberData(nameof(ReleaseSteps))]
-        public void DuringRelease_OnlyTheLatestCountAreReturned(string step)
+        [Fact]
+        public void ReleaseHistory_OnlyTheLatestCountAreReturned()
         {
             TestGame.Single(sister);
             singles._single s2 = TestGame.Single(sister);
             singles._single s3 = TestGame.Single(sister);
             singles._single s4 = TestGame.Single(sister);
 
-            During(step, s4, () =>
-                SameSingles(new[] { s4, s3, s2 }, singles.GetLatestReleasedSingles(3)));
+            SameSingles(new[] { s4, s3, s2 }, History(s4));
         }
 
         /// <summary>
         /// A group's first single has no history to be penalised against, however many other groups have released.
         /// </summary>
-        [Theory]
-        [MemberData(nameof(ReleaseSteps))]
-        public void DuringRelease_AGroupsFirstSingle_HasNoHistory(string step)
+        [Fact]
+        public void ReleaseHistory_AGroupsFirstSingle_HasNoHistory()
         {
             TestGame.Single(main);
             TestGame.Single(other);
             singles._single first = TestGame.Single(sister, status: working);
 
-            During(step, first, () => Assert.Empty(singles.GetLatestReleasedSingles(3)));
+            Assert.Empty(History(first));
         }
 
         /// <summary>
         /// The main group's singles (any not on a sister group's list) don't count sister groups' singles either.
         /// </summary>
-        [Theory]
-        [MemberData(nameof(ReleaseSteps))]
-        public void DuringRelease_MainGroupIgnoresSisterGroups(string step)
+        [Fact]
+        public void ReleaseHistory_MainGroupIgnoresSisterGroups()
         {
             singles._single m1 = TestGame.Single();
             TestGame.Single(sister);
@@ -124,53 +160,52 @@ namespace MoreSisterGroups.Tests
             TestGame.Single(other);
             singles._single releasing = TestGame.Single(status: working);
 
-            During(step, releasing, () =>
-                SameSingles(new[] { m2, m1 }, singles.GetLatestReleasedSingles(3)));
+            SameSingles(new[] { m2, m1 }, History(releasing));
         }
 
         /// <summary>
-        /// Everything else that reads the latest singles (e.g. the chapter 1 story choice) still sees every group's.
+        /// Added in 1.1.1: while a single's sales are generated, everything else that reads the latest singles
+        /// (another mod's patch inside the release) still sees every group's. Only the step's own call is filtered.
         /// </summary>
-        [Theory]
-        [MemberData(nameof(ReleaseSteps))]
-        public void AfterRelease_AllGroupsSinglesCountAgain(string step)
+        [Fact]
+        public void DuringARelease_OtherCallsSeeEveryGroup()
         {
             singles._single s1 = TestGame.Single(sister);
             singles._single o1 = TestGame.Single(other);
             singles._single m1 = TestGame.Single(main);
 
-            During(step, s1, () => { });
-
-            Assert.True(Utility.groupSales is null);
-            Assert.True(Utility.singleSales is null);
-            SameSingles(new[] { m1, o1, s1 }, singles.GetLatestReleasedSingles(5));
+            singles_GenerateSales.Prefix(s1, out Utility.ReleaseContext state);
+            try
+            {
+                SameSingles(new[] { m1, o1, s1 }, singles.GetLatestReleasedSingles(5));
+            }
+            finally
+            {
+                singles_GenerateSales.Finalizer(state);
+            }
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ReleaseStepThatThrows(singles._single single) => throw new InvalidOperationException("release step failed");
 
         /// <summary>
-        /// If the game's release step throws, the error still reaches the game, and the filter doesn't stay on
-        /// for everything else that reads the latest singles. The patch is applied to a stand-in method that
-        /// throws, because the game's methods don't run outside the game.
+        /// If the game's release step throws, the error still reaches the game, and the releasing single isn't
+        /// kept for later sister group new fans. The patch is applied to a stand-in method that throws, because the
+        /// game's methods don't run outside the game.
         /// </summary>
-        [Theory]
-        [InlineData(typeof(singles_AddOpinion))]
-        [InlineData(typeof(singles_GenerateSales))]
-        public void AfterAFailedRelease_AllGroupsSinglesCountAgain(Type patchClass)
+        [Fact]
+        public void AfterAFailedRelease_TheSingleIsNotKept()
         {
             singles._single s1 = TestGame.Single(sister);
-            singles._single o1 = TestGame.Single(other);
-            singles._single m1 = TestGame.Single(main);
-            Assert.Null(AccessTools.Method(patchClass, "Postfix"));
+            Assert.Null(AccessTools.Method(typeof(singles_GenerateSales), "Postfix"));
 
             Harmony harmony = new(TestGame.HarmonyId + ".FailedRelease");
             try
             {
                 MethodInfo standIn = AccessTools.Method(typeof(SinglesHistoryTests), nameof(ReleaseStepThatThrows));
                 harmony.Patch(standIn,
-                    prefix: new HarmonyMethod(AccessTools.Method(patchClass, "Prefix")),
-                    finalizer: new HarmonyMethod(AccessTools.Method(patchClass, "Finalizer")));
+                    prefix: new HarmonyMethod(AccessTools.Method(typeof(singles_GenerateSales), "Prefix")),
+                    finalizer: new HarmonyMethod(AccessTools.Method(typeof(singles_GenerateSales), "Finalizer")));
 
                 Assert.Throws<InvalidOperationException>(() => ReleaseStepThatThrows(s1));
             }
@@ -179,9 +214,14 @@ namespace MoreSisterGroups.Tests
                 harmony.UnpatchSelf();
             }
 
-            Assert.True(Utility.groupSales is null);
             Assert.True(Utility.singleSales is null);
-            SameSingles(new[] { m1, o1, s1 }, singles.GetLatestReleasedSingles(5));
+        }
+
+        private class LogRecorder : UnityEngine.ILogHandler
+        {
+            public readonly List<string> Messages = new();
+            public void LogFormat(UnityEngine.LogType logType, UnityEngine.Object context, string format, params object[] args) => Messages.Add(string.Format(format, args));
+            public void LogException(Exception exception, UnityEngine.Object context) => Messages.Add(exception.ToString());
         }
 
         [Fact]

@@ -1,6 +1,9 @@
 ﻿using HarmonyLib;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using static SisterGroups.Utility;
 
 namespace SisterGroups
@@ -57,63 +60,47 @@ namespace SisterGroups
     }
 
 
-    // Removed minimum member limit for sister group creation
+    // Removed minimum member limit for sister group creation. Only the game's own value (10 idols per active group) is
+    // replaced, so another mod's requirement stands.
     [HarmonyPatch(typeof(Groups), nameof(Groups.GetIdolsNeededForNewGroup))]
     public class Groups_GetIdolsNeededForNewGroup
     {
         public static void Postfix(ref int __result)
         {
-            __result = Groups.CountActiveGroups() + 1;
+            int activeGroups = Groups.CountActiveGroups();
+            if (__result == activeGroups * 10)
+                __result = activeGroups + 1;
         }
 
     }
 
-    // When releasing a single, the penalty for a decrease in fame and appeal now only considers past singles of the same group
-    [HarmonyPatch(typeof(singles), nameof(singles.AddOpinion))]
-    public class singles_AddOpinion
-    {
-        public static void Prefix(singles._single single)
-        {
-            groupSales = single.GetGroup();
-        }
-
-        public static void Finalizer()
-        {
-            groupSales = null;
-        }
-    }
-
-    // When releasing a single, the penalty for a decrease in fame and appeal now only considers past singles of the same group.
-    // The single is also kept for sister group new fans, which count its singers.
+    // The single whose sales are being generated, kept for sister group new fans, which count its singers.
     [HarmonyPatch(typeof(singles), nameof(singles.GenerateSales))]
     public class singles_GenerateSales
     {
         public static void Prefix(singles._single single, out ReleaseContext __state)
         {
-            __state = new ReleaseContext(groupSales, singleSales);
-            groupSales = single.GetGroup();
+            __state = new ReleaseContext(singleSales);
             singleSales = single;
         }
 
         // Restores rather than clears, so a nested call can't clear the outer release's context
         public static void Finalizer(ReleaseContext __state)
         {
-            groupSales = __state?.Group;
             singleSales = __state?.Single;
         }
+
+        // When releasing a single, the fame penalty only considers past singles of the same group
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) =>
+            SameGroupHistory(instructions, nameof(singles.GenerateSales));
     }
 
-    // When releasing a single, the penalty for a decrease in fame and appeal now only considers past singles of the same group
-    [HarmonyPatch(typeof(singles), nameof(singles.GetLatestReleasedSingles))]
-    public class singles_GetLatestReleasedSingles
+    // When releasing a single, the appeal penalty only considers past singles of the same group
+    [HarmonyPatch(typeof(singles), nameof(singles.AddOpinion))]
+    public class singles_AddOpinion
     {
-        public static void Postfix(int count, ref List<singles._single> __result)
-        {
-            if (groupSales == null)
-                return;
-
-            __result = GetLatestReleasedSingles(count, groupSales);
-        }
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) =>
+            SameGroupHistory(instructions, nameof(singles.AddOpinion));
     }
 
     public class Utility
@@ -121,23 +108,51 @@ namespace SisterGroups
         public const float FAN_PENALTY = 5;
         public const float MEMBER_PENALTY_THR = 10;
 
-        // Set by the release steps' prefixes and cleared by their finalizers, so it's cleared even if the step throws
-        public static Groups._group groupSales = null;
-
-        // The single whose sales are being generated. Set and restored like groupSales, by the GenerateSales patch only
+        // The single whose sales are being generated. Set by the GenerateSales prefix and restored by its finalizer,
+        // so it's restored even if the step throws
         public static singles._single singleSales = null;
 
         public class ReleaseContext
         {
-            public readonly Groups._group Group;
             public readonly singles._single Single;
 
-            public ReleaseContext(Groups._group group, singles._single single)
+            public ReleaseContext(singles._single single)
             {
-                Group = group;
                 Single = single;
             }
         }
+
+        // In a release step (instance method, single as its first argument), its one call to
+        // singles.GetLatestReleasedSingles(count) becomes LatestReleasedSinglesOf(count, single). Other calls of
+        // GetLatestReleasedSingles, the game's or other mods', keep every group's singles.
+        public static IEnumerable<CodeInstruction> SameGroupHistory(IEnumerable<CodeInstruction> instructions, string step)
+        {
+            MethodInfo latest = AccessTools.Method(typeof(singles), nameof(singles.GetLatestReleasedSingles), new[] { typeof(int) });
+            MethodInfo sameGroup = AccessTools.Method(typeof(Utility), nameof(LatestReleasedSinglesOf));
+            List<CodeInstruction> codes = instructions.ToList();
+            // Already calls the same-group history: patched twice
+            if (codes.Any(code => code.Calls(sameGroup)))
+                return codes;
+
+            List<int> calls = Enumerable.Range(0, codes.Count).Where(i => codes[i].Calls(latest)).ToList();
+            if (calls.Count != 1)
+            {
+                Debug.LogWarning("[More Sister Groups] Found " + calls.Count + " calls to the latest released singles in singles." + step
+                    + " instead of 1, so its penalty counts every group's singles");
+                return codes;
+            }
+
+            int call = calls[0];
+            // single goes after count, between the argument and the call, so a jump to the call still lands before it
+            CodeInstruction loadSingle = new CodeInstruction(OpCodes.Ldarg_1).MoveLabelsFrom(codes[call]);
+            codes[call] = new CodeInstruction(OpCodes.Call, sameGroup);
+            codes.Insert(call, loadSingle);
+            return codes;
+        }
+
+        // The latest released singles of the single's group
+        public static List<singles._single> LatestReleasedSinglesOf(int count, singles._single single) =>
+            GetLatestReleasedSingles(count, single?.GetGroup());
 
         // This method gets latest released singles of a given group. It is based on singles.GetReleasedSingles(int count)
         // which does not take group as a parameter.

@@ -317,12 +317,10 @@ namespace MoreSisterGroups.Tests
             singles_GenerateSales.Finalizer(innerState);
 
             Assert.Same(outer, Utility.singleSales);
-            Assert.Same(sister, Utility.groupSales);
             Assert.Equal(FullSize / 10, NewFans(sister));
 
             singles_GenerateSales.Finalizer(outerState);
             Assert.Null(Utility.singleSales);
-            Assert.True(Utility.groupSales is null);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -354,7 +352,6 @@ namespace MoreSisterGroups.Tests
             }
 
             Assert.Null(Utility.singleSales);
-            Assert.True(Utility.groupSales is null);
         }
 
         private static float frequencyOverride;

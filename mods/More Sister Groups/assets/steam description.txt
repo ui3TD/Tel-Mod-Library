@@ -13,5 +13,6 @@ Unlimited sister groups, but they are nerfed to maintain balance.
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 1.1.1: Keeps other mods' new-group size; same-group history only affects the release steps.
 - 1.1.0: In Unfair, sister new fans now scale with group size squared, singers and release frequency.
 - 1.0.1: The same-group singles filter can no longer stay on after a game error.

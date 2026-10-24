@@ -1,3 +1,5 @@
+using HarmonyLib;
+using System.Reflection;
 using Xunit;
 using _difficulty = staticVars._playerData._difficulty;
 using _status = SEvent_Tour.tour._status;
@@ -13,16 +15,59 @@ namespace ConcertRebalance.Tests
     {
         public VenueUnlockingTests() => ConcertGame.Reset();
 
-        [Theory]
-        [InlineData(_status.normal)]
-        [InlineData(_status.working)]
-        public void StartingAConcert_DoesNotUnlock(_status status)
+        private const string OtherModId = "tests.ConcertRebalance.OtherMod";
+
+        [Fact]
+        public void StartingAConcert_DoesNotUnlock()
         {
             // The game's StartConcert calls UpdateVenueUnlocked with the concert it starts
             SEvent_Concerts._concert concert = ConcertGame.Concert(_venue.club, 100f);
+            SEvent_Concerts_StartConcert.Prefix();
+            SEvent_Concerts.UpdateVenueUnlocked(concert);
+            SEvent_Concerts_StartConcert.Postfix();
+            Assert.Equal(_venue.club, SEvent_Concerts.UnlockedVenue);
+        }
+
+        [Theory]
+        [InlineData(_status.normal)]
+        [InlineData(_status.working)]
+        public void AnotherModsUnlock_OutsideTheStart_GoesThrough(_status status)
+        {
+            SEvent_Concerts._concert concert = ConcertGame.Concert(_venue.club, 100f);
             concert.Status = status;
             SEvent_Concerts.UpdateVenueUnlocked(concert);
-            Assert.Equal(_venue.club, SEvent_Concerts.UnlockedVenue);
+            Assert.Equal(_venue.concertHall, SEvent_Concerts.UnlockedVenue);
+        }
+
+        [Fact]
+        public void AStartThatThrows_StillEndsTheWindow()
+        {
+            SEvent_Concerts._concert concert = ConcertGame.Concert(_venue.club, 100f);
+            SEvent_Concerts_StartConcert.Prefix();
+            SEvent_Concerts_StartConcert.Finalizer();
+            SEvent_Concerts.UpdateVenueUnlocked(concert);
+            Assert.Equal(_venue.concertHall, SEvent_Concerts.UnlockedVenue);
+        }
+
+        private static bool SkipOriginal() => false;
+
+        [Fact]
+        public void FinishSkippedByAnotherMod_DoesNotUnlock()
+        {
+            // The concert would qualify: sold out with a profit
+            Harmony otherMod = new(OtherModId);
+            MethodInfo finish = AccessTools.Method(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.Finish));
+            try
+            {
+                otherMod.Patch(finish, prefix: new HarmonyMethod(typeof(VenueUnlockingTests), nameof(SkipOriginal)));
+                SEvent_Concerts._concert concert = ConcertGame.Concert(_venue.club, 100f);
+                concert.Finish();
+                Assert.Equal(_venue.club, SEvent_Concerts.UnlockedVenue);
+            }
+            finally
+            {
+                otherMod.UnpatchSelf();
+            }
         }
 
         [Theory]
@@ -151,6 +196,53 @@ namespace ConcertRebalance.Tests
         {
             ConcertGame.Reset(difficulty: difficulty);
             Assert.Equal(cost, SEvent_Concerts.GetVenueBaseCost(venue));
+        }
+
+        private const string OtherModId = "tests.ConcertRebalance.OtherMod";
+
+        private static void OtherModCapacity(SEvent_Concerts._venue val, ref int __result)
+        {
+            if (val == _venue.tokyoColiseum)
+                __result = 40_000;
+        }
+
+        private static void OtherModCost(SEvent_Concerts._venue val, ref int __result)
+        {
+            if (val == _venue.tokyoColiseum)
+                __result = 150_000_000;
+            else if (val == _venue.openAirStage)
+                __result = 15_000_000;
+        }
+
+        private static void OtherModDoubles(ref int __result) => __result *= 2;
+
+        /// <summary>
+        /// A mod that sets its own figure before the mod's patch runs keeps it; one that scales after it scales the mod's.
+        /// </summary>
+        [Theory]
+        [InlineData(nameof(SEvent_Concerts.GetVenueCapacity), nameof(OtherModCapacity), Priority.High, _venue.tokyoColiseum, 40_000)]
+        [InlineData(nameof(SEvent_Concerts.GetVenueCapacity), nameof(OtherModDoubles), Priority.Low, _venue.tokyoColiseum, 100_000)]
+        [InlineData(nameof(SEvent_Concerts.GetVenueBaseCost), nameof(OtherModCost), Priority.High, _venue.tokyoColiseum, 150_000_000)]
+        [InlineData(nameof(SEvent_Concerts.GetVenueBaseCost), nameof(OtherModCost), Priority.High, _venue.openAirStage, 15_000_000)]
+        [InlineData(nameof(SEvent_Concerts.GetVenueBaseCost), nameof(OtherModDoubles), Priority.Low, _venue.tokyoColiseum, 400_000_000)]
+        [InlineData(nameof(SEvent_Concerts.GetVenueBaseCost), nameof(OtherModDoubles), Priority.Low, _venue.openAirStage, 40_000_000)]
+        public void AnotherModsFigures_AreRespected(string gameMethod, string otherPatch, int priority, _venue venue, int expected)
+        {
+            ConcertGame.Reset(difficulty: _difficulty.hard);
+            Harmony otherMod = new(OtherModId);
+            try
+            {
+                otherMod.Patch(AccessTools.Method(typeof(SEvent_Concerts), gameMethod),
+                    postfix: new HarmonyMethod(typeof(HardColiseumTests), otherPatch) { priority = priority });
+                int actual = gameMethod == nameof(SEvent_Concerts.GetVenueCapacity)
+                    ? SEvent_Concerts.GetVenueCapacity(venue)
+                    : SEvent_Concerts.GetVenueBaseCost(venue);
+                Assert.Equal(expected, actual);
+            }
+            finally
+            {
+                otherMod.UnpatchSelf();
+            }
         }
     }
 }

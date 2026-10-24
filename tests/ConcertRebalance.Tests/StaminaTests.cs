@@ -75,13 +75,29 @@ namespace ConcertRebalance.Tests
         }
 
         /// <summary>
-        /// Runs the mod's StartConcert prefix as the game would (the game's StartConcert opens Unity popups).
+        /// Runs the mod's StartConcert postfix as the game would (the game's StartConcert opens Unity popups).
         /// </summary>
         private static void Start(SEvent_Concerts._concert concert)
         {
             SEvent_Concerts manager = (SEvent_Concerts)FormatterServices.GetUninitializedObject(typeof(SEvent_Concerts));
             manager.Concert = concert;
-            SEvent_Concerts_StartConcert.Prefix(manager);
+            SEvent_Concerts_StartConcert_Stamina.Postfix(manager);
+        }
+
+        /// <summary>
+        /// Stamina another mod gives as the concert starts (its StartConcert patches run before the record) is kept.
+        /// </summary>
+        [Fact]
+        public void StaminaGivenAsTheConcertStarts_IsKept()
+        {
+            data_girls.girls idol = Idol(50f);
+            SEvent_Concerts._concert concert = Concert(idol);
+            SetStamina(idol, 70f);
+            Start(concert);
+            SetStamina(idol, 90f);
+            concert.Finish();
+
+            Assert.Equal(70f, Stamina(idol));
         }
 
         [Fact]
@@ -252,15 +268,17 @@ namespace ConcertRebalance.Tests
         }
 
         /// <summary>
-        /// The record is taken after other mods' StartConcert prefixes, and the cap runs before other mods' Finish patches.
+        /// The record is taken after other mods' StartConcert patches, and the cap runs before other mods' Finish patches.
+        /// The unlock window closes before other mods' StartConcert postfixes.
         /// </summary>
         [Theory]
-        [InlineData(typeof(SEvent_Concerts_StartConcert), Priority.Last)]
-        [InlineData(typeof(SEvent_Concerts__concert_Finish_StaminaCap), Priority.First)]
-        public void PrefixPriorities(Type patchClass, int priority)
+        [InlineData(typeof(SEvent_Concerts_StartConcert_Stamina), "Postfix", Priority.Last)]
+        [InlineData(typeof(SEvent_Concerts__concert_Finish_StaminaCap), "Prefix", Priority.First)]
+        [InlineData(typeof(SEvent_Concerts_StartConcert), "Postfix", Priority.First)]
+        public void PatchPriorities(Type patchClass, string patchMethod, int priority)
         {
-            MethodInfo prefix = AccessTools.Method(patchClass, "Prefix");
-            HarmonyPriority attribute = prefix.GetCustomAttribute<HarmonyPriority>();
+            MethodInfo patch = AccessTools.Method(patchClass, patchMethod);
+            HarmonyPriority attribute = patch.GetCustomAttribute<HarmonyPriority>();
             Assert.NotNull(attribute);
             Assert.Equal(priority, attribute.info.priority);
         }

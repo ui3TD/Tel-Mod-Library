@@ -47,8 +47,8 @@ namespace ConcertRebalance.Tests
             Harmony harmony = new("tests.ConcertRebalance.Behaviour");
             foreach (Type patchClass in TelModTests.Common.PatchTargetAssert.PatchClasses(typeof(ConcertRebalance).Assembly, "ConcertRebalance"))
             {
-                // StartConcert opens Unity popups, so it can't be compiled outside the game; the tests call its prefix directly
-                if (patchClass != typeof(SEvent_Concerts_StartConcert))
+                // StartConcert opens Unity popups, so it can't be compiled outside the game; the tests call its patches directly
+                if (patchClass != typeof(SEvent_Concerts_StartConcert) && patchClass != typeof(SEvent_Concerts_StartConcert_Stamina))
                     harmony.CreateClassProcessor(patchClass).Patch();
             }
             return true;

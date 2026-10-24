@@ -10,6 +10,8 @@ namespace WorkerRights
     {
         public const int FIRE_MIN_DAYS = 30;
         public const int DEF_SALARY = 20000;
+        // The starting salary the game's GenerateGirl gives
+        public const int GAME_DEF_SALARY = 5000;
         public const float MAXFAME_SALARY_EARN_COEFF = 0.1f;
         public const int GRAD_DAYS_PENALTY = 10;
         public const int GRAD_DAYS_PENALTY_SEVERE = 30;
@@ -28,17 +30,19 @@ namespace WorkerRights
         }
     }
     // 20000 yen/wk is the expected starting salary for 100% satisfaction
-    // Never lower a larger expectation from vanilla or another mod
+    // Only the game's own value (0 below fame 1) is replaced, first, so another mod's expectation is kept
+    // and a mod that scales it later scales this one
     // Why twice DEF_SALARY: the game's GetExpectedSalary_Total clamps an idol's average earnings to between
     // half and double this base. A new idol earns nothing, so she expects half of it: exactly DEF_SALARY.
     [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GetExpectedSalary))]
     public class data_girls_girls_GetExpectedSalary
     {
+        [HarmonyPriority(Priority.First)]
         public static void Postfix(ref int __result, data_girls.girls __instance)
         {
-            if (__instance != null && __instance.GetFameLevel() < 1f)
+            if (__instance != null && __result == 0 && __instance.GetFameLevel() < 1f)
             {
-                __result = Math.Max(__result, DEF_SALARY * 2);
+                __result = DEF_SALARY * 2;
             }
         }
     }
@@ -48,9 +52,12 @@ namespace WorkerRights
     // Its numbers are retuned so busy idols don't stay forever; see GraduationWeek.
     // The prefix runs last and the postfix first, so the date change made inside the method itself
     // (by a mod that makes the game store its own value) is replaced, not added to.
+    // An error here would stop the rest of the game's weekly update, so it's logged (once) and the week goes on.
     [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.Graduation_Date_Update))]
     public class data_girls_girls_Graduation_Date_Update
     {
+        private static bool loggedError;
+
         [HarmonyPriority(Priority.Last)]
         public static void Prefix(data_girls.girls __instance, out DateTime? __state)
         {
@@ -64,17 +71,28 @@ namespace WorkerRights
             if (__instance == null || __result || __instance.status == data_girls._status.announced_graduation || __instance.status == data_girls._status.graduated)
                 return;
 
-            // Another mod replaced the method with its own model: keep only the low-salary penalty
-            if (!__runOriginal)
+            try
             {
-                float penalty = GraduationWeek.LowSalaryPenalty(__instance.GetSalarySatisfaction_Percentage(), GraduationWeek.LowSalaryApplies());
-                if (penalty != 0f)
-                    __instance.Graduation_Date = __instance.Graduation_Date.AddDays(penalty);
-                return;
-            }
+                // Another mod replaced the method with its own model: keep only the low-salary penalty
+                if (!__runOriginal)
+                {
+                    float penalty = GraduationWeek.LowSalaryPenalty(__instance.GetSalarySatisfaction_Percentage(), GraduationWeek.LowSalaryApplies());
+                    if (penalty != 0f)
+                        __instance.Graduation_Date = __instance.Graduation_Date.AddDays(penalty);
+                    return;
+                }
 
-            DateTime before = __state ?? __instance.Graduation_Date;
-            __instance.Graduation_Date = before.AddDays(GraduationWeek.WeeklyDays(GraduationWeek.Read(__instance)));
+                DateTime before = __state ?? __instance.Graduation_Date;
+                __instance.Graduation_Date = before.AddDays(GraduationWeek.WeeklyDays(GraduationWeek.Read(__instance)));
+            }
+            catch (Exception e)
+            {
+                if (!loggedError)
+                {
+                    loggedError = true;
+                    Debug.LogError("[Worker Rights] Couldn't move this week's graduation date: " + e);
+                }
+            }
         }
     }
 
@@ -320,12 +338,15 @@ namespace WorkerRights
 
 
     // Default salary set to 20000
+    // Only the game's own starting salary is replaced, first, so another mod's is kept
+    // and a mod that scales it later scales this one
     [HarmonyPatch(typeof(data_girls), nameof(data_girls.GenerateGirl))]
     public class data_girls_GenerateGirl
     {
+        [HarmonyPriority(Priority.First)]
         public static void Postfix(ref data_girls.girls __result)
         {
-            if (__result != null)
+            if (__result != null && __result.salary == GAME_DEF_SALARY)
                 __result.salary = DEF_SALARY;
         }
     }

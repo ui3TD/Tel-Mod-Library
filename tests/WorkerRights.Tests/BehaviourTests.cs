@@ -156,6 +156,14 @@ namespace WorkerRightsTests
         }
 
         [Fact]
+        public void OtherModsStartingSalary_Kept()
+        {
+            data_girls.girls girl = new() { salary = 8000 };
+            data_girls_GenerateGirl.Postfix(ref girl);
+            Assert.Equal(8000L, girl.salary);
+        }
+
+        [Fact]
         public void NullIdol_LeftAlone()
         {
             data_girls.girls girl = null;
@@ -163,12 +171,15 @@ namespace WorkerRightsTests
             Assert.Null(girl);
         }
 
+        /// <summary>
+        /// The game's own value below fame 1 is 0; any other value comes from another mod and is kept.
+        /// </summary>
         [Theory]
         [InlineData(0, 40000)]
-        [InlineData(39999, 40000)]
-        [InlineData(40000, 40000)]
+        [InlineData(10000, 10000)]
+        [InlineData(39999, 39999)]
         [InlineData(55000, 55000)]
-        public void BelowFame1_ExpectsAtLeast40000Base(int vanilla, int expected)
+        public void BelowFame1_GameValueBecomes40000Base(int vanilla, int expected)
         {
             TestGame.Reset(normal);
             int result = vanilla;
@@ -777,6 +788,17 @@ namespace WorkerRightsTests
 
         public static bool SkipOriginal() => false;
 
+        public static bool BrokenSatisfaction() => throw new InvalidOperationException("broken satisfaction patch");
+
+        public static readonly List<string> Errors = new();
+
+        /// <summary>Debug.LogError doesn't work outside the game.</summary>
+        public static bool LogError(object message)
+        {
+            Errors.Add(message?.ToString());
+            return false;
+        }
+
         private static double DaysMoved(long salary, HarmonyMethod prefix = null, HarmonyMethod transpiler = null)
         {
             TestGame.Reset(normal, patched: true);
@@ -792,6 +814,34 @@ namespace WorkerRightsTests
                 standIn.UnpatchSelf();
             }
             return (girl.Graduation_Date - TestGame.GraduationDate).TotalDays;
+        }
+
+        /// <summary>
+        /// An error would stop the rest of the game's weekly update, so it's logged once and the date is left alone.
+        /// </summary>
+        [Fact]
+        public void Error_IsLoggedOnce_AndDateUnchanged()
+        {
+            TestGame.Reset(normal);
+            data_girls.girls girl = TestGame.Idol(0, 0);
+            Errors.Clear();
+            Harmony standIn = new("tests.WorkerRights.StandIn");
+            try
+            {
+                standIn.Patch(AccessTools.Method(typeof(data_girls.girls), nameof(data_girls.girls.GetSalarySatisfaction)),
+                    prefix: new HarmonyMethod(typeof(GraduationCompatibilityTests), nameof(BrokenSatisfaction)));
+                standIn.Patch(AccessTools.Method(typeof(UnityEngine.Debug), nameof(UnityEngine.Debug.LogError), new[] { typeof(object) }),
+                    prefix: new HarmonyMethod(typeof(GraduationCompatibilityTests), nameof(LogError)));
+                data_girls_girls_Graduation_Date_Update.Postfix(girl, false, true, TestGame.GraduationDate);
+                data_girls_girls_Graduation_Date_Update.Postfix(girl, false, false, TestGame.GraduationDate);
+            }
+            finally
+            {
+                standIn.UnpatchSelf();
+            }
+            Assert.Equal(TestGame.GraduationDate, girl.Graduation_Date);
+            string error = Assert.Single(Errors);
+            Assert.Contains("[Worker Rights]", error);
         }
 
         [Fact]

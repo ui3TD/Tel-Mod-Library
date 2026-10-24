@@ -40,29 +40,55 @@ namespace CustomAuditions
         /// <param name="__instance">The instance of Popup_Audition being patched.</param>
         public static void Postfix(Popup_Audition __instance)
         {
-            if (__instance.Cards_Container.transform.parent.GetComponent<ScrollRect>() != null)
-                return;
+            try
+            {
+                GameObject cards = __instance.Cards_Container;
+                // Already scrolling: this postfix ran before, or another mod made the cards scroll
+                if (cards == null || IsInScrollArea(cards.transform))
+                    return;
 
-            // Create ScrollRect container and attach to panel
-            GameObject scrollContainer = new(AUD_SCROLLRECT_NAME, typeof(RectTransform), typeof(ScrollRect));
-            RectTransform scrollRectTransform = scrollContainer.GetComponent<RectTransform>();
-            SetRectTransform(scrollRectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+                // Create ScrollRect container and attach to panel
+                GameObject scrollContainer = new(AUD_SCROLLRECT_NAME, typeof(RectTransform), typeof(ScrollRect));
+                RectTransform scrollRectTransform = scrollContainer.GetComponent<RectTransform>();
+                SetRectTransform(scrollRectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-            // Configure the ScrollRect
-            ScrollRect scrollRect = scrollContainer.GetComponent<ScrollRect>();
-            scrollRect.content = __instance.Cards_Container.GetComponent<RectTransform>(); // attach content
-            scrollRect.vertical = false;
-            scrollRect.horizontal = true;
-            scrollRect.movementType = ScrollRect.MovementType.Elastic;
-            scrollRect.elasticity = 0.1f;
-            scrollRect.inertia = false;
-            scrollRect.scrollSensitivity = 20;
+                // Configure the ScrollRect
+                ScrollRect scrollRect = scrollContainer.GetComponent<ScrollRect>();
+                scrollRect.content = cards.GetComponent<RectTransform>(); // attach content
+                scrollRect.vertical = false;
+                scrollRect.horizontal = true;
+                scrollRect.movementType = ScrollRect.MovementType.Elastic;
+                scrollRect.elasticity = 0.1f;
+                scrollRect.inertia = false;
+                scrollRect.scrollSensitivity = 20;
 
-            // Configure hierarchy
-            scrollContainer.transform.SetParent(__instance.Cards_Container.transform.parent, false);
-            __instance.Cards_Container.transform.SetParent(scrollContainer.transform, false);
+                // Configure hierarchy
+                scrollContainer.transform.SetParent(cards.transform.parent, false);
+                cards.transform.SetParent(scrollContainer.transform, false);
 
-            __instance.Cards_Container.AddComponent<ContentSizeFitter>().horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+                // A second fitter would fight one another mod added
+                ContentSizeFitter fitter = cards.GetComponent<ContentSizeFitter>();
+                if (fitter == null)
+                    fitter = cards.AddComponent<ContentSizeFitter>();
+                fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            }
+            catch (Exception ex)
+            {
+                LogOnce("scroll", "Couldn't make the audition cards scroll:\n" + ex);
+            }
+        }
+
+        /// <summary>
+        /// Whether a ScrollRect above the cards (or on them) already scrolls content that holds them.
+        /// </summary>
+        private static bool IsInScrollArea(Transform cards)
+        {
+            foreach (ScrollRect scrollRect in cards.GetComponentsInParent<ScrollRect>(true))
+            {
+                if (scrollRect.content != null && cards.IsChildOf(scrollRect.content))
+                    return true;
+            }
+            return false;
         }
     }
 
@@ -76,39 +102,67 @@ namespace CustomAuditions
         /// Prefix method to set audition parameters before generating girls.
         /// </summary>
         /// <param name="__instance">The instance of Auditions being patched.</param>
-        public static void Prefix(Auditions __instance, out bool __state)
+        public static void Prefix(Auditions __instance, bool __runOriginal, out bool __state)
         {
             __state = false;
-
-            LoadConfiguredAgeRange();
-
-            // Set sexual orientation
-            float varLesbian = ReadFloat(VARID_LESCHANCE, DEF_CHANCE_LES_STR);
-            float varBi = ReadFloat(VARID_BICHANCE, DEF_CHANCE_BI_STR);
-
-            if (varLesbian + varBi > 100)
+            // Another mod generates this audition itself
+            if (!__runOriginal)
             {
-                varLesbian = Mathf.Floor(varLesbian / (varLesbian + varBi) * 100);
-                varBi = 100 - varLesbian;
-                variables.Set(VARID_LESCHANCE, varLesbian.ToString(CultureInfo.InvariantCulture));
-                variables.Set(VARID_BICHANCE, varBi.ToString(CultureInfo.InvariantCulture));
-            }
-            chanceLesbian = (int)varLesbian;
-            chanceBi = (int)Mathf.Floor(varBi / (100 - chanceLesbian) * 100);
-
-
-            // Set stat priorities
-            foreach (data_girls._paramType param in paramTypes)
-            {
-                int value = ReadInt($"{VARID_PRIO_PREFIX}{param}", DEF_PRIO);
-                priorityDict[param] = value;
+                return;
             }
 
-            // Set girl count
-            __instance.NumberOfGirls = ReadInt(VARID_COUNT, DEF_COUNT);
+            try
+            {
+                LoadConfiguredAgeRange();
+
+                // Set sexual orientation
+                float varLesbian = ReadFloat(VARID_LESCHANCE, DEF_CHANCE_LES_STR);
+                float varBi = ReadFloat(VARID_BICHANCE, DEF_CHANCE_BI_STR);
+
+                if (varLesbian + varBi > 100)
+                {
+                    varLesbian = Mathf.Floor(varLesbian / (varLesbian + varBi) * 100);
+                    varBi = 100 - varLesbian;
+                    variables.Set(VARID_LESCHANCE, varLesbian.ToString(CultureInfo.InvariantCulture));
+                    variables.Set(VARID_BICHANCE, varBi.ToString(CultureInfo.InvariantCulture));
+                }
+                chanceLesbian = (int)varLesbian;
+                chanceBi = (int)Mathf.Floor(varBi / (100 - chanceLesbian) * 100);
+
+
+                // Set stat priorities
+                foreach (data_girls._paramType param in paramTypes)
+                {
+                    int value = ReadInt($"{VARID_PRIO_PREFIX}{param}", DEF_PRIO);
+                    priorityDict[param] = value;
+                }
+
+                // Set girl count
+                SetCandidateCount(__instance, ReadInt(VARID_COUNT, DEF_COUNT));
+            }
+            catch (Exception ex)
+            {
+                // Without the flag, the audition is the game's own
+                LogError("Couldn't read the audition settings; this audition uses the game's:\n" + ex);
+                return;
+            }
 
             BeginAuditionGeneration();
             __state = true;
+        }
+
+        /// <summary>
+        /// Sets the number of candidates, unless another mod has already set its own number.
+        /// </summary>
+        public static void SetCandidateCount(Auditions auditions, int count)
+        {
+            if (auditions.NumberOfGirls != GAME_DEF_COUNT && auditions.NumberOfGirls != lastCandidateCount)
+            {
+                LogOnce("count", $"Another mod set the number of audition candidates to {auditions.NumberOfGirls}; that number is kept.");
+                return;
+            }
+            auditions.NumberOfGirls = count;
+            lastCandidateCount = count;
         }
 
         public static Exception Finalizer(Exception __exception, bool __state)
@@ -140,9 +194,9 @@ namespace CustomAuditions
         /// every currently eligible body ID has been used once in this audition.
         /// Unique idols' bodies never repeat within an audition.
         /// </summary>
-        public static void Prefix(bool genTextures, data_girls_textures._textureAsset BodyAsset)
+        public static void Prefix(bool genTextures, data_girls_textures._textureAsset BodyAsset, bool __runOriginal)
         {
-            if (!IsGeneratingAudition || !genTextures || BodyAsset != null)
+            if (!__runOriginal || !IsGeneratingAudition || !genTextures || BodyAsset != null)
             {
                 return;
             }
@@ -155,11 +209,13 @@ namespace CustomAuditions
 
         /// <summary>
         /// Postfix method to set the sexuality of a generated audition candidate.
+        /// Runs first, in place of the game's roll, so other mods' postfixes see the result.
         /// </summary>
         /// <param name="__result">The generated girl data.</param>
-        public static void Postfix(ref data_girls.girls __result)
+        [HarmonyPriority(Priority.First)]
+        public static void Postfix(ref data_girls.girls __result, bool __runOriginal)
         {
-            if (!IsGeneratingAudition || __result == null)
+            if (!__runOriginal || !IsGeneratingAudition || __result == null)
             {
                 return;
             }
@@ -187,24 +243,34 @@ namespace CustomAuditions
         /// Reassigns the candidate's stats to skills by priority, after the game has rolled them. Each value
         /// moves with the potential the game rolled for it, so a high stat keeps a matching potential.
         /// Only during auditions; other generated girls (unique idols, rivals) keep the game's order.
+        /// Runs first, so other mods' postfixes change the reassigned stats.
         /// </summary>
-        public static void Postfix(data_girls.girls Girl)
+        [HarmonyPriority(Priority.First)]
+        public static void Postfix(data_girls.girls Girl, bool __runOriginal)
         {
-            if (!IsGeneratingAudition || Girl == null)
+            if (!__runOriginal || !IsGeneratingAudition || Girl == null)
             {
                 return;
             }
 
-            // _val, not val: val adds trait and award bonuses, and the game set these as whole numbers
-            List<data_girls.girls.param> stats = paramTypes.Select(Girl.getParam).ToList();
-            float[] values = stats.Select(stat => stat._val).ToArray();
-            int[] potentials = stats.Select(stat => stat.potential).ToArray();
-
-            int[] source = AssignByPriority(values.Select(v => (int)v).ToList());
-            for (int i = 0; i < paramTypes.Count; i++)
+            try
             {
-                Girl.setParam(paramTypes[i], values[source[i]]);
-                stats[i].potential = potentials[source[i]];
+                // _val, not val: val adds trait and award bonuses, and the game set these as whole numbers
+                List<data_girls.girls.param> stats = paramTypes.Select(Girl.getParam).ToList();
+                float[] values = stats.Select(stat => stat._val).ToArray();
+                int[] potentials = stats.Select(stat => stat.potential).ToArray();
+
+                // Worked out before anything is written, so a failure leaves the game's stats
+                int[] source = AssignByPriority(values.Select(v => (int)v).ToList());
+                for (int i = 0; i < paramTypes.Count; i++)
+                {
+                    Girl.setParam(paramTypes[i], values[source[i]]);
+                    stats[i].potential = potentials[source[i]];
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOnce("priorities", "Couldn't apply the skill priorities; candidates keep the game's stats:\n" + ex);
             }
         }
 
@@ -262,13 +328,15 @@ namespace CustomAuditions
 
     /// <summary>
     /// Patches the data_girls.girls class to apply age limits.
+    /// Runs first, in place of the game's birthday, so other mods' postfixes see the result.
     /// </summary>
     [HarmonyPatch(typeof(data_girls.girls), nameof(data_girls.girls.GenerateBirthday))]
     public class data_girls_girls_GenerateBirthday
     {
-        public static void Postfix(ref data_girls.girls __instance)
+        [HarmonyPriority(Priority.First)]
+        public static void Postfix(ref data_girls.girls __instance, bool __runOriginal)
         {
-            if (IsGeneratingAudition)
+            if (__runOriginal && IsGeneratingAudition)
             {
                 ApplyRandomBirthdayInConfiguredRange(__instance);
             }
@@ -296,6 +364,26 @@ namespace CustomAuditions
 
 
         public const string AUD_SCROLLRECT_NAME = "ScrollContainer";
+
+        // The game's own number of candidates (Auditions.NumberOfGirls), and the last number the mod set
+        public const int GAME_DEF_COUNT = 5;
+        public static int lastCandidateCount = GAME_DEF_COUNT;
+
+        // Problems already logged, so a repeated one doesn't flood the log
+        public static readonly HashSet<string> logged = new();
+
+        public static void LogOnce(string key, string message)
+        {
+            if (logged.Add(key))
+            {
+                LogError(message);
+            }
+        }
+
+        public static void LogError(string message)
+        {
+            Debug.LogError("[Targeted Auditions] " + message);
+        }
 
         public static int minAge = 12;
         public static int maxAge = 23;

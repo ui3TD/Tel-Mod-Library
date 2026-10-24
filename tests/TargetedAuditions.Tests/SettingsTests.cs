@@ -21,7 +21,9 @@ namespace TargetedAuditions.Tests
         private static Auditions StartAudition()
         {
             Auditions auditions = Seams.Component<Auditions>();
-            Auditions_GenerateGirls.Prefix(auditions, out bool state);
+            // The field's initial value, which an uninitialised component doesn't get
+            auditions.NumberOfGirls = GAME_DEF_COUNT;
+            Auditions_GenerateGirls.Prefix(auditions, __runOriginal: true, out bool state);
             Assert.True(state);
             return auditions;
         }
@@ -228,7 +230,7 @@ namespace TargetedAuditions.Tests
                 BeginAuditionGeneration();
             data_girls.girls girl = Seams.NewGirl();
             girl.sexuality = data_girls.girls._sexuality.straight;
-            data_girls_GenerateGirl.Postfix(ref girl);
+            data_girls_GenerateGirl.Postfix(ref girl, __runOriginal: true);
             return girl;
         }
 
@@ -255,7 +257,7 @@ namespace TargetedAuditions.Tests
         {
             BeginAuditionGeneration();
             data_girls.girls girl = null;
-            data_girls_GenerateGirl.Postfix(ref girl);
+            data_girls_GenerateGirl.Postfix(ref girl, __runOriginal: true);
         }
     }
 

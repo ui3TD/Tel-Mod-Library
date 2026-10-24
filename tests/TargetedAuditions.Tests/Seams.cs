@@ -48,6 +48,7 @@ namespace TargetedAuditions.Tests
             AccessTools.Method(typeof(data_girls_GenerateParams), nameof(data_girls_GenerateParams.AssignByPriority)),
             AccessTools.Method(typeof(data_girls_GenerateGirl), nameof(data_girls_GenerateGirl.Postfix)),
             AccessTools.Method(typeof(Auditions_GenerateGirls), nameof(Auditions_GenerateGirls.Finalizer)),
+            AccessTools.Method(typeof(CustomAuditions.CustomAuditions), nameof(LogError)),
             AccessTools.Method(typeof(CustomAuditions.CustomAuditions), nameof(ApplyRandomBirthdayInConfiguredRange)),
             AccessTools.Method(typeof(data_girls), "GenerateParams"),
             AccessTools.Method(typeof(data_girls), "GeneratePotential"),
@@ -98,6 +99,8 @@ namespace TargetedAuditions.Tests
             maxAge = 23;
             chanceLesbian = 7;
             chanceBi = 14;
+            lastCandidateCount = GAME_DEF_COUNT;
+            logged.Clear();
             priorityDict.Clear();
             foreach (data_girls._paramType param in paramTypes)
                 priorityDict[param] = 50;

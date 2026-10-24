@@ -28,7 +28,7 @@ namespace TargetedAuditions.Tests
         private static void AddBodies(params Asset[] assets) => Seams.TextureAssets.AddRange(assets);
 
         private static void BeforeCandidate(bool genTextures = true, Asset bodyAsset = null) =>
-            data_girls_GenerateGirl.Prefix(genTextures, bodyAsset);
+            data_girls_GenerateGirl.Prefix(genTextures, bodyAsset, __runOriginal: true);
 
         /// <summary>
         /// Mirrors data_girls_textures.getRandomBodyAsset's filter, taking the lowest ID.

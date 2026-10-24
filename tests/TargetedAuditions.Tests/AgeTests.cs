@@ -29,7 +29,7 @@ namespace TargetedAuditions.Tests
                 BeginAuditionGeneration();
             data_girls.girls girl = Seams.NewGirl();
             girl.birthday = new DateTime(2000, 6, 15);
-            data_girls_girls_GenerateBirthday.Postfix(ref girl);
+            data_girls_girls_GenerateBirthday.Postfix(ref girl, __runOriginal: true);
             return girl;
         }
 

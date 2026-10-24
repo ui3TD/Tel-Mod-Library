@@ -291,11 +291,20 @@ namespace UnofficialPatch
         private const string CostPrefix = "-";
         private const string CostSeparator = " ";
 
+        // Last, so it sees what other mods' patches did.
+        [HarmonyPriority(Priority.Last)]
         public static void Postfix(Activities._activity __instance, ref string __result)
         {
             // Only adjust performance activities when Energetic policy is active.
             if (__instance.type == Activity._type.performance && policies.GetSelectedPolicyValue(policies._type.performances)?.Value == policies._value.performances_energy)
             {
+                // A description that isn't the game's was already changed by another mod.
+                if (__result != Vanilla(__instance))
+                {
+                    PatchLog.WarnResultChanged<Activities__activity_GetDescription>();
+                    return;
+                }
+
                 // Build a localized "-4 PT stamina" string for the thumbnail.
                 __result = string.Concat(new object[]
                 {
@@ -320,6 +329,13 @@ namespace UnofficialPatch
                 // No scene (main menu, unit tests): the game's own cost.
                 return EnergeticStaminaCost;
             }
+        }
+
+        // The game's own GetDescription, without any mod's patches.
+        [HarmonyReversePatch]
+        public static string Vanilla(Activities._activity instance)
+        {
+            throw new NotImplementedException("Replaced by a reverse patch");
         }
 
         // Separate, so a failure to reach the scene is caught by the caller.

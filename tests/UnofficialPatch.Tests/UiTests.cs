@@ -43,7 +43,7 @@ namespace UnofficialPatch.Tests
         private static Profile_Fans_Pies Render(float teen, float youngAdult, float adult)
         {
             Profile_Fans_Pies pies = Pies(teen, youngAdult, adult + teen);
-            Profile_Fans_Pies_Render_Pies.Postfix(pies, IdolWithAges(teen, youngAdult, adult));
+            Profile_Fans_Pies_Render_Pies.Postfix(pies, IdolWithAges(teen, youngAdult, adult), __runOriginal: true);
             return pies;
         }
 
@@ -68,11 +68,36 @@ namespace UnofficialPatch.Tests
             // Another mod already drew the cumulative fills: Young Adult, Young Adult + Adult, then the whole pie
             Profile_Fans_Pies pies = Pies(1f, 0.3f, 0.8f);
 
-            Profile_Fans_Pies_Render_Pies.Postfix(pies, IdolWithAges(0.2f, 0.3f, 0.5f));
+            Profile_Fans_Pies_Render_Pies.Postfix(pies, IdolWithAges(0.2f, 0.3f, 0.5f), __runOriginal: true);
 
             Assert.Equal(0.3f, Seams.Fill(pies.Fans_Pie_YA), 4);
             Assert.Equal(0.8f, Seams.Fill(pies.Fans_Pie_Adult), 4);
             Assert.Equal(1f, Seams.Fill(pies.Fans_Pie_Teen), 4);
+        }
+
+        [Fact]
+        public void PiesAnotherModDrewDifferently_AreKept()
+        {
+            Profile_Fans_Pies pies = Pies(0.5f, 0.5f, 0.5f);
+
+            Profile_Fans_Pies_Render_Pies.Postfix(pies, IdolWithAges(0.2f, 0.3f, 0.5f), __runOriginal: true);
+
+            Assert.Equal(0.5f, Seams.Fill(pies.Fans_Pie_Teen));
+            Assert.Equal(0.5f, Seams.Fill(pies.Fans_Pie_YA));
+            Assert.Equal(0.5f, Seams.Fill(pies.Fans_Pie_Adult));
+        }
+
+        [Fact]
+        public void SkippedRender_LeavesThePies()
+        {
+            // The game's fills for these ratios, which the mod would otherwise redraw
+            Profile_Fans_Pies pies = Pies(0.2f, 0.3f, 0.7f);
+
+            Profile_Fans_Pies_Render_Pies.Postfix(pies, IdolWithAges(0.2f, 0.3f, 0.5f), __runOriginal: false);
+
+            Assert.Equal(0.2f, Seams.Fill(pies.Fans_Pie_Teen));
+            Assert.Equal(0.3f, Seams.Fill(pies.Fans_Pie_YA));
+            Assert.Equal(0.7f, Seams.Fill(pies.Fans_Pie_Adult));
         }
 
         [Fact]
@@ -92,7 +117,7 @@ namespace UnofficialPatch.Tests
         {
             Profile_Fans_Pies pies = Pies(0.33f, 0.33f, 0.66f);
 
-            Profile_Fans_Pies_Render_Pies.Postfix(pies, TestGame.Idol());
+            Profile_Fans_Pies_Render_Pies.Postfix(pies, TestGame.Idol(), __runOriginal: true);
 
             Assert.Equal(0.33f, Seams.Fill(pies.Fans_Pie_Teen));
             Assert.Equal(0.66f, Seams.Fill(pies.Fans_Pie_Adult));

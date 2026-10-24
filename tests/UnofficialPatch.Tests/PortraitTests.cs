@@ -76,7 +76,7 @@ namespace UnofficialPatch.Tests
         private bool PortraitsLoaded(bool vanilla)
         {
             bool result = vanilla;
-            Popup_Audition_PortraitsLoaded.Postfix(popup, ref result);
+            Popup_Audition_PortraitsLoaded.Postfix(popup, ref result, __runOriginal: true);
             return result;
         }
 
@@ -94,6 +94,20 @@ namespace UnofficialPatch.Tests
             Seams.Now = 11.9f;
 
             Assert.False(PortraitsLoaded(false));
+            Assert.Null(Seams.SpriteOf(blank));
+        }
+
+        [Fact]
+        public void SkippedCheck_KeepsTheOtherModsResult()
+        {
+            LoadCardsAt(10f);
+            GameObject blank = Card(null);
+            Seams.Now = 12f;
+            bool result = false;
+
+            Popup_Audition_PortraitsLoaded.Postfix(popup, ref result, __runOriginal: false);
+
+            Assert.False(result);
             Assert.Null(Seams.SpriteOf(blank));
         }
 

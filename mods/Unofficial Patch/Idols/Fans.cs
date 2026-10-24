@@ -20,21 +20,44 @@ namespace UnofficialPatch
         // Cap for cumulative pie fills.
         private const float MaxPieFill = 1f;
 
+        // Difference below which a fill counts as the game's.
+        private const float FillTolerance = 0.0001f;
+
         // Fixes age-pie rendering so the stacked slices match the teen/YA/adult ratios.
-        // Last, so the pie ends as UP draws it whatever other mods' patches drew.
+        // Last, so it sees what other mods' patches drew.
         [HarmonyPriority(Priority.Last)]
-        public static void Postfix(Profile_Fans_Pies __instance, data_girls.girls ___Girl)
+        public static void Postfix(Profile_Fans_Pies __instance, data_girls.girls ___Girl, bool __runOriginal)
         {
-            // Skip when there are no fans to render, avoiding divide-by-zero ratios in vanilla code.
-            if (___Girl.GetFans_Total() == NoFans)
+            // Skip when another mod drew the pies instead, or there are no fans to render (avoiding
+            // divide-by-zero ratios in vanilla code).
+            if (!__runOriginal || ___Girl.GetFans_Total() == NoFans)
                 return;
 
-            // The ratios the game draws from, not the fills it left, so the result is the same whatever
-            // drew the pie before.
-            float teenRatio = Math.Max(0f, ___Girl.GetFan_Ratio(resources.fanType.teen));
-            float yaRatio = Math.Max(0f, ___Girl.GetFan_Ratio(resources.fanType.youngAdult));
-            float adultRatio = Math.Max(0f, ___Girl.GetFan_Ratio(resources.fanType.adult));
-            SetFills(__instance, teenRatio, yaRatio, adultRatio);
+            float teen = ___Girl.GetFan_Ratio(resources.fanType.teen);
+            float youngAdult = ___Girl.GetFan_Ratio(resources.fanType.youngAdult);
+            float adult = ___Girl.GetFan_Ratio(resources.fanType.adult);
+
+            // Pies that aren't the game's were already drawn by another mod.
+            if (!DrawnByGame(__instance, teen, youngAdult, adult))
+            {
+                PatchLog.WarnResultChanged<Profile_Fans_Pies_Render_Pies>();
+                return;
+            }
+            SetFills(__instance, Math.Max(0f, teen), Math.Max(0f, youngAdult), Math.Max(0f, adult));
+        }
+
+        // Whether the fills are the ones the game's Render_Pies draws: Teen and Young Adult at their ratios,
+        // Adult at adult + teen (an Image clamps its fill to 0..1).
+        public static bool DrawnByGame(Profile_Fans_Pies pies, float teenRatio, float yaRatio, float adultRatio)
+        {
+            return IsFill(pies.Fans_Pie_Teen, teenRatio)
+                && IsFill(pies.Fans_Pie_YA, yaRatio)
+                && IsFill(pies.Fans_Pie_Adult, adultRatio + teenRatio);
+        }
+
+        private static bool IsFill(GameObject pie, float value)
+        {
+            return Math.Abs(pie.GetComponent<Image>().fillAmount - Mathf.Clamp01(value)) < FillTolerance;
         }
 
         // Sets the cumulative fills for these slice ratios.

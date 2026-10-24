@@ -43,6 +43,7 @@ These mods found some of these bugs first. Unofficial Patch includes their fixes
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 1.13.1: Leaves the fan pie, Energetic stamina text and event staff checks to mods that change them.
 - 1.13.0: The calendar keeps moving after a day-change error and shows a notification instead.
 - 1.12.1: Fans no longer vanish or double up, scandals cost mental stamina, plus 5 opinion fixes.
 - 1.12.0: Clinics follow the game's Auto Practice rule again; see Clinic Recovery Priority Fix.

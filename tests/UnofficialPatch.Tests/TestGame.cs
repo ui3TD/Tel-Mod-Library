@@ -307,6 +307,7 @@ namespace UnofficialPatch.Tests
             AccessTools.Method(typeof(Theaters_CompleteDay), nameof(Theaters_CompleteDay.Postfix)),
             AccessTools.Method(typeof(Relationships._relationship), nameof(Relationships._relationship.BreakUp)),
             AccessTools.Method(typeof(Profile_Fans_Pies_Render_Pies), nameof(Profile_Fans_Pies_Render_Pies.SetFills)),
+            AccessTools.Method(typeof(Profile_Fans_Pies_Render_Pies), "IsFill"),
             AccessTools.Method(typeof(Tour_New_Popup_Render), nameof(Tour_New_Popup_Render.Postfix)),
             AccessTools.Method(typeof(data_girls), "GenerateParams"),
             AccessTools.Method(typeof(data_girls), "GeneratePotential"),

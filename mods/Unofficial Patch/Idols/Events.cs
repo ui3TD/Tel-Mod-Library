@@ -177,10 +177,11 @@ namespace UnofficialPatch
         private const string StyleFormula = "style";
         private const int MinimumStaffCount = 0;
 
-        public static void Postfix(string parameter, string formula, ref bool __result)
+        public static void Postfix(string parameter, string formula, ref bool __result, bool __runOriginal)
         {
-            // Only handle staff-type checks; let other meta parameters remain unchanged.
-            if (parameter != StaffParameter)
+            // Only handle staff-type checks; let other meta parameters remain unchanged. Another mod that
+            // skipped the game's check keeps its result.
+            if (!__runOriginal || parameter != StaffParameter)
                 return;
 
             // Map formula keys to their matching staff room types.

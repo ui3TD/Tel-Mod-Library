@@ -35,9 +35,10 @@ namespace UnofficialPatch
 
         // Last, so the share includes any other change to the production cost.
         [HarmonyPriority(Priority.Last)]
-        public static void Postfix(SEvent_Tour.tour __instance)
+        public static void Postfix(SEvent_Tour.tour __instance, bool __runOriginal)
         {
-            if (__instance.Saving <= 0)
+            // Another mod that skipped the game's cost calculation keeps its saving.
+            if (!__runOriginal || __instance.Saving <= 0)
                 return;
 
             // The production cost before any cut.

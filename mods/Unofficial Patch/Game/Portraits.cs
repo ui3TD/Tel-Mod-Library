@@ -243,11 +243,14 @@ namespace UnofficialPatch
     {
         public static Exception Cleanup(Exception ex) => PatchLog.PatchFailed<Popup_Audition_PortraitsLoaded>(ex);
 
-        public static void Postfix(Popup_Audition __instance, ref bool __result)
+        // First, so a later postfix from another mod can still keep the cards locked.
+        [HarmonyPriority(Priority.First)]
+        public static void Postfix(Popup_Audition __instance, ref bool __result, bool __runOriginal)
         {
             try
             {
-                if (__result || PortraitLoading.Now() - PortraitLoading.cardsLoadedAt < PortraitLoading.UnlockSeconds)
+                // Another mod that skipped the game's check keeps its result.
+                if (!__runOriginal || __result || PortraitLoading.Now() - PortraitLoading.cardsLoadedAt < PortraitLoading.UnlockSeconds)
                     return;
 
                 foreach (Audition_Closed_Card card in __instance.Cards_Container.GetComponentsInChildren<Audition_Closed_Card>(true))

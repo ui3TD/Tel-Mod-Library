@@ -249,13 +249,25 @@ namespace UnofficialPatch.Tests
         }
 
         [Fact]
+        public void SkippedCostCalculation_KeepsTheSaving()
+        {
+            WinAward(nominationOnly: false);
+            SEvent_Tour.tour tour = Tour(3);
+            tour.Saving = tour.GetSaving();
+
+            SEvent_Tour_tour_RecalcProductionCost.Postfix(tour, __runOriginal: false);
+
+            Assert.Equal(tour.GetSaving(), tour.Saving);
+        }
+
+        [Fact]
         public void TwiceChangesNothing()
         {
             WinAward(nominationOnly: false);
             SEvent_Tour.tour tour = Tour(3);
             int saving = tour.Saving;
 
-            SEvent_Tour_tour_RecalcProductionCost.Postfix(tour);
+            SEvent_Tour_tour_RecalcProductionCost.Postfix(tour, __runOriginal: true);
 
             Assert.Equal(saving, tour.Saving);
         }
@@ -267,7 +279,7 @@ namespace UnofficialPatch.Tests
             tour.ProductionCost = 15_000_000;
             tour.Saving = 4_000_000;
 
-            SEvent_Tour_tour_RecalcProductionCost.Postfix(tour);
+            SEvent_Tour_tour_RecalcProductionCost.Postfix(tour, __runOriginal: true);
 
             Assert.Equal(4_000_000, tour.Saving);
         }
@@ -279,7 +291,7 @@ namespace UnofficialPatch.Tests
             SEvent_Tour.tour tour = Tour(3);
             tour.ProductionCost = 24_000_000;
 
-            SEvent_Tour_tour_RecalcProductionCost.Postfix(tour);
+            SEvent_Tour_tour_RecalcProductionCost.Postfix(tour, __runOriginal: true);
 
             Assert.Equal(8_000_000, tour.Saving);
         }

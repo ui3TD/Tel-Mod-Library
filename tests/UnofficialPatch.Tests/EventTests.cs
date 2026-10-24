@@ -182,7 +182,7 @@ namespace UnofficialPatch.Tests
         private static bool Check(string parameter, string formula, bool vanilla = false)
         {
             bool result = vanilla;
-            vn_requirements_CheckMeta.Postfix(parameter, formula, ref result);
+            vn_requirements_CheckMeta.Postfix(parameter, formula, ref result, __runOriginal: true);
             return result;
         }
 
@@ -227,6 +227,17 @@ namespace UnofficialPatch.Tests
             Assert.False(Check("staff", "doctor"));
             Assert.False(Check("route", "vocal"));
         }
+
+        [Fact]
+        public void SkippedCheck_KeepsTheOtherModsResult()
+        {
+            staff.Staff.Add(new staff._staff { type = staff._type.voice_coach });
+            bool result = false;
+
+            vn_requirements_CheckMeta.Postfix("staff", "vocal", ref result, __runOriginal: false);
+
+            Assert.False(result);
+        }
     }
 
     /// <summary>
@@ -267,6 +278,13 @@ namespace UnofficialPatch.Tests
             TestGame.SetPolicies(policy);
             Assert.Equal("-3PT stamina", Description(Activity._type.performance, "-3PT stamina"));
             Assert.Equal(-3f, StaminaCost());
+        }
+
+        [Fact]
+        public void Energetic_KeepsAnotherModsText()
+        {
+            TestGame.SetPolicies(policies._value.performances_energy);
+            Assert.Equal("-3PT stamina, tiring", Description(Activity._type.performance, "-3PT stamina, tiring"));
         }
 
         [Fact]

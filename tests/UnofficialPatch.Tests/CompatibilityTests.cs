@@ -257,6 +257,23 @@ namespace UnofficialPatch.Tests
     }
 
     /// <summary>
+    /// The order of postfixes that let other mods have the last word, or check what they did.
+    /// </summary>
+    public class PatchOrderTests
+    {
+        [Theory]
+        [InlineData(typeof(Popup_Audition_PortraitsLoaded), Priority.First)]
+        [InlineData(typeof(Activities__activity_GetDescription), Priority.Last)]
+        [InlineData(typeof(Profile_Fans_Pies_Render_Pies), Priority.Last)]
+        public void Postfix_RunsInItsOrder(Type patch, int expected)
+        {
+            HarmonyPriority priority = AccessTools.Method(patch, "Postfix").GetCustomAttribute<HarmonyPriority>();
+            Assert.NotNull(priority);
+            Assert.Equal(expected, priority.info.priority);
+        }
+    }
+
+    /// <summary>
     /// Missing data the game never produces is skipped instead of throwing.
     /// </summary>
     public class MissingDataTests

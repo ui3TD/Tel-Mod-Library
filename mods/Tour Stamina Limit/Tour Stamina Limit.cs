@@ -44,31 +44,31 @@ namespace TourStamina
         }
     }
 
-    // Set tooltip if at max stamina. The game builds the tooltip from the shared "Stamina" text, so the
-    // warning goes in front of that text while the tooltip is built.
+    // Warn in the tooltip if picking the country would go over the cap: the warning goes in front of the
+    // tooltip the game built. The game's shared text is never changed, so no other code can see the warning.
     [HarmonyPatch(typeof(Tour_Star), nameof(Tour_Star.SetTooltip))]
     public class Tour_Star_SetTooltip
     {
-        public static void Prefix(out string __state, Tour_Country ___TourCountry)
+        private static readonly AccessTools.FieldRef<ButtonDefault, string> TooltipText =
+            AccessTools.FieldRefAccess<ButtonDefault, string>("tooltipText");
+
+        public static void Postfix(Tour_Star __instance, Tour_Country ___TourCountry, bool __runOriginal)
         {
-            __state = Language.Data["STAMINA"];
+            // Another mod skipped the game's tooltip: leave whatever it set
+            if (!__runOriginal)
+                return;
 
             SEvent_Tour.country country = ___TourCountry.Country;
             SEvent_Tour.tour tour = ___TourCountry.TourPopup.Tour;
             if (country.GetStaminaCost() + tour.Stamina > TOUR_STAM_CAP && tour.GetCountry(country) == null)
             {
-                Language.Data["STAMINA"] = "<color=" + mainScript.red + ">"
+                ButtonDefault button = __instance.GetComponent<ButtonDefault>();
+                // ParseText only replaces tokens, so parsing the warning on its own gives the same text as
+                // the game parsing it as part of the whole tooltip
+                TooltipText(button) = button.ParseText("<color=" + mainScript.red + ">"
                     + Language.Insert(TOUR_STAM_TOOLTIP_ID, TOUR_STAM_CAP.ToString(CultureInfo.InvariantCulture))
-                    + "</color>\n" + __state;
+                    + "</color>\n") + TooltipText(button);
             }
-        }
-
-        // A finalizer, not a postfix: it runs even if SetTooltip throws, so the warning can't stay in
-        // every "Stamina" label for the rest of the session
-        public static void Finalizer(string __state)
-        {
-            if (__state != null)
-                Language.Data["STAMINA"] = __state;
         }
     }
 

@@ -52,6 +52,10 @@ namespace TourStaminaLimit.Tests
 
             foreach (Type patchClass in TelModTests.Common.PatchTargetAssert.PatchClasses(typeof(SEvent_Tour_tour_SelectCountry).Assembly, ModNamespace))
             {
+                // The tooltip postfix calls GetComponent, a Unity native method that would fail when it runs.
+                // It's tested through Seams.SetTooltipPostfix, a copy with the stubs.
+                if (patchClass == typeof(Tour_Star_SetTooltip))
+                    continue;
                 try
                 {
                     harmony.CreateClassProcessor(patchClass).Patch();
@@ -196,9 +200,14 @@ namespace TourStaminaLimit.Tests
         public static readonly List<string> Tooltips = new();
 
         /// <summary>
-        /// When set, setting a tooltip throws, as if the game's tooltip code failed.
+        /// The game's shared "Stamina" text at the moment each tooltip was set.
         /// </summary>
-        public static bool TooltipFails;
+        public static readonly List<string> StaminaTextWhileSetting = new();
+
+        private static readonly AccessTools.FieldRef<ButtonDefault, string> TooltipText =
+            AccessTools.FieldRefAccess<ButtonDefault, string>("tooltipText");
+
+        private static readonly Dictionary<object, Dictionary<Type, object>> Components = new(new SameObject());
 
         /// <summary>
         /// The country buttons under each popup's countries container, and the ones redrawn since the last Reset.
@@ -249,6 +258,18 @@ namespace TourStaminaLimit.Tests
             throw new InvalidOperationException("Call Seams.Reset first");
 
         /// <summary>
+        /// The tooltip postfix calls GetComponent, so tests call this copy of it with the stubs.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void SetTooltipPostfix(Tour_Star __instance, Tour_Country ___TourCountry, bool __runOriginal) =>
+            throw new InvalidOperationException("Call Seams.Reset first");
+
+        /// <summary>
+        /// The tooltip text on a star's button, as the game would show it.
+        /// </summary>
+        public static string TooltipOf(Tour_Star star) => TooltipText(StubGetComponent<ButtonDefault>(star));
+
+        /// <summary>
         /// The game's fan roll calls Random.Range directly, so it can't be patched in place either. This is a
         /// copy of the game method with the stubs; the mod's postfix is applied to its result.
         /// </summary>
@@ -276,6 +297,11 @@ namespace TourStaminaLimit.Tests
                     AccessTools.Method(typeof(Seams), nameof(Redirect)),
                     ilmanipulator: null);
                 Harmony.ReversePatch(
+                    AccessTools.Method(typeof(Tour_Star_SetTooltip), nameof(Tour_Star_SetTooltip.Postfix)),
+                    new HarmonyMethod(typeof(Seams), nameof(SetTooltipPostfix)),
+                    AccessTools.Method(typeof(Seams), nameof(Redirect)),
+                    ilmanipulator: null);
+                Harmony.ReversePatch(
                     AccessTools.Method(typeof(SEvent_Tour.tour), nameof(SEvent_Tour.tour.GetNewFansByAttendance)),
                     new HarmonyMethod(typeof(Seams), nameof(GameNewFansByAttendance)),
                     AccessTools.Method(typeof(Seams), nameof(Redirect)),
@@ -286,7 +312,8 @@ namespace TourStaminaLimit.Tests
             Range = (min, max) => throw new InvalidOperationException($"Unexpected roll Range({min}, {max})");
             RangesRolled.Clear();
             Tooltips.Clear();
-            TooltipFails = false;
+            StaminaTextWhileSetting.Clear();
+            Components.Clear();
             Children.Clear();
             Updated.Clear();
             Transforms.Clear();
@@ -334,7 +361,17 @@ namespace TourStaminaLimit.Tests
             return Range(min, max);
         }
 
-        private static T StubGetComponent<T>(object owner) => TestGame.Component<T>();
+        /// <summary>
+        /// The same fake component each time for the same owner, as GetComponent finds the same one.
+        /// </summary>
+        private static T StubGetComponent<T>(object owner)
+        {
+            if (!Components.TryGetValue(owner, out Dictionary<Type, object> components))
+                Components[owner] = components = new Dictionary<Type, object>();
+            if (!components.TryGetValue(typeof(T), out object component))
+                components[typeof(T)] = component = TestGame.Component<T>();
+            return (T)component;
+        }
 
         private static T[] StubGetComponentsInChildren<T>(object owner)
         {
@@ -344,9 +381,10 @@ namespace TourStaminaLimit.Tests
 
         private static void StubSetTooltip(ButtonDefault button, string text)
         {
-            if (TooltipFails)
-                throw new InvalidOperationException("game method failed");
             Tooltips.Add(text);
+            StaminaTextWhileSetting.Add(Language.Data["STAMINA"]);
+            // As the game's SetTooltip stores it
+            TooltipText(button) = button.ParseText(text == "" ? null : text);
         }
         private static Transform StubTransform(object owner) => TransformOf(owner);
         private static void StubUpdateData(Tour_Country country) => Updated.Add(country);

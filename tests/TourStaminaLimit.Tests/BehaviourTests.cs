@@ -208,12 +208,24 @@ namespace TourStaminaLimit.Tests
 
         private static string Warning => "<color=" + mainScript.red + ">Stamina cannot exceed 100pt</color>\n";
 
-        private static string Tooltip(SEvent_Tour.country country, SEvent_Tour.tour tour, int star = 0)
+        /// <summary>
+        /// The star's tooltip as the player sees it: the game's SetTooltip, then the mod's postfix.
+        /// </summary>
+        private static string Tooltip(SEvent_Tour.country country, SEvent_Tour.tour tour, int star = 0, bool runOriginal = true)
         {
             Seams.Tooltips.Clear();
-            TestGame.Star(country, tour, star).SetTooltip();
-            return Assert.Single(Seams.Tooltips);
+            Tour_Star button = TestGame.Star(country, tour, star);
+            if (runOriginal)
+            {
+                button.SetTooltip();
+                Assert.Single(Seams.Tooltips);
+            }
+            Seams.SetTooltipPostfix(button, TourCountryOf(button), runOriginal);
+            return Seams.TooltipOf(button);
         }
+
+        private static Tour_Country TourCountryOf(Tour_Star star) =>
+            (Tour_Country)AccessTools.Field(typeof(Tour_Star), "TourCountry").GetValue(star);
 
         /// <summary>
         /// The game's tooltip, without the mod's warning.
@@ -280,40 +292,40 @@ namespace TourStaminaLimit.Tests
         }
 
         /// <summary>
-        /// The warning goes into the game's shared "Stamina" text only while the tooltip is built.
+        /// Added in 1.1.1: the game's shared "Stamina" text is never changed, even while the tooltip is
+        /// built, so no other code (another mod's tooltip, another screen) can show the warning.
         /// </summary>
         [Fact]
-        public void StaminaText_IsRestored()
+        public void SharedStaminaText_IsNeverChanged()
         {
             SEvent_Tour.tour full = TestGame.Tour(TestGame.Countries(5));
 
-            Tooltip(TestGame.Countries(6)[5], full);
-            Tooltip(TestGame.Countries(7)[6], full);
+            Assert.StartsWith(Warning, Tooltip(TestGame.Countries(6)[5], full));
+            Assert.StartsWith(Warning, Tooltip(TestGame.Countries(7)[6], full));
 
+            Assert.Equal(new[] { "Stamina" }, Seams.StaminaTextWhileSetting.Distinct());
             Assert.Equal("Stamina", Language.Data["STAMINA"]);
-            Assert.Equal(Warning + GameTooltip(TestGame.Country(_country.US)), Tooltip(TestGame.Country(_country.US), full));
         }
 
         /// <summary>
-        /// If the game's tooltip code fails after the warning went in, the "Stamina" text is still put
-        /// back, so other screens don't show the warning for the rest of the session.
+        /// Added in 1.1.1: when another mod skips the game's tooltip, the mod leaves the button's tooltip
+        /// as that mod set it.
         /// </summary>
         [Fact]
-        public void GameFails_StaminaTextIsStillRestored()
+        public void SkippedByAnotherMod_TooltipLeftAlone()
         {
-            Tour_Star star = TestGame.Star(TestGame.Countries(6)[5], TestGame.Tour(TestGame.Countries(5)));
-            Seams.TooltipFails = true;
+            SEvent_Tour.country country = TestGame.Countries(6)[5];
 
-            Assert.Throws<InvalidOperationException>(() => star.SetTooltip());
-
-            Assert.Equal("Stamina", Language.Data["STAMINA"]);
+            Assert.Null(Tooltip(country, TestGame.Tour(TestGame.Countries(5)), runOriginal: false));
         }
 
+        /// <summary>
+        /// The postfix writes the button's private tooltip field, which must still be there in the game.
+        /// </summary>
         [Fact]
-        public void TextIsRestoredInAFinalizer()
+        public void TooltipField_Exists()
         {
-            Assert.NotNull(AccessTools.Method(typeof(Tour_Star_SetTooltip), "Finalizer"));
-            Assert.Null(AccessTools.Method(typeof(Tour_Star_SetTooltip), "Postfix"));
+            Assert.Equal(typeof(string), AccessTools.Field(typeof(ButtonDefault), "tooltipText")?.FieldType);
         }
     }
 

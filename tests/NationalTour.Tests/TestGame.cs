@@ -54,6 +54,7 @@ namespace NationalTour.Tests
             NationalHandler.Instance = null;
             SpecialEvents_Manager.SpecialEvents.Clear();
             SEvent_Tour.Last_Tour_ID = 0;
+            variables.variable = new List<variables._variable>();
             AccessTools.Field(typeof(SaveManager), "SaveEvent").SetValue(null, null);
             AccessTools.Field(typeof(SaveManager), "LoadEvent").SetValue(null, null);
             Pictures.TOUR_map_2 = null;
@@ -483,6 +484,9 @@ namespace NationalTour.Tests
             [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.StartTour))] = Pair(nameof(GameStartTour), nameof(TranspileStartTour)),
             [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.FinishTour))] = Pair(nameof(GameFinishTour), nameof(TranspileFinishTour)),
             [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.CancelTour))] = Pair(nameof(GameCancelTour), nameof(TranspileCancelTour)),
+            // Not transpiled by the mod: the game's own saving and loading
+            [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.SaveFunction))] = Pair(nameof(GameSaveFunction), nameof(Redirect)),
+            [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.LoadFunction))] = Pair(nameof(GameLoadFunction), nameof(Redirect)),
         };
 
         private static KeyValuePair<MethodInfo, MethodInfo> Pair(string standIn, string transpiler) => new(Stub(standIn), Stub(transpiler));
@@ -553,6 +557,7 @@ namespace NationalTour.Tests
             [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.Assign))] = Stub(nameof(StubAssign)),
             [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.FinishTour))] = Stub(nameof(StubFinishTour)),
             [AccessTools.Method(typeof(SEvent_Tour), nameof(SEvent_Tour.UseStamina))] = Stub(nameof(StubUseStamina)),
+            [AccessTools.Method(typeof(SEvent_Tour), "GetSaveData")] = Stub(nameof(StubSaveData)),
             [AccessTools.Method(typeof(PopupManager), nameof(PopupManager.Open), new[] { typeof(PopupManager._type), typeof(bool) })] = Stub(nameof(StubOpenPopup)),
             [AccessTools.Method(typeof(PopupManager), nameof(PopupManager.Close), Type.EmptyTypes)] = Stub(nameof(StubClosePopup)),
             [AccessTools.Method(typeof(PopupManager), nameof(PopupManager.Close), new[] { typeof(Action) })] = Stub(nameof(StubClosePopupThen)),
@@ -703,6 +708,12 @@ namespace NationalTour.Tests
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void GameCancelTour(SEvent_Tour handler) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void GameSaveFunction(SEvent_Tour handler) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void GameLoadFunction(SEvent_Tour handler) => throw NotInstalled();
 
         private static Exception NotInstalled() => new InvalidOperationException("Call Seams.Reset first");
 
@@ -1057,6 +1068,13 @@ namespace NationalTour.Tests
         private static void StubSetTour(SEvent_Tour handler, SEvent_Tour.tour tour) => Calls.Add((nameof(SEvent_Tour.SetTour), handler));
         private static void StubAssign(SEvent_Tour handler, agency._room room) => Calls.Add((nameof(SEvent_Tour.Assign), handler));
         private static void StubFinishTour(SEvent_Tour handler) => Calls.Add((nameof(SEvent_Tour.FinishTour), handler));
+        /// <summary>
+        /// The save file's data, as the game's save manager holds it.
+        /// </summary>
+        public static SaveManager.SavedData SaveData;
+
+        private static SaveManager.SavedData StubSaveData(SEvent_Tour handler) => SaveData;
+
         private static void StubUseStamina(SEvent_Tour handler) => Calls.Add((nameof(SEvent_Tour.UseStamina), handler));
         private static void StubOpenPopup(PopupManager manager, PopupManager._type type, bool addToQueue) => Calls.Add((nameof(PopupManager.Open), type));
         private static void StubClosePopup(PopupManager manager) => Calls.Add((nameof(PopupManager.Close), manager));

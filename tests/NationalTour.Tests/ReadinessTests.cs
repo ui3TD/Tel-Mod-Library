@@ -12,14 +12,26 @@ namespace NationalTour.Tests
     {
         public ReadinessTests() => TestGame.Reset();
 
+        [Fact]
+        public void ThisBuild_HasEveryModule()
+        {
+            Assert.All(Enum.GetValues(typeof(Module)).Cast<Module>(), m => Assert.True(IsReady(m), m.ToString()));
+        }
+
         /// <summary>
-        /// This build plans, creates and runs national tours; saving them comes in a later stage.
+        /// A national tour that couldn't be saved would be lost, or stuck after a reload.
         /// </summary>
         [Fact]
-        public void ThisBuild_HasEveryModuleButSaving()
+        public void SavingOff_NationalToursCantBeCreated()
         {
-            Assert.All(Enum.GetValues(typeof(Module)).Cast<Module>().Where(m => m != Module.Save), m => Assert.True(IsReady(m), m.ToString()));
-            Assert.False(IsReady(Module.Save));
+            Scene scene = new();
+            Seams.AddHandler(scene.Handler);
+            Assert.True(CanCreateNationalTours());
+            using LogRecorder log = new();
+
+            Fail(Module.Save, "test");
+
+            Assert.False(CanCreateNationalTours());
         }
 
         [Fact]

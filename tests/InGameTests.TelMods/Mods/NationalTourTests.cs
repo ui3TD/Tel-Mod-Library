@@ -224,7 +224,6 @@ namespace InGameTests.TelMods
             }
             finally
             {
-                ClearNational(mod, national);
                 Tabs_Manager.CloseTab_(force: true);
             }
             yield return Game.Quickload(ctx);
@@ -257,42 +256,110 @@ namespace InGameTests.TelMods
                 yield break;
 
             yield return Game.Quicksave(ctx);
-            try
-            {
-                // A national tour
-                SEvent_Tour.tour tour = NewNationalTour(mod);
-                national.SetTour(tour);
-                foreach (SEvent_Tour.tour._progressable param in tour.parameters)
-                    param.val = 50f;
-                national.StartTour();
-                yield return WaitForResults(ctx, results);
-                ctx.Assert(popups.BGImage.GetComponent<RawImage>().texture == nationalPicture, "A national tour's results don't show the national picture");
-                ctx.Assert(blurred.sprite == nationalBlur, "A national tour's results don't show the national blurred picture");
-                results.OnFinish();
-                yield return new WaitForSecondsRealtime(1f);
-                ctx.Record("background size after the national results", background.sizeDelta.ToString());
-                ctx.Assert(background.sizeDelta == gameSize, "After the national results the background is " + background.sizeDelta + ", not the game's " + gameSize);
-                ctx.Assert(national.Tour == null && tour.Status == SEvent_Tour.tour._status.finished, "Finish didn't finish the national tour");
-                yield return Game.CloseAllPopups(ctx);
+            // A national tour
+            SEvent_Tour.tour tour = NewNationalTour(mod);
+            national.SetTour(tour);
+            foreach (SEvent_Tour.tour._progressable param in tour.parameters)
+                param.val = 50f;
+            national.StartTour();
+            yield return WaitForResults(ctx, results);
+            ctx.Assert(popups.BGImage.GetComponent<RawImage>().texture == nationalPicture, "A national tour's results don't show the national picture");
+            ctx.Assert(blurred.sprite == nationalBlur, "A national tour's results don't show the national blurred picture");
+            results.OnFinish();
+            yield return new WaitForSecondsRealtime(1f);
+            ctx.Record("background size after the national results", background.sizeDelta.ToString());
+            ctx.Assert(background.sizeDelta == gameSize, "After the national results the background is " + background.sizeDelta + ", not the game's " + gameSize);
+            ctx.Assert(national.Tour == null && tour.Status == SEvent_Tour.tour._status.finished, "Finish didn't finish the national tour");
+            yield return Game.CloseAllPopups(ctx);
 
-                // A world tour (the test save has one in production)
-                ctx.Assert(game.Tour != null, "The test save has no world tour in production");
-                if (game.Tour != null)
-                {
-                    game.StartTour();
-                    yield return WaitForResults(ctx, results);
-                    ctx.Assert(popups.BGImage.GetComponent<RawImage>().texture != nationalPicture, "A world tour's results show the national picture");
-                    ctx.Assert(blurred.sprite != nationalBlur, "A world tour's results show the national blurred picture");
-                    results.OnFinish();
-                    yield return Game.CloseAllPopups(ctx);
-                }
-            }
-            finally
+            // A world tour (the test save has one in production)
+            ctx.Assert(game.Tour != null, "The test save has no world tour in production");
+            if (game.Tour != null)
             {
-                ClearNational(mod, national);
+                game.StartTour();
+                yield return WaitForResults(ctx, results);
+                ctx.Assert(popups.BGImage.GetComponent<RawImage>().texture != nationalPicture, "A world tour's results show the national picture");
+                ctx.Assert(blurred.sprite != nationalBlur, "A world tour's results show the national blurred picture");
+                results.OnFinish();
+                yield return Game.CloseAllPopups(ctx);
             }
             yield return Game.Quickload(ctx);
         }
+
+        /// <summary>
+        /// A quicksave and quickload (F5, F9) with a world tour and a national tour in production, after a national
+        /// tour has finished. The file holds only base-game country numbers and the mod's one variable; after the
+        /// load each tour is back in its own slot, the national cooldown runs on, and the prefectures' venue levels,
+        /// concert counts and dates equal what the real results animation gave them. Only the engine writes the
+        /// file (JsonUtility), repairs it (FixSaveFile) and loads its parts in the game's order.
+        /// </summary>
+        [InGameTest(Suite = ModTest.Suite)]
+        private static IEnumerator SaveRoundTrip(TestContext ctx)
+        {
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
+                yield break;
+
+            SEvent_Tour game = Game.Main.Data.GetComponent<SEvent_Tour>();
+            SEvent_Tour national = NationalHandlerOf(mod);
+            Tour_Popup results = PopupObject(PopupManager._type.sevent_tour).GetComponent<Tour_Popup>();
+            ctx.Assert(national != null && game.Tour != null, "There is no national tour handler, or the test save has no world tour in production");
+            if (national == null || game.Tour == null)
+                yield break;
+            int worldID = game.Tour.ID;
+
+            // The test save as it was, to put back afterwards
+            yield return Game.Quicksave(ctx);
+            string baseline = Game.QuicksaveFile + ".national-tour-baseline";
+            System.IO.File.Copy(Game.QuicksaveFile, baseline, true);
+            try
+            {
+                // A national tour played to the end: the results animation sets the prefectures' levels and dates
+                SEvent_Tour.tour first = NewNationalTour(mod);
+                national.SetTour(first);
+                foreach (SEvent_Tour.tour._progressable param in first.parameters)
+                    param.val = 50f;
+                national.StartTour();
+                yield return WaitForResults(ctx, results);
+                results.OnFinish();
+                yield return Game.CloseAllPopups(ctx);
+                IList prefectures = Traverse.Create(mod.GetType("NationalTour.Prefectures", true)).Field("All").GetValue<IList>();
+                string played = Describe(prefectures);
+                ctx.Record("prefectures after the results", played);
+
+                // A second national tour in production, next to the world tour
+                SEvent_Tour.tour second = NewNationalTour(mod);
+                national.SetTour(second);
+                SpecialEvents_Manager._specialEvent record = Traverse.Create(mod.GetType("NationalTour.NationalRecord", true)).Property("Record").GetValue<SpecialEvents_Manager._specialEvent>();
+                DateTime cooldown = record.Cooldown_Stop;
+
+                yield return Game.Quicksave(ctx);
+                string file = System.IO.File.ReadAllText(Game.QuicksaveFile);
+                ctx.Assert(file.Contains("com.tel.nationaltour"), "The save has no national tour entry");
+                ctx.Assert(!System.Text.RegularExpressions.Regex.IsMatch(file, "\"Country\":12[01][0-9]\\b"), "The save has a prefecture's number, which the game can't load without the mod");
+
+                yield return Game.Quickload(ctx);
+                SEvent_Tour national2 = NationalHandlerOf(mod);
+                ctx.Assert(national2.Tour != null && national2.Tour.ID == second.ID, "After loading, the national slot holds " + (national2.Tour == null ? "nothing" : "tour " + national2.Tour.ID));
+                ctx.Assert(game.Tour != null && game.Tour.ID == worldID, "After loading, the World Tour slot holds " + (game.Tour == null ? "nothing" : "tour " + game.Tour.ID));
+                SpecialEvents_Manager._specialEvent loadedRecord = Traverse.Create(mod.GetType("NationalTour.NationalRecord", true)).Property("Record").GetValue<SpecialEvents_Manager._specialEvent>();
+                ctx.Assert(loadedRecord.Cooldown_Stop == cooldown, "The national cooldown ends " + loadedRecord.Cooldown_Stop + " after loading, not " + cooldown);
+                string loaded = Describe(prefectures);
+                ctx.Record("prefectures after loading", loaded);
+                ctx.Assert(loaded == played, "The prefectures after loading differ from the results");
+            }
+            finally
+            {
+                System.IO.File.Copy(baseline, Game.QuicksaveFile, true);
+                System.IO.File.Delete(baseline);
+            }
+            yield return Game.Quickload(ctx);
+        }
+
+        /// <summary>
+        /// Each prefecture that has had a concert: level, concert count and last concert date.
+        /// </summary>
+        private static string Describe(IList prefectures) => string.Join(", ", prefectures.Cast<SEvent_Tour.country>()
+            .Where(p => p.ConcertCount > 0).Select(p => p.GetTitle() + " lvl" + p.Level + " x" + p.ConcertCount + " " + p.LastConcertDate.ToString("yyyy-MM-dd")).ToArray());
 
         private static IEnumerator WaitForResults(TestContext ctx, Tour_Popup results)
         {
@@ -312,15 +379,6 @@ namespace InGameTests.TelMods
             tour.SelectCountry((SEvent_Tour.country)prefectures[0], 1);
             tour.SelectCountry((SEvent_Tour.country)prefectures[13], 1);
             return tour;
-        }
-
-        /// <summary>
-        /// This build doesn't save national tours yet, so a quickload can't undo one: clear it by hand.
-        /// </summary>
-        private static void ClearNational(Assembly mod, SEvent_Tour national)
-        {
-            national.Tour = null;
-            mod.GetType("NationalTour.NationalRecord", true).GetMethod("Reset").Invoke(null, null);
         }
 
         /// <summary>

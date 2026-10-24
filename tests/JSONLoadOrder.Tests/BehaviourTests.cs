@@ -153,6 +153,22 @@ namespace JSONLoadOrder.Tests
         }
 
         /// <summary>
+        /// Added in 1.2.1: two entries with the same folder name (a local copy kept under a Workshop mod's ID)
+        /// are each sorted by their own info.json.
+        /// </summary>
+        [Fact]
+        public void SameFolderName_EachUsesItsOwnOrder()
+        {
+            Mods._mod late = TestGame.Mod("123", "5");
+            Mods._mod early = TestGame.ModWithInfo("local", "{ \"JSONLoadOrder\": -5 }");
+            early.ModName = "123";
+
+            TestGame.LoadLanguage();
+
+            Assert.Equal(new[] { early, late }, Mods._Mods);
+        }
+
+        /// <summary>
         /// Disabled mods are still sorted, so turning one back on doesn't need a re-sort to put it in place.
         /// </summary>
         [Fact]
@@ -336,6 +352,24 @@ namespace JSONLoadOrder.Tests
             Assert.Null(error);
             Assert.Equal(new[] { "Late", null }, TestGame.LoadedNames());
             Assert.Contains(log.Messages, m => m.StartsWith("[JSON Load Order] Couldn't sort the mods"));
+        }
+
+        /// <summary>
+        /// Added in 1.2.1: an empty entry another mod left in the list stays where it was, at 0, and the
+        /// other mods are still sorted.
+        /// </summary>
+        [Fact]
+        public void EmptyEntry_LoadsAtZero_OthersStillSorted()
+        {
+            TestGame.Mod("Late", "100");
+            Mods._Mods.Add(null);
+            TestGame.Mod("Early", "-10");
+
+            Exception error = Record.Exception(TestGame.LoadLanguage);
+
+            Assert.Null(error);
+            Assert.Equal(new[] { "Early", null, "Late" }, Mods._Mods.Select(mod => mod?.ModName));
+            Assert.Empty(log.Messages);
         }
 
         private class LogRecorder : ILogHandler

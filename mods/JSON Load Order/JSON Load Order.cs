@@ -15,19 +15,25 @@ namespace JSONLoadOrder
 
         public static Dictionary<string, int> modOrders = new();
 
-        // Sorts the game's mod list by each mod's JSONLoadOrder, which sets the order mods' JSON files are read in
+        // Sorts the game's mod list by each mod's JSONLoadOrder, which sets the order mods' JSON files are read in.
+        // Each entry is sorted by its own info.json, so two entries with the same folder name keep their own
+        // orders; an empty entry another mod left in the list stays at 0. The sort is stable, and a new list is
+        // assigned, so code walking the old list isn't interrupted.
         public static void SortMods()
         {
             if (Mods._Mods.Count == 0)
                 return;
 
-            foreach (Mods._mod mod in Mods._Mods)
+            List<KeyValuePair<Mods._mod, int>> ordered = Mods._Mods
+                .Select(mod => new KeyValuePair<Mods._mod, int>(mod, mod == null ? 0 : ReadOrder(mod)))
+                .ToList();
+            foreach (KeyValuePair<Mods._mod, int> entry in ordered)
             {
-                modOrders[mod.ModName] = ReadOrder(mod);
+                if (entry.Key != null)
+                    modOrders[entry.Key.ModName] = entry.Value;
             }
 
-            List<Mods._mod> sortedMods = Mods._Mods.OrderBy(mod => modOrders[mod.ModName]).ToList();
-            Mods._Mods = sortedMods;
+            Mods._Mods = ordered.OrderBy(entry => entry.Value).Select(entry => entry.Key).ToList();
         }
 
         // A mod's JSONLoadOrder, or 0. A mod whose info.json can't be read gets 0 with a warning, so it can't

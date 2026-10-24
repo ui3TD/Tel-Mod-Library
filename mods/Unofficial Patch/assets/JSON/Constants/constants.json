@@ -9,7 +9,7 @@
 	},
 	{
 		id: "UNOFFICIALPATCH__MODMENU__EXPLAIN",
-		text: "Off plays as the original game."
+		text: "Untick a box to play that part as in the original game."
 	},
 	{
 		id: "UNOFFICIALPATCH__MODMENU__THEATER_STAMINA",

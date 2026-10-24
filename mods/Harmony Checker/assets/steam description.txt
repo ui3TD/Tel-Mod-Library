@@ -1,12 +1,8 @@
 [h1]This mod does NOT install IM-HarmonyIntegration[/h1]
-Mods that need IM-HarmonyIntegration (IM-HI) won't work until you install it yourself:
-[b][url=https://github.com/ui3TD/IM-HarmonyIntegration]Install IM-HI[/url][/b]
+This mod only checks whether IM-HI works.
 
-[h2]What this mod does[/h2]
-It only shows on the main menu's Mods button whether IM-HI works:
-- Mods [IM-HI not installed]: install IM-HI.
-- Green tick: it works.
-- Orange !: click Update IM-HI under Mods.
+[h2]You must manually install it from here:[/h2]
+[b][url=https://github.com/ui3TD/IM-HarmonyIntegration]Install IM-HI[/url][/b]
 
 [h2]For Modders[/h2]
 - [b][url=https://github.com/ui3TD/IM-HarmonyIntegration/blob/main/docs/ModdingWithAI.md]Make mods with an AI coding assistant[/url][/b]

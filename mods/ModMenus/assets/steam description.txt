@@ -3,9 +3,6 @@ Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyInt
 
 ModMenus provides a UI menu to manage the settings of other mods. Each mod gets its own tab, so you can go straight to its settings.
 
-[h2]Hotkeys[/h2]
-Change any of the game's keys on the Hotkeys tab, the debug cheats included: click a key's box, then press the new key. Keys from other mods are there too. A key used twice where both work is marked in red. Tick Enable Debug Cheats to use the cheat keys without pressing F7 five times.
-
 Try one of these mods to see it in action:
 [list]
 [*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2990120915]Targeted Auditions[/url] (formerly called Audition Age Limits)
@@ -13,6 +10,9 @@ Try one of these mods to see it in action:
 [*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=3821906838]AI Fan Chatter[/url]
 [*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2976136928]FastForward[/url]
 [/list]
+
+[h2]Hotkeys[/h2]
+Change any of the game's keys on the Hotkeys tab, the debug cheats included: click a key's box, then press the new key. Keys from other mods are there too. A key used twice where both work is marked in red. Tick Enable Debug Cheats to use the cheat keys without pressing F7 five times.
 
 [h2]For Modders[/h2]
 ModMenus reads 'JSON/Mod Menu/modmenu.json' in your mod to build its settings menu. Supported elements: text, sliders (with optional steps), checkboxes, dropdowns, text fields (with optional number checking), and keys. Any row can be shown only while another setting is on.

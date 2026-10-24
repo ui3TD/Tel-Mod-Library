@@ -91,10 +91,67 @@ namespace NationalTour.Tests
             Assert.Equal(MOD_TITLE, Regex.Match(csproj, "<ModName>(.+)</ModName>").Groups[1].Value);
         }
 
+        /// <summary>
+        /// Version 3 of the same mod: same Workshop item, same Harmony ID (which also names the saved variable).
+        /// </summary>
+        [Fact]
+        public void InfoJson_IsVersion3OfTheSameMod()
+        {
+            string csproj = File.ReadAllText(TestGame.ModFile("National Tour.csproj"));
+            Assert.Equal("3.0.0", Regex.Match(csproj, "<Version>(.+)</Version>").Groups[1].Value);
+            Assert.Equal("Adds National Tours alongside World Tours.", Regex.Match(csproj, "<ModDescription>(.+)</ModDescription>").Groups[1].Value);
+            Assert.Equal("2872425710", Regex.Match(csproj, "<WorkshopID>(.+)</WorkshopID>").Groups[1].Value);
+            Assert.Equal(SaveState.VARIABLE, Regex.Match(csproj, "<HarmonyID>(.+)</HarmonyID>").Groups[1].Value);
+        }
+
+        private static string SteamDescription() => File.ReadAllText(TestGame.ModAsset("Steam Description.txt"));
+
+        [Theory]
+        [InlineData("Adds National Tours alongside World Tours.")]
+        [InlineData("A national tour and a world tour can be in production at the same time. Each has its own 3-month cooldown.")]
+        [InlineData("Osaka costs 10 stamina, like France. The others cost 20.")]
+        [InlineData("National tours don't start story scenes, Aya's task or the World Tour achievement.")]
+        [InlineData("Updating from version 2: the tours already in your save count as world tours, and every prefecture starts at the smallest venue.")]
+        [InlineData("If a world tour and a national tour are both in production, finish or cancel one of them before you remove the mod.")]
+        public void SteamDescription_SaysWhatTheModDoes(string text)
+        {
+            Assert.Contains(text, SteamDescription());
+        }
+
+        [Fact]
+        public void SteamDescription_NoLongerSaysItReplacesTheWorldTour()
+        {
+            Assert.DoesNotContain("replaced by", SteamDescription());
+            Assert.DoesNotContain("replaces event and story dialogue", SteamDescription());
+        }
+
+        [Fact]
+        public void Changelog_StartsWithThisVersion()
+        {
+            string description = SteamDescription();
+            string firstEntry = description.Substring(description.IndexOf("[h3]Changelog[/h3]")).Split('\n')[1].Trim();
+            Assert.Equal("- 3.0.0: National tours run alongside world tours. Past tours count as world tours.", firstEntry);
+        }
+
+        /// <summary>
+        /// The regions the Steam description lists are the game's discount areas.
+        /// </summary>
+        [Theory]
+        [InlineData("Hokkaido + Tohoku")]
+        [InlineData("Kanto + Hokuriku + Tokai")]
+        [InlineData("Kansai + Chugoku + Shikoku")]
+        [InlineData("Kyushu")]
+        [InlineData("Okinawa")]
+        public void SteamDescription_ListsEachRegion(string region)
+        {
+            Assert.Contains("- " + region, SteamDescription());
+            Assert.True(PrefectureTests.Regions.ContainsKey(region));
+        }
+
         [Fact]
         public void SteamDescription_LinksTheRequirementAndSource()
         {
-            string description = File.ReadAllText(TestGame.ModAsset("Steam Description.txt"));
+            string description = SteamDescription();
             Assert.Contains("[h1]REQUIRES: IM-HarmonyIntegration[/h1]", description);
             Assert.Contains("[url=https://github.com/ui3TD/IM-HarmonyIntegration]", description);
             Assert.Contains("[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]", description);

@@ -1,11 +1,23 @@
 [h1]REQUIRES: IM-HarmonyIntegration[/h1]
 Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
 
-World Tours replaced by National Tours.
+Adds National Tours alongside World Tours.
 
-Also replaces event and story dialogue to make sense with a National Tour.
+- Special Events has a National Tour tab next to the World Tour tab. Its map of Japan has 18 prefectures to tour.
+- A national tour and a world tour can be in production at the same time. Each has its own 3-month cooldown.
+- Each prefecture has the cost, ticket price and regional discount of one World Tour country. Osaka costs 10 stamina, like France. The others cost 20.
+- Each prefecture keeps its own venue level and fan fatigue.
+- The story follows the World Tour, as in the base game. National tours don't start story scenes, Aya's task or the World Tour achievement.
+- National tours count toward the Most Prolific Group award.
+
+Updating from version 2: the tours already in your save count as world tours, and every prefecture starts at the smallest venue.
 
 v2.0 of this mod has been revamped to be dependent on IM-HarmonyIntegration. If you've been using the old version, please revert all game files back to their original.
+
+[h3]Removing the mod[/h3]
+Your saves keep working without the mod. National tours then show as world tours to the countries they stand in for.
+
+If a world tour and a national tour are both in production, finish or cancel one of them before you remove the mod. Otherwise the other one blocks the World Tour tab.
 
 [h3]Why these prefectures?[/h3]
 I wanted to preserve the original costs and regional discounts. Where there were costly distant countries in the World Tour, there are costly distant prefectures in the National Tour. Where there were regional discounts in the World Tour, there are regional discounts in the National Tour.
@@ -20,6 +32,7 @@ Regions:
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 3.0.0: National tours run alongside world tours. Past tours count as world tours.
 - 2.1.3: Stops shipping a copy of the game's tour data, so other mods' tour changes stay.
 - 2.1.2: Prefecture pins stay on the map every time the tour planner opens, not just the first.
 - 2.1.1: Finds its pictures next to its own files and loads them once per session.

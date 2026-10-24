@@ -45,13 +45,16 @@ namespace PoliciesThatMatter.Tests
 
         private static readonly MethodBase[] Patched =
         {
+            // First: a release build would otherwise inline the game's roll into the methods that call it
+            AccessTools.Method(typeof(data_girls_PoliciesStamina), nameof(data_girls_PoliciesStamina.RollLoss)),
             AccessTools.Method(typeof(data_girls_PoliciesStamina), nameof(data_girls_PoliciesStamina.Prefix)),
             AccessTools.Method(typeof(data_girls_PoliciesStamina), "AddStaminaNotification"),
             AccessTools.Method(typeof(data_girls_PoliciesResources), nameof(data_girls_PoliciesResources.Prefix)),
+            AccessTools.Method(typeof(data_girls_PoliciesStamina), "ApplyPolicyStamina"),
+            AccessTools.Method(typeof(data_girls_PoliciesResources), "AddPolicyResources"),
             AccessTools.Method(typeof(data_girls_PoliciesResources), "AddBonusNotification"),
             AccessTools.Method(typeof(traits_GetRandomTraitType), nameof(traits_GetRandomTraitType.Postfix)),
             AccessTools.Method(typeof(agency__room_DoGirlTraining), nameof(agency__room_DoGirlTraining.Infix)),
-            AccessTools.Method(typeof(data_girls_PoliciesStamina), nameof(data_girls_PoliciesStamina.RollLoss)),
         };
 
         private static readonly Lazy<bool> Installed = new(() =>

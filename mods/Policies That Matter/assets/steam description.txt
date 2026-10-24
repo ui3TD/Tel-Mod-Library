@@ -47,5 +47,6 @@ Security:
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 1.2.1: Copes with policy files that leave a policy unselected; errors no longer stop the week.
 - 1.2.0: Random mental, money and fan amounts now average exactly what the policies say.
 - 1.1.0: Policy options no longer appear twice when another policy file overlaps this mod's.

@@ -187,6 +187,36 @@ namespace PoliciesThatMatter.Tests
             Assert.Empty(Seams.RangesRolled);
         }
 
+        /// <summary>
+        /// An allowed positive trait already picked (by the game or another mod) is kept without a roll.
+        /// </summary>
+        [Fact]
+        public void Extensive_PositivePick_Kept()
+        {
+            TestPolicies.Use(background_check_extensive);
+
+            traits._trait._type result = traits._trait._type.Prodigy;
+            traits_GetRandomTraitType.Postfix(ref result);
+
+            Assert.Equal(traits._trait._type.Prodigy, result);
+            Assert.Empty(Seams.RangesRolled);
+        }
+
+        /// <summary>
+        /// Moonlighter and Spoiled aren't allowed, so they're rerolled even though they're positive.
+        /// </summary>
+        [Fact]
+        public void Extensive_LeftOutPositivePick_Rerolled()
+        {
+            TestPolicies.Use(background_check_extensive);
+
+            traits._trait._type result = traits._trait._type.Spoiled;
+            traits_GetRandomTraitType.Postfix(ref result);
+
+            Assert.Equal(traits._trait._type.Prodigy, result);
+            Assert.Single(Seams.RangesRolled);
+        }
+
         [Theory]
         [InlineData(background_check_no_check)]
         [InlineData(background_check_basic)]
@@ -299,7 +329,7 @@ namespace PoliciesThatMatter.Tests
             Seams.Chance = _ => true;
             Seams.Range = (_, max) => max - 1;
 
-            Assert.False(data_girls_PoliciesStamina.Prefix());
+            Assert.False(data_girls_PoliciesStamina.Prefix(true));
 
             Assert.Equal((1, 2 * tooltip), Assert.Single(Seams.RangesRolled));
             Assert.Equal((girl, data_girls._paramType.mentalStamina, (float)-(2 * tooltip - 1)), Assert.Single(Seams.ParamsAdded));
@@ -310,7 +340,7 @@ namespace PoliciesThatMatter.Tests
         public void Chances_Are10PercentSocialMedia_5Streaming_10Dating()
         {
             Girl();
-            data_girls_PoliciesStamina.Prefix();
+            data_girls_PoliciesStamina.Prefix(true);
             Assert.Equal(new[] { 10, 5, 10 }, Seams.ChancesRolled);
         }
 
@@ -319,7 +349,7 @@ namespace PoliciesThatMatter.Tests
         {
             Use(social_media_no_restrictions, streaming_no_restrictions, dating_forbidden);
             Girl();
-            data_girls_PoliciesStamina.Prefix();
+            data_girls_PoliciesStamina.Prefix(true);
             Assert.Empty(Seams.ParamsAdded);
             Assert.Empty(Seams.Notifications);
         }
@@ -332,7 +362,7 @@ namespace PoliciesThatMatter.Tests
             Seams.Chance = _ => true;
             Seams.Range = (_, max) => max - 1;
 
-            data_girls_PoliciesStamina.Prefix();
+            data_girls_PoliciesStamina.Prefix(true);
 
             Assert.Equal((girl, data_girls._paramType.mentalStamina, (float)-(39 + 19 + 19)), Assert.Single(Seams.ParamsAdded));
             Assert.Equal(3, Seams.Notifications.Count);
@@ -347,7 +377,7 @@ namespace PoliciesThatMatter.Tests
             Girl(age);
             Seams.Chance = _ => true;
 
-            data_girls_PoliciesStamina.Prefix();
+            data_girls_PoliciesStamina.Prefix(true);
 
             Assert.Equal(loses, Seams.ParamsAdded.Count == 1);
         }
@@ -363,7 +393,7 @@ namespace PoliciesThatMatter.Tests
             Girl(status: status);
             Seams.Chance = _ => true;
 
-            data_girls_PoliciesStamina.Prefix();
+            data_girls_PoliciesStamina.Prefix(true);
 
             Assert.Empty(Seams.ChancesRolled);
             Assert.Empty(Seams.ParamsAdded);
@@ -645,5 +675,129 @@ namespace PoliciesThatMatter.Tests
 
         public void LogException(Exception exception, UnityEngine.Object context) =>
             Messages.Add(exception.ToString());
+    }
+
+    /// <summary>
+    /// Another mod's policy file can leave a policy with nothing selected, another mod can replace the
+    /// weekly policy stamina, and an error can happen in the weekly effects; none of these break the game.
+    /// </summary>
+    public class OtherModsTests
+    {
+        public OtherModsTests()
+        {
+            Seams.Reset();
+            traits.Traits = new List<traits._trait>
+            {
+                new() { Type = traits._trait._type.Clumsy, Positive = false },
+                new() { Type = traits._trait._type.Prodigy, Positive = true },
+            };
+        }
+
+        /// <summary>The mod's policies, with nothing selected for these types.</summary>
+        private static void Unselect(params policies._type[] types)
+        {
+            TestPolicies.Use();
+            foreach (policies.value value in policies.Values.Where(v => types.Contains(v.Type)))
+                value.Selected = false;
+            foreach (policies._type type in types)
+                Assert.Null(policies.GetSelectedPolicyValue(type));
+        }
+
+        [Fact]
+        public void UnselectedPolicies_ChangeNothing()
+        {
+            Unselect(policies._type.performances, policies._type.background_check, policies._type.image,
+                policies._type.dating, policies._type.security);
+
+            int money = 10000;
+            Activities_GetPerformanceMoneyPerLevel.Postfix(false, ref money);
+            Assert.Equal(10000, money);
+
+            float duration = 1000f;
+            data_girls_girls_param_GetDuration.Postfix(ref duration, new data_girls.girls.param { type = data_girls._paramType.vocal });
+            Assert.Equal(1000f, duration);
+
+            agency__room_DoGirlTraining.Infix(new agency._room { girl = new data_girls.girls() });
+            Assert.Empty(Seams.ParamsAdded);
+
+            traits._trait._type trait = traits._trait._type.Clumsy;
+            traits_GetRandomTraitType.Postfix(ref trait);
+            Assert.Equal(traits._trait._type.Clumsy, trait);
+
+            foreach (resources.fanType fanType in new[] { resources.fanType.adult, resources.fanType.hardcore })
+            {
+                float show = 1f;
+                Shows_GetBaseAppeal.Postfix(ref show, fanType);
+                Assert.Equal(1f, show);
+                float single = 1f;
+                singles__single_GetBaseAppeal.Postfix(ref single, fanType);
+                Assert.Equal(1f, single);
+            }
+
+            float songStamina = 30f, mcStamina = 30f, songHype = 2f, mcHype = 2f;
+            SEvent_Concerts__concert__song_GetStaminaCost.Postfix(ref songStamina);
+            SEvent_Concerts__concert__mc_GetStaminaCost.Postfix(ref mcStamina);
+            SEvent_Concerts__concert__song_GetHype.Postfix(ref songHype);
+            SEvent_Concerts__concert__mc_GetHype.Postfix(ref mcHype);
+            Assert.Equal((30f, 30f, 2f, 2f), (songStamina, mcStamina, songHype, mcHype));
+        }
+
+        [Fact]
+        public void UnselectedPolicies_NoWeeklyEffects()
+        {
+            Unselect(policies._type.social_media, policies._type.streaming, policies._type.dating);
+            staticVars.dateTime = new DateTime(2025, 6, 15);
+            data_girls.girl = new List<data_girls.girls> { new() { birthday = new DateTime(2005, 6, 15) } };
+            Seams.Chance = _ => true;
+
+            Assert.False(data_girls_PoliciesStamina.Prefix(true));
+            Assert.True(data_girls_PoliciesResources.Prefix());
+
+            Assert.Empty(Seams.ParamsAdded);
+            Assert.Empty(Seams.FansAdded);
+            Assert.Empty(Seams.ResourcesAdded);
+            Assert.Empty(Seams.Notifications);
+        }
+
+        /// <summary>
+        /// Another mod already replaced the game's weekly policy stamina: its version is kept and the
+        /// mod's rolls aren't added on top.
+        /// </summary>
+        [Fact]
+        public void StaminaReplacedByAnotherMod_NoRollsOnTop()
+        {
+            TestPolicies.Use(social_media_no_restrictions, streaming_no_restrictions, dating_forbidden);
+            data_girls.girl = new List<data_girls.girls> { new() };
+            Seams.Chance = _ => true;
+
+            Assert.False(data_girls_PoliciesStamina.Prefix(false));
+
+            Assert.Empty(Seams.ChancesRolled);
+            Assert.Empty(Seams.ParamsAdded);
+            Assert.Empty(Seams.Notifications);
+        }
+
+        /// <summary>
+        /// An error would stop the rest of the game's weekly update, so each is logged once and the week goes on:
+        /// the game's stamina rolls stay skipped, and the game's policy income still runs.
+        /// </summary>
+        [Fact]
+        public void WeeklyErrors_LoggedOnce()
+        {
+            TestPolicies.Use();
+            UnityEngine.Debug.unityLogger.logHandler = new Log();
+            Log.Messages.Clear();
+            data_girls.girl = null;
+
+            for (int week = 0; week < 2; week++)
+            {
+                Assert.False(data_girls_PoliciesStamina.Prefix(true));
+                Assert.True(data_girls_PoliciesResources.Prefix());
+            }
+
+            Assert.Equal(2, Log.Messages.Count);
+            Assert.Contains(Log.Messages, m => m.StartsWith("[Policies That Matter] Couldn't apply this week's policy stamina"));
+            Assert.Contains(Log.Messages, m => m.StartsWith("[Policies That Matter] Couldn't add this week's policy money and fans"));
+        }
     }
 }

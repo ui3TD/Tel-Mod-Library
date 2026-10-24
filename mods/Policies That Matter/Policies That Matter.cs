@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using System;
 using UnityEngine;
 using System.Reflection;
 using System.Collections.Generic;
@@ -43,6 +44,15 @@ namespace PoliciesThatMatter
         public const int datingAge = 16;
 
         public const string DATING_NOTIF_LABEL = "POLICYMOD__IDOL__DATING";
+
+        /// <summary>
+        /// The selected choice of this policy, or null if another mod's policy file left none selected,
+        /// in which case the mod's change for that policy is off instead of failing.
+        /// </summary>
+        public static policies._value? Selected(policies._type type)
+        {
+            return policies.GetSelectedPolicyValue(type)?.Value;
+        }
 
         /// <summary>
         /// Logs that a transpiler couldn't find the code it changes, which leaves that change out.
@@ -96,7 +106,7 @@ namespace PoliciesThatMatter
     {
         public static void Postfix(bool forceHard, ref int __result)
         {
-            if (forceHard || policies.GetSelectedPolicyValue(policies._type.performances).Value != policies._value.performances_energy)
+            if (forceHard || Selected(policies._type.performances) != policies._value.performances_energy)
                 return;
 
             __result = Mathf.FloorToInt(__result * PERFORMANCE_ENERGETIC_BONUS);
@@ -133,7 +143,7 @@ namespace PoliciesThatMatter
             if (__this.girl == null)
                 return;
 
-            if (policies.GetSelectedPolicyValue(policies._type.performances).Value != policies._value.performances_quality)
+            if (Selected(policies._type.performances) != policies._value.performances_quality)
                 return;
 
             float mental = PERFORMANCE_QUALITY_MENTAL / 7 / Mathf.Floor(1440f / (float)(staticVars.dateTimeAddMinutesPerSecond / staticVars.dateTimeDivider));
@@ -151,7 +161,7 @@ namespace PoliciesThatMatter
             if (__instance.type == data_girls._paramType.physicalStamina || __instance.type == data_girls._paramType.mentalStamina)
                 return;
 
-            if (policies.GetSelectedPolicyValue(policies._type.performances).Value != policies._value.performances_quality)
+            if (Selected(policies._type.performances) != policies._value.performances_quality)
                 return;
 
             __result /= PERFORMANCE_QUALITY_BONUS;
@@ -166,7 +176,7 @@ namespace PoliciesThatMatter
     {
         public static void Postfix(ref traits._trait._type __result)
         {
-            if (policies.GetSelectedPolicyValue(policies._type.background_check).Value != policies._value.background_check_extensive)
+            if (Selected(policies._type.background_check) != policies._value.background_check_extensive)
                 return;
 
             // Moonlighter and Spoiled are left out, as the game leaves them out of random traits
@@ -174,6 +184,12 @@ namespace PoliciesThatMatter
                 .Where(t => t.Type != traits._trait._type.Moonlighter && t.Type != traits._trait._type.Spoiled)
                 .ToList();
             if (list.Count == 0)
+                return;
+
+            // A positive trait already picked (by the game, or another mod) is kept: the game's random pick,
+            // when positive, is equally likely to be any of them, so the odds are the same as rerolling
+            traits._trait._type picked = __result;
+            if (list.Any(t => t.Type == picked))
                 return;
             __result = list[UnityEngine.Random.Range(0, list.Count)].Type;
         }
@@ -186,7 +202,7 @@ namespace PoliciesThatMatter
     {
         public static void Postfix(ref float __result, resources.fanType fanType)
         {
-            if (policies.GetSelectedPolicyValue(policies._type.image).Value == policies._value.image_rebellious)
+            if (Selected(policies._type.image) == policies._value.image_rebellious)
             {
                 if (fanType == resources.fanType.adult)
                 {
@@ -194,7 +210,7 @@ namespace PoliciesThatMatter
                 }
             }
             
-            if (policies.GetSelectedPolicyValue(policies._type.dating).Value == policies._value.dating_allowed)
+            if (Selected(policies._type.dating) == policies._value.dating_allowed)
             {
                 if (fanType == resources.fanType.hardcore)
                 {
@@ -211,7 +227,7 @@ namespace PoliciesThatMatter
     {
         public static void Postfix(ref float __result, resources.fanType fanType)
         {
-            if (policies.GetSelectedPolicyValue(policies._type.image).Value == policies._value.image_rebellious)
+            if (Selected(policies._type.image) == policies._value.image_rebellious)
             {
                 if (fanType == resources.fanType.adult)
                 {
@@ -219,7 +235,7 @@ namespace PoliciesThatMatter
                 }
             }
 
-            if (policies.GetSelectedPolicyValue(policies._type.dating).Value == policies._value.dating_allowed)
+            if (Selected(policies._type.dating) == policies._value.dating_allowed)
             {
                 if (fanType == resources.fanType.hardcore)
                 {
@@ -259,11 +275,37 @@ namespace PoliciesThatMatter
             return UnityEngine.Random.Range(1, max);
         }
 
-        public static bool Prefix()
+        private static bool loggedError;
+
+        /// <remarks>
+        /// If another mod already replaced the game's method, its version is kept and these rolls aren't added on top.
+        /// An error here would stop the rest of the game's weekly update, so it's logged (once) and the week goes on.
+        /// </remarks>
+        public static bool Prefix(bool __runOriginal)
         {
-            policies._value SNS = policies.GetSelectedPolicyValue(policies._type.social_media).Value;
-            policies._value streaming = policies.GetSelectedPolicyValue(policies._type.streaming).Value;
-            policies._value dating = policies.GetSelectedPolicyValue(policies._type.dating).Value;
+            if (!__runOriginal)
+                return false;
+
+            try
+            {
+                ApplyPolicyStamina();
+            }
+            catch (Exception e)
+            {
+                if (!loggedError)
+                {
+                    loggedError = true;
+                    Debug.LogError("[Policies That Matter] Couldn't apply this week's policy stamina: " + e);
+                }
+            }
+            return false;
+        }
+
+        private static void ApplyPolicyStamina()
+        {
+            policies._value? SNS = Selected(policies._type.social_media);
+            policies._value? streaming = Selected(policies._type.streaming);
+            policies._value? dating = Selected(policies._type.dating);
 
             foreach (data_girls.girls girls in data_girls.GetActiveGirls())
             {
@@ -323,8 +365,6 @@ namespace PoliciesThatMatter
                     girls.addParam(data_girls._paramType.mentalStamina, cumulativeChange, false);
                 }
             }
-
-            return false;
         }
     }
 
@@ -346,11 +386,33 @@ namespace PoliciesThatMatter
             );
         }
 
+        private static bool loggedError;
+
+        /// <remarks>
+        /// These are added to whatever the game's method does, so they don't depend on whether it runs.
+        /// An error here would stop the rest of the game's weekly update, so it's logged (once) and the week goes on.
+        /// </remarks>
         public static bool Prefix()
         {
-            policies._value SNS = policies.GetSelectedPolicyValue(policies._type.social_media).Value;
-            policies._value streaming = policies.GetSelectedPolicyValue(policies._type.streaming).Value;
+            try
+            {
+                AddPolicyResources();
+            }
+            catch (Exception e)
+            {
+                if (!loggedError)
+                {
+                    loggedError = true;
+                    Debug.LogError("[Policies That Matter] Couldn't add this week's policy money and fans: " + e);
+                }
+            }
+            return true;
+        }
 
+        private static void AddPolicyResources()
+        {
+            policies._value? SNS = Selected(policies._type.social_media);
+            policies._value? streaming = Selected(policies._type.streaming);
 
             int moneySum = 0;
             float moneyRandom;
@@ -397,8 +459,6 @@ namespace PoliciesThatMatter
                 ExtensionMethods.AddSquareBrackets(Language.Data["IDOL__POLICY_STREAMING"])
                 }), mainScript.green32, NotificationManager._notification._type.resource_change);
             }
-
-            return true;
         }
     }
 
@@ -409,7 +469,7 @@ namespace PoliciesThatMatter
     {
         public static void Postfix(ref float __result)
         {
-            policies._value security = policies.GetSelectedPolicyValue(policies._type.security).Value;
+            policies._value? security = Selected(policies._type.security);
             if (security == policies._value.security_relaxed)
             {
                 __result = Mathf.Round(__result * SECURITY_RELAX_STAM);
@@ -428,7 +488,7 @@ namespace PoliciesThatMatter
     {
         public static void Postfix(ref float __result)
         {
-            policies._value security = policies.GetSelectedPolicyValue(policies._type.security).Value;
+            policies._value? security = Selected(policies._type.security);
             if (security == policies._value.security_relaxed)
             {
                 __result = Mathf.Round(__result * SECURITY_RELAX_STAM);
@@ -447,7 +507,7 @@ namespace PoliciesThatMatter
     {
         public static void Postfix(ref float __result)
         {
-            policies._value security = policies.GetSelectedPolicyValue(policies._type.security).Value;
+            policies._value? security = Selected(policies._type.security);
             if (security == policies._value.security_relaxed)
             {
                 __result *= SECURITY_RELAX_HYPE;
@@ -466,7 +526,7 @@ namespace PoliciesThatMatter
     {
         public static void Postfix(ref float __result)
         {
-            policies._value security = policies.GetSelectedPolicyValue(policies._type.security).Value;
+            policies._value? security = Selected(policies._type.security);
             if (security == policies._value.security_relaxed)
             {
                 __result *= SECURITY_RELAX_HYPE;

@@ -1,3 +1,7 @@
+using HarmonyLib;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 using Xunit;
 using _media_type = Shows._param._media_type;
 using _status = Shows._show._status;
@@ -383,6 +387,125 @@ namespace PromotionTierTweaks.Tests
             Activities_GetPromotionDescription.Postfix(ref vanilla, lvl, 0);
 
             Assert.Equal("game text", vanilla);
+        }
+    }
+
+    /// <summary>
+    /// Another mod can change the game's promotion numbers (Activities.promo) or add to the tooltip;
+    /// the mod follows both.
+    /// </summary>
+    public class OtherModsTests
+    {
+        private static readonly string Green = mainScript.green;
+        private static readonly string Blue = mainScript.blue;
+
+        public OtherModsTests() => TestGame.Reset(patched: true);
+
+        private static string Line(string text, string colour) => $"<color={colour}>{text}</color>";
+
+        /// <summary>Runs the check with one of the game's promotion numbers changed, as another mod would.</summary>
+        private static void WithGamePromo(string field, int value, Action check)
+        {
+            FieldInfo info = AccessTools.Field(AccessTools.Inner(typeof(Activities), "promo"), field);
+            object before = info.GetValue(null);
+            info.SetValue(null, value);
+            try
+            {
+                check();
+            }
+            finally
+            {
+                info.SetValue(null, before);
+            }
+        }
+
+        [Fact]
+        public void GameMagazines_Followed()
+        {
+            Stats.data.business.photoshoot_counter = 1;
+            WithGamePromo("lvl3_mags", 5, () =>
+                Assert.StartsWith(Line("Appear in magazines: 1 / 5", Blue), Activities.GetPromotionDescription(3, 2)));
+            WithGamePromo("lvl6_mags", 30, () =>
+                Assert.StartsWith(Line("Appear in magazines: 30 / 30", Green), Activities.GetPromotionDescription(6, 6)));
+        }
+
+        [Fact]
+        public void GameIdolCount_FollowedByGateAndText()
+        {
+            TestGame.Idol(9);
+            TestGame.Idol(9);
+            TestGame.Idol(9);
+            WithGamePromo("lvl9_famous_idols_count", 4, () =>
+            {
+                int result = 9;
+                Activities_GetMaxLevel_Promotion.Postfix(ref result, new Activities._activity { lvl = 8 });
+                Assert.Equal(8, result);
+                Assert.Equal(Line("Idols with level 9 fame: 3 / 4", Blue), Activities.GetPromotionDescription(9, 8));
+            });
+
+            int unchanged = 9;
+            Activities_GetMaxLevel_Promotion.Postfix(ref unchanged, new Activities._activity { lvl = 8 });
+            Assert.Equal(9, unchanged);
+        }
+
+        /// <summary>
+        /// When another mod makes the game's requirement harder than the mod's, the tooltip shows the game's.
+        /// </summary>
+        [Fact]
+        public void HigherGameRequirement_Shown()
+        {
+            WithGamePromo("lvl4_internet_audience", 8000, () =>
+                Assert.StartsWith(Line("Internet show peak audience: 8,000 / 8,000", Green), Activities.GetPromotionDescription(4, 4)));
+            WithGamePromo("lvl9_famous_idols_lvl", 10, () =>
+                Assert.Equal(Line("Idols with level 10 fame: 3 / 3", Green), Activities.GetPromotionDescription(9, 9)));
+        }
+
+        public static void AddLine(ref string __result) => __result += "\nanother mod";
+
+        [Fact]
+        public void OtherModsPostfix_KeepsItsText()
+        {
+            Harmony standIn = new("tests.PromotionTierTweaks.StandIn");
+            try
+            {
+                standIn.Patch(AccessTools.Method(typeof(Activities), nameof(Activities.GetPromotionDescription)),
+                    // Above normal priority: without running first, the mod would overwrite this line
+                    postfix: new HarmonyMethod(AccessTools.Method(typeof(OtherModsTests), nameof(AddLine)), Priority.HigherThanNormal));
+                string text = Activities.GetPromotionDescription(9, 9);
+                Assert.Equal(Line("Idols with level 9 fame: 3 / 3", Green) + "\nanother mod", text);
+            }
+            finally
+            {
+                standIn.UnpatchSelf();
+            }
+        }
+
+        private static readonly List<string> Warnings = new();
+
+        public static bool LogWarning(object message)
+        {
+            Warnings.Add(message?.ToString());
+            return false;
+        }
+
+        [Fact]
+        public void MissingGameValue_UsesFallbackAndWarnsOnce()
+        {
+            Warnings.Clear();
+            Harmony standIn = new("tests.PromotionTierTweaks.StandIn");
+            try
+            {
+                standIn.Patch(AccessTools.Method(typeof(UnityEngine.Debug), nameof(UnityEngine.Debug.LogWarning), new[] { typeof(object) }),
+                    prefix: new HarmonyMethod(typeof(OtherModsTests), nameof(LogWarning)));
+                Assert.Equal(7, Utility.GameValue("no_such_promo_value", 7));
+                Assert.Equal(7, Utility.GameValue("no_such_promo_value", 7));
+            }
+            finally
+            {
+                standIn.UnpatchSelf();
+            }
+            string warning = Assert.Single(Warnings);
+            Assert.Contains("[Promotion Tier Tweaks]", warning);
         }
     }
 }

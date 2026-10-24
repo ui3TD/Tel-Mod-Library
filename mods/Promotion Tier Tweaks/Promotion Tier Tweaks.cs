@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using System.Reflection;
 using static PromotionTierTweaks.Utility;
@@ -17,10 +18,38 @@ namespace PromotionTierTweaks
         public const string lvl4Label = "UNFAIR_PLUS__ACTIVITIES__RADIOSHOW";
         public const string lvl6Label = "UNFAIR_PLUS__ACTIVITIES__TVSHOW";
 
-        // Standard game values
+        // Standard game values, used only if the game's own (Activities.promo) can't be read
         public const int lvl3mags = 3;
         public const int lvl6mags = 24;
         public const int lvl9IdolCount = 3;
+        public const int lvl4audienceGame = 1000;
+        public const int lvl9FameGame = 5;
+
+        private static readonly Dictionary<string, FieldInfo> gameFields = new();
+
+        // The game's promotion number now, so a value another mod changed is followed
+        public static int GameValue(string field, int fallback)
+        {
+            if (!gameFields.TryGetValue(field, out FieldInfo info))
+            {
+                Type promo = AccessTools.Inner(typeof(Activities), "promo");
+                info = promo == null ? null : AccessTools.Field(promo, field);
+                if (info == null || info.FieldType != typeof(int))
+                {
+                    info = null;
+                    Debug.LogWarning("[Promotion Tier Tweaks] Couldn't find the game's promotion value " + field + "; using " + fallback + ".");
+                }
+                gameFields[field] = info;
+            }
+            return info == null ? fallback : (int)info.GetValue(null);
+        }
+
+        public static int Lvl3Mags() => GameValue("lvl3_mags", lvl3mags);
+        public static int Lvl6Mags() => GameValue("lvl6_mags", lvl6mags);
+        public static int Lvl9IdolCount() => GameValue("lvl9_famous_idols_count", lvl9IdolCount);
+        // The mod's harder requirement, or the game's if another mod raised it higher
+        public static long Lvl4Audience() => Math.Max(lvl4audience, GameValue("lvl4_internet_audience", lvl4audienceGame));
+        public static int Lvl9Fame() => Math.Max(lvl9Fame, GameValue("lvl9_famous_idols_lvl", lvl9FameGame));
 
         // Episodes aired by the longest-running show of this type. Shows still in production don't count;
         // cancelled shows keep the episodes they aired.
@@ -78,7 +107,7 @@ namespace PromotionTierTweaks
             {
                 output = 5;
             }
-            else if (act.lvl < 9 && output >= 9 && data_girls.GetNumberOfIdolsWithFame(lvl9Fame) < lvl9IdolCount)
+            else if (act.lvl < 9 && output >= 9 && data_girls.GetNumberOfIdolsWithFame(Lvl9Fame()) < Lvl9IdolCount())
             {
                 output = 8;
             }
@@ -102,6 +131,7 @@ namespace PromotionTierTweaks
 
     // Level 3 requires 6 internet episodes, level 4 requires 6000 internet show viewers and 6 radio episodes, level 6 requires 6 tv episodes,
     // level 9 Promotion requires 3 idols with 9 fame instead of 5
+    // Runs first, so other mods' postfixes change this text rather than being overwritten by it
     [HarmonyPatch(typeof(Activities), nameof(Activities.GetPromotionDescription))]
     public class Activities_GetPromotionDescription
     {
@@ -111,6 +141,7 @@ namespace PromotionTierTweaks
             return ExtensionMethods.color(reqStr, current >= required ? mainScript.green : clr);
         }
 
+        [HarmonyPriority(Priority.First)]
         public static void Postfix(ref string __result, int lvl, int actualLvl)
         {
 
@@ -129,8 +160,9 @@ namespace PromotionTierTweaks
             {
                 case 3:
                     req1 = Language.Data["ACTIVITIES__MAGAZINES"];
-                    num1 = actualLvl >= lvl ? lvl3mags : Math.Min(lvl3mags, Stats.data.business.photoshoot_counter);
-                    req1 = GenerateRequirementString(req1, num1, lvl3mags, clr);
+                    int mags3 = Lvl3Mags();
+                    num1 = actualLvl >= lvl ? mags3 : Math.Min(mags3, Stats.data.business.photoshoot_counter);
+                    req1 = GenerateRequirementString(req1, num1, mags3, clr);
 
                     req2 = Language.Data[lvl3Label];
                     num2 = actualLvl >= lvl ? lvl3Eps : Math.Min(lvl3Eps, CountEpisodesOfShowsWithType(Shows._param._media_type.internet));
@@ -140,8 +172,9 @@ namespace PromotionTierTweaks
                     break;
                 case 4:
                     req1 = Language.Data["ACTIVITIES__INTERNETPEAK"];
-                    num1 = actualLvl >= lvl ? lvl4audience : Math.Min(lvl4audience, Shows.GetPeakAudience(Shows._param._media_type.internet));
-                    req1 = GenerateRequirementString(req1, num1, lvl4audience, clr);
+                    long audience = Lvl4Audience();
+                    num1 = actualLvl >= lvl ? audience : Math.Min(audience, Shows.GetPeakAudience(Shows._param._media_type.internet));
+                    req1 = GenerateRequirementString(req1, num1, audience, clr);
 
                     req2 = Language.Data[lvl4Label];
                     num2 = actualLvl >= lvl ? lvl4Eps : Math.Min(lvl4Eps, CountEpisodesOfShowsWithType(Shows._param._media_type.radio));
@@ -151,8 +184,9 @@ namespace PromotionTierTweaks
                     break;
                 case 6:
                     req1 = Language.Data["ACTIVITIES__MAGAZINES"];
-                    num1 = actualLvl >= lvl ? lvl6mags : Math.Min(lvl6mags, Stats.data.business.photoshoot_counter);
-                    req1 = GenerateRequirementString(req1, num1, lvl6mags, clr);
+                    int mags6 = Lvl6Mags();
+                    num1 = actualLvl >= lvl ? mags6 : Math.Min(mags6, Stats.data.business.photoshoot_counter);
+                    req1 = GenerateRequirementString(req1, num1, mags6, clr);
 
                     req2 = Language.Data[lvl6Label];
                     num2 = actualLvl >= lvl ? lvl6Eps : Math.Min(lvl6Eps, CountEpisodesOfShowsWithType(Shows._param._media_type.tv));
@@ -161,9 +195,11 @@ namespace PromotionTierTweaks
                     output = req1 + "\n" + req2;
                     break;
                 case 9:
-                    req1 = $"{Language.Data["ACTIVITIES__IDOLSLEVEL"]} {lvl9Fame} {Language.Data["FAME"].ToLower()}";
-                    num1 = actualLvl >= lvl ? lvl9IdolCount : Math.Min(lvl9IdolCount, data_girls.GetNumberOfIdolsWithFame(lvl9Fame));
-                    req1 = GenerateRequirementString(req1, num1, lvl9IdolCount, clr);
+                    int fame = Lvl9Fame();
+                    int idols = Lvl9IdolCount();
+                    req1 = $"{Language.Data["ACTIVITIES__IDOLSLEVEL"]} {fame} {Language.Data["FAME"].ToLower()}";
+                    num1 = actualLvl >= lvl ? idols : Math.Min(idols, data_girls.GetNumberOfIdolsWithFame(fame));
+                    req1 = GenerateRequirementString(req1, num1, idols, clr);
 
                     output = req1;
                     break;

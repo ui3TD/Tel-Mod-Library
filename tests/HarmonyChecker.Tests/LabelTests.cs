@@ -217,5 +217,59 @@ namespace HarmonyChecker.Tests
 
             AssertUnchanged(menu);
         }
+        /// <summary>
+        /// Added in 1.4.1: another mod's label on the Mods button is kept by both refreshes. The update button
+        /// still appears when IM-HI is out of date.
+        /// </summary>
+        [Fact]
+        public void AnotherModsLabel_IsKept()
+        {
+            IMHIUpdate.InstalledVersion = () => new Version(1, 0, 0);
+            Language.Data["OTHER_MOD_MODS"] = "Mods (12)";
+            Menu menu = TestGame.BuildMenu();
+            menu.ModsLangButton.Constant = "OTHER_MOD_MODS";
+            Seams.Texts[menu.Text] = "Mods (12)";
+
+            Seams.StartPostfix(menu.Controller);
+            Seams.StopSpinnerPostfix();
+
+            Assert.Equal("OTHER_MOD_MODS", menu.ModsLangButton.Constant);
+            Assert.Equal("Mods (12)", TestGame.TextOf(menu.Text));
+            Assert.NotNull(TestGame.UpdateButton(menu));
+        }
+
+        /// <summary>
+        /// The mod's own two labels still switch, both ways, as IM-HI goes out of date and is updated.
+        /// </summary>
+        [Fact]
+        public void OwnLabels_SwitchBothWays()
+        {
+            Menu menu = TestGame.BuildMenu();
+
+            IMHIUpdate.InstalledVersion = () => new Version(1, 0, 0);
+            Seams.StopSpinnerPostfix();
+            Assert.Equal(IMHIUpdate.MODS_LABEL, menu.ModsLangButton.Constant);
+
+            IMHIUpdate.InstalledVersion = () => IMHIUpdate.MIN_VERSION;
+            Seams.StopSpinnerPostfix();
+            AssertInstalled(menu);
+        }
+
+        /// <summary>
+        /// An error while updating the menu stays in the postfix and is logged, so the game's method and other
+        /// mods' patches on it still finish. Here reading the installed version fails.
+        /// </summary>
+        [Fact]
+        public void Error_StaysInEitherPostfix()
+        {
+            Menu menu = TestGame.BuildMenu();
+            IMHIUpdate.InstalledVersion = () => throw new InvalidOperationException("broken");
+
+            Seams.StartPostfix(menu.Controller);
+            Seams.StopSpinnerPostfix();
+
+            Assert.Equal(2, Log.Messages.FindAll(m => m.Contains("[Harmony Checker] Couldn't update the main menu") && m.Contains("broken")).Count);
+            AssertUnchanged(menu);
+        }
     }
 }

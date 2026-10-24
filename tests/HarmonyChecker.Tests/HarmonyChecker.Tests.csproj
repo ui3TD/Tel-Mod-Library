@@ -26,6 +26,10 @@
 		<Reference Include="UnityEngine.ImageConversionModule">
 			<HintPath>$(dllDir)\UnityEngine.ImageConversionModule.dll</HintPath>
 		</Reference>
+		<!--TextMeshPro's fonts, for the update button's menu font-->
+		<Reference Include="UnityEngine.TextCoreModule">
+			<HintPath>$(dllDir)\UnityEngine.TextCoreModule.dll</HintPath>
+		</Reference>
 		<!--Mods.LoadModsCoroutine releases Steam queries-->
 		<Reference Include="Steamworks.NET">
 			<HintPath>$(dllDir)\Steamworks.NET.dll</HintPath>

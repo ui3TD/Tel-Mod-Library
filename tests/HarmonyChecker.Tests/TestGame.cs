@@ -164,6 +164,20 @@ namespace HarmonyChecker.Tests
         }
     }
 
+    /// <summary>
+    /// Unity's logger writes through native code, so tests record what's logged instead.
+    /// </summary>
+    public class Log : ILogHandler
+    {
+        public static readonly List<string> Messages = new();
+
+        public void LogFormat(LogType logType, Object context, string format, params object[] args) =>
+            Messages.Add(string.Format(format, args));
+
+        public void LogException(Exception exception, Object context) =>
+            Messages.Add(exception.ToString());
+    }
+
     public class SameObject : IEqualityComparer<object>
     {
         public new bool Equals(object a, object b) => ReferenceEquals(a, b);
@@ -202,13 +216,33 @@ namespace HarmonyChecker.Tests
         public static Camera MainCamera;
 
         /// <summary>
+        /// The menu font the game has loaded; Reset sets one.
+        /// </summary>
+        public static TMP_FontAsset MenuFont;
+
+        /// <summary>
         /// The mod's own version lookup, before Reset replaces it with an up-to-date IM-HI.
         /// </summary>
         public static readonly Func<Version> DefaultInstalledVersion = IMHIUpdate.InstalledVersion;
 
         public static readonly List<string> OpenedUrls = new();
-        public static readonly List<GameObject> Instantiated = new();
+        public static readonly List<GameObject> Created = new();
         public static readonly List<GameObject> Destroyed = new();
+
+        /// <summary>
+        /// Each rect's size, anchors and offsets, and each image's and text's settings, as the code under test set them.
+        /// </summary>
+        public static readonly Dictionary<object, Dictionary<string, object>> Settings = new(new SameObject());
+
+        public static object Setting(object owner, string name) =>
+            Settings.TryGetValue(owner, out Dictionary<string, object> values) && values.TryGetValue(name, out object value) ? value : null;
+
+        private static void Set(object owner, string name, object value)
+        {
+            if (!Settings.TryGetValue(owner, out Dictionary<string, object> values))
+                Settings[owner] = values = new Dictionary<string, object>();
+            values[name] = value;
+        }
 
         /// <summary>
         /// The colour set on each text and image component.
@@ -270,6 +304,21 @@ namespace HarmonyChecker.Tests
             [AccessTools.PropertyGetter(typeof(Selectable), nameof(Selectable.colors))] = Stub(nameof(StubGetTints)),
             [AccessTools.PropertySetter(typeof(Image), nameof(Image.sprite))] = Stub(nameof(StubSetSprite)),
             [AccessTools.PropertySetter(typeof(Selectable), nameof(Selectable.colors))] = Stub(nameof(StubSetTints)),
+
+            // Building the update button
+            [AccessTools.Constructor(typeof(GameObject), new[] { typeof(string), typeof(Type[]) })] = Stub(nameof(StubNewGameObject)),
+            [AccessTools.Method(typeof(Transform), nameof(Transform.SetParent), new[] { typeof(Transform), typeof(bool) })] = Stub(nameof(StubSetParent)),
+            [AccessTools.PropertySetter(typeof(RectTransform), nameof(RectTransform.sizeDelta))] = Stub(nameof(StubSetSize)),
+            [AccessTools.PropertySetter(typeof(RectTransform), nameof(RectTransform.anchorMin))] = Stub(nameof(StubSetAnchorMin)),
+            [AccessTools.PropertySetter(typeof(RectTransform), nameof(RectTransform.anchorMax))] = Stub(nameof(StubSetAnchorMax)),
+            [AccessTools.PropertySetter(typeof(RectTransform), nameof(RectTransform.offsetMin))] = Stub(nameof(StubSetOffsetMin)),
+            [AccessTools.PropertySetter(typeof(RectTransform), nameof(RectTransform.offsetMax))] = Stub(nameof(StubSetOffsetMax)),
+            [AccessTools.PropertySetter(typeof(Image), nameof(Image.type))] = Stub(nameof(StubSetImageType)),
+            [AccessTools.PropertySetter(typeof(Image), nameof(Image.pixelsPerUnitMultiplier))] = Stub(nameof(StubSetPixelsPerUnit)),
+            [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.font))] = Stub(nameof(StubSetFont)),
+            [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.fontSize))] = Stub(nameof(StubSetFontSize)),
+            [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.alignment))] = Stub(nameof(StubSetAlignment)),
+            [AccessTools.PropertySetter(typeof(TMP_Text), nameof(TMP_Text.enableWordWrapping))] = Stub(nameof(StubSetWordWrapping)),
         };
 
         /// <summary>
@@ -284,13 +333,14 @@ namespace HarmonyChecker.Tests
             [Generic(typeof(GameObject), nameof(GameObject.GetComponentInChildren))] = Stub(nameof(GetComponentInChildren)),
             [Generic(typeof(Component), nameof(Component.GetComponentsInChildren))] = Stub(nameof(StubGetComponentsInChildren)),
             [Generic(typeof(GameObject), nameof(GameObject.GetComponentsInChildren))] = Stub(nameof(StubGetComponentsInChildren)),
-            [Generic(typeof(Object), nameof(Object.Instantiate), 2)] = Stub(nameof(StubInstantiate)),
+            [Generic(typeof(GameObject), nameof(GameObject.AddComponent))] = Stub(nameof(StubAddComponent)),
         };
 
         private static readonly Lazy<bool> Installed = new(() =>
         {
             foreach (KeyValuePair<MethodBase, MethodInfo> copy in Copies)
                 Harmony.ReversePatch(copy.Key, new HarmonyMethod(copy.Value), Stub(nameof(Redirect)), ilmanipulator: null);
+            Debug.unityLogger.logHandler = new Log();
             return true;
         });
 
@@ -302,7 +352,7 @@ namespace HarmonyChecker.Tests
 
         public static void ResetText(Lang_Button instance) => throw NotInstalled();
 
-        public static void ShowButton(Transform modsTransform, Version installed) => throw NotInstalled();
+        public static void ShowButton(Transform container, Transform modsTransform, Version installed) => throw NotInstalled();
 
         private static Exception NotInstalled() => new InvalidOperationException("Call Seams.Reset first");
 
@@ -313,18 +363,22 @@ namespace HarmonyChecker.Tests
         {
             _ = Installed.Value;
             MainCamera = null;
+            MenuFont = Fake<TMP_FontAsset>();
             Texts.Clear();
             Nodes.Clear();
             Colors.Clear();
             Tints.Clear();
             Sprites.Clear();
             OpenedUrls.Clear();
-            Instantiated.Clear();
+            Created.Clear();
             Destroyed.Clear();
+            Settings.Clear();
+            Log.Messages.Clear();
             IMHIUpdate.InstalledVersion = () => IMHIUpdate.MIN_VERSION;
             IMHIUpdate.OpenUrl = OpenedUrls.Add;
             IMHIUpdate.GoldSprite = () => null;
             IMHIUpdate.AddGlow = button => { };
+            IMHIUpdate.MenuFont = () => MenuFont;
         }
 
         /// <summary>
@@ -383,6 +437,15 @@ namespace HarmonyChecker.Tests
 
         public static bool InScene(GameObject obj) => NodeOf(obj).Parent != null;
 
+        public static string NameOf(GameObject obj) => NodeOf(obj).Name;
+
+        public static Transform TransformOf(GameObject obj) => NodeOf(obj).Transform;
+
+        /// <summary>
+        /// An object's components, in the order they were added; its transform first.
+        /// </summary>
+        public static List<Component> Components(GameObject obj) => NodeOf(obj).Components.ToList();
+
         /// <summary>
         /// The delegates added to an event at runtime.
         /// </summary>
@@ -421,17 +484,20 @@ namespace HarmonyChecker.Tests
         {
             foreach (CodeInstruction instruction in instructions)
             {
-                if (instruction.operand is MethodInfo method && (instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt))
+                MethodInfo stub = null;
+                if (instruction.operand is ConstructorInfo constructor && instruction.opcode == OpCodes.Newobj)
+                    Redirects.TryGetValue(constructor, out stub);
+                else if (instruction.operand is MethodInfo method && (instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt))
                 {
-                    if (!Redirects.TryGetValue(method, out MethodInfo stub) && method.IsGenericMethod
+                    if (!Redirects.TryGetValue(method, out stub) && method.IsGenericMethod
                         && GenericRedirects.TryGetValue(method.GetGenericMethodDefinition(), out MethodInfo generic))
                         stub = generic.MakeGenericMethod(method.GetGenericArguments());
+                }
 
-                    if (stub != null)
-                    {
-                        instruction.opcode = OpCodes.Call;
-                        instruction.operand = stub;
-                    }
+                if (stub != null)
+                {
+                    instruction.opcode = OpCodes.Call;
+                    instruction.operand = stub;
                 }
                 yield return instruction;
             }
@@ -470,41 +536,42 @@ namespace HarmonyChecker.Tests
         private static T[] StubGetComponentsInChildren<T>(object owner) =>
             NodeOf(owner).SelfAndDescendants().SelectMany(n => n.Components).OfType<T>().ToArray();
 
-        private static readonly MethodInfo ShallowCopy = AccessTools.Method(typeof(object), "MemberwiseClone");
+        /// <summary>
+        /// A new GameObject, outside the scene until it's given a parent.
+        /// </summary>
+        private static GameObject StubNewGameObject(string name, Type[] components)
+        {
+            GameObject obj = NewObject(name);
+            foreach (Type type in components.Where(t => t != typeof(RectTransform)))
+                AddComponent(obj, type);
+            Created.Add(obj);
+            return obj;
+        }
+
+        private static T StubAddComponent<T>(GameObject owner) => (T)(object)AddComponent(owner, typeof(T));
 
         /// <summary>
-        /// Copies a GameObject and everything under it to the end of the parent's children, named as Unity
-        /// names copies. Components are shallow copies, so they share fields (events too) with the original
-        /// until the code under test replaces them.
+        /// Puts an object last among its new parent's children, as Unity does.
         /// </summary>
-        private static T StubInstantiate<T>(T original, Transform parent)
+        private static void StubSetParent(Transform transform, Transform parent, bool worldPositionStays)
         {
-            GameObject copy = CopyNode(NodeOf(original), NodeOf(parent).GameObject);
-            NodeOf(copy).Name += "(Clone)";
-            Instantiated.Add(copy);
-            return (T)(object)copy;
+            Node node = NodeOf(transform);
+            node.Parent?.Children.Remove(node);
+            node.Parent = parent is null ? null : NodeOf(parent);
+            node.Parent?.Children.Add(node);
         }
 
-        private static GameObject CopyNode(Node original, GameObject parent)
-        {
-            GameObject copy = NewObject(original.Name, parent);
-            Node node = NodeOf(copy);
-            foreach (Component component in original.Components.Where(c => c is not Transform))
-            {
-                Component clone = (Component)ShallowCopy.Invoke(component, null);
-                node.Components.Add(clone);
-                Nodes[clone] = node;
-                if (Texts.TryGetValue(component, out string text))
-                    Texts[clone] = text;
-                if (Tints.TryGetValue(component, out ColorBlock tints))
-                    Tints[clone] = tints;
-                if (Sprites.TryGetValue(component, out string sprite))
-                    Sprites[clone] = sprite;
-            }
-            foreach (Node child in original.Children)
-                CopyNode(child, copy);
-            return copy;
-        }
+        private static void StubSetSize(RectTransform rect, Vector2 value) => Set(rect, "sizeDelta", value);
+        private static void StubSetAnchorMin(RectTransform rect, Vector2 value) => Set(rect, "anchorMin", value);
+        private static void StubSetAnchorMax(RectTransform rect, Vector2 value) => Set(rect, "anchorMax", value);
+        private static void StubSetOffsetMin(RectTransform rect, Vector2 value) => Set(rect, "offsetMin", value);
+        private static void StubSetOffsetMax(RectTransform rect, Vector2 value) => Set(rect, "offsetMax", value);
+        private static void StubSetImageType(Image image, Image.Type value) => Set(image, "type", value);
+        private static void StubSetPixelsPerUnit(Image image, float value) => Set(image, "pixelsPerUnitMultiplier", value);
+        private static void StubSetFont(TMP_Text text, TMP_FontAsset value) => Set(text, "font", value);
+        private static void StubSetFontSize(TMP_Text text, float value) => Set(text, "fontSize", value);
+        private static void StubSetAlignment(TMP_Text text, TextAlignmentOptions value) => Set(text, "alignment", value);
+        private static void StubSetWordWrapping(TMP_Text text, bool value) => Set(text, "enableWordWrapping", value);
 
         private static Transform StubFind(Transform parent, string path)
         {

@@ -10,9 +10,10 @@ using Xunit;
 namespace HarmonyChecker.Tests
 {
     /// <summary>
-    /// When the installed IM-HI is older than the version the mod asks for, a yellow copy of the Mods button
-    /// appears below it and opens the IM-HI releases page. The tests start without the gold picture (the
-    /// fallback); the WithPicture tests give it one.
+    /// When the installed IM-HI is older than the version the mod asks for, a gold button appears below the Mods
+    /// button and opens the IM-HI releases page. Since 1.4.1 it's built from the game's button parts, as the
+    /// menu's own buttons are, instead of being copied from the Mods button. The tests start without the gold
+    /// picture (the fallback); the WithPicture tests give it one.
     /// </summary>
     public class UpdateButtonTests
     {
@@ -26,22 +27,17 @@ namespace HarmonyChecker.Tests
             TestGame.LoadModConstants();
         }
 
-        private static GameObject Refresh(Version installed, Type textType = null)
+        private static GameObject Refresh(Version installed)
         {
             IMHIUpdate.InstalledVersion = () => installed;
-            Menu menu = TestGame.BuildMenu(textType);
+            Menu menu = TestGame.BuildMenu();
             Seams.StopSpinnerPostfix();
             return TestGame.UpdateButton(menu);
         }
 
-        /// <summary>
-        /// The text component the button's label draws to.
-        /// </summary>
-        private static Component LabelText(GameObject button)
-        {
-            GameObject label = Seams.ChildNamed(button, "Text");
-            return (Component)Seams.GetComponent<TMP_Text>(label) ?? (Component)Seams.GetComponent<Text>(label) ?? Seams.GetComponent<TextMesh>(label);
-        }
+        private static GameObject Label(GameObject button) => Seams.ChildNamed(button, "Text");
+
+        private static TextMeshProUGUI LabelText(GameObject button) => Seams.GetComponent<TextMeshProUGUI>(Label(button));
 
         [Fact]
         public void Outdated_AddsButtonBelowMods()
@@ -57,6 +53,73 @@ namespace HarmonyChecker.Tests
             Assert.Equal(IMHIUpdate.DRAWN_LABEL, Seams.GetComponentInChildren<Lang_Button>(button).Constant);
         }
 
+        /// <summary>
+        /// The menu's buttons are 50 high; the menu's column sets their width.
+        /// </summary>
+        [Fact]
+        public void Button_IsAsTallAsTheMenusButtons()
+        {
+            GameObject button = Refresh(Old);
+
+            Assert.Equal(new Vector2(0f, 50f), Seams.Setting(Seams.TransformOf(button), "sizeDelta"));
+        }
+
+        /// <summary>
+        /// The game's button parts only: none of the Mods button's own parts (its popup opener, demo blocker
+        /// or loading spinner) or anything another mod added to it.
+        /// </summary>
+        [Fact]
+        public void Button_IsBuiltFromTheGamesButtonParts()
+        {
+            IMHIUpdate.InstalledVersion = () => Old;
+            Menu menu = TestGame.BuildMenu();
+            Seams.AddComponent(menu.ModsButton, typeof(OpenPopup));
+            Seams.NewObject("Spinner (1)", menu.ModsButton);
+
+            Seams.StopSpinnerPostfix();
+
+            GameObject button = TestGame.UpdateButton(menu);
+            Assert.Equal(new[] { typeof(RectTransform), typeof(Image), typeof(Button), typeof(ButtonDefault) },
+                Seams.Components(button).Select(c => c.GetType()));
+            Assert.Equal(new[] { "Text" }, Seams.ChildNames(button));
+            Assert.Equal(new[] { typeof(RectTransform), typeof(TextMeshProUGUI), typeof(Lang_Button) },
+                Seams.Components(Label(button)).Select(c => c.GetType()));
+        }
+
+        /// <summary>
+        /// The menu buttons' text: their font at size 20, centred on one line, raised a little.
+        /// </summary>
+        [Fact]
+        public void Label_LooksLikeTheMenusButtons()
+        {
+            GameObject button = Refresh(Old);
+
+            TextMeshProUGUI text = LabelText(button);
+            Assert.Same(Seams.MenuFont, Seams.Setting(text, "font"));
+            Assert.Equal(20f, Seams.Setting(text, "fontSize"));
+            Assert.Equal(TextAlignmentOptions.Center, Seams.Setting(text, "alignment"));
+            Assert.Equal(false, Seams.Setting(text, "enableWordWrapping"));
+
+            Transform rect = Seams.TransformOf(Label(button));
+            Assert.Equal(Vector2.zero, Seams.Setting(rect, "anchorMin"));
+            Assert.Equal(Vector2.one, Seams.Setting(rect, "anchorMax"));
+            Assert.Equal(new Vector2(0f, 1.3f), Seams.Setting(rect, "offsetMin"));
+            Assert.Equal(new Vector2(0f, 1.3f), Seams.Setting(rect, "offsetMax"));
+        }
+
+        [Fact]
+        public void MenuFontMissing_UsesDefaultFontAndSaysSo()
+        {
+            IMHIUpdate.MenuFont = () => null;
+
+            GameObject button = Refresh(Old);
+
+            Assert.NotNull(button);
+            Assert.Null(Seams.Setting(LabelText(button), "font"));
+            Assert.Equal(OutdatedText, TestGame.TextOf(LabelText(button)));
+            Assert.Contains(Log.Messages, m => m.Contains("[Harmony Checker] The menu font Linotte-SemiBold SDF isn't loaded"));
+        }
+
         [Fact]
         public void WithoutPicture_ButtonIsPlainGold()
         {
@@ -64,18 +127,16 @@ namespace HarmonyChecker.Tests
 
             Image background = Seams.GetComponent<Image>(button);
             Assert.Equal((Color)mainScript.gold32, Seams.Colors[background]);
-            Assert.Null(Seams.Sprites[background]);
+            Assert.False(Seams.Sprites.ContainsKey(background));
         }
 
         /// <summary>
         /// Dark text, readable on the plain gold button.
         /// </summary>
-        [Theory]
-        [InlineData(typeof(TextMeshProUGUI))]
-        [InlineData(typeof(Text))]
-        public void WithoutPicture_ButtonTextIsDark(Type textType)
+        [Fact]
+        public void WithoutPicture_ButtonTextIsDark()
         {
-            GameObject button = Refresh(Old, textType);
+            GameObject button = Refresh(Old);
 
             Assert.Equal((Color)mainScript.blackGold32, Seams.Colors[LabelText(button)]);
         }
@@ -91,7 +152,8 @@ namespace HarmonyChecker.Tests
         }
 
         /// <summary>
-        /// The button's own image draws the gold picture untinted.
+        /// The button's image draws the gold picture as the game draws its button pictures: sliced, at twice its
+        /// pixel density.
         /// </summary>
         [Fact]
         public void WithPicture_ButtonUsesIt()
@@ -102,20 +164,20 @@ namespace HarmonyChecker.Tests
 
             Image background = Seams.GetComponent<Image>(button);
             Assert.Equal("sprite", Seams.Sprites[background]);
-            Assert.Equal(Color.white, Seams.Colors[background]);
+            Assert.False(Seams.Colors.ContainsKey(background));
+            Assert.Equal(Image.Type.Sliced, Seams.Setting(background, "type"));
+            Assert.Equal(2f, Seams.Setting(background, "pixelsPerUnitMultiplier"));
         }
 
         /// <summary>
         /// White text, like the other menu buttons.
         /// </summary>
-        [Theory]
-        [InlineData(typeof(TextMeshProUGUI))]
-        [InlineData(typeof(Text))]
-        public void WithPicture_ButtonTextIsWhite(Type textType)
+        [Fact]
+        public void WithPicture_ButtonTextIsWhite()
         {
             IMHIUpdate.GoldSprite = () => Seams.Fake<Sprite>();
 
-            GameObject button = Refresh(Old, textType);
+            GameObject button = Refresh(Old);
 
             Assert.Equal(Color.white, Seams.Colors[LabelText(button)]);
         }
@@ -155,16 +217,8 @@ namespace HarmonyChecker.Tests
         }
 
         /// <summary>
-        /// The game's TextMesh has no colour setter, so a TextMesh label keeps its colour but still shows the text.
+        /// The only click handler opens the releases page.
         /// </summary>
-        [Fact]
-        public void TextMeshLabel_ShowsText()
-        {
-            GameObject button = Refresh(Old, typeof(TextMesh));
-
-            Assert.Equal(OutdatedText, TestGame.TextOf(LabelText(button)));
-        }
-
         [Fact]
         public void Click_OpensReleasesPage()
         {
@@ -174,20 +228,7 @@ namespace HarmonyChecker.Tests
             Seams.Click(click);
 
             Assert.Equal(new[] { "https://github.com/ui3TD/IM-HarmonyIntegration/releases/latest" }, Seams.OpenedUrls);
-        }
-
-        /// <summary>
-        /// The copy starts with the Mods button's click handler; it's replaced, not added to.
-        /// </summary>
-        [Fact]
-        public void Click_DoesNotOpenModsList()
-        {
-            GameObject button = Refresh(Old);
-            Button click = Seams.GetComponent<Button>(button);
-
-            List<Delegate> listeners = Seams.Listeners(click.onClick);
-            Assert.Single(listeners);
-            Assert.NotEqual(nameof(Menu.OpenModsList), listeners[0].Method.Name);
+            Assert.Single(Seams.Listeners(click.onClick));
             Assert.Equal(0, click.onClick.GetPersistentEventCount());
         }
 
@@ -223,8 +264,64 @@ namespace HarmonyChecker.Tests
             Seams.StopSpinnerPostfix();
             Seams.StopSpinnerPostfix();
 
-            Assert.Single(Seams.Instantiated);
+            Assert.Single(Seams.Created, obj => Seams.NameOf(obj) == IMHIUpdate.BUTTON_NAME);
             Assert.Single(Seams.ChildNames(menu.Container), IMHIUpdate.BUTTON_NAME);
+        }
+
+        /// <summary>
+        /// The button doesn't need the Mods button: without it (another mod removed or renamed it), it goes at
+        /// the end of the menu's buttons.
+        /// </summary>
+        [Fact]
+        public void NoModsButton_ButtonGoesLast()
+        {
+            IMHIUpdate.InstalledVersion = () => Old;
+            Menu menu = TestGame.BuildMenu();
+            Seams.Remove(menu.ModsButton);
+
+            Seams.StopSpinnerPostfix();
+
+            Assert.Equal(new[] { "Settings", "Quit", IMHIUpdate.BUTTON_NAME }, Seams.ChildNames(menu.Container));
+        }
+
+        /// <summary>
+        /// A Mods button without its parts (another mod changed it) doesn't stop the update button.
+        /// </summary>
+        [Fact]
+        public void ModsButtonChanged_ButtonStillAdded()
+        {
+            IMHIUpdate.InstalledVersion = () => Old;
+            Menu menu = TestGame.BuildMenu();
+            Seams.RemoveComponent(menu.ModsClick);
+            Seams.RemoveComponent(menu.ModsLangButton);
+
+            Seams.StopSpinnerPostfix();
+
+            Assert.Equal(new[] { "Settings", "Mods", IMHIUpdate.BUTTON_NAME, "Quit" }, Seams.ChildNames(menu.Container));
+        }
+
+        /// <summary>
+        /// If building fails halfway, the half-built button is removed and the error logged; the game's method
+        /// still finishes, and the next refresh builds the button.
+        /// </summary>
+        [Fact]
+        public void BuildFails_NoHalfBuiltButtonAndNextRefreshBuildsIt()
+        {
+            IMHIUpdate.InstalledVersion = () => Old;
+            IMHIUpdate.GoldSprite = () => Seams.Fake<Sprite>();
+            IMHIUpdate.AddGlow = button => throw new InvalidOperationException("glow failed");
+            Menu menu = TestGame.BuildMenu();
+
+            Seams.StopSpinnerPostfix();
+
+            Assert.Null(TestGame.UpdateButton(menu));
+            Assert.Equal(IMHIUpdate.BUTTON_NAME, Seams.NameOf(Assert.Single(Seams.Destroyed)));
+            Assert.Contains(Log.Messages, m => m.Contains("[Harmony Checker] Couldn't update the main menu") && m.Contains("glow failed"));
+
+            IMHIUpdate.AddGlow = button => { };
+            Seams.StopSpinnerPostfix();
+
+            Assert.NotNull(TestGame.UpdateButton(menu));
         }
 
         /// <summary>
@@ -248,39 +345,9 @@ namespace HarmonyChecker.Tests
             Seams.StopSpinnerPostfix();
 
             Assert.Null(TestGame.UpdateButton(menu));
-            Assert.Empty(Seams.Instantiated);
+            Assert.Empty(Seams.Created);
             Assert.Equal("Mods [IM-HI installed]", TestGame.TextOf(menu.Text));
         }
-
-        /// <summary>
-        /// The copy's tints start from white, so its yellow isn't darkened by the Mods button's purple, and each
-        /// state still changes the colour as much as on the Mods button.
-        /// </summary>
-        [Fact]
-        public void Outdated_TintKeepsYellowAndHover()
-        {
-            GameObject button = Refresh(Old);
-
-            ColorBlock tints = Seams.Tints[Seams.GetComponent<Button>(button)];
-            AssertColor(Color.white, tints.normalColor);
-            AssertColor(new Color(1.2f, 1.2f, 1f), tints.highlightedColor);
-            AssertColor(new Color(0.5f, 0.5f, 0.5f), tints.pressedColor);
-            AssertColor(Color.white, tints.selectedColor);
-            AssertColor(new Color(1f, 1f, 1f, 0.4f), tints.disabledColor);
-        }
-
-        /// <summary>
-        /// Tints can't go above white, so a brighter hover is capped there.
-        /// </summary>
-        private static void AssertColor(Color expected, Color actual)
-        {
-            for (int i = 0; i < 4; i++)
-                Assert.Equal(Mathf.Clamp01(expected[i]), actual[i], 3);
-        }
-
-        [Fact]
-        public void Relative_BlackNormalLeavesWhite() =>
-            AssertColor(Color.white, IMHIUpdate.Relative(new Color(0.3f, 0.3f, 0.3f), new Color(0f, 0f, 0f, 0f)));
 
         /// <summary>
         /// If the installed version can't be read, nobody is told to update.
@@ -289,7 +356,7 @@ namespace HarmonyChecker.Tests
         public void UnknownVersion_NoButton()
         {
             Assert.Null(Refresh(null));
-            Assert.Empty(Seams.Instantiated);
+            Assert.Empty(Seams.Created);
         }
 
         [Theory]
@@ -325,23 +392,6 @@ namespace HarmonyChecker.Tests
             Seams.ResetText(Seams.GetComponentInChildren<Lang_Button>(button));
 
             Assert.Equal(OutdatedText, TestGame.TextOf(LabelText(button)));
-        }
-
-        /// <summary>
-        /// A Mods button that can't be clicked isn't copied into a dead button.
-        /// </summary>
-        [Fact]
-        public void ModsButtonNotClickable_RemovesCopy()
-        {
-            IMHIUpdate.InstalledVersion = () => Old;
-            Menu menu = TestGame.BuildMenu();
-            Seams.RemoveComponent(menu.ModsClick);
-
-            Seams.StopSpinnerPostfix();
-
-            Assert.Null(TestGame.UpdateButton(menu));
-            Assert.False(Seams.InScene(Assert.Single(Seams.Destroyed)));
-            Assert.Equal("Mods [IM-HI out-of-date]", TestGame.TextOf(menu.Text));
         }
     }
 

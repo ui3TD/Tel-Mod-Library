@@ -41,32 +41,33 @@ namespace HarmonyChecker
                 return;
             }
 
-            Transform modsTransform = controller.Main_Container.transform.Find("Mods");
-            if (modsTransform == null)
-            {
-                return;
-            }
-
-            Lang_Button modButton = modsTransform.GetComponentInChildren<Lang_Button>();
-            if (modButton == null)
-            {
-                return;
-            }
-
             Version installed = IMHIUpdate.InstalledVersion();
             bool outdated = IMHIUpdate.IsOutdated(installed);
-            modButton.Constant = outdated ? IMHIUpdate.MODS_LABEL : BUTTON_LABEL;
+            Transform container = controller.Main_Container.transform;
+            Transform modsTransform = container.Find("Mods");
 
-            // MainMenu_Buttons_Controller.Start may already have run by the time IM-HI
-            // finishes loading Workshop Harmony DLLs. Updating Constant alone does not
-            // redraw an already-started Lang_Button, so force the text refresh now.
-            modButton.ResetText();
+            // Only the game's label or one of ours is changed: another mod's label on the Mods button is kept
+            Lang_Button modButton = modsTransform == null ? null : modsTransform.GetComponentInChildren<Lang_Button>();
+            if (modButton != null && Array.IndexOf(LABELS_TO_REPLACE, modButton.Constant) >= 0)
+            {
+                modButton.Constant = outdated ? IMHIUpdate.MODS_LABEL : BUTTON_LABEL;
+
+                // MainMenu_Buttons_Controller.Start may already have run by the time IM-HI
+                // finishes loading Workshop Harmony DLLs. Updating Constant alone does not
+                // redraw an already-started Lang_Button, so force the text refresh now.
+                modButton.ResetText();
+            }
 
             if (outdated)
             {
-                IMHIUpdate.ShowButton(modsTransform, installed);
+                IMHIUpdate.ShowButton(container, modsTransform, installed);
             }
         }
+
+        /// <summary>The Mods button's label in the game, and the two this mod gives it.</summary>
+        public static readonly string[] LABELS_TO_REPLACE = { GAME_LABEL, BUTTON_LABEL, IMHIUpdate.MODS_LABEL };
+
+        public const string GAME_LABEL = "MM_MODS";
     }
 
     /// <summary>
@@ -95,6 +96,27 @@ namespace HarmonyChecker
         internal static Action<string> OpenUrl = url => Application.OpenURL(url);
         internal static Func<Sprite> GoldSprite = () => GoldButton.Button.Get();
         internal static Action<GameObject> AddGlow = button => GoldButton.AddGlow(button);
+        internal static Func<TMP_FontAsset> MenuFont = () => FindMenuFont();
+
+        // The game's menu buttons, as the game draws them: 50 high (the menu's column sets their width), the
+        // picture at twice its pixel density, and white text in the menu font, centred and raised a little.
+        public const float BUTTON_HEIGHT = 50f;
+        public const float PIXELS_PER_UNIT_MULTIPLIER = 2f;
+        public const string MENU_FONT = "Linotte-SemiBold SDF";
+        public const float FONT_SIZE = 20f;
+        public const float TEXT_RAISE = 1.3f;
+
+        private static TMP_FontAsset menuFont;
+
+        /// <summary>The menu buttons' font, found by name among the loaded fonts; null if it isn't loaded.</summary>
+        private static TMP_FontAsset FindMenuFont()
+        {
+            if (menuFont == null)
+            {
+                menuFont = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().FirstOrDefault(font => font.name == MENU_FONT);
+            }
+            return menuFont;
+        }
 
         /// <summary>
         /// The IM-HI version BepInEx loaded, or null if it can't be read. Harmony Checker doesn't
@@ -138,109 +160,93 @@ namespace HarmonyChecker
         public static bool IsOutdated(Version installed) => installed != null && installed < MIN_VERSION;
 
         /// <summary>
-        /// Adds a yellow copy of the Mods button below it that opens the IM-HI releases page.
-        /// The label is kept about as short as the Mods label, which fills the button.
-        /// Runs on every menu refresh, so it adds the button only once.
+        /// Adds a gold button to the main menu's column of buttons, below the Mods button if there is one, that
+        /// opens the IM-HI releases page. It's built from the game's own button parts, as the menu's buttons are,
+        /// not copied from the Mods button, so whatever the game or another mod has on that button stays there.
+        /// The label is kept about as short as the Mods label, which fills the button. Runs on every menu
+        /// refresh, so it adds the button only once. If building it fails, the half-built button is removed, so
+        /// the next refresh tries again, and the error is passed on.
         /// </summary>
-        public static void ShowButton(Transform modsTransform, Version installed)
+        public static void ShowButton(Transform container, Transform modsTransform, Version installed)
         {
-            Transform container = modsTransform.parent;
-            if (container == null || container.Find(BUTTON_NAME) != null)
+            if (container.Find(BUTTON_NAME) != null)
             {
                 return;
             }
 
-            GameObject button = Object.Instantiate(modsTransform.gameObject, container);
-            button.name = BUTTON_NAME;
-            button.transform.SetSiblingIndex(modsTransform.GetSiblingIndex() + 1);
-
-            Button click = button.GetComponentInChildren<Button>();
-            Lang_Button label = button.GetComponentInChildren<Lang_Button>();
-            if (click == null || label == null)
+            GameObject button = new GameObject(BUTTON_NAME, typeof(RectTransform));
+            try
             {
-                Object.Destroy(button);
-                return;
-            }
+                button.transform.SetParent(container, false);
+                if (modsTransform != null && modsTransform.parent == container)
+                {
+                    button.transform.SetSiblingIndex(modsTransform.GetSiblingIndex() + 1);
+                }
+                ((RectTransform)button.transform).sizeDelta = new Vector2(0f, BUTTON_HEIGHT);
 
-            // The copy has the Mods button's handlers. ButtonDefault adds its click sound
-            // in Start, which runs after this, so it keeps the sound.
-            click.onClick = new Button.ButtonClickedEvent();
-            click.onClick.AddListener(() => OpenUrl(RELEASES_URL));
-
-            string text = Language.Data.TryGetValue(BUTTON_LABEL, out string constant) ? constant : FALLBACK_LABEL;
-            Language.Data[DRAWN_LABEL] = text.Replace("@1", installed.ToString()).Replace("@2", MIN_VERSION.ToString());
-            label.Constant = DRAWN_LABEL;
-            label.ResetText();
-
-            click.colors = TintFromWhite(click.colors);
-
-            // The button's image is purple, and tinting it only darkens it, so the copy draws a
-            // gold version of it instead, with white text like the other menu buttons. Without the
-            // picture it falls back to a plain gold background with the game's dark text colour for gold.
-            Sprite gold = GoldSprite();
-            Image buttonImage = button.GetComponent<Image>();
-            Color textColor = gold is null ? (Color)mainScript.blackGold32 : Color.white;
-            foreach (Image background in button.GetComponentsInChildren<Image>())
-            {
+                // The game's menu button picture in gold, with white text like the other menu buttons. Without
+                // the picture it falls back to a plain gold background with the game's dark text colour for gold.
+                Sprite gold = GoldSprite();
+                Image background = button.AddComponent<Image>();
                 if (gold is null)
                 {
-                    background.sprite = null;
                     background.color = mainScript.gold32;
                 }
-                else if (ReferenceEquals(background, buttonImage))
+                else
                 {
                     background.sprite = gold;
-                    background.color = Color.white;
+                    background.type = Image.Type.Sliced;
+                    background.pixelsPerUnitMultiplier = PIXELS_PER_UNIT_MULTIPLIER;
+                }
+
+                Button click = button.AddComponent<Button>();
+                click.onClick = new Button.ButtonClickedEvent();
+                click.onClick.AddListener(() => OpenUrl(RELEASES_URL));
+
+                // The game's button behaviour: its click and hover sounds and pointer, and being switched off
+                // with the menu's other buttons while the menu is hidden
+                button.AddComponent<ButtonDefault>();
+
+                GameObject label = new GameObject("Text", typeof(RectTransform));
+                label.transform.SetParent(button.transform, false);
+                RectTransform labelRect = (RectTransform)label.transform;
+                labelRect.anchorMin = Vector2.zero;
+                labelRect.anchorMax = Vector2.one;
+                labelRect.offsetMin = new Vector2(0f, TEXT_RAISE);
+                labelRect.offsetMax = new Vector2(0f, TEXT_RAISE);
+
+                TextMeshProUGUI text = label.AddComponent<TextMeshProUGUI>();
+                TMP_FontAsset font = MenuFont();
+                if (font is null)
+                {
+                    Debug.LogWarning("[Harmony Checker] The menu font " + MENU_FONT + " isn't loaded, so the update button uses the default font.");
+                }
+                else
+                {
+                    text.font = font;
+                }
+                text.fontSize = FONT_SIZE;
+                text.alignment = TextAlignmentOptions.Center;
+                text.enableWordWrapping = false;
+                text.color = gold is null ? (Color)mainScript.blackGold32 : Color.white;
+
+                string constant = Language.Data.TryGetValue(BUTTON_LABEL, out string translated) ? translated : FALLBACK_LABEL;
+                Language.Data[DRAWN_LABEL] = constant.Replace("@1", installed.ToString()).Replace("@2", MIN_VERSION.ToString());
+                Lang_Button langButton = label.AddComponent<Lang_Button>();
+                langButton.Constant = DRAWN_LABEL;
+                langButton.ResetText();
+
+                if (!(gold is null))
+                {
+                    AddGlow(button);
                 }
             }
-            foreach (TMP_Text tmp in button.GetComponentsInChildren<TMP_Text>())
+            catch
             {
-                tmp.color = textColor;
-            }
-            foreach (Text uiText in button.GetComponentsInChildren<Text>())
-            {
-                uiText.color = textColor;
-            }
-
-            if (!(gold is null))
-            {
-                AddGlow(button);
+                Object.Destroy(button);
+                throw;
             }
         }
-
-        /// <summary>
-        /// The Mods button's colour tint is purple, which would darken the yellow. This tints
-        /// from white instead, keeping each state's change from the normal colour. The game's
-        /// ColorBlock has no setters for most colours, so its fields are set directly.
-        /// </summary>
-        public static ColorBlock TintFromWhite(ColorBlock colors)
-        {
-            object block = colors;
-            FieldInfo normalField = AccessTools.Field(typeof(ColorBlock), "m_NormalColor");
-            if (normalField == null)
-            {
-                return colors;
-            }
-
-            Color normal = (Color)normalField.GetValue(block);
-            foreach (string name in TINT_FIELDS)
-            {
-                FieldInfo field = AccessTools.Field(typeof(ColorBlock), name);
-                field?.SetValue(block, Relative((Color)field.GetValue(block), normal));
-            }
-            normalField.SetValue(block, Color.white);
-            return (ColorBlock)block;
-        }
-
-        private static readonly string[] TINT_FIELDS = { "m_HighlightedColor", "m_PressedColor", "m_SelectedColor", "m_DisabledColor" };
-
-        /// <summary>
-        /// A state's tint divided by the normal tint, so it changes white as it changed normal.
-        /// </summary>
-        public static Color Relative(Color state, Color normal) => new Color(
-            Ratio(state.r, normal.r), Ratio(state.g, normal.g), Ratio(state.b, normal.b), Ratio(state.a, normal.a));
-
-        private static float Ratio(float state, float normal) => normal <= 0f ? 1f : Mathf.Clamp01(state / normal);
     }
 
     /// <summary>
@@ -427,13 +433,24 @@ namespace HarmonyChecker
         }
     }
 
+    // The two refreshes below run whether or not another mod skipped the game's method: the menu's label
+    // shows whether IM-HI works, which doesn't depend on what those methods do. An error stays in the
+    // postfix, so the game's method and other mods' patches on it still finish.
+
     // Keep the original early path for cases where Harmony mods load before this Start.
     [HarmonyPatch(typeof(MainMenu_Buttons_Controller), nameof(MainMenu_Buttons_Controller.Start))]
     public class MainMenu_Buttons_Controller_Start
     {
         public static void Postfix(MainMenu_Buttons_Controller __instance)
         {
-            HarmonyCheckerStatus.MarkInstalled(__instance);
+            try
+            {
+                HarmonyCheckerStatus.MarkInstalled(__instance);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[Harmony Checker] Couldn't update the main menu: " + e);
+            }
         }
     }
 
@@ -445,7 +462,14 @@ namespace HarmonyChecker
     {
         public static void Postfix()
         {
-            HarmonyCheckerStatus.MarkInstalled();
+            try
+            {
+                HarmonyCheckerStatus.MarkInstalled();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("[Harmony Checker] Couldn't update the main menu: " + e);
+            }
         }
     }
 }

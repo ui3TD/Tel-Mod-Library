@@ -28,14 +28,12 @@ You need the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3283314
 Then tick Turn on AI fan posts and press Apply. A notification tells you whether it worked. Later problems, such as a rejected key or a busy service, show at the top of the Social Media tab.
 
 [h3]Which model to use[/h3]
-Each request is charged to your AI service account. Tested on 21 October 2026, cost per in-game year at 2 requests a week:
+Your AI service charges each request. Cost per in-game year at 2 requests a week, tested October 2026:
 [list]
 [*]Cheapest: gpt-6-luna (OpenAI, default), 3 cents.
 [*]Best value: xiaomi/mimo-v2.6-pro:floor (OpenRouter), 15 cents.
-[*]Mid-priced, close to the facts: gpt-6-sol (OpenAI), 70 cents.
-[*]Mid-priced, lively: gemini-4-argon (Google), 85 cents.
-[*]Nearly the best: moonshotai/kimi-k3:floor (OpenRouter), 1.50 dollars.
-[*]Best posts: claude-opus-5-5 (Anthropic), 2.40 dollars.
+[*]Nearly the best: moonshotai/kimi-k3:floor (OpenRouter), 60 cents.
+[*]Best: claude-opus-5-5 (Anthropic), 2.40 dollars.
 [/list]
 The mod sends at most 20 requests an hour on its own, even when fast-forwarding. Each refresh with no posts waiting sends one more. To be safe, set a spending limit on your key.
 

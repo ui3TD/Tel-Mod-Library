@@ -63,6 +63,8 @@ Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "StatLimits", "shared\StatLi
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "AICore", "shared\AICore\AICore.shproj", "{37F0E062-3BD3-4D0F-9DB1-9E29EC7E195A}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "UiCopies", "shared\UiCopies\UiCopies.shproj", "{0FFEB67E-BD07-41B0-B6EF-604CCB564029}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConcertRebalance.Tests", "tests\ConcertRebalance.Tests\ConcertRebalance.Tests.csproj", "{A1C544A1-4D8C-4629-BCDC-B8960781C239}"
@@ -777,6 +779,9 @@ Global
 		SolutionGuid = {74832412-0B5B-4568-8EA3-0873D921E039}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		shared\UiCopies\UiCopies.projitems*{0ffeb67e-bd07-41b0-b6ef-604ccb564029}*SharedItemsImports = 13
+		shared\UiCopies\UiCopies.projitems*{24156c95-b425-4e64-9781-b954fedf774c}*SharedItemsImports = 5
+		shared\UiCopies\UiCopies.projitems*{5b985c3d-4516-4ffa-a2f9-c5d0955271c6}*SharedItemsImports = 5
 		shared\AICore\AICore.projitems*{37f0e062-3bd3-4d0f-9db1-9e29ec7e195a}*SharedItemsImports = 13
 		shared\AICore\AICore.projitems*{fde237cb-1076-47d9-b077-9fa09f151afa}*SharedItemsImports = 5
 		shared\StatLimits\StatLimits.projitems*{3b6bb50b-6d78-4577-b976-a9452e1d8733}*SharedItemsImports = 13

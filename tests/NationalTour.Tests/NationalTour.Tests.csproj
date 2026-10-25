@@ -2,6 +2,8 @@
 	<ItemGroup>
 		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
 		<Compile Include="..\..\mods\National Tour\**\*.cs" Exclude="..\..\mods\National Tour\obj\**;..\..\mods\National Tour\bin\**" LinkBase="Mod" />
+		<!--The mod ships the shared UI copy helper in its DLL-->
+		<Compile Include="..\..\shared\UiCopies\UiCopies.cs" LinkBase="Mod" />
 	</ItemGroup>
 
 	<ItemGroup>

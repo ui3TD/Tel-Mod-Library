@@ -64,6 +64,10 @@ namespace InGameTests.TelMods
                 yield break;
             }
 
+            // The menu is a copy of the difficulty popup without other mods' parts: the game's own are all listed
+            VanillaShapes.AssertCovers(ctx, mod.GetType("ModMenus.ModMenusUtils"), "DifficultyPopupShape",
+                Game.Main.Data.GetComponent<PopupManager>().GetByType(PopupManager._type.settings_difficulty).obj, "difficulty settings popup");
+
             Transform menu = Find(popup.transform, "MenuContainer").FirstOrDefault();
             ctx.Assert(menu != null, "The mod menu has no MenuContainer");
             int rows = 0;

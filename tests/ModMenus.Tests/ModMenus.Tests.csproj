@@ -2,6 +2,8 @@
 	<ItemGroup>
 		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
 		<Compile Include="..\..\mods\ModMenus\**\*.cs" Exclude="..\..\mods\ModMenus\obj\**;..\..\mods\ModMenus\bin\**" LinkBase="Mod" />
+		<!--The mod ships the shared UI copy helper in its DLL-->
+		<Compile Include="..\..\shared\UiCopies\UiCopies.cs" LinkBase="Mod" />
 	</ItemGroup>
 
 	<ItemGroup>

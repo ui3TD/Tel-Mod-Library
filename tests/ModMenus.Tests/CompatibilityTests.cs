@@ -157,5 +157,71 @@ namespace ModMenus.Tests
                 new PopupManager._popup { type = (PopupManager._type)1001 },
             }));
         }
+
+        /// <summary>
+        /// The game's difficulty settings popup as the game has it, plus what another mod may have added: a row
+        /// and a script on the popup itself.
+        /// </summary>
+        private static GameObject DifficultyPopup(bool withAnotherModsParts)
+        {
+            GameObject popup = Seams.NewObject("Settings_Difficulty");
+            Seams.Add<global::Popup>(popup);
+            Seams.Add<CanvasGroup>(popup);
+            Seams.Add<Settings_Difficulty>(popup);
+            foreach (string button in new[] { "Cancel", "Apply" })
+                Seams.NewObject("Text", Seams.NewObject(button, popup));
+            GameObject container = Seams.NewObject("Settings_Container", Seams.NewObject("Panel", popup));
+            Seams.NewObject("Title", Seams.NewObject("Title", container));
+            foreach (string level in new[] { "Relaxed", "Normal", "Unfair" })
+            {
+                GameObject row = Seams.NewObject(level, container);
+                foreach (string part in new[] { "Checkbox", "Title", "Description" })
+                    Seams.NewObject(part, row);
+            }
+            if (withAnotherModsParts)
+            {
+                Seams.NewObject("Another mod's row", container);
+                Seams.NewObject("Another mod's button", popup);
+                Seams.Add<UnityEngine.UI.Outline>(popup);
+            }
+            return popup;
+        }
+
+        private static List<string> Paths(GameObject root, string path = null) =>
+            Seams.ChildrenOf(root).SelectMany(child =>
+            {
+                string childPath = path == null ? Seams.NameOf(child) : path + "/" + Seams.NameOf(child);
+                return new[] { childPath }.Concat(Paths(child, childPath));
+            }).ToList();
+
+        [Fact]
+        public void TheMenuCopiesAllOfTheGamesDifficultyPopup()
+        {
+            GameObject popups = Seams.NewObject("Popups");
+            Seams.AddPrefab(popups, () => DifficultyPopup(false));
+            GameObject original = Seams.ChildrenOf(popups).Single();
+
+            GameObject copy = Seams.CopyDifficultyPopup(original);
+
+            Assert.Equal(Paths(original), Paths(copy));
+            Assert.Equal(new[] { typeof(RectTransform), typeof(global::Popup), typeof(CanvasGroup), typeof(Settings_Difficulty) },
+                Seams.Components(copy).Select(c => c.GetType()));
+            Assert.Equal(new[] { original, copy }, Seams.ChildrenOf(popups));
+        }
+
+        [Fact]
+        public void AnotherModsAdditionsToTheDifficultyPopup_AreNotInModSettings()
+        {
+            GameObject popups = Seams.NewObject("Popups");
+            Seams.AddPrefab(popups, () => DifficultyPopup(true));
+            GameObject original = Seams.ChildrenOf(popups).Single();
+
+            GameObject copy = Seams.CopyDifficultyPopup(original);
+
+            Assert.Equal(Paths(DifficultyPopup(false)), Paths(copy));
+            Assert.Empty(Seams.Components(copy).OfType<UnityEngine.UI.Outline>());
+            Assert.Contains("Another mod's button", Paths(original));
+            Assert.Contains(Log.Messages, m => m.StartsWith("[ModMenus]") && m.Contains("'Another mod's button'") && m.Contains("difficulty settings popup"));
+        }
     }
 }

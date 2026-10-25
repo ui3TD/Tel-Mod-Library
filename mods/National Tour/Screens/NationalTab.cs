@@ -1,6 +1,7 @@
 using HarmonyLib;
 using System.Reflection;
 using TMPro;
+using UiCopies;
 using UnityEngine;
 using UnityEngine.UI;
 using Module = NationalTour.Readiness.Module;
@@ -20,6 +21,13 @@ namespace NationalTour
         // Shown if the language files don't have the mod's text
         public const string TITLE_FALLBACK = "National Tour";
         public const string DESC_FALLBACK = "Select the prefectures you want to perform in and choose a type of venue.";
+
+        /// <summary>
+        /// The game's World Tour panel, as read in the game with no mods loaded.
+        /// </summary>
+        public static readonly VanillaShape WorldTourPanelShape = new(
+            new[] { typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Mask), typeof(CanvasGroup) },
+            new[] { "BG", "Panel", "Panel/Text", "Panel/Cooldown" });
 
         public static GameObject Tab;
         public static GameObject Panel;
@@ -58,7 +66,7 @@ namespace NationalTour
             }
 
             // The panel goes right after the World Tour panel, so the tab bar stays drawn on top
-            Panel = Object.Instantiate(worldPanel.gameObject, container, false);
+            Panel = UiCopy.CopyGameObject(worldPanel.gameObject, container, WorldTourPanelShape, "[National Tour]", "World Tour panel");
             Panel.name = NAME;
             Panel.transform.SetSiblingIndex(worldPanel.GetSiblingIndex() + 1);
             SetText(Panel.transform.Find("Panel")?.Find("Text"), DESC_KEY, DESC_FALLBACK);

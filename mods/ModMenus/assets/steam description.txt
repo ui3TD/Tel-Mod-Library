@@ -26,11 +26,11 @@ Format, examples and tips: [url=https://github.com/ui3TD/Tel-Mod-Library/blob/ma
 [url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
 
 [h3]Changelog[/h3]
+- 5.0.1: Other mods' additions to the difficulty settings no longer show up in Mod Settings.
 - 5.0.0: API key fields show the end of the saved key and have a Remove button; keys stay out of saves
 - 4.4.0: Use in all saves box on each tab: its settings go to every save, synced by Steam Cloud.
 - 4.3.1: Safer alongside other mods: errors stay contained, and a popup number clash is handled.
 - 4.3.0: Hotkeys tab: change the game's keys and mods' keys, see keys used twice; debug cheats switch.
-- 4.2.0: Mods can read the open menu's values before Apply, to show or hide their own settings.
 - 4.0.0: Each mod's settings get their own tab, sorted A to Z; the menu fits every screen shape.
 - 3.0.0: New password option for text fields: API keys and other secrets show as asterisks.
 - 2.0.0: New text field setting, so mods can let players type a name or other text.

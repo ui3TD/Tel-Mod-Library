@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
+using UiCopies;
 
 namespace ModMenus
 {
@@ -25,9 +26,7 @@ namespace ModMenus
                 return existingPopup.obj;
 
             // Adapt existing popup
-            GameObject originalModMenuObj = mainPopupManager.GetByType(PopupManager._type.settings_difficulty).obj;
-            GameObject modMenuObj = UnityEngine.Object.Instantiate(originalModMenuObj);
-            modMenuObj.transform.SetParent(originalModMenuObj.transform.parent, false);
+            GameObject modMenuObj = CopyDifficultyPopup(mainPopupManager.GetByType(PopupManager._type.settings_difficulty).obj);
             modMenuObj.name = POPUP_OBJ_NAME;
 
             // The popup is only registered once it's fully built. If building fails (the game's own settings
@@ -58,6 +57,29 @@ namespace ModMenus
 
             return modMenuObj;
         }
+
+        /// <summary>
+        /// The game's difficulty settings popup, as read in the game with no mods loaded.
+        /// </summary>
+        public static readonly VanillaShape DifficultyPopupShape = new(
+            new[] { typeof(RectTransform), typeof(global::Popup), typeof(CanvasGroup), typeof(Settings_Difficulty) },
+            new[]
+            {
+                "Cancel", "Cancel/Text", "Apply", "Apply/Text", "Panel", "Panel/Settings_Container",
+                "Panel/Settings_Container/Title", "Panel/Settings_Container/Title/Title",
+                "Panel/Settings_Container/Relaxed", "Panel/Settings_Container/Relaxed/Checkbox",
+                "Panel/Settings_Container/Relaxed/Title", "Panel/Settings_Container/Relaxed/Description",
+                "Panel/Settings_Container/Normal", "Panel/Settings_Container/Normal/Checkbox",
+                "Panel/Settings_Container/Normal/Title", "Panel/Settings_Container/Normal/Description",
+                "Panel/Settings_Container/Unfair", "Panel/Settings_Container/Unfair/Checkbox",
+                "Panel/Settings_Container/Unfair/Title", "Panel/Settings_Container/Unfair/Description",
+            });
+
+        /// <summary>
+        /// A copy of the game's difficulty settings popup, next to it, without what other mods have added to it.
+        /// </summary>
+        public static GameObject CopyDifficultyPopup(GameObject original) =>
+            UiCopy.CopyGameObject(original, original.transform.parent, DifficultyPopupShape, "[ModMenus]", "difficulty settings popup");
 
         /// <summary>
         /// MOD_MENU_POPUP, or, if a popup already has it, the first number after it that no popup has.

@@ -66,7 +66,7 @@ namespace InGameTests.TelMods
         [InGameTest(Suite = ModTest.Suite)]
         private static IEnumerator NationalTab(TestContext ctx)
         {
-            if (!ModTest.Require(ctx, HarmonyId, out Assembly _))
+            if (!ModTest.Require(ctx, HarmonyId, out Assembly mod))
                 yield break;
 
             SpecialEvents_Manager specialEvents = Game.Main.Data.GetComponent<SpecialEvents_Manager>();
@@ -86,6 +86,9 @@ namespace InGameTests.TelMods
                 yield return Game.CloseAllPopups(ctx);
                 yield break;
             }
+
+            // The panel is a copy of the World Tour panel without other mods' parts: the game's own are all listed
+            VanillaShapes.AssertCovers(ctx, mod.GetType("NationalTour.NationalTab"), "WorldTourPanelShape", worldPanel, "World Tour panel");
 
             // The tabs fit: each inside the popup, none overlapping another
             Rect popupRect = ScreenRect((RectTransform)popup.transform);

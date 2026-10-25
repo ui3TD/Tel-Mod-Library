@@ -11,6 +11,7 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using TMPro;
+using UiCopies;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -469,6 +470,11 @@ namespace NationalTour.Tests
             [AccessTools.Method(typeof(TourMethods), nameof(TourMethods.OnWorldTourFor))] = Stub(nameof(OnWorldTourFor)),
             [AccessTools.Method(typeof(Labels), nameof(Labels.CardInProduction))] = Stub(nameof(CardInProduction)),
             [AccessTools.Method(typeof(Labels), nameof(Labels.CardFinished))] = Stub(nameof(CardFinished)),
+
+            [AccessTools.Method(typeof(UiCopy), nameof(UiCopy.CopyGameObject))] = Stub(nameof(CopyGameObject)),
+            [AccessTools.Method(typeof(UiCopy), "RemoveUnknownChildren")] = Stub(nameof(RemoveUnknownChildren)),
+            [AccessTools.Method(typeof(UiCopy), "RemoveUnknownComponents")] = Stub(nameof(RemoveUnknownComponents)),
+            [AccessTools.Method(typeof(UiCopy), "Remove")] = Stub(nameof(RemoveCopyPart)),
         };
 
         /// <summary>
@@ -513,6 +519,12 @@ namespace NationalTour.Tests
             [AccessTools.Method(typeof(Object), "op_Inequality")] = Stub(nameof(StubInequality)),
             [AccessTools.Method(typeof(Object), "op_Implicit")] = Stub(nameof(StubExists)),
             [AccessTools.PropertySetter(typeof(Object), nameof(Object.name))] = Stub(nameof(StubSetName)),
+            [AccessTools.PropertyGetter(typeof(Object), nameof(Object.name))] = Stub(nameof(StubGetName)),
+            [AccessTools.Constructor(typeof(GameObject), new[] { typeof(string), typeof(Type[]) })] = Stub(nameof(StubNewGameObject)),
+            [AccessTools.Method(typeof(Object), nameof(Object.DestroyImmediate), new[] { typeof(Object) })] = Stub(nameof(StubDestroyImmediate)),
+            [AccessTools.PropertyGetter(typeof(Transform), nameof(Transform.childCount))] = Stub(nameof(StubChildCount)),
+            [AccessTools.Method(typeof(Transform), nameof(Transform.GetChild))] = Stub(nameof(StubGetChild)),
+            [AccessTools.Method(typeof(Transform), nameof(Transform.SetParent), new[] { typeof(Transform), typeof(bool) })] = Stub(nameof(StubSetParent)),
             [AccessTools.Method(typeof(GameObject), nameof(GameObject.SetActive))] = Stub(nameof(StubSetActive)),
             [AccessTools.PropertyGetter(typeof(GameObject), nameof(GameObject.activeSelf))] = Stub(nameof(StubActiveSelf)),
             [AccessTools.Method(typeof(Transform), nameof(Transform.Find), new[] { typeof(string) })] = Stub(nameof(StubFind)),
@@ -600,6 +612,7 @@ namespace NationalTour.Tests
                 && m.GetParameters().Select(p => p.ParameterType).SequenceEqual(new[] { typeof(bool) }))] = Stub(nameof(StubGetComponentsInChildrenWithInactive)),
             [Generic(typeof(GameObject), nameof(GameObject.GetComponentsInChildren), 0)] = Stub(nameof(StubGetComponentsInChildren)),
             [Generic(typeof(Component), nameof(Component.GetComponents), 0)] = Stub(nameof(StubGetComponents)),
+            [Generic(typeof(GameObject), nameof(GameObject.GetComponents), 0)] = Stub(nameof(StubGetObjectComponents)),
             [Generic(typeof(GameObject), nameof(GameObject.AddComponent), 0)] = Stub(nameof(StubAddComponent)),
             [typeof(GameObject).GetMethods().Single(m => m.Name == nameof(GameObject.GetComponentsInChildren) && m.IsGenericMethodDefinition
                 && m.GetParameters().Select(p => p.ParameterType).SequenceEqual(new[] { typeof(bool) }))] = Stub(nameof(StubGetComponentsInChildrenWithInactive)),
@@ -686,6 +699,18 @@ namespace NationalTour.Tests
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void CardFinished(SEvent_Button_Tour_Finished card, SEvent_Tour.tour tour) => throw NotInstalled();
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject CopyGameObject(GameObject source, Transform parent, VanillaShape shape, string logPrefix, string what) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void RemoveUnknownChildren(Transform node, string path, VanillaShape shape, string logPrefix, string what) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void RemoveUnknownComponents(GameObject copy, VanillaShape shape, string logPrefix, string what) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void RemoveCopyPart(Object part, string name, string logPrefix, string what) => throw NotInstalled();
+
         // The game's methods, with the mod's transpilers
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -743,6 +768,8 @@ namespace NationalTour.Tests
             SpriteTextures.Clear();
             Rooms.Clear();
             Enabled.Clear();
+            Destroyed.Clear();
+            CantDestroy = null;
         }
 
         /// <summary>
@@ -824,17 +851,20 @@ namespace NationalTour.Tests
         {
             foreach (CodeInstruction instruction in instructions)
             {
-                if (instruction.operand is MethodInfo method && (instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt))
+                MethodInfo stub = null;
+                if (instruction.operand is ConstructorInfo constructor && instruction.opcode == OpCodes.Newobj)
+                    Redirects.TryGetValue(constructor, out stub);
+                else if (instruction.operand is MethodInfo method && (instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt))
                 {
-                    if (!Redirects.TryGetValue(method, out MethodInfo stub) && method.IsGenericMethod
+                    if (!Redirects.TryGetValue(method, out stub) && method.IsGenericMethod
                         && GenericRedirects.TryGetValue(method.GetGenericMethodDefinition(), out MethodInfo generic))
                         stub = generic.MakeGenericMethod(method.GetGenericArguments());
+                }
 
-                    if (stub != null)
-                    {
-                        instruction.opcode = OpCodes.Call;
-                        instruction.operand = stub;
-                    }
+                if (stub != null)
+                {
+                    instruction.opcode = OpCodes.Call;
+                    instruction.operand = stub;
                 }
                 yield return instruction;
             }
@@ -849,6 +879,74 @@ namespace NationalTour.Tests
         private static bool StubInequality(Object a, Object b) => !ReferenceEquals(a, b);
         private static bool StubExists(Object obj) => obj is not null;
         private static void StubSetName(Object obj, string name) => NodeOf(obj).Name = name;
+        private static string StubGetName(Object obj) => NodeOf(obj).Name;
+        private static int StubChildCount(Transform transform) => NodeOf(transform).Children.Count;
+        private static Transform StubGetChild(Transform transform, int index) => NodeOf(transform).Children[index].Transform;
+
+        private static GameObject StubNewGameObject(string name, Type[] components)
+        {
+            GameObject obj = NewObject(name);
+            foreach (Type type in components.Where(t => t != typeof(RectTransform)))
+            {
+                Component component = (Component)FormatterServices.GetUninitializedObject(type);
+                NodeOf(obj).Components.Add(component);
+                Nodes[component] = NodeOf(obj);
+            }
+            return obj;
+        }
+
+        private static void StubSetParent(Transform transform, Transform parent, bool worldPositionStays)
+        {
+            Node node = NodeOf(transform);
+            node.Parent?.Children.Remove(node);
+            node.Parent = parent is null ? null : NodeOf(parent);
+            node.Parent?.Children.Add(node);
+        }
+
+        /// <summary>
+        /// Each object or component the copies destroyed (its name or type), with whether it was active in the
+        /// scene then.
+        /// </summary>
+        public static readonly List<(string Name, bool ActiveInScene)> Destroyed = new();
+
+        /// <summary>
+        /// Destroying an object with this name throws, as for a part that can't be removed.
+        /// </summary>
+        public static string CantDestroy;
+
+        /// <summary>
+        /// Destroying an object takes it and everything under it out of the scene; destroying a component removes
+        /// it from its object.
+        /// </summary>
+        private static void StubDestroyImmediate(Object obj)
+        {
+            Node node = NodeOf(obj);
+            if (obj is GameObject && node.Name == CantDestroy)
+                throw new InvalidOperationException("Can't destroy");
+            bool active = node.Active;
+            for (Node parent = node.Parent; parent != null; parent = parent.Parent)
+                active &= parent.Active;
+            if (obj is GameObject)
+            {
+                Destroyed.Add((node.Name, active));
+                node.Parent?.Children.Remove(node);
+                node.Parent = null;
+                foreach (Node gone in node.SelfAndDescendants().ToList())
+                {
+                    Nodes.Remove(gone.GameObject);
+                    foreach (Component component in gone.Components)
+                        Nodes.Remove(component);
+                }
+            }
+            else
+            {
+                Destroyed.Add((obj.GetType().Name, active));
+                node.Components.Remove((Component)obj);
+                Nodes.Remove(obj);
+            }
+        }
+
+        private static T[] StubGetObjectComponents<T>(GameObject owner) => NodeOf(owner).Components.OfType<T>().ToArray();
         private static void StubSetActive(GameObject obj, bool active) => NodeOf(obj).Active = active;
         private static bool StubActiveSelf(GameObject obj) => NodeOf(obj).Active;
 
@@ -1127,6 +1225,8 @@ namespace NationalTour.Tests
     internal sealed class LogRecorder : ILogHandler, IDisposable
     {
         public readonly List<string> Errors = new();
+        public readonly List<string> Warnings = new();
+        public readonly List<string> Messages = new();
         private readonly ILogHandler game;
 
         public LogRecorder()
@@ -1139,6 +1239,10 @@ namespace NationalTour.Tests
         {
             if (logType == LogType.Error)
                 Errors.Add(string.Format(format, args));
+            else if (logType == LogType.Warning)
+                Warnings.Add(string.Format(format, args));
+            else if (logType == LogType.Log)
+                Messages.Add(string.Format(format, args));
         }
 
         public void LogException(Exception exception, Object context) => Errors.Add(exception.ToString());

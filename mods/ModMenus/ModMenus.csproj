@@ -5,12 +5,14 @@
 		<HarmonyID>com.tel.modmenus</HarmonyID>
 		<ModDescription>ModMenus provides a UI menu to manage the settings of other mods.</ModDescription>
 		<Authors>Tel</Authors>
-		<Version>5.0.0</Version>
+		<Version>5.0.1</Version>
 		<WorkshopID>3283314791</WorkshopID>
 		<Tags>["modding", "gameplay"]</Tags>
 
 		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
 		<JSONLoadOrder>0</JSONLoadOrder>
 	</PropertyGroup>
-	
+
+	<Import Project="..\..\shared\UiCopies\UiCopies.projitems" Label="Shared" />
+
 </Project>

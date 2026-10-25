@@ -48,6 +48,25 @@ namespace NationalTour.Tests
             Assert.Same(NationalTab.Panel, Seams.GetComponent<TabButton>(NationalTabObject()).TabToOpen);
         }
 
+        /// <summary>
+        /// What another mod added to the World Tour panel (a line about world tours, a script running the panel)
+        /// stays there and isn't copied onto the National Tour panel.
+        /// </summary>
+        [Fact]
+        public void AnotherModsAdditionsToTheWorldTourPanel_AreNotOnTheNationalPanel()
+        {
+            Seams.NewObject("Another mod's line", scene.WorldTourPanel);
+            Seams.Add<Outline>(scene.WorldTourPanel);
+            using LogRecorder log = new();
+
+            Seams.BuildTab(scene.SpecialEvents);
+
+            Assert.Equal(new[] { "BG", "Panel" }, Seams.ChildrenOf(NationalPanel()).Select(Seams.NameOf));
+            Assert.Empty(Seams.ComponentsOf<Outline>(NationalPanel()));
+            Assert.Equal(new[] { "BG", "Panel", "Another mod's line" }, Seams.ChildrenOf(scene.WorldTourPanel).Select(Seams.NameOf));
+            Assert.Single(Seams.ComponentsOf<Outline>(scene.WorldTourPanel));
+        }
+
         [Fact]
         public void Tab_IsBuiltOnce()
         {

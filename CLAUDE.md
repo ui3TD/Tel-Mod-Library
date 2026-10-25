@@ -28,3 +28,7 @@ drop the line that falls out. `tools/check_repo.py` enforces this.
 mods, currently AI Fan Chatter. Each AI mod fills in `AIMod` (name, settings prefix, schema name) in a
 file of its own. After changing `shared/AICore/`, run `tests/AICore.Tests`, then the steps above for
 every AI mod; the key store and transport are covered by AI Fan Chatter's in-game tests.
+`shared/UiCopies/` copies a game UI object without the parts other mods added to it, keeping only the
+parts in a `VanillaShape` read from the game with no mods loaded; ModMenus and National Tour use it. Its
+unit tests are in `tests/NationalTour.Tests` (`UiCopyTests`); after changing it, run the steps above
+for both mods.

@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Serialization;
 using TMPro;
+using UiCopies;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
@@ -689,6 +690,11 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.KeybindHeld))] = Stub(nameof(KeybindHeld)),
             [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.KeybindReleased))] = Stub(nameof(KeybindReleased)),
             [AccessTools.Method(typeof(ModMenusUtils), "KeybindHappened")] = Stub(nameof(KeybindHappened)),
+            [AccessTools.Method(typeof(ModMenusUtils), nameof(ModMenusUtils.CopyDifficultyPopup))] = Stub(nameof(CopyDifficultyPopup)),
+            [AccessTools.Method(typeof(UiCopy), nameof(UiCopy.CopyGameObject))] = Stub(nameof(CopyGameObject)),
+            [AccessTools.Method(typeof(UiCopy), "RemoveUnknownChildren")] = Stub(nameof(RemoveUnknownChildren)),
+            [AccessTools.Method(typeof(UiCopy), "RemoveUnknownComponents")] = Stub(nameof(RemoveUnknownComponents)),
+            [AccessTools.Method(typeof(UiCopy), "Remove")] = Stub(nameof(RemoveCopyPart)),
             [AccessTools.Method(typeof(ModMenusUtils), "RefreshKeybinds")] = Stub(nameof(RefreshKeybinds)),
             [AccessTools.Method(typeof(ModMenusUtils), "HeldModifiers")] = Stub(nameof(HeldModifiers)),
             [AccessTools.Method(typeof(ModMenusUtils), "AnyKeyHeld")] = Stub(nameof(AnyKeyHeld)),
@@ -793,6 +799,9 @@ namespace ModMenus.Tests
             [AccessTools.Method(typeof(Object), nameof(Object.DestroyImmediate), new[] { typeof(Object) })] = Stub(nameof(StubDestroyImmediate)),
             [AccessTools.Method(typeof(GameObject), nameof(GameObject.SetActive))] = Stub(nameof(StubSetActive)),
             [AccessTools.PropertyGetter(typeof(GameObject), nameof(GameObject.activeSelf))] = Stub(nameof(IsActive)),
+            [AccessTools.PropertyGetter(typeof(Transform), nameof(Transform.parent))] = Stub(nameof(StubParent)),
+            [AccessTools.PropertyGetter(typeof(Transform), nameof(Transform.childCount))] = Stub(nameof(StubChildCount)),
+            [AccessTools.Method(typeof(Transform), nameof(Transform.GetChild))] = Stub(nameof(StubGetChild)),
 
             // Keys: the keyboard and the frame are set by the test
             [AccessTools.Method(typeof(Input), nameof(Input.GetKeyDown), new[] { typeof(KeyCode) })] = Stub(nameof(StubGetKeyDown)),
@@ -855,6 +864,9 @@ namespace ModMenus.Tests
             [Generic(typeof(Component), nameof(Component.GetComponentsInChildren), typeof(bool))] = Stub(nameof(StubGetComponentsInChildrenWith)),
             [Generic(typeof(GameObject), nameof(GameObject.AddComponent), 0)] = Stub(nameof(StubAddComponent)),
             [Generic(typeof(Object), nameof(Object.Instantiate), 2)] = Stub(nameof(StubInstantiate)),
+            [typeof(Object).GetMethods().Single(m => m.Name == nameof(Object.Instantiate) && m.IsGenericMethodDefinition
+                && m.GetParameters().Select(p => p.ParameterType.IsGenericParameter ? "T" : p.ParameterType.Name).SequenceEqual(new[] { "T", "Transform", "Boolean" }))] = Stub(nameof(StubInstantiateWith)),
+            [Generic(typeof(GameObject), nameof(GameObject.GetComponents), 0)] = Stub(nameof(StubGetObjectComponents)),
             [Generic(typeof(Enumerable), nameof(Enumerable.Cast), 1)] = Stub(nameof(StubCast)),
             [Generic(typeof(Enumerable), nameof(Enumerable.FirstOrDefault), 2)] = Stub(nameof(StubFirstOrDefault)),
         };
@@ -1164,6 +1176,21 @@ namespace ModMenus.Tests
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void SetColor(GameObject obj, Color32 clr) => throw NotInstalled();
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject CopyDifficultyPopup(GameObject original) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static GameObject CopyGameObject(GameObject source, Transform parent, VanillaShape shape, string logPrefix, string what) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void RemoveUnknownChildren(Transform node, string path, VanillaShape shape, string logPrefix, string what) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void RemoveUnknownComponents(GameObject copy, VanillaShape shape, string logPrefix, string what) => throw NotInstalled();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static void RemoveCopyPart(Object part, string name, string logPrefix, string what) => throw NotInstalled();
+
         private static Exception NotInstalled() => new InvalidOperationException("Call Seams.Reset first");
 
         /// <summary>
@@ -1245,6 +1272,8 @@ namespace ModMenus.Tests
         public static List<GameObject> ChildrenOf(GameObject obj) => NodeOf(obj).Children.Select(c => c.GameObject).ToList();
 
         public static bool IsActive(GameObject obj) => NodeOf(obj).Active;
+
+        public static List<Component> Components(GameObject obj) => NodeOf(obj).Components.ToList();
 
         /// <summary>
         /// Opens or closes a dropdown's list, as the game's CustomDropdown.Animate does: an open list item's box
@@ -1442,14 +1471,38 @@ namespace ModMenus.Tests
         }
 
         /// <summary>
-        /// Destroying a component removes it from its object.
+        /// Destroying a component removes it from its object; destroying an object takes it and everything under
+        /// it out of the scene.
         /// </summary>
         private static void StubDestroyImmediate(Object obj)
         {
-            Assert.True(obj is Component, "Destroyed something that isn't a component");
+            if (obj is GameObject)
+            {
+                Node node = NodeOf(obj);
+                SetParent(node, null);
+                foreach (Node gone in node.SelfAndDescendants(true).ToList())
+                {
+                    Nodes.Remove(gone.GameObject);
+                    foreach (Component component in gone.Components)
+                        Nodes.Remove(component);
+                }
+                return;
+            }
+            Assert.True(obj is Component, "Destroyed something that isn't a component or an object");
             NodeOf(obj).Components.Remove((Component)obj);
             Nodes.Remove(obj);
         }
+
+        private static Transform StubParent(Transform transform) => NodeOf(transform).Parent?.Transform;
+
+        private static int StubChildCount(Transform transform) => NodeOf(transform).Children.Count;
+
+        private static Transform StubGetChild(Transform transform, int index) => NodeOf(transform).Children[index].Transform;
+
+        private static T[] StubGetObjectComponents<T>(GameObject owner) => NodeOf(owner).Components.OfType<T>().ToArray();
+
+        private static T StubInstantiateWith<T>(T original, Transform parent, bool worldPositionStays) where T : Object =>
+            StubInstantiate(original, parent);
 
         private static T[] StubGetComponentsInChildren<T>(object owner) => StubGetComponentsInChildrenWith<T>(owner, false);
 

@@ -358,6 +358,17 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
+        public void TheCardDrawButton_IsNotShown_DuringTheShow()
+        {
+            _concert concert = TwoSongs();
+            Concert_Popup popup = GameFixture.Popup(concert);
+            popup.DrawCardsButton = (UnityEngine.GameObject)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(UnityEngine.GameObject));
+            Assert.True(Concert_Popup_ShowObject.Prefix(popup, popup.DrawCardsButton));
+            GameFixture.Begin(concert);
+            Assert.False(Concert_Popup_ShowObject.Prefix(popup, popup.DrawCardsButton));
+        }
+
+        [Fact]
         public void TalkBreaks_CantBeAddedToTheSetlist_WhileTheModIsOn()
         {
             Assert.False(Concert_New_Popup_OnAddMC.Prefix());

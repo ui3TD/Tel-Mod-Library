@@ -40,6 +40,15 @@ namespace InGameTests.TelMods
             }
 
             float timeScale = Time.timeScale;
+            // The mod logs one summary line per show; anything else it logs is a problem to look at
+            List<string> modLog = new();
+            Application.LogCallback record = (message, stack, type) =>
+            {
+                if (message.Contains("[Concert Hype]") && !message.Contains("[Concert Hype] show over:"))
+                    modLog.Add(type + ": " + message);
+            };
+            Application.logMessageReceived += record;
+            using (TestTools.Restore(() => Application.logMessageReceived -= record))
             using (Game.Variable("ConcertHype_Enabled", "1"))
             using (TestTools.Restore(() => Time.timeScale = timeScale))
             {
@@ -70,12 +79,22 @@ namespace InGameTests.TelMods
                 VanillaShapes.AssertCovers(ctx, shapes, "Label", popup.NextSong_Container.transform.Find("StaminaCostTitle").gameObject, "Stamina Cost title");
                 VanillaShapes.AssertCovers(ctx, shapes, "Portrait", popup.prefab_concertGirl, "concert idol portrait");
 
-                float start = Time.realtimeSinceStartup;
-                while (!popup.DrawCards.activeInHierarchy && Time.realtimeSinceStartup - start < 30f)
+                // No card draw: the opening goes straight to the first song, and the deck never shows
+                float start = Time.realtimeSinceStartup, deckShown = 0f;
+                CanvasGroup deck = popup.DrawCardsButton.GetComponent<CanvasGroup>(), deckTitle = popup.DrawCardsTitle.GetComponent<CanvasGroup>();
+                while (Time.realtimeSinceStartup - start < 30f && !(popup.NextSong_Container.activeSelf && popup.NextSong_Container.GetComponent<CanvasGroup>().alpha > 0.99f))
+                {
+                    if (popup.DrawCards.activeInHierarchy)
+                        deckShown = Mathf.Max(deckShown, deck.alpha, deckTitle.alpha);
                     yield return null;
-                yield return new WaitForSeconds(3f);
-                popup.DrawCards.GetComponent<Concert_DrawCards>().OnClick();
-                yield return WaitForNextSongScreen(popup);
+                }
+                if (!popup.NextSong_Container.activeSelf)
+                {
+                    ctx.Fail("The first song's screen didn't come within 30 s");
+                    yield break;
+                }
+                if (deckShown > 0.01f)
+                    ctx.Fail("The card draw showed (deck or title at alpha " + deckShown + ")");
 
                 // Every place in the lineup and every idol in the cast column is a button a click reaches
                 Transform panel = popup.NextSong_Container.transform.Find("ConcertHype Lineup");
@@ -150,6 +169,8 @@ namespace InGameTests.TelMods
                 ctx.Record("hype after Finish", concert.Hype);
                 if (Math.Abs(concert.Hype - total) > 0.001 || concert.ProjectedValues.Actual_Hype != Mathf.RoundToInt((float)total))
                     ctx.Fail($"After Finish the concert's hype is {concert.Hype} (recorded {concert.ProjectedValues.Actual_Hype}), the score {total}");
+                foreach (string line in modLog.Distinct().Take(5))
+                    ctx.Fail("The mod logged: " + line);
             }
             yield return Game.CloseAllPopups(ctx);
         }

@@ -165,12 +165,31 @@ namespace ConcertHype
             ShowSession.Current != null && ReferenceEquals(popup.Concert, ShowSession.Current.Concert);
     }
 
-    // Keep the wheel hidden while a song plays.
+    // The new show has no action cards: the opening goes straight from the stage to the first song, without the
+    // card draw. And the accident wheel stays hidden while a song plays.
     [HarmonyPatch(typeof(Concert_Popup), nameof(Concert_Popup.ShowObject))]
     public class Concert_Popup_ShowObject
     {
-        public static bool Prefix(Concert_Popup __instance, GameObject obj) =>
-            !(Concert_Popup_AnimateAccident.ShowsNewShow(__instance) && ReferenceEquals(obj, __instance.Accident_Top_Container));
+        public static bool Prefix(Concert_Popup __instance, GameObject obj)
+        {
+            if (!Concert_Popup_AnimateAccident.ShowsNewShow(__instance))
+                return true;
+            try
+            {
+                if (ReferenceEquals(obj, __instance.DrawCardsTitle))
+                {
+                    // Where the game would show the deck, it goes on as if the drawing were done
+                    __instance.OnDrawingComplete();
+                    return false;
+                }
+                return !ReferenceEquals(obj, __instance.DrawCardsButton) && !ReferenceEquals(obj, __instance.Accident_Top_Container);
+            }
+            catch (Exception ex)
+            {
+                ShowSession.Fail(ex, "skipping the card draw");
+                return true;
+            }
+        }
     }
 
     // The song's hype is the model's: the popup animates it over the song.

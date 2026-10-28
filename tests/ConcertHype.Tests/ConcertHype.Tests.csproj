@@ -2,6 +2,7 @@
 	<ItemGroup>
 		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
 		<Compile Include="..\..\mods\Concert Hype\**\*.cs" Exclude="..\..\mods\Concert Hype\obj\**;..\..\mods\Concert Hype\bin\**" LinkBase="Mod" />
+		<Compile Include="..\..\shared\UiCopies\UiCopies.cs" LinkBase="Mod" />
 		<!--Unofficial Patch also changes the concert revenue estimate; the estimate tests run with both mods-->
 		<Compile Include="..\..\mods\Unofficial Patch\**\*.cs" Exclude="..\..\mods\Unofficial Patch\obj\**;..\..\mods\Unofficial Patch\bin\**" LinkBase="UnofficialPatch" />
 	</ItemGroup>

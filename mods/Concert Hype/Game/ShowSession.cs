@@ -35,6 +35,8 @@ namespace ConcertHype
         /// </summary>
         public static Score LastScore { get; private set; }
 
+        public static SEvent_Concerts._concert LastScoreConcert { get; private set; }
+
         /// <summary>
         /// Where the finished show's log is written; null writes none.
         /// </summary>
@@ -83,6 +85,7 @@ namespace ConcertHype
             ShowState state = Engine.Start(show.Setup, config, seed);
             Current = new ShowSession(concert, show, state);
             LastScore = null;
+            LastScoreConcert = null;
             Current.log.AppendLine($"Concert Hype show: {concert.Title} ({concert.Venue}), seed {seed}");
             Current.log.AppendLine($"Cast: {string.Join(", ", show.Setup.Members.Select(m => m.Name))}");
             Current.log.AppendLine($"Capacity filled {F(show.Setup.CapacityFilled)}, production {F(show.Setup.Production)}, hype floor {F(show.Setup.HypeFloor)}");
@@ -106,6 +109,16 @@ namespace ConcertHype
         }
 
         public string Name(int member) => member < 0 ? "nobody" : State.Setup.Members[member].Name;
+
+        /// <summary>
+        /// Between songs the show starts from the concert's hype, which the game's start, talk breaks and other mods
+        /// may have changed.
+        /// </summary>
+        public void SyncHype()
+        {
+            if (Pending == null)
+                State.Hype = Engine.Clamp(Concert.Hype, State.Setup.HypeFloor, Engine.MaxHype);
+        }
 
         public SongPreview Preview() => State.Finished ? null : Engine.Preview(State, Lineup);
 
@@ -210,6 +223,7 @@ namespace ConcertHype
             Score score = Engine.Score(State);
             stage.AddHype((float)(score.Total - stage.Concert.Hype), true);
             LastScore = score;
+            LastScoreConcert = Concert;
             log.AppendLine($"Score {F(score.Total)} = 0.5 x average {F(score.Average)} + 0.25 x peak {F(score.Peak)} + 0.25 x finale {F(score.Finale)}");
             log.AppendLine($"Accidents: {State.Accidents}; forced fills that found nobody: {State.EmptyFills}");
             Log.Info($"show over: score {F(score.Total)} (average {F(score.Average)}, peak {F(score.Peak)}, finale {F(score.Finale)})");

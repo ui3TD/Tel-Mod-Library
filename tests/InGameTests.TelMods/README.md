@@ -47,7 +47,7 @@ yourself before running.
 |---|---|---|---|
 | 0 | `smoke` | The loaded Tel mods are this checkout's builds, right after the save loads | about 1 s |
 | 1, 2 | `mods` | Per-mod checks of values and UI on the fixture save | about 2 s |
-| 3 | `auditions`, `elections`, `clock`, `graduation` | High-effort scenarios, run when a mod they test changes (`run.py --scope "<Mod>"`) | 5 to 20 s each |
+| 3 | `auditions`, `elections`, `clock`, `graduation`, `concerts` | High-effort scenarios, run when a mod they test changes (`run.py --scope "<Mod>"`) | 5 to 20 s each |
 
 ### Tier 0: the loaded builds (`AllMods/TelModSmokeTests.cs`)
 
@@ -98,9 +98,9 @@ Two helpers do most of the work:
   arguments or the game's own result.
 - `Training.TickAddParams`, in `Shared/`, records the stamina charges of one real training tick.
 
-### Tier 3: scenarios (`auditions`, `elections`, `clock`, `graduation` suites)
+### Tier 3: scenarios (`auditions`, `elections`, `clock`, `graduation`, `concerts` suites)
 
-Each runs a whole game scenario: an audition, an election's results, a regular graduation with its goodbye scene, or the clock running for days or weeks. The
+Each runs a whole game scenario: an audition, an election's results, a regular graduation with its goodbye scene, a concert, or the clock running for days or weeks. The
 same rule applies as for tiers 1 and 2, and each asserts only what the unit tests can't. `run.py --scope
 "<Mod>"` runs them along with the mod's other checks; `--suite <name>` runs one scenario for every mod in
 scope.
@@ -112,12 +112,13 @@ scope.
 | `ExtendedSskTests` | `elections` | A new election, started as the concert's end starts it, doesn't rank every idol who can take part up to 64 (15 on the fixture, past vanilla's 10), or its results popup doesn't award each place's fame once and finish. |
 | `AIFanChatterTests` | `clock` | A request through the real transport to a plain-http server on this PC doesn't put every post and reply in the real feed, in order and with avatars, as the clock runs for 3 days. The prompt's wording doesn't come from the mod's constants.json as the game loads it. |
 | `AIFanChatterTests` | `graduation` | A regular graduation's goodbye scene, played by the real dialogue controller with the successor chosen, doesn't send the graduation once, when the scene ends, with the successor the scene hired. |
+| `ConcertHypeTests` | `concerts` | The fixture's concert, played through the real popup at 4x speed, doesn't start the new show; a place in the lineup or an idol in the cast column is partly off screen or a click on it lands elsewhere; a real click on the first place doesn't select it; after a song the hype bar isn't on the show's hype; a crisis popup opens; or the results screen doesn't show the score, on screen, as the concert's recorded hype. |
 | `FastForwardTests` | `clock` | Two clicks on the real fast button don't give 28x (5600 minutes a second) with a gold label, or four weeks at that speed miss or repeat a day's or a Monday's event. |
 
 Left to the unit tests: Targeted Auditions' settings, body pool rules, ages, orientation and priority
 maths alone; Unofficial Patch's unlock timing, which jobs a close drops, the late-render cap and the 60 s
 stop; Extended SSK's fame values per rank and broadcast, its limit parsing and the wish cap; FastForward's
-clamping, parsing, third click and hotkey.
+clamping, parsing, third click and hotkey; Concert Hype's rules, panel text, payout and each patch.
 
 These suites leave the game changed for the rest of the boot (an election can't be undone), so each test
 starts by closing every popup and doesn't rely on what ran before it.

@@ -50,7 +50,7 @@ namespace ConcertHype.Tests
             Assert.Contains("triangle formation", description);
             Assert.Contains("twice per show", description);
             Assert.Contains("it pays what 200% hype paid before", description);
-            Assert.Contains("Action cards, the accident wheel and MC breaks in the setlist are off", description);
+            Assert.Contains("Action cards, the accident wheel and talk breaks in the setlist are off", description);
             Assert.Equal(2, new ConcertHype.Model.Config().McCharges);
         }
 

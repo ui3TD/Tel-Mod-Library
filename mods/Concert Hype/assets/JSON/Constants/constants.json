@@ -2,5 +2,93 @@
 	{
 		id: "CONCERTHYPE__MODMENU__ENABLED",
 		text: "New concert minigame (off: original concerts)"
+	},
+	{
+		id: "CONCERTHYPE__TALK_BREAK",
+		text: "Talk Break ({0} left)"
+	},
+	{
+		id: "CONCERTHYPE__RESET_LINEUP",
+		text: "Reset Lineup"
+	},
+	{
+		id: "CONCERTHYPE__HINT_PLACE",
+		text: "Click a place to change who performs it, then an idol on the right. One change per song; empty places must be filled."
+	},
+	{
+		id: "CONCERTHYPE__HINT_PICK",
+		text: "Now click an idol on the right to put her in that place, or the place again to cancel."
+	},
+	{
+		id: "CONCERTHYPE__HINT_HOST",
+		text: "Click an idol on the right to host the talk break, or the button again to cancel."
+	},
+	{
+		id: "CONCERTHYPE__HYPE",
+		text: "Hype {0}% · {1}"
+	},
+	{
+		id: "CONCERTHYPE__BAND_LOW",
+		text: "a changed lineup surprises the crowd"
+	},
+	{
+		id: "CONCERTHYPE__BAND_MID",
+		text: "the crowd is close to 100%"
+	},
+	{
+		id: "CONCERTHYPE__BAND_HIGH",
+		text: "the crowd wants the hits"
+	},
+	{
+		id: "CONCERTHYPE__EXPECTED",
+		text: "Changed lineup {0}% · expected hype {1} ({2} to {3})"
+	},
+	{
+		id: "CONCERTHYPE__LAST_SONG",
+		text: "Last song: {0} hype"
+	},
+	{
+		id: "CONCERTHYPE__HURT",
+		text: "{0} is hurt and out for {1}"
+	},
+	{
+		id: "CONCERTHYPE__EXHAUSTED",
+		text: "{0} is exhausted"
+	},
+	{
+		id: "CONCERTHYPE__TALK_RESULT",
+		text: "Talk break by {0}: hype {1}% to {2}%"
+	},
+	{
+		id: "CONCERTHYPE__BADGE_SUB",
+		text: "SUB"
+	},
+	{
+		id: "CONCERTHYPE__BADGE_FILL",
+		text: "FILL"
+	},
+	{
+		id: "CONCERTHYPE__BADGE_EMPTY",
+		text: "EMPTY"
+	},
+	{
+		id: "CONCERTHYPE__OUT",
+		text: "out {0}"
+	},
+	{
+		id: "CONCERTHYPE__RESTING",
+		text: "resting"
+	},
+	{
+		id: "CONCERTHYPE__SONGS",
+		text: "{0} songs"
+	},
+	{
+		id: "CONCERTHYPE__SONG",
+		text: "1 song"
+	},
+	{
+		id: "CONCERTHYPE__SCORE",
+		text: "Show score: {0}% (average {1}%, best {2}%, finale {3}%)"
 	}
 ]

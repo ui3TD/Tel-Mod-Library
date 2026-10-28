@@ -17,6 +17,7 @@ namespace InGameTests.TelMods
         public const string ElectionsSuite = "elections";
         public const string ClockSuite = "clock";
         public const string GraduationSuite = "graduation";
+        public const string ConcertsSuite = "concerts";
 
         /// <summary>
         /// The mod's loaded assembly when its patches are live; otherwise notes the skip and

@@ -12,4 +12,5 @@
 		<JSONLoadOrder>0</JSONLoadOrder>
 	</PropertyGroup>
 
+	<Import Project="..\..\shared\UiCopies\UiCopies.projitems" Label="Shared" />
 </Project>

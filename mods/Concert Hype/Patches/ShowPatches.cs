@@ -45,7 +45,15 @@ namespace ConcertHype
                 string folder = ModFolder.Find();
                 Config config = folder == null ? new Config() : ConfigFile.Load(Path.Combine(folder, ConfigFile.FileName), Log.Warn);
                 ShowSession.LogPath = folder == null ? null : Path.Combine(folder, "last_show.txt");
-                ShowSession.Begin(concert, config);
+                ShowSession session = ShowSession.Begin(concert, config);
+                try
+                {
+                    CastRow.Build(__instance.ConcertPopup, session);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("couldn't show the cast; the show goes on with each song's default lineup: " + ex);
+                }
             }
             catch (Exception ex)
             {
@@ -98,6 +106,21 @@ namespace ConcertHype
                 ShowSession.Fail(ex, "setting the starting hype");
             }
         }
+
+        // Between songs, the panel shows the hype the crowd is at now.
+        public static void Postfix(Concert_Popup __instance)
+        {
+            try
+            {
+                ShowSession session = ShowSession.Current;
+                if (session != null && session.Pending == null && ReferenceEquals(__instance.Concert, session.Concert))
+                    LineupPanel.Render();
+            }
+            catch (Exception ex)
+            {
+                Log.WarnOnce("render", "couldn't redraw the lineup panel: " + ex.Message);
+            }
+        }
     }
 
     // A new show never inherits an old one.
@@ -108,6 +131,7 @@ namespace ConcertHype
         {
             if (ShowSession.Current != null)
                 ShowSession.End();
+            CastRow.Restore();
         }
     }
 
@@ -216,6 +240,31 @@ namespace ConcertHype
             catch (Exception ex)
             {
                 ShowSession.Fail(ex, "scoring the show");
+            }
+        }
+    }
+
+    // Closing the results: the last song's hype animation may have ended a frame after the score was set, so the
+    // concert's hype lands on the score again. A bigger difference is another mod's doing and stays.
+    [HarmonyPatch(typeof(Concert_Popup), nameof(Concert_Popup.FinishConcert))]
+    public class Concert_Popup_FinishConcert
+    {
+        public const float MaxDrift = 1f;
+
+        public static void Prefix(Concert_Popup __instance)
+        {
+            try
+            {
+                Score score = ShowSession.LastScore;
+                if (score == null || !ReferenceEquals(ShowSession.LastScoreConcert, __instance.Concert))
+                    return;
+                float drift = (float)score.Total - __instance.Concert.Hype;
+                if (drift != 0f && Mathf.Abs(drift) < MaxDrift)
+                    __instance.AddHype(drift);
+            }
+            catch (Exception ex)
+            {
+                Log.WarnOnce("finish", "couldn't set the concert's hype to the score: " + ex.Message);
             }
         }
     }

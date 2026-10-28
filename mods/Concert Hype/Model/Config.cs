@@ -60,6 +60,11 @@ namespace ConcertHype.Model
         public double WEnd = 0.25;
 
         /// <summary>
+        /// How long a song or talk break plays on screen, in seconds; the original game takes 10.
+        /// </summary>
+        public double SongSeconds = 5;
+
+        /// <summary>
         /// A fixed seed for every show, to replay one; 0 picks a new seed each show.
         /// </summary>
         public int Seed = 0;

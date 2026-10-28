@@ -1,8 +1,11 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UiCopies;
 
@@ -55,6 +58,8 @@ namespace ConcertHype
             text.enableWordWrapping = true;
             text.overflowMode = TextOverflowModes.Overflow;
             text.alignment = TextAlignmentOptions.TopLeft;
+            // Text never takes a press or a hover from the portrait or button under it
+            text.raycastTarget = false;
             text.text = "";
             return text;
         }
@@ -97,6 +102,18 @@ namespace ConcertHype
             rect.sizeDelta = new Vector2(width, height);
         }
 
+        /// <summary>
+        /// Where an object is, in the same top-left coordinates as <see cref="Place"/>.
+        /// </summary>
+        public static Rect Placed(GameObject obj, Transform container)
+        {
+            Vector3[] corners = new Vector3[4];
+            ((RectTransform)obj.transform).GetWorldCorners(corners);
+            RectTransform parent = (RectTransform)container;
+            Vector3 topLeft = parent.InverseTransformPoint(corners[1]), bottomRight = parent.InverseTransformPoint(corners[3]);
+            return Rect.MinMaxRect(topLeft.x - parent.rect.xMin, parent.rect.yMax - topLeft.y, bottomRight.x - parent.rect.xMin, parent.rect.yMax - bottomRight.y);
+        }
+
         public static void Stretch(GameObject obj)
         {
             RectTransform rect = (RectTransform)obj.transform;
@@ -117,35 +134,46 @@ namespace ConcertHype
 
     /// <summary>
     /// A copy of the concert's idol portrait (the picture is a game button, with its hover profile) whose energy
-    /// bar shows the show's energy, with a short label.
+    /// bar shows the show's energy, with a short label. Pressing and holding the picture drags her.
     /// </summary>
     internal sealed class PortraitWidget
     {
         public GameObject Root;
         public Button Button;
+        public ButtonDefault Hover;
+        public DragSource Drag;
         public Image Picture;
         public Image Background;
         public Image Bar;
         public TextMeshProUGUI Label;
         private Color backgroundColor;
 
-        public static PortraitWidget Make(GameObject prefab, GameObject labelTemplate, Transform parent, string name, UnityAction onClick)
+        public static PortraitWidget Make(GameObject prefab, GameObject labelTemplate, Transform parent, string name, DropPoint from)
         {
             PortraitWidget widget = new PortraitWidget { Root = Ui.Copy(prefab, parent, Shapes.Portrait, "idol portrait", name) };
             Transform center = widget.Root.transform.Find("Center");
             widget.Picture = center?.GetComponent<Image>();
             widget.Button = center?.GetComponent<Button>();
+            widget.Hover = center?.GetComponent<ButtonDefault>();
             widget.Background = widget.Root.transform.Find("BG")?.GetComponent<Image>();
             widget.Bar = widget.Root.transform.Find("Stamina")?.GetComponent<Image>();
             if (widget.Background != null)
                 widget.backgroundColor = widget.Background.color;
             if (widget.Button != null)
             {
-                // The game's portrait is a button only for its hover profile: its Button starts disabled
+                // The game's portrait is a button only for its hover profile: its Button starts disabled. A drop is
+                // found as the game finds it, by the button the mouse hovers, so the picture's thin shadows (on top
+                // of it) don't take the hover.
                 widget.Button.onClick = new Button.ButtonClickedEvent();
-                widget.Button.onClick.AddListener(onClick);
                 widget.Button.enabled = true;
                 Ui.Enable(widget.Button, true);
+                foreach (Graphic shadow in center.GetComponentsInChildren<Graphic>(true))
+                {
+                    if (shadow.gameObject != center.gameObject)
+                        shadow.raycastTarget = false;
+                }
+                widget.Drag = center.gameObject.AddComponent<DragSource>();
+                widget.Drag.From = from;
             }
             widget.Label = Ui.Label(labelTemplate, widget.Root.transform, "Label", -8f, 58f, 70f, 18f, 13f);
             widget.Label.alignment = TextAlignmentOptions.Top;
@@ -177,7 +205,7 @@ namespace ConcertHype
 
         public void SetDimmed(bool dimmed)
         {
-            if (Picture != null)
+            if (Picture != null && Picture.color.a > 0f)
                 Picture.color = dimmed ? new Color(0.45f, 0.45f, 0.45f, 1f) : Color.white;
             if (Bar != null)
             {
@@ -186,15 +214,90 @@ namespace ConcertHype
             }
         }
 
-        public void SetSelected(bool selected, bool empty = false)
+        public void SetHighlight(Highlight highlight, bool empty)
         {
             if (Background != null)
-                Background.color = selected ? (Color)mainScript.green32 : empty ? new Color(0.2f, 0.2f, 0.25f, 0.6f) : backgroundColor;
+                Background.color = highlight == Highlight.Allowed ? (Color)mainScript.green32 : highlight == Highlight.Refused ? (Color)mainScript.red32
+                    : empty ? new Color(0.2f, 0.2f, 0.25f, 0.6f) : backgroundColor;
         }
     }
 
     /// <summary>
-    /// The lineup panel on the next-song screen, in place of the game's center, stamina and accident readouts.
+    /// Press and hold drags the idol, a quick click is a click: as the game's own drags (GirlDraggable), held for
+    /// 0.1 s it's a drag.
+    /// </summary>
+    internal sealed class DragSource : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
+    {
+        public const float HoldSeconds = 0.1f;
+
+        public DropPoint From;
+
+        /// <summary>
+        /// The idol of a bench portrait; a place or the host place drags whoever is there.
+        /// </summary>
+        public int BenchMember = -1;
+
+        private Coroutine hold;
+        private bool dragging;
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (eventData.button != PointerEventData.InputButton.Left)
+                return;
+            dragging = false;
+            if (hold != null)
+                StopCoroutine(hold);
+            hold = StartCoroutine(Hold());
+        }
+
+        private IEnumerator Hold()
+        {
+            yield return new WaitForSeconds(HoldSeconds);
+            hold = null;
+            if (Input.GetMouseButton(0))
+                dragging = LineupPanel.BeginDrag(LineupPanel.MemberAt(From, BenchMember), From);
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (eventData.button != PointerEventData.InputButton.Left)
+                return;
+            if (hold != null)
+            {
+                StopCoroutine(hold);
+                hold = null;
+                LineupPanel.OnClick(LineupPanel.MemberAt(From, BenchMember), From);
+                return;
+            }
+            if (dragging)
+            {
+                dragging = false;
+                LineupPanel.EndDrag();
+            }
+        }
+
+        private void OnDisable()
+        {
+            hold = null;
+            if (dragging)
+            {
+                dragging = false;
+                LineupPanel.EndDrag(cancel: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Follows the mouse while an idol is dragged.
+    /// </summary>
+    internal sealed class PanelDriver : MonoBehaviour
+    {
+        private void Update() => LineupPanel.Tick();
+    }
+
+    /// <summary>
+    /// The lineup panel on the next-song screen, in place of the game's center, stamina and accident readouts: the
+    /// song's formation, the talk break's host place, and the lines saying how the song is expected to go.
     /// </summary>
     internal static class LineupPanel
     {
@@ -203,22 +306,25 @@ namespace ConcertHype
 
         private static Concert_Popup owner;
         private static GameObject root;
-        private static TextMeshProUGUI hype, expected, last, hint;
-        private static Button talkBreak, resetLineup;
+        private static TextMeshProUGUI hype, expected, last, hint, talkTitle, talkText;
+        private static Button resetLineup;
+        private static PortraitWidget hostPlace;
         private static readonly List<PortraitWidget> Slots = new List<PortraitWidget>();
         private static readonly List<GameObject> Hidden = new List<GameObject>();
+        private static TextMeshProUGUI startLabel;
+        private static string gameStartText;
         private static bool subscribed;
 
-        internal static int SelectedSlot = -1;
-        internal static bool PickingHost;
+        private static DragView drag;
+        private static string message;
 
         private static bool Alive => root != null && owner != null;
 
         public static void Show(Concert_Popup popup, ShowSession session)
         {
             Ensure(popup);
-            SelectedSlot = -1;
-            PickingHost = false;
+            drag = null;
+            message = null;
             HideVanilla(popup);
             root.SetActive(true);
             Render();
@@ -230,7 +336,10 @@ namespace ConcertHype
         public static void Hide(Concert_Popup popup)
         {
             if (Alive && ReferenceEquals(owner, popup))
+            {
                 root.SetActive(false);
+                SetStartLabel(null);
+            }
             foreach (GameObject obj in Hidden)
             {
                 if (obj != null)
@@ -271,21 +380,28 @@ namespace ConcertHype
             root = new GameObject(Name, typeof(RectTransform));
             root.transform.SetParent(container, false);
             Ui.Stretch(root);
+            root.AddComponent<PanelDriver>();
 
             GameObject labelTemplate = container.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
             hype = Ui.Label(labelTemplate, root.transform, "Hype", 30f, 148f, 470f, 28f, 18f);
             expected = Ui.Label(labelTemplate, root.transform, "Expected", 30f, 178f, 470f, 24f, 15f);
             last = Ui.Label(labelTemplate, root.transform, "Last", 30f, 206f, 470f, 48f, 15f);
-            hint = Ui.Label(labelTemplate, root.transform, "Hint", 30f, 262f, 440f, 80f, 14f);
-            talkBreak = Ui.Button(popup.NextSong_Button, root.transform, "TalkBreak", 30f, 360f, 175f, 39f, OnTalkBreak);
-            resetLineup = Ui.Button(popup.NextSong_Button, root.transform, "ResetLineup", 215f, 360f, 150f, 39f, OnReset);
+            talkTitle = Ui.Label(labelTemplate, root.transform, "TalkTitle", 30f, 258f, 300f, 22f, 15f);
+            hostPlace = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Host", DropPoint.Host);
+            Ui.Place(hostPlace.Root, 30f, 282f, 54f, 58f);
+            talkText = Ui.Label(labelTemplate, root.transform, "TalkText", 96f, 290f, 400f, 44f, 14f);
+            hint = Ui.Label(labelTemplate, root.transform, "Hint", 30f, 350f, 470f, 64f, 14f);
+            // Level with the game's Start button beside it, whose left edge leaves room for a narrower button
+            Rect start = Ui.Placed(popup.NextSong_Button, container);
+            bool level = start.height > 1f && start.yMin > 300f && start.yMax < 640f;
+            resetLineup = Ui.Button(popup.NextSong_Button, root.transform, "ResetLineup", 30f, level ? start.yMin : 420f, 128f, level ? start.height : 39f, OnReset);
             Ui.SetButtonText(resetLineup, Texts.Get("CONCERTHYPE__RESET_LINEUP"));
 
             for (int j = 0; j < GameReader.SenbatsuPositions; j++)
-            {
-                int slot = j;
-                Slots.Add(PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Slot " + j, () => OnSlot(slot)));
-            }
+                Slots.Add(PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Slot " + j, DropPoint.AtPlace(j)));
+
+            startLabel = popup.NextSong_Button.GetComponentInChildren<TextMeshProUGUI>(true);
+            gameStartText = null;
 
             if (!subscribed)
             {
@@ -293,7 +409,8 @@ namespace ConcertHype
                 {
                     if (Alive && root.activeInHierarchy && ShowSession.Current != null)
                         Render();
-                    CastRow.Render();
+                    else
+                        BenchColumn.Render(ShowSession.Current == null ? null : PanelView.Build(ShowSession.Current));
                 };
                 subscribed = true;
             }
@@ -305,13 +422,20 @@ namespace ConcertHype
             if (session == null || !Alive)
                 return;
             session.SyncHype();
-            PanelView view = PanelView.Build(session, SelectedSlot, PickingHost);
+            PanelView view = PanelView.Build(session, drag, message);
             hype.text = view.Hype;
             expected.text = view.Expected;
             last.text = view.Last;
             hint.text = view.Hint;
-            Ui.SetButtonText(talkBreak, view.TalkBreak);
-            Ui.Enable(talkBreak, view.TalkBreakEnabled);
+            talkTitle.text = view.TalkTitle;
+            talkText.text = view.TalkText;
+            SetStartLabel(view.StartLabel);
+
+            data_girls.girls hostGirl = view.Host < 0 ? null : session.Show.Girls[view.Host];
+            hostPlace.SetGirl(hostGirl);
+            Ui.SetEnergyBar(hostPlace.Bar, hostGirl is null ? 0 : session.State.Energy[view.Host]);
+            hostPlace.SetHighlight(view.HostHighlight, hostGirl is null);
+            hostPlace.SetDimmed(drag != null && drag.From.Spot == Spot.Host && view.Host >= 0 && drag.Over?.Spot != Spot.Host);
 
             int[] perRow = new int[5], placed = new int[5];
             foreach (SlotView slot in view.Slots)
@@ -330,10 +454,31 @@ namespace ConcertHype
                 Ui.Place(widget.Root, x, TriangleTop + slot.Row * RowHeight, 54f, 58f);
                 widget.SetGirl(slot.Member < 0 ? null : session.Show.Girls[slot.Member]);
                 Ui.SetEnergyBar(widget.Bar, slot.Member < 0 ? 0 : session.State.Energy[slot.Member]);
+                widget.SetDimmed(slot.Dragged);
                 string badge = PanelView.BadgeText(slot.Badge);
                 widget.Label.text = slot.Roll + (badge.Length > 0 && slot.Roll.Length > 0 ? " " : "") + badge;
-                widget.SetSelected(slot.Selected, slot.Member < 0);
+                widget.SetHighlight(slot.Highlight, slot.Member < 0);
             }
+            BenchColumn.Render(view);
+        }
+
+        /// <summary>
+        /// The Start button reads "Start Talk Break" while a host is placed, and the game's own text otherwise.
+        /// </summary>
+        private static void SetStartLabel(string text)
+        {
+            if (startLabel == null)
+                return;
+            if (text == null)
+            {
+                if (gameStartText != null)
+                    startLabel.text = gameStartText;
+                gameStartText = null;
+                return;
+            }
+            if (gameStartText == null)
+                gameStartText = startLabel.text;
+            startLabel.text = text;
         }
 
         private static void Safely(Action action, string what)
@@ -348,65 +493,172 @@ namespace ConcertHype
             }
         }
 
-        private static void OnSlot(int slot) => Safely(() =>
-        {
-            PickingHost = false;
-            SelectedSlot = SelectedSlot == slot ? -1 : slot;
-            Render();
-        }, "choosing a place");
-
-        private static void OnTalkBreak() => Safely(() =>
-        {
-            SelectedSlot = -1;
-            PickingHost = !PickingHost;
-            Render();
-        }, "the talk break button");
-
         private static void OnReset() => Safely(() =>
         {
-            SelectedSlot = -1;
-            PickingHost = false;
+            message = null;
             ShowSession.Current?.ResetLineup();
             Render();
         }, "resetting the lineup");
 
         /// <summary>
-        /// An idol in the cast column was clicked: she fills the chosen place, or hosts the talk break.
+        /// Who a drag from this spot picks up: the bench portrait's idol, or whoever is on the place or host place.
         /// </summary>
-        public static void OnCast(int member) => Safely(() =>
+        public static int MemberAt(DropPoint from, int benchMember)
         {
             ShowSession session = ShowSession.Current;
-            if (session == null || !Alive)
-                return;
-            if (PickingHost)
+            if (session == null)
+                return -1;
+            switch (from.Spot)
             {
-                if (session.State.IsAvailable(member))
+                case Spot.Place:
+                    return from.Place >= 0 && from.Place < session.Lineup.Length ? session.Lineup[from.Place] : -1;
+                case Spot.Host:
+                    return session.Host;
+                default:
+                    return benchMember;
+            }
+        }
+
+        private static DragAndDropManager Manager() => Camera.main?.GetComponent<mainScript>()?.Data?.GetComponent<DragAndDropManager>();
+
+        /// <summary>
+        /// The game's floating portrait follows the mouse, with its drag cursor and sound. False when she can't be
+        /// dragged now (nobody there, can't perform, or a song is playing).
+        /// </summary>
+        public static bool BeginDrag(int member, DropPoint from)
+        {
+            bool started = false;
+            Safely(() =>
+            {
+                ShowSession session = ShowSession.Current;
+                if (session == null || !Alive || !root.activeInHierarchy || session.Playing || session.State.Finished || member < 0 || drag != null)
+                    return;
+                if (from.Spot == Spot.Bench && !session.State.IsAvailable(member))
+                    return;
+                drag = new DragView { Member = member, From = from, Over = from.Spot == Spot.Bench ? (DropPoint?)null : from };
+                message = null;
+                started = true;
+                try
                 {
-                    PickingHost = false;
-                    session.CallMc(member, new PopupStage(owner));
+                    Manager()?.OnMouseDown(session.Show.Girls[member], staticVars.DragAndDrop.senbatsu);
                 }
-            }
-            else if (SelectedSlot >= 0 && session.Assign(SelectedSlot, member))
+                catch (Exception ex)
+                {
+                    Log.WarnOnce("drag", "couldn't show the dragged portrait; dragging works without it: " + ex.Message);
+                }
+                Render();
+            }, "picking up an idol");
+            return started;
+        }
+
+        /// <summary>
+        /// While dragging: the place or host place the mouse is over, found as the game finds a senbatsu drop,
+        /// by the button it hovers.
+        /// </summary>
+        public static void Tick()
+        {
+            if (drag == null)
+                return;
+            if (!Input.GetMouseButton(0))
             {
-                SelectedSlot = -1;
+                EndDrag();
+                return;
             }
+            DropPoint? over = Hovered();
+            if (!Nullable.Equals(over, drag.Over))
+            {
+                drag.Over = over;
+                Safely(Render, "showing the drop");
+            }
+        }
+
+        private static DropPoint? Hovered()
+        {
+            if (!Alive)
+                return null;
+            for (int j = 0; j < Slots.Count; j++)
+            {
+                if (Slots[j].Root.activeSelf && Slots[j].Hover != null && Slots[j].Hover.hovering)
+                    return DropPoint.AtPlace(j);
+            }
+            if (hostPlace.Hover != null && hostPlace.Hover.hovering)
+                return DropPoint.Host;
+            return null;
+        }
+
+        /// <summary>
+        /// The mouse let go: the drop by the rules, and the game's "plop" when it changed something; a refused drop
+        /// changes nothing and the hint says why.
+        /// </summary>
+        public static void EndDrag(bool cancel = false)
+        {
+            DragView done = drag;
+            if (done == null)
+                return;
+            drag = null;
+            ShowSession session = ShowSession.Current;
+            DragAndDropManager manager = Manager();
+            data_girls.girls girl = session != null && done.Member < session.Show.Girls.Count ? session.Show.Girls[done.Member] : null;
+            Safely(() =>
+            {
+                if (cancel || session == null || !Alive)
+                    return;
+                DropPoint target = Hovered() ?? done.Over ?? DropPoint.Bench;
+                DropResult result = session.Drop(done.Member, done.From, target);
+                message = result.Allowed ? null : result.Message;
+                if (result.Allowed && result.Changed)
+                    manager?.OnInsert();
+                Render();
+            }, "dropping an idol");
+            // The game's own drop ends the floating portrait and cursor. It runs a frame later, once the manager's
+            // per-frame check has seen that no senbatsu screen is open, so it never drops her on one.
+            if (manager != null && girl != null)
+                manager.StartCoroutine(GameDropNextFrame(manager, girl));
+        }
+
+        private static IEnumerator GameDropNextFrame(DragAndDropManager manager, data_girls.girls girl)
+        {
+            yield return null;
+            try
+            {
+                manager.OnMouseUp(girl, staticVars.DragAndDrop.senbatsu, null);
+            }
+            catch (Exception ex)
+            {
+                Log.WarnOnce("drop", "couldn't end the dragged portrait: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// A quick click: a bench idol takes the first empty place she can; otherwise the hint says to drag.
+        /// </summary>
+        public static void OnClick(int member, DropPoint from) => Safely(() =>
+        {
+            ShowSession session = ShowSession.Current;
+            if (session == null || !Alive || from.Spot != Spot.Bench || member < 0 || drag != null || session.Playing)
+                return;
+            DropResult result = session.Click(member);
+            message = result.Allowed ? null : result.Message;
+            if (result.Allowed && result.Changed)
+                Manager()?.OnInsert();
             Render();
-        }, "choosing an idol");
+        }, "clicking an idol");
     }
 
     /// <summary>
-    /// The popup's column of idols becomes the show's cast, with the show's energy, to click when changing the
-    /// lineup or picking a talk break host.
+    /// The popup's column of idols becomes the show's bench: everyone in the agency who isn't on stage or hosting,
+    /// with the show's energy, to drag onto a place or the host place. The column picks its columns and scale from
+    /// how many it holds.
     /// </summary>
-    internal static class CastRow
+    internal static class BenchColumn
     {
-        private const int RowsPerColumn = 7, MaxColumns = 3;
+        private const int MaxColumns = 4;
+        private const float PortraitWidth = 54f, PortraitHeight = 58f, CellWidth = 62f, CellHeight = 66f;
 
         private static Concert_Popup owner;
         private static readonly List<PortraitWidget> Widgets = new List<PortraitWidget>();
         private static GridLayoutGroup grid;
-        private static GridLayoutGroup.Constraint savedConstraint;
-        private static int savedCount;
+        private static bool gridWasEnabled;
         private static bool saved;
 
         public static void Build(Concert_Popup popup, ShowSession session)
@@ -417,68 +669,80 @@ namespace ConcertHype
             for (int i = column.childCount - 1; i >= 0; i--)
                 UnityEngine.Object.Destroy(column.GetChild(i).gameObject);
 
-            GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
-            int count = session.Show.Girls.Count;
-            float scale = Mathf.Min(1f, (float)(RowsPerColumn * MaxColumns) / Mathf.Max(1, count));
-            for (int m = 0; m < count; m++)
+            // The show lays the column out itself; the game's grid comes back for its own show
+            grid = column.GetComponent<GridLayoutGroup>();
+            if (grid != null)
             {
-                int member = m;
-                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, column, "Cast " + m, () => LineupPanel.OnCast(member));
+                if (!saved)
+                {
+                    gridWasEnabled = grid.enabled;
+                    saved = true;
+                }
+                grid.enabled = false;
+            }
+
+            GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
+            for (int m = 0; m < session.Show.Girls.Count; m++)
+            {
+                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, column, "Bench " + m, DropPoint.Bench);
                 widget.SetGirl(session.Show.Girls[m]);
-                widget.Root.transform.localScale = new Vector3(scale, scale, 1f);
-                // The column's cells are tight: a small label over the bottom of the picture
+                if (widget.Drag != null)
+                    widget.Drag.BenchMember = m;
+                // The cells are tight: a small label over the bottom of the picture
                 Ui.Place(widget.Label.gameObject, -8f, 34f, 70f, 14f);
                 widget.Label.fontSize = 12f;
                 widget.Label.color = Color.white;
                 widget.Label.fontStyle = FontStyles.Bold;
                 Widgets.Add(widget);
             }
-
-            grid = column.GetComponent<GridLayoutGroup>();
-            if (grid != null)
-            {
-                if (!saved)
-                {
-                    savedConstraint = grid.constraint;
-                    savedCount = grid.constraintCount;
-                    saved = true;
-                }
-                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-                grid.constraintCount = Mathf.Clamp(Mathf.CeilToInt(count / (float)RowsPerColumn), 1, MaxColumns);
-            }
-            Render();
+            Render(PanelView.Build(session));
         }
 
         /// <summary>
-        /// Puts the column's layout back for the game's own show.
+        /// Gives the column back to the game for its own show.
         /// </summary>
         public static void Restore()
         {
             if (grid != null && saved)
-            {
-                grid.constraint = savedConstraint;
-                grid.constraintCount = savedCount;
-            }
+                grid.enabled = gridWasEnabled;
+            saved = false;
             Widgets.Clear();
             owner = null;
         }
 
-        public static void Render()
+        public static void Render(PanelView view)
         {
             ShowSession session = ShowSession.Current;
-            if (session == null || owner == null || Widgets.Count != session.Show.Girls.Count)
+            if (view == null || session == null || owner == null || Widgets.Count != session.Show.Girls.Count)
                 return;
-            PanelView view = PanelView.Build(session, LineupPanel.SelectedSlot, LineupPanel.PickingHost);
+            Rect area = ((RectTransform)owner.Girls.transform).rect;
+            float scale = PanelView.BenchGrid(view.Bench.Count, area.width, area.height, CellWidth, CellHeight, MaxColumns, out int columns);
+            float blockWidth = columns * CellWidth * scale;
+            Dictionary<int, int> order = new Dictionary<int, int>();
+            for (int i = 0; i < view.Bench.Count; i++)
+                order[view.Bench[i].Member] = i;
+
             for (int m = 0; m < Widgets.Count; m++)
             {
                 PortraitWidget widget = Widgets[m];
                 if (widget.Root == null)
                     continue;
-                CastView cast = view.Cast[m];
-                Ui.SetEnergyBar(widget.Bar, cast.Energy);
-                widget.Label.text = cast.State;
-                // An idol who can't perform is dimmed; the label saying why stays readable
-                widget.SetDimmed(!cast.Available);
+                if (!order.TryGetValue(m, out int i))
+                {
+                    widget.Root.SetActive(false);
+                    continue;
+                }
+                BenchView bench = view.Bench[i];
+                widget.Root.SetActive(true);
+                // Right-aligned like the game's column, read left to right
+                float x = area.width - blockWidth + ((i % columns) * CellWidth + (CellWidth - PortraitWidth) / 2f) * scale;
+                float y = ((i / columns) * CellHeight + (CellHeight - PortraitHeight) / 2f) * scale;
+                Ui.Place(widget.Root, x, y, PortraitWidth, PortraitHeight);
+                widget.Root.transform.localScale = new Vector3(scale, scale, 1f);
+                Ui.SetEnergyBar(widget.Bar, bench.Energy);
+                widget.Label.text = bench.State;
+                // An idol who can't perform is dimmed and can't be dragged; the label saying why stays readable
+                widget.SetDimmed(!bench.Available);
             }
         }
     }

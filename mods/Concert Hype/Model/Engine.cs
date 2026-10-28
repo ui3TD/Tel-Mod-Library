@@ -31,7 +31,11 @@ namespace ConcertHype.Model
             for (int m = 0; m < members; m++)
                 state.Alignment[m] = setup.Songs.Select(song => Alignment(setup.Members[m].Appeal, song.Appeal)).ToArray();
 
-            double averageFans = members == 0 ? 0 : setup.Members.Average(member => member.Fans);
+            // Weighed against the setlist's idols: the rest of the agency on the bench doesn't change anyone's weight
+            List<Member> setlist = setup.Members.Where(member => member.InSetlist).ToList();
+            if (setlist.Count == 0)
+                setlist = setup.Members;
+            double averageFans = setlist.Count == 0 ? 0 : setlist.Average(member => member.Fans);
             for (int m = 0; m < members; m++)
                 state.FanWeight[m] = averageFans <= 0 ? 1 : Math.Max(config.FanWeightFloor, setup.Members[m].Fans / averageFans);
             return state;
@@ -471,7 +475,7 @@ namespace ConcertHype.Model
 
             Config config = state.Config;
             McResult result = new McResult { Host = host, Talk = state.Setup.Members[host].Talk, HypeBefore = state.Hype };
-            state.Hype = Clamp(state.Hype + config.KMc * result.Talk * (100 - state.Hype), state.Setup.HypeFloor, MaxHype);
+            state.Hype = McHype(state, host);
             result.HypeAfter = state.Hype;
             for (int m = 0; m < state.Energy.Length; m++)
             {
@@ -483,6 +487,12 @@ namespace ConcertHype.Model
             state.McInThisGap = true;
             return result;
         }
+
+        /// <summary>
+        /// The hype an MC hosted by this member would pull the crowd to now.
+        /// </summary>
+        public static double McHype(ShowState state, int host) =>
+            Clamp(state.Hype + state.Config.KMc * state.Setup.Members[host].Talk * (100 - state.Hype), state.Setup.HypeFloor, MaxHype);
 
         /// <summary>
         /// The peak-end score of a hype history; the starting hype when no song was played.

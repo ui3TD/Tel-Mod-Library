@@ -8,9 +8,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!--Copy this from the game's IM_Data\Managed folder. The lineup panel uses CanvasGroup-->
+		<!--Copy these from the game's IM_Data\Managed folder. The lineup panel uses CanvasGroup, and its drags the mouse button-->
 		<Reference Include="UnityEngine.UIModule">
 			<HintPath>$(dllDir)\UnityEngine.UIModule.dll</HintPath>
+		</Reference>
+		<Reference Include="UnityEngine.InputLegacyModule">
+			<HintPath>$(dllDir)\UnityEngine.InputLegacyModule.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 </Project>

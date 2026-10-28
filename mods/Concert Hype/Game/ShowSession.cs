@@ -63,12 +63,20 @@ namespace ConcertHype
         /// </summary>
         public int[] Lineup;
 
+        /// <summary>
+        /// The idol on the host place: Start plays a talk break she hosts before the next song. -1 for none.
+        /// </summary>
+        public int Host = -1;
+
         public SongResult LastResult;
         public McResult LastMc;
 
         internal bool StartHypeApplied;
         internal SEvent_Concerts._concert._song PendingItem;
         internal SongResult Pending;
+        internal SEvent_Concerts._concert._mc PendingTalkItem;
+        internal McResult PendingTalk;
+        private bool[] forcedBeforeTalk;
 
         private readonly StringBuilder log = new StringBuilder();
 
@@ -97,7 +105,8 @@ namespace ConcertHype
             LastScore = null;
             LastScoreConcert = null;
             Current.log.AppendLine($"Concert Hype show: {concert.Title} ({concert.Venue}), seed {seed}");
-            Current.log.AppendLine($"Cast: {string.Join(", ", show.Setup.Members.Select(m => m.Name))}");
+            Current.log.AppendLine($"Setlist idols: {string.Join(", ", show.Setup.Members.Where(m => m.InSetlist).Select(m => m.Name))}");
+            Current.log.AppendLine($"Others on the bench: {show.Setup.Members.Count(m => !m.InSetlist)}");
             Current.log.AppendLine($"Capacity filled {F(show.Setup.CapacityFilled)}, production {F(show.Setup.Production)}, hype floor {F(show.Setup.HypeFloor)}");
             Changed?.Invoke();
             return Current;
@@ -121,42 +130,41 @@ namespace ConcertHype
         public string Name(int member) => member < 0 ? "nobody" : State.Setup.Members[member].Name;
 
         /// <summary>
+        /// A song or talk break is playing.
+        /// </summary>
+        public bool Playing => Pending != null || PendingTalk != null;
+
+        /// <summary>
         /// Between songs the show starts from the concert's hype, which the game's start, talk breaks and other mods
         /// may have changed.
         /// </summary>
         public void SyncHype()
         {
-            if (Pending == null)
+            if (!Playing)
                 State.Hype = Engine.Clamp(Concert.Hype, State.Setup.HypeFloor, Engine.MaxHype);
         }
 
         public SongPreview Preview() => State.Finished ? null : Engine.Preview(State, Lineup);
 
         /// <summary>
-        /// Puts a bench idol in a slot. Changing a slot whose original can perform is the song's one substitution,
-        /// so it puts back any other one. False when the result wouldn't be legal.
+        /// An idol dragged from one spot to another, by the drop rules. Refused drops change nothing.
         /// </summary>
-        public bool Assign(int slot, int member)
+        public DropResult Drop(int member, DropPoint from, DropPoint to) => Apply(DropRules.Drop(State, Lineup, Host, member, from, to));
+
+        /// <summary>
+        /// A quick click on a bench idol.
+        /// </summary>
+        public DropResult Click(int member) => Apply(DropRules.Click(State, Lineup, Host, member));
+
+        private DropResult Apply(DropResult result)
         {
-            if (State.Finished || slot < 0 || slot >= Lineup.Length || Array.IndexOf(Lineup, member) >= 0)
-                return false;
-            Song song = State.CurrentSong;
-            bool[] forced = Engine.ForcedSlots(State);
-            int[] next = (int[])Lineup.Clone();
-            next[slot] = member;
-            if (!forced[slot] && member != song.Slots[slot].Original)
+            if (result.Allowed && result.Changed && !Playing && !State.Finished)
             {
-                for (int k = 0; k < next.Length; k++)
-                {
-                    if (k != slot && !forced[k] && next[k] != song.Slots[k].Original)
-                        next[k] = song.Slots[k].Original;
-                }
+                Lineup = result.Lineup;
+                Host = result.Host;
+                Changed?.Invoke();
             }
-            if (Engine.Validate(State, next) != null)
-                return false;
-            Lineup = next;
-            Changed?.Invoke();
-            return true;
+            return result;
         }
 
         public void ResetLineup()
@@ -167,18 +175,64 @@ namespace ConcertHype
             Changed?.Invoke();
         }
 
-        public McResult CallMc(int host, IConcertStage stage)
+        /// <summary>
+        /// The popup's item now is the show's next song.
+        /// </summary>
+        private void CheckStep(IConcertStage stage)
         {
+            var items = stage.Concert.SetListItems;
+            int i = stage.SongCounter;
+            if (Playing || State.Finished || i < 0 || i >= items.Count || !ReferenceEquals(items[i], Show.Items[State.SongIndex]))
+                throw new InvalidOperationException($"the popup is on item {i} of {items.Count}, the show on song {State.SongIndex}");
+        }
+
+        /// <summary>
+        /// The player started a talk break: the host's MC plays in the model now, and a talk break item for her goes
+        /// into the setlist where the popup is, so the popup plays it as the game plays a planned one. The next
+        /// song stays next.
+        /// </summary>
+        public void StartTalkBreak(IConcertStage stage)
+        {
+            CheckStep(stage);
+            int host = Host;
             State.Hype = stage.Concert.Hype;
+            bool[] forced = Engine.ForcedSlots(State);
             McResult result = Engine.CallMc(State, host);
-            stage.AddHype((float)(result.HypeAfter - stage.Concert.Hype), true);
-            LastMc = result;
-            // Idols back from absence or rest may make the planned lineup illegal: keep it only if it still is
-            if (Engine.Validate(State, Lineup) != null)
-                Lineup = Engine.DefaultLineup(State);
-            log.AppendLine($"MC break hosted by {Name(host)} (talk {F(result.Talk)}): hype {F(result.HypeBefore)} -> {F(result.HypeAfter)}");
+            forcedBeforeTalk = forced;
+
+            SEvent_Concerts._concert._mc item = new SEvent_Concerts._concert._mc();
+            item.SetGirl(Show.Girls[host], 0);
+            var items = stage.Concert.SetListItems;
+            items.Insert(stage.SongCounter, item);
+            item.SetTitle(TalkTitle(items.Take(stage.SongCounter + 1).Count(i => i.isMC())));
+
+            PendingTalkItem = item;
+            PendingTalk = result;
+            Host = -1;
+            log.AppendLine();
+            log.AppendLine($"{item.GetTitle()} hosted by {Name(host)} (talk {F(result.Talk)}): hype {F(result.HypeBefore)} -> {F(result.HypeAfter)}");
             Changed?.Invoke();
-            return result;
+        }
+
+        /// <summary>
+        /// "Talk Break #2", as the game names the setlist's talk breaks.
+        /// </summary>
+        private static string TalkTitle(int number)
+        {
+            string title = Language.Data != null && Language.Data.TryGetValue("CONCERT__TALK_BREAK", out string text) && !string.IsNullOrEmpty(text) ? text : "Talk Break";
+            return title + " #" + number;
+        }
+
+        /// <summary>
+        /// The hype the popup animates for this talk break item, if it is the show's talk break being played.
+        /// </summary>
+        public bool HypeForTalk(SEvent_Concerts._concert._mc item, out float change)
+        {
+            change = 0;
+            if (PendingTalk == null || !ReferenceEquals(item, PendingTalkItem))
+                return false;
+            change = (float)(PendingTalk.HypeAfter - PendingTalk.HypeBefore);
+            return true;
         }
 
         /// <summary>
@@ -186,8 +240,7 @@ namespace ConcertHype
         /// </summary>
         public void BeforeSong(IConcertStage stage)
         {
-            if (Pending != null || stage.SongCounter != State.SongIndex)
-                throw new InvalidOperationException($"the popup is on item {stage.SongCounter}, the show on song {State.SongIndex}");
+            CheckStep(stage);
             State.Hype = stage.Concert.Hype;
             if (Engine.Validate(State, Lineup) != null)
                 Lineup = Engine.DefaultLineup(State);
@@ -209,25 +262,31 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// The song's animation ended: land the hype exactly on the model's value and plan the next song.
+        /// The song's or talk break's animation ended: land the hype exactly on the model's value. After a song the
+        /// next one's default lineup is planned. After a talk break the same song comes next with the planned
+        /// lineup, except that an idol back from absence or rest takes her own place back from its fill; if that
+        /// isn't legal, the song's default lineup.
         /// </summary>
         public void AfterSong(IConcertStage stage)
         {
+            if (PendingTalk != null)
+            {
+                McResult talk = PendingTalk;
+                Land(stage, talk.HypeAfter, true, () => ReferenceEquals(LastMc, talk));
+                LastMc = talk;
+                PendingTalk = null;
+                PendingTalkItem = null;
+                Lineup = AfterReturns(Lineup, forcedBeforeTalk);
+                if (Engine.Validate(State, Lineup) != null)
+                    Lineup = Engine.DefaultLineup(State);
+                Changed?.Invoke();
+                return;
+            }
             if (Pending == null)
                 return;
             SongResult song = Pending;
-            stage.AddHype((float)(song.HypeAfter - stage.Concert.Hype), false);
-            // The game's hype animation can take its last step after the song ends: land again a frame later.
-            // A bigger difference is another mod's doing and stays. After the last song the score takes over.
-            if (!State.Finished)
-            {
-                stage.NextFrame(() =>
-                {
-                    float drift = (float)song.HypeAfter - stage.Concert.Hype;
-                    if (ReferenceEquals(Current, this) && Pending == null && ReferenceEquals(LastResult, song) && drift != 0f && Math.Abs(drift) < MaxDrift)
-                        stage.AddHype(drift, false);
-                });
-            }
+            // After the last song the score takes over
+            Land(stage, song.HypeAfter, !State.Finished, () => ReferenceEquals(LastResult, song));
             LastResult = song;
             LastMc = null;
             Pending = null;
@@ -235,6 +294,41 @@ namespace ConcertHype
             if (!State.Finished)
                 Lineup = Engine.DefaultLineup(State);
             Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// The lineup with each place that had to be filled before, and no longer has to, given back to its idol.
+        /// </summary>
+        private int[] AfterReturns(int[] lineup, bool[] forcedBefore)
+        {
+            Song song = State.CurrentSong;
+            if (song == null || forcedBefore == null || forcedBefore.Length != lineup.Length)
+                return lineup;
+            int[] next = (int[])lineup.Clone();
+            for (int j = 0; j < next.Length; j++)
+            {
+                if (forcedBefore[j] && !Engine.IsForced(State, song, j))
+                    next[j] = song.Slots[j].Original;
+            }
+            return next;
+        }
+
+        /// <summary>
+        /// Sets the concert's hype to the model's. The game's hype animation can take its last step after the song
+        /// ends, so it lands again a frame later while nothing else has played; a bigger difference is another
+        /// mod's doing and stays.
+        /// </summary>
+        private void Land(IConcertStage stage, double hype, bool again, Func<bool> stillLast)
+        {
+            stage.AddHype((float)(hype - stage.Concert.Hype), false);
+            if (!again)
+                return;
+            stage.NextFrame(() =>
+            {
+                float drift = (float)hype - stage.Concert.Hype;
+                if (ReferenceEquals(Current, this) && !Playing && stillLast() && drift != 0f && Math.Abs(drift) < MaxDrift)
+                    stage.AddHype(drift, false);
+            });
         }
 
         /// <summary>

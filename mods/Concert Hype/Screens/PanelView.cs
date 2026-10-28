@@ -14,6 +14,16 @@ namespace ConcertHype
         Empty,
     }
 
+    /// <summary>
+    /// How a place or the host place shows the idol dragged over it.
+    /// </summary>
+    public enum Highlight
+    {
+        None,
+        Allowed,
+        Refused,
+    }
+
     public sealed class SlotView
     {
         public int Member = -1;
@@ -25,11 +35,17 @@ namespace ConcertHype
         /// </summary>
         public string Roll = "";
 
-        public bool Selected;
+        public Highlight Highlight;
+
+        /// <summary>
+        /// The idol here is being dragged away.
+        /// </summary>
+        public bool Dragged;
     }
 
-    public sealed class CastView
+    public sealed class BenchView
     {
+        public int Member;
         public double Energy;
         public bool Available;
 
@@ -37,40 +53,85 @@ namespace ConcertHype
         /// Why she can't perform ("out 2", "resting"), or empty.
         /// </summary>
         public string State = "";
-
-        public bool OnStage;
     }
 
     /// <summary>
-    /// What the lineup panel and the cast column show, worked out from the session alone (no Unity), so the tests
-    /// can check it.
+    /// An idol being dragged, and where she is over now (null: over nothing that takes her).
+    /// </summary>
+    public sealed class DragView
+    {
+        public int Member;
+        public DropPoint From;
+        public DropPoint? Over;
+    }
+
+    /// <summary>
+    /// What the lineup panel and the bench column show, worked out from the session alone (no Unity), so the tests
+    /// can check it. While an idol is dragged over a place or the host place, the panel shows the lineup the drop
+    /// would make, or why it's refused.
     /// </summary>
     public sealed class PanelView
     {
         public List<SlotView> Slots = new List<SlotView>();
-        public List<CastView> Cast = new List<CastView>();
+
+        /// <summary>
+        /// The idols who aren't on stage or on the host place, in cast order.
+        /// </summary>
+        public List<BenchView> Bench = new List<BenchView>();
+
         public string Hype = "";
         public string Expected = "";
         public string Last = "";
         public string Hint = "";
-        public string TalkBreak = "";
-        public bool TalkBreakEnabled;
+        public string TalkTitle = "";
+        public string TalkText = "";
+        public int Host = -1;
+        public Highlight HostHighlight;
+
+        /// <summary>
+        /// The Start button's label, or null for the game's own ("Start Next Song").
+        /// </summary>
+        public string StartLabel;
 
         public static string Signed(double value) => (value >= 0 ? "+" : "") + Math.Round(value).ToString(CultureInfo.InvariantCulture);
 
         private static string Whole(double value) => Math.Round(value).ToString(CultureInfo.InvariantCulture);
 
-        public static PanelView Build(ShowSession session, int selectedSlot, bool pickingHost)
+        /// <param name="message">The last refused drop's reason, shown in the hint line.</param>
+        public static PanelView Build(ShowSession session, DragView drag = null, string message = null)
         {
             ShowState state = session.State;
             PanelView view = new PanelView();
-            Song song = state.CurrentSong;
-            SongPreview preview = session.Preview();
-            if (song != null && preview != null)
+            int[] lineup = session.Lineup;
+            int host = session.Host;
+            string hint = string.IsNullOrEmpty(message) ? Texts.Get("CONCERTHYPE__HINT_DRAG") : message;
+
+            // Over nothing that takes her, the drop goes to the bench
+            DropPoint target = drag?.Over ?? DropPoint.Bench;
+            Highlight over = Highlight.None;
+            if (drag != null && !state.Finished)
             {
+                DropResult result = DropRules.Drop(state, lineup, host, drag.Member, drag.From, target);
+                over = result.Allowed ? Highlight.Allowed : Highlight.Refused;
+                if (result.Allowed)
+                {
+                    lineup = result.Lineup;
+                    host = result.Host;
+                }
+                else
+                {
+                    hint = result.Message;
+                }
+            }
+
+            Song song = state.CurrentSong;
+            if (song != null)
+            {
+                SongPreview preview = Engine.Preview(state, lineup);
                 for (int j = 0; j < song.Slots.Count; j++)
                 {
-                    int member = session.Lineup[j];
+                    int member = lineup[j];
+                    DropPoint place = DropPoint.AtPlace(j);
                     view.Slots.Add(new SlotView
                     {
                         Member = member,
@@ -78,7 +139,9 @@ namespace ConcertHype
                         Badge = member < 0 ? SlotBadge.Empty : member == song.Slots[j].Original ? SlotBadge.Original
                             : preview.Forced[j] ? SlotBadge.Fill : SlotBadge.Substitute,
                         Roll = preview.Slots[j] == null ? "" : Whole(preview.Slots[j].Expected),
-                        Selected = j == selectedSlot,
+                        Highlight = drag != null && target.Equals(place) && !drag.From.Equals(place) ? over : Highlight.None,
+                        // In the hand: still in her place in the preview, and not dropped back on it or on the host place
+                        Dragged = drag != null && drag.From.Equals(place) && !target.Equals(place) && target.Spot != Spot.Host && member == drag.Member,
                     });
                 }
                 double h = state.Hype, band = state.Config.NoveltyBlendBand;
@@ -88,20 +151,29 @@ namespace ConcertHype
             }
 
             view.Last = LastLine(session);
-            view.Hint = Texts.Get(pickingHost ? "CONCERTHYPE__HINT_HOST" : selectedSlot >= 0 ? "CONCERTHYPE__HINT_PICK" : "CONCERTHYPE__HINT_PLACE");
-            view.TalkBreak = Texts.Format("CONCERTHYPE__TALK_BREAK", state.McCharges);
-            view.TalkBreakEnabled = Engine.CanCallMc(state) == null;
+            view.Hint = hint;
+            view.TalkTitle = Texts.Format("CONCERTHYPE__TALK_BREAK", state.McCharges);
+            view.Host = host;
+            view.HostHighlight = drag != null && target.Spot == Spot.Host && drag.From.Spot != Spot.Host ? over : Highlight.None;
+            string blocked = DropRules.TalkBlocked(state);
+            view.TalkText = host >= 0
+                ? Texts.Format("CONCERTHYPE__TALK_PULL", session.Name(host), Whole(Engine.McHype(state, host)))
+                : Texts.Get(blocked ?? "CONCERTHYPE__TALK_DROP");
+            view.StartLabel = session.Host >= 0 ? Texts.Get("CONCERTHYPE__START_TALK") : null;
 
+            // The bench is the committed lineup's: a hover preview doesn't move idols in or out of the column
             for (int m = 0; m < state.Setup.Members.Count; m++)
             {
+                if (session.Lineup.Contains(m) || m == session.Host)
+                    continue;
                 string why = state.Absence[m] > 0 ? Texts.Format("CONCERTHYPE__OUT", state.Absence[m])
                     : state.Exhausted[m] ? Texts.Get("CONCERTHYPE__RESTING") : "";
-                view.Cast.Add(new CastView
+                view.Bench.Add(new BenchView
                 {
+                    Member = m,
                     Energy = state.Energy[m],
                     Available = state.IsAvailable(m),
                     State = why,
-                    OnStage = session.Lineup.Contains(m),
                 });
             }
             return view;
@@ -136,5 +208,28 @@ namespace ConcertHype
 
         public static string ScoreLine(Score score) =>
             Texts.Format("CONCERTHYPE__SCORE", Whole(score.Total), Whole(score.Average), Whole(score.Peak), Whole(score.Finale));
+
+        /// <summary>
+        /// The bench column's grid for this many idols in an area this size: the column count that lets the cells
+        /// be largest, never above their full size, with fewer columns on a tie. Returns the cells' scale.
+        /// </summary>
+        public static float BenchGrid(int count, float width, float height, float cellWidth, float cellHeight, int maxColumns, out int columns)
+        {
+            columns = 1;
+            if (count <= 0)
+                return 1f;
+            float bestScale = 0f;
+            for (int c = 1; c <= Math.Max(1, maxColumns); c++)
+            {
+                int rows = (count + c - 1) / c;
+                float scale = Math.Min(1f, Math.Min(width / (c * cellWidth), height / (rows * cellHeight)));
+                if (scale > bestScale + 1e-4f)
+                {
+                    bestScale = scale;
+                    columns = c;
+                }
+            }
+            return bestScale;
+        }
     }
 }

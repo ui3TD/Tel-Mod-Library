@@ -37,6 +37,12 @@ namespace ConcertHype.Model
         /// False for an idol who can't perform at all in this show.
         /// </summary>
         public bool CanPerform = true;
+
+        /// <summary>
+        /// She is in one of the setlist's singles or a setup center pick; false for the rest of the agency, who
+        /// can be brought in from the bench.
+        /// </summary>
+        public bool InSetlist = true;
     }
 
     /// <summary>

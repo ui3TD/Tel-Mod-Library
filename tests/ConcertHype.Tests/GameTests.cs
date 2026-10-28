@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Xunit;
 using _concert = SEvent_Concerts._concert;
 
@@ -66,6 +67,55 @@ namespace ConcertHype.Tests
             Assert.Equal(new[] { a, b, c, d }, show.Girls, ReferenceEqualityComparer.Instance);
             Assert.Equal(-1, show.Setup.Songs[0].PresetSubstitute);  // b is in S1's senbatsu: nothing changes
             Assert.Equal(3, show.Setup.Songs[1].PresetSubstitute);
+        }
+
+        [Fact]
+        public void TheBench_HoldsEveryActiveIdolInTheAgency_AfterTheSetlistsIdols()
+        {
+            data_girls.girls other1 = GameFixture.Idol("Other1"), a = GameFixture.Idol("A"), resting = GameFixture.Idol("Resting"),
+                b = GameFixture.Idol("B"), other2 = GameFixture.Idol("Other2");
+            resting.status = data_girls._status.hiatus;
+            GameShow show = GameReader.Read(GameFixture.Concert(GameFixture.Single("S", a, b)), new Config());
+
+            Assert.Equal(new[] { a, b, other1, other2 }, show.Girls, ReferenceEqualityComparer.Instance);
+            Assert.Equal(new[] { true, true, false, false }, show.Setup.Members.Select(m => m.InSetlist));
+            Assert.Equal(4, show.Setup.Skill.Length);
+        }
+
+        [Fact]
+        public void FanWeights_AreAgainstTheSetlistsIdols_SoTheRestOfTheAgencyChangesNoWeight()
+        {
+            GameFixture.Idol("Small", fans: 10);
+            data_girls.girls a = GameFixture.Idol("A", fans: 1000), b = GameFixture.Idol("B", fans: 3000);
+            ShowSetup setup = GameReader.Read(GameFixture.Concert(GameFixture.Single("S", a, b)), new Config()).Setup;
+            ShowState state = Engine.Start(setup, new Config(), 1);
+            Assert.Equal(new[] { 0.5, 1.5, 0.25 }, state.FanWeight.Select(w => Math.Round(w, 9)));
+        }
+
+        [Fact]
+        public void Talk_IsTheGamesTalkBreakSkill()
+        {
+            data_girls.girls a = GameFixture.Idol("A", funny: 81, smart: 60);
+            ShowSetup setup = GameReader.Read(GameFixture.Concert(GameFixture.Single("S", a)), new Config()).Setup;
+            Assert.Equal(0.7, setup.Members[0].Talk, 9);  // floor((81 + 60) / 2) = 70
+        }
+
+        private static void PlusFive(ref int __result) => __result += 5;
+
+        [Fact]
+        public void Talk_KeepsOtherModsChangesToTheTalkBreakSkill()
+        {
+            Harmony harmony = new("tests.ConcertHype.OtherMod");
+            harmony.Patch(AccessTools.Method(typeof(_concert._mc), nameof(_concert._mc.GetSkillValue)), postfix: new HarmonyMethod(typeof(GameReaderTests), nameof(PlusFive)));
+            try
+            {
+                data_girls.girls a = GameFixture.Idol("A", funny: 80, smart: 60);
+                Assert.Equal(0.75, GameReader.Read(GameFixture.Concert(GameFixture.Single("S", a)), new Config()).Setup.Members[0].Talk, 9);
+            }
+            finally
+            {
+                harmony.UnpatchSelf();
+            }
         }
 
         [Fact]
@@ -256,26 +306,37 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void Assign_FillsFreely_ButKeepsOneSubstitution()
+        public void Drops_ChangeTheLineupAndHost_RefusedOnesNothing_AndResetPutsTheLineupBack()
         {
             _concert concert = ThreeSongs();
             ShowSession session = GameFixture.Begin(concert);
-            Assert.Equal(new[] { 0, 1, 2 }, session.Lineup);
+            List<int> changes = new();
+            Action changed = () => changes.Add(1);
+            ShowSession.Changed += changed;
+            try
+            {
+                Assert.True(session.Drop(5, DropPoint.Bench, DropPoint.AtPlace(0)).Allowed);
+                Assert.Equal(new[] { 5, 1, 2 }, session.Lineup);
+                Assert.False(session.Drop(1, DropPoint.AtPlace(1), DropPoint.Bench).Allowed);
+                Assert.Equal(new[] { 5, 1, 2 }, session.Lineup);
+                Assert.Single(changes);
+                session.ResetLineup();
+                Assert.Equal(new[] { 0, 1, 2 }, session.Lineup);
 
-            Assert.True(session.Assign(0, 5));
-            Assert.Equal(new[] { 5, 1, 2 }, session.Lineup);
-            Assert.True(session.Assign(2, 6));          // a second substitution puts the first back
-            Assert.Equal(new[] { 0, 1, 6 }, session.Lineup);
-            Assert.False(session.Assign(1, 6));         // already on stage
-            Assert.True(session.Assign(2, 2));          // her own place back
-            Assert.Equal(new[] { 0, 1, 2 }, session.Lineup);
-            session.Assign(0, 5);
-            session.ResetLineup();
-            Assert.Equal(new[] { 0, 1, 2 }, session.Lineup);
+                new FakeStage(concert).PlaySong(session);
+                session.Drop(7, DropPoint.Bench, DropPoint.Host);
+                Assert.Equal(7, session.Host);
+                session.Drop(7, DropPoint.Host, DropPoint.Bench);
+                Assert.Equal(-1, session.Host);
+            }
+            finally
+            {
+                ShowSession.Changed -= changed;
+            }
         }
 
         [Fact]
-        public void CallMc_PullsTheCrowdThroughThePopup()
+        public void ATalkBreak_PlaysAsASetlistItem_ThenTheSameSongComesNext()
         {
             _concert concert = ThreeSongs();
             concert.Hype = 50;
@@ -283,12 +344,96 @@ namespace ConcertHype.Tests
             FakeStage stage = new(concert);
             stage.PlaySong(session);
             concert.Hype = 40;
+            session.Drop(7, DropPoint.Bench, DropPoint.Host);
+            _concert._song second = (_concert._song)concert.SetListItems[1];
 
-            McResult mc = session.CallMc(4, stage);
-            Assert.Equal(40, mc.HypeBefore, 4);
-            Assert.Equal((float)mc.HypeAfter, concert.Hype, 4);
-            Assert.True(stage.Calls.Last().animate);
-            Assert.Same(mc, session.LastMc);
+            session.StartTalkBreak(stage);
+            _concert._mc talk = Assert.IsType<_concert._mc>(concert.SetListItems[1]);
+            Assert.Same(second, concert.SetListItems[2]);
+            Assert.Equal(4, concert.SetListItems.Count);
+            Assert.Same(session.Show.Girls[7], talk.Girls[0]);
+            Assert.Equal("Talk Break #1", talk.GetTitle());
+            Assert.Equal(-1, session.Host);
+            Assert.True(session.Playing);
+
+            // The popup animates the pull, which only this item gets
+            Assert.True(session.HypeForTalk(talk, out float pull));
+            Assert.False(session.HypeForTalk(new _concert._mc(), out _));
+            Assert.Equal((float)(session.PendingTalk.HypeAfter - 40), pull, 4);
+            Assert.True(pull > 0);
+            stage.AddHype(pull + 0.2f, false);
+            session.AfterSong(stage);
+            Assert.Equal((float)session.LastMc.HypeAfter, concert.Hype, 4);
+            stage.AddHype(-0.3f, false);
+            stage.EndFrame();
+            Assert.Equal((float)session.LastMc.HypeAfter, concert.Hype, 4);
+            Assert.False(session.Playing);
+            Assert.Equal(1, session.State.SongIndex);
+            Assert.Equal(1, session.State.McCharges);
+
+            // The popup moves on to the song: matched by reference, past the inserted item
+            stage.SongCounter = 2;
+            stage.PlaySong(session);
+            Assert.Equal(2, session.State.SongIndex);
+            Assert.Null(session.LastMc);
+        }
+
+        [Fact]
+        public void ATalkBreak_KeepsThePlannedChange_AndGivesAReturningIdolHerPlaceBack()
+        {
+            _concert concert = ThreeSongs();
+            ShowSession session = GameFixture.Begin(concert);
+            FakeStage stage = new(concert);
+            stage.PlaySong(session);
+            session.Drop(5, DropPoint.Bench, DropPoint.AtPlace(0));
+            int[] planned = (int[])session.Lineup.Clone();
+            session.Drop(7, DropPoint.Bench, DropPoint.Host);
+            stage.PlaySong(session);
+            Assert.Equal(planned, session.Lineup);
+
+            // Song 3 (5, 6, 0) with its center out for one more song: a free fill there, and a change on place 2
+            stage.PlaySong(session);
+            session.State.Absence[5] = 1;
+            session.Lineup = Engine.DefaultLineup(session.State);
+            int fill = session.Lineup[0];
+            int sub = Enumerable.Range(0, 8).First(m => !new[] { 5, 6, 0, fill }.Contains(m));
+            Assert.True(session.Drop(sub, DropPoint.Bench, DropPoint.AtPlace(2)).Changed);
+            int host = Enumerable.Range(0, 8).First(m => !session.Lineup.Contains(m) && m != 5);
+            session.Drop(host, DropPoint.Bench, DropPoint.Host);
+            // The talk break brings her back: she takes her place from the fill, and the player's change stays
+            stage.PlaySong(session);
+            Assert.Equal(0, session.State.Absence[5]);
+            Assert.Equal(new[] { 5, 6, sub }, session.Lineup);
+            Assert.DoesNotContain(fill, session.Lineup);
+        }
+
+        [Fact]
+        public void APendingTalkBreak_KeepsTheShowsHype_UntilItEnds()
+        {
+            _concert concert = ThreeSongs();
+            concert.Hype = 50;
+            ShowSession session = GameFixture.Begin(concert);
+            FakeStage stage = new(concert);
+            stage.PlaySong(session);
+            session.Drop(7, DropPoint.Bench, DropPoint.Host);
+            session.StartTalkBreak(stage);
+            double model = session.State.Hype;
+            concert.Hype = 10;  // part way through the popup's animation
+            session.SyncHype();
+            Assert.Equal(model, session.State.Hype);
+        }
+
+        [Fact]
+        public void APopupOutOfStepWithATalkBreak_IsAnError()
+        {
+            _concert concert = ThreeSongs();
+            ShowSession session = GameFixture.Begin(concert);
+            FakeStage stage = new(concert);
+            stage.PlaySong(session);
+            session.Drop(7, DropPoint.Bench, DropPoint.Host);
+            session.StartTalkBreak(stage);
+            // Another mod kept the popup from playing it: the next Start finds the show still in its talk break
+            Assert.Throws<InvalidOperationException>(() => session.BeforeSong(stage));
         }
     }
 
@@ -304,6 +449,8 @@ namespace ConcertHype.Tests
             foreach (Type patchClass in new[]
             {
                 typeof(SEvent_Concerts__concert__song_GetHype), typeof(SEvent_Concerts__concert__song_GetStaminaCost),
+                typeof(SEvent_Concerts__concert__mc_GetHype), typeof(SEvent_Concerts__concert__mc_GetStaminaCost),
+                typeof(SEvent_Concerts__concert_StaminaToRestore),
                 typeof(SEvent_Concerts__concert_RecalcProjectedValues), typeof(SEvent_Concerts__concert__projectedValues_GetRevenue),
                 typeof(SEvent_Concerts__concert__projectedValues_GetHype),
             })
@@ -346,6 +493,72 @@ namespace ConcertHype.Tests
             Assert.Equal(30, song.GetStaminaCost());
             GameFixture.Begin(concert);
             Assert.Equal(0, song.GetStaminaCost());
+        }
+
+        [Fact]
+        public void TalkBreakHype_IsTheModelsPull_ForTheShowsTalkBreakOnly()
+        {
+            _concert concert = TwoSongs();
+            concert.Hype = 30;
+            _concert._mc planned = new();
+            planned.SetGirl(GameFixture.Idol("Host", funny: 90, smart: 90), 0);
+            float vanilla = planned.GetHype(concert);
+
+            ShowSession session = GameFixture.Begin(concert);
+            FakeStage stage = new(concert);
+            stage.PlaySong(session);
+            session.Drop(4, DropPoint.Bench, DropPoint.Host);
+            session.StartTalkBreak(stage);
+            _concert._mc talk = (_concert._mc)concert.SetListItems[1];
+            Assert.Equal((float)(session.PendingTalk.HypeAfter - session.PendingTalk.HypeBefore), talk.GetHype(concert), 4);
+            Assert.Equal(vanilla, planned.GetHype(concert));
+        }
+
+        [Fact]
+        public void TalkBreaks_CostAndRestoreNoRealStamina_DuringTheShow()
+        {
+            _concert concert = TwoSongs(), other = TwoSongs();
+            _concert._mc talk = new();
+            talk.SetGirl(GameFixture.Idol("Host"), 0);
+            Assert.Equal(40, talk.GetStaminaCost());
+            Assert.Equal(15, concert.StaminaToRestore());
+            GameFixture.Begin(concert);
+            Assert.Equal(0, talk.GetStaminaCost());
+            Assert.Equal(0, concert.StaminaToRestore());
+            Assert.Equal(15, other.StaminaToRestore());
+        }
+
+        [Fact]
+        public void SongLength_ComesFromPace_AtTheGamesOneAnchor()
+        {
+            MethodBase moveNext = Concert_Popup_PlaySong.TargetMethod();
+            Assert.NotNull(moveNext);
+            List<HarmonyLib.CodeInstruction> original = PatchProcessor.GetOriginalInstructions(moveNext);
+            MethodInfo pace = AccessTools.Method(typeof(Pace), nameof(Pace.SongSeconds));
+            using LogRecorder log = new();
+            List<HarmonyLib.CodeInstruction> patched = Concert_Popup_PlaySong.Transpiler(original.Select(c => c.Clone()), moveNext).ToList();
+
+            Assert.Empty(log.Messages);
+            Assert.True(Pace.TranspilerApplied);
+            Assert.Equal(original.Count, patched.Count);
+            Assert.Single(patched, c => c.Calls(pace));
+            int at = patched.FindIndex(c => c.Calls(pace));
+            Assert.True(original[at].opcode == System.Reflection.Emit.OpCodes.Ldc_R4 && (float)original[at].operand == 10f);
+            Assert.Contains("songDuration", ((FieldInfo)patched[at + 1].operand).Name);
+            // A second run finds its own call and changes nothing
+            Assert.Single(Concert_Popup_PlaySong.Transpiler(patched, moveNext), c => c.Calls(pace));
+        }
+
+        [Fact]
+        public void SongLength_IsTheConfiguredLengthDuringTheShow_AndTheGamesOtherwise()
+        {
+            Assert.Equal(10f, Pace.SongSeconds());
+            GameFixture.Begin(TwoSongs());
+            Assert.Equal(5f, Pace.SongSeconds());
+            GameFixture.Begin(TwoSongs(), new Config { SongSeconds = 7.5 });
+            Assert.Equal(7.5f, Pace.SongSeconds());
+            GameFixture.Begin(TwoSongs(), new Config { SongSeconds = 0 });
+            Assert.Equal(10f, Pace.SongSeconds());
         }
 
         [Fact]

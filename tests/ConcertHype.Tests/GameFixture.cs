@@ -45,12 +45,18 @@ namespace ConcertHype.Tests
         }
 
         /// <summary>
-        /// What the popup does with a song: play it, animate its hype, end it.
+        /// What the popup does on Start: the talk break when a host is placed, else the song; it plays the item
+        /// it is on, animates its hype and ends it.
         /// </summary>
         public void PlaySong(ShowSession session)
         {
-            session.BeforeSong(this);
-            if (session.HypeFor(session.Show.Items[SongCounter], out float change))
+            if (session.Host >= 0)
+                session.StartTalkBreak(this);
+            else
+                session.BeforeSong(this);
+            float change = 0;
+            _concert.ISetlistItem item = Concert.SetListItems[SongCounter];
+            if (item is _concert._song song ? session.HypeFor(song, out change) : session.HypeForTalk((_concert._mc)item, out change))
                 AddHype(change, false);
             session.AfterSong(this);
             EndFrame();

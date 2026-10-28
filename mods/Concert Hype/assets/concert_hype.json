@@ -40,5 +40,6 @@
 	"wAvg": 0.5,
 	"wPeak": 0.25,
 	"wEnd": 0.25,
+	"songSeconds": 5,
 	"seed": 0
 }

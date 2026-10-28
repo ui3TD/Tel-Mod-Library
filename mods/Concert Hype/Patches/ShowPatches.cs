@@ -2,7 +2,11 @@ using ConcertHype.Model;
 using HarmonyLib;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using UnityEngine;
 
 namespace ConcertHype
@@ -64,7 +68,7 @@ namespace ConcertHype
                 ShowSession session = ShowSession.Begin(concert, config);
                 try
                 {
-                    CastRow.Build(__instance.ConcertPopup, session);
+                    BenchColumn.Build(__instance.ConcertPopup, session);
                 }
                 catch (Exception ex)
                 {
@@ -129,7 +133,7 @@ namespace ConcertHype
             try
             {
                 ShowSession session = ShowSession.Current;
-                if (session != null && session.Pending == null && ReferenceEquals(__instance.Concert, session.Concert))
+                if (session != null && !session.Playing && ReferenceEquals(__instance.Concert, session.Concert))
                     LineupPanel.Render();
             }
             catch (Exception ex)
@@ -147,11 +151,12 @@ namespace ConcertHype
         {
             if (ShowSession.Current != null)
                 ShowSession.End();
-            CastRow.Restore();
+            BenchColumn.Restore();
         }
     }
 
-    // The player starts the next song: the model plays it.
+    // The player starts the next song, or the talk break before it: the model plays it. A talk break goes into
+    // the setlist where the popup is, before the popup reads its next item.
     [HarmonyPatch(typeof(Concert_Popup), nameof(Concert_Popup.OnNextSongClick))]
     public class Concert_Popup_OnNextSongClick
     {
@@ -160,13 +165,17 @@ namespace ConcertHype
             ShowSession session = ShowSession.Current;
             if (session == null || !ReferenceEquals(__instance.Concert, session.Concert))
                 return;
+            bool talk = session.Host >= 0;
             try
             {
-                session.BeforeSong(new PopupStage(__instance));
+                if (talk)
+                    session.StartTalkBreak(new PopupStage(__instance));
+                else
+                    session.BeforeSong(new PopupStage(__instance));
             }
             catch (Exception ex)
             {
-                ShowSession.Fail(ex, "playing the song");
+                ShowSession.Fail(ex, talk ? "starting the talk break" : "playing the song");
             }
         }
     }
@@ -236,6 +245,112 @@ namespace ConcertHype
         {
             if (ShowSession.Current != null)
                 __result = 0f;
+        }
+    }
+
+    // The show's talk break pulls the hype to the model's value: the popup animates it over the talk break.
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), nameof(SEvent_Concerts._concert._mc.GetHype))]
+    public class SEvent_Concerts__concert__mc_GetHype
+    {
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(SEvent_Concerts._concert._mc __instance, ref float __result)
+        {
+            try
+            {
+                if (ShowSession.Current != null && ShowSession.Current.HypeForTalk(__instance, out float change))
+                    __result = change;
+            }
+            catch (Exception ex)
+            {
+                ShowSession.Fail(ex, "the talk break's hype");
+            }
+        }
+    }
+
+    // Talk breaks cost no real stamina either.
+    [HarmonyPatch(typeof(SEvent_Concerts._concert._mc), nameof(SEvent_Concerts._concert._mc.GetStaminaCost))]
+    public class SEvent_Concerts__concert__mc_GetStaminaCost
+    {
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(ref float __result)
+        {
+            if (ShowSession.Current != null)
+                __result = 0f;
+        }
+    }
+
+    // ...and restore none: the show's talk break rests the show's energy instead.
+    [HarmonyPatch(typeof(SEvent_Concerts._concert), nameof(SEvent_Concerts._concert.StaminaToRestore))]
+    public class SEvent_Concerts__concert_StaminaToRestore
+    {
+        [HarmonyPriority(Priority.Last)]
+        public static void Postfix(SEvent_Concerts._concert __instance, ref float __result)
+        {
+            if (ReferenceEquals(ShowSession.Current?.Concert, __instance))
+                __result = 0f;
+        }
+    }
+
+    /// <summary>
+    /// How long the popup plays a song or talk break.
+    /// </summary>
+    public static class Pace
+    {
+        public const float GameSeconds = 10f;
+
+        /// <summary>
+        /// Set when the duration transpiler found its anchor.
+        /// </summary>
+        internal static bool TranspilerApplied;
+
+        /// <summary>
+        /// The configured length during the show; the game's 10 s otherwise.
+        /// </summary>
+        public static float SongSeconds()
+        {
+            double seconds = ShowSession.Current?.State.Config.SongSeconds ?? GameSeconds;
+            return seconds > 0 ? (float)seconds : GameSeconds;
+        }
+    }
+
+    // Songs and talk breaks last Pace.SongSeconds(): the popup's PlaySong coroutine stores the game's 10 s into its
+    // duration once, which every tween of the song (progress bar, hype, stamina) uses.
+    [HarmonyPatch]
+    public class Concert_Popup_PlaySong
+    {
+        public static MethodBase TargetMethod() => AccessTools.EnumeratorMoveNext(AccessTools.Method(typeof(Concert_Popup), "PlaySong"));
+
+        public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
+        {
+            List<CodeInstruction> code = instructions.ToList();
+            try
+            {
+                MethodInfo pace = AccessTools.Method(typeof(Pace), nameof(Pace.SongSeconds));
+                if (code.Any(c => c.Calls(pace)))
+                {
+                    // Already changed (the patch applied twice)
+                    Pace.TranspilerApplied = true;
+                    return code;
+                }
+                FieldInfo duration = AccessTools.GetDeclaredFields(original.DeclaringType).FirstOrDefault(f => f.Name.Contains("songDuration"));
+                List<int> anchors = Enumerable.Range(0, code.Count - 1)
+                    .Where(i => code[i].opcode == OpCodes.Ldc_R4 && code[i].operand is float value && value == Pace.GameSeconds
+                        && duration != null && code[i + 1].StoresField(duration))
+                    .ToList();
+                if (anchors.Count != 1)
+                {
+                    Log.Warn($"the concert's song length is set {anchors.Count} times, not once (another mod changed it?); songs keep their length");
+                    return code;
+                }
+                code[anchors[0]].opcode = OpCodes.Call;
+                code[anchors[0]].operand = pace;
+                Pace.TranspilerApplied = true;
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("couldn't change the concert's song length; songs keep their length: " + ex.Message);
+            }
+            return code;
         }
     }
 

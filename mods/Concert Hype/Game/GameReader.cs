@@ -47,10 +47,14 @@ namespace ConcertHype
             }
             foreach (SEvent_Concerts._concert._song item in show.Items)
                 AddToCast(show, item.Center);
+            // Then the rest of the agency, who can be brought in from the bench
+            int setlistCast = show.Girls.Count;
+            foreach (data_girls.girls girl in data_girls.girl ?? new List<data_girls.girls>())
+                AddToCast(show, girl);
 
             ShowSetup setup = new ShowSetup
             {
-                Members = show.Girls.Select(ReadMember).ToList(),
+                Members = show.Girls.Select((girl, m) => ReadMember(girl, m < setlistCast)).ToList(),
                 Songs = show.Items.Select(item => ReadSong(show, item, config)).ToList(),
                 CapacityFilled = Engine.Clamp(concert.ProjectedValues.Actual_Attendance, 0, 1),
                 Production = (concert.GetParam(SEvent_Concerts._concert._progressable._type.production)?.val ?? 0) / 100.0,
@@ -82,13 +86,25 @@ namespace ConcertHype
         private static int CastIndex(GameShow show, data_girls.girls girl) =>
             girl is null ? -1 : show.Girls.FindIndex(g => ReferenceEquals(g, girl));
 
-        private static Member ReadMember(data_girls.girls girl) => new Member
+        private static Member ReadMember(data_girls.girls girl, bool inSetlist) => new Member
         {
             Name = girl.girlName(),
             Fans = girl.GetFans_Total(),
-            Talk = (girl.getParam(data_girls._paramType.funny).val + girl.getParam(data_girls._paramType.smart).val) / 200.0,
+            Talk = Talk(girl),
             Appeal = FanOrder.Select(fan => Stats.Sum(stat => (double)girl.GetAppealOfStat(stat, fan))).ToArray(),
+            InSetlist = inSetlist,
         };
+
+        /// <summary>
+        /// The game's talk break skill for her as the only host, 0 to 1: a talk break item with her, which runs every
+        /// mod's changes to it. Nothing is changed in the concert.
+        /// </summary>
+        private static double Talk(data_girls.girls girl)
+        {
+            SEvent_Concerts._concert._mc talk = new SEvent_Concerts._concert._mc();
+            talk.SetGirl(girl, 0);
+            return talk.GetSkillValue() / 100.0;
+        }
 
         private static Song ReadSong(GameShow show, SEvent_Concerts._concert._song item, Config config)
         {

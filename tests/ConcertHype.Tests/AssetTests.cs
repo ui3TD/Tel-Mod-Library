@@ -48,10 +48,17 @@ namespace ConcertHype.Tests
         {
             string description = SteamDescription();
             Assert.Contains("triangle formation", description);
+            Assert.Contains("every idol in your agency who isn't on stage", description);
+            Assert.Contains("you can swap in one idol", description);
             Assert.Contains("twice per show", description);
+            Assert.Contains("play in 5 seconds instead of 10", description);
             Assert.Contains("it pays what 200% hype paid before", description);
             Assert.Contains("Action cards, the accident wheel and talk breaks in the setlist are off", description);
-            Assert.Equal(2, new ConcertHype.Model.Config().McCharges);
+            ConcertHype.Model.Config config = new();
+            Assert.Equal(2, config.McCharges);
+            Assert.Equal(1, config.SubstitutionsPerSong);
+            Assert.Equal(5, config.SongSeconds);
+            Assert.Equal(10, Pace.GameSeconds);
         }
 
         [Fact]

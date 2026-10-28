@@ -15,7 +15,8 @@ namespace InGameTests.TelMods
     /// Concert Hype's show in the game's real concert popup. The unit tests cover the rules, the drop rules, the
     /// panel's text, the payout and each patch; this checks what only the engine does: real clicks reaching the
     /// panel's and the bench's buttons on screen, a real drag through the game's input and drag-and-drop manager,
-    /// the icons' pictures and the game's tooltip over one, the game's profile card placed at the host place, a
+    /// the icons' pictures and the game's tooltip over one, the game's profile card placed at the host place, the
+    /// game's cancel icon over the hovered host and a real click cancelling her, a
     /// talk break played by the popup's own coroutine, the transpiled song length, the popup's tweens landing hype
     /// on the show's value, the score line on the real results screen, and no crisis popup.
     /// </summary>
@@ -106,12 +107,13 @@ namespace InGameTests.TelMods
                 if (deckShown > 0.01f)
                     ctx.Fail("The card draw showed (deck or title at alpha " + deckShown + ")");
 
-                // Every place, the host place, Reset Lineup and every idol on the bench is a button a click reaches
+                // Every place, Reset Lineup and every idol on the bench is a button a click reaches; before the first
+                // song there's no talk break place
                 Transform panel = popup.NextSong_Container.transform.Find("ConcertHype Lineup");
                 List<Button> buttons = panel.GetComponentsInChildren<Button>().Concat(popup.Girls.GetComponentsInChildren<Button>()).ToList();
                 ctx.Record("buttons", buttons.Count);
-                if (panel.Find("Host/Center") == null || !panel.Find("Host/Center").gameObject.activeInHierarchy)
-                    ctx.Fail("The talk break's host place isn't shown");
+                if (panel.Find("Host/Center") == null || panel.Find("Host/Center").gameObject.activeInHierarchy)
+                    ctx.Fail("The talk break place shows before the first song");
                 Rect screen = new(0, 0, Screen.width, Screen.height);
                 foreach (Button button in buttons)
                 {
@@ -200,10 +202,25 @@ namespace InGameTests.TelMods
                         ctx.Record("profile card", card == null ? "not shown" : card.transform.position.ToString("F2") + ", expected " + expected.ToString("F2"));
                         if (card == null || Vector2.Distance(card.transform.position, expected) > 0.01f)
                             ctx.Fail("The host's profile card isn't at the host place");
-                        mouse.Off();
                         if (Get<int>(session, "Host") != host)
                         {
                             ctx.Fail("The drag onto the host place didn't place her");
+                            yield break;
+                        }
+                        // Over the host, the game's cancel icon; a quick click cancels, and she's placed again
+                        Transform cancel = hostPlace.Find("Cancel");
+                        bool cancelShown = cancel != null && cancel.gameObject.activeInHierarchy && cancel.GetComponent<Image>().sprite != null;
+                        ctx.Record("cancel icon over the host", cancel == null ? "missing" : cancelShown + " " + cancel.GetComponent<Image>().sprite?.name);
+                        if (!cancelShown)
+                            ctx.Fail("Hovering the host doesn't show the cancel icon");
+                        yield return mouse.Click(ScreenRect(hostPlace).center);
+                        if (Get<int>(session, "Host") != -1)
+                            ctx.Fail("A click on the host didn't cancel the talk break");
+                        yield return mouse.Drag(ScreenRect(Bench(host)).center, ScreenRect(hostPlace).center, null);
+                        mouse.Off();
+                        if (Get<int>(session, "Host") != host)
+                        {
+                            ctx.Fail("The second drag onto the host place didn't place her");
                             yield break;
                         }
 
@@ -341,6 +358,21 @@ namespace InGameTests.TelMods
             {
                 MoveTo(at);
                 yield return new WaitForSecondsRealtime(seconds);
+            }
+
+            /// <summary>
+            /// A quick click, let go well before the game's drag delay.
+            /// </summary>
+            public IEnumerator Click(Vector2 at)
+            {
+                MoveTo(at);
+                yield return null;
+                yield return null;
+                Left(true);
+                yield return null;
+                Left(false);
+                for (int i = 0; i < 3; i++)
+                    yield return null;
             }
 
             /// <summary>

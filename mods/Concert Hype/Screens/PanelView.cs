@@ -132,6 +132,11 @@ namespace ConcertHype
         public bool TalkOpen;
 
         /// <summary>
+        /// The talk break title and place show from the second song on.
+        /// </summary>
+        public bool TalkShown;
+
+        /// <summary>
         /// A talk break plays first: the formation is greyed out, with a note under it.
         /// </summary>
         public bool Faded;
@@ -223,6 +228,7 @@ namespace ConcertHype
             view.Host = host;
             view.HostHighlight = drag != null && target.Spot == Spot.Host && drag.From.Spot != Spot.Host ? over : Highlight.None;
             view.TalkOpen = DropRules.TalkBlocked(state) == null;
+            view.TalkShown = state.SongIndex > 0;
             view.StartLabel = session.Host >= 0 ? Texts.Get("CONCERTHYPE__START_TALK") : null;
 
             // The bench is the committed lineup's: a hover preview doesn't move idols in or out of the column

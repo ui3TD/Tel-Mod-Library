@@ -384,6 +384,7 @@ namespace ConcertHype
         private static TextMeshProUGUI hype, expected, last, hint, talkTitle, formationNote;
         private static Button resetLineup;
         private static PortraitWidget hostPlace;
+        private static GameObject cancelOverlay;
         private static readonly List<PortraitWidget> Slots = new List<PortraitWidget>();
         private static readonly List<GameObject> Hidden = new List<GameObject>();
         private static TextMeshProUGUI startLabel;
@@ -464,6 +465,7 @@ namespace ConcertHype
             talkTitle = Ui.Label(labelTemplate, root.transform, "TalkTitle", 30f, 258f, 300f, 22f, 15f);
             hostPlace = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Host", DropPoint.Host);
             Ui.Place(hostPlace.Root, 30f, 282f, 54f, 58f);
+            cancelOverlay = MakeCancelOverlay(hostPlace);
             hint = Ui.Label(labelTemplate, root.transform, "Hint", 30f, 350f, 470f, 64f, 14f);
             // Level with the game's Start button beside it, whose left edge leaves room for a narrower button
             Rect start = Ui.Placed(popup.NextSong_Button, container);
@@ -506,11 +508,17 @@ namespace ConcertHype
             talkTitle.text = view.TalkTitle;
             SetStartLabel(view.StartLabel);
 
+            // No talk break place before the first song
+            talkTitle.gameObject.SetActive(view.TalkShown);
+            hostPlace.Root.SetActive(view.TalkShown);
             data_girls.girls hostGirl = view.Host < 0 ? null : session.Show.Girls[view.Host];
             hostPlace.SetGirl(hostGirl);
             Ui.SetEnergyBar(hostPlace.Bar, hostGirl is null ? 0 : session.State.Energy[view.Host]);
             hostPlace.SetHighlight(view.HostHighlight, hostGirl is null);
-            hostPlace.SetDimmed(drag != null && drag.From.Spot == Spot.Host && view.Host >= 0 && drag.Over?.Spot != Spot.Host);
+            if (cancelOverlay != null)
+                cancelOverlay.SetActive(false);
+            hostPlace.SetDimmed(false);
+            ShowCancel();
             hostPlace.Icon.Set(IconKind.None, "");
             // Greyed out while no talk break can be called
             hostPlace.Group.alpha = view.TalkOpen || view.Host >= 0 ? 1f : 0.45f;
@@ -605,7 +613,8 @@ namespace ConcertHype
                     int member = from.Place >= 0 && from.Place < session.Lineup.Length ? session.Lineup[from.Place] : -1;
                     return member == session.Host ? -1 : member;
                 case Spot.Host:
-                    return session.Host;
+                    // The host is cancelled with a click, not dragged off
+                    return -1;
                 default:
                     return benchMember;
             }
@@ -650,7 +659,10 @@ namespace ConcertHype
         public static void Tick()
         {
             if (drag == null)
+            {
+                ShowCancel();
                 return;
+            }
             if (!Input.GetMouseButton(0))
             {
                 EndDrag();
@@ -722,12 +734,63 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// A quick click: a bench idol takes the first empty place she can; otherwise the hint says to drag.
+        /// The game's cancel icon (the agency idol list's job cancel button) centred on the host's picture, off until
+        /// hovered. It takes no raycast, so the hover and the click stay on the portrait.
+        /// </summary>
+        private static GameObject MakeCancelOverlay(PortraitWidget host)
+        {
+            Sprite sprite = Icons.GameCancel();
+            Transform center = host.Picture?.transform;
+            if (sprite == null || center == null)
+                return null;
+            GameObject overlay = new GameObject("Cancel", typeof(RectTransform));
+            overlay.transform.SetParent(center, false);
+            Image image = overlay.AddComponent<Image>();
+            image.sprite = sprite;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            RectTransform rect = (RectTransform)overlay.transform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(34f, 34f);
+            overlay.SetActive(false);
+            return overlay;
+        }
+
+        /// <summary>
+        /// While the mouse is over the talk break's host, the game's cancel icon over her says a click cancels it.
+        /// </summary>
+        private static void ShowCancel()
+        {
+            if (!Alive || cancelOverlay == null)
+                return;
+            ShowSession session = ShowSession.Current;
+            bool show = session != null && session.Host >= 0 && !session.Playing && hostPlace.Hover != null && hostPlace.Hover.hovering;
+            if (cancelOverlay.activeSelf == show)
+                return;
+            cancelOverlay.SetActive(show);
+            hostPlace.SetDimmed(show);
+        }
+
+        /// <summary>
+        /// A quick click: a bench idol takes the first empty place she can, otherwise the hint says to drag; the
+        /// talk break's host is cancelled.
         /// </summary>
         public static void OnClick(int member, DropPoint from) => Safely(() =>
         {
             ShowSession session = ShowSession.Current;
-            if (session == null || !Alive || from.Spot != Spot.Bench || member < 0 || drag != null || session.Playing)
+            if (session == null || !Alive || drag != null || session.Playing)
+                return;
+            if (from.Spot == Spot.Host)
+            {
+                if (session.Host >= 0 && session.Drop(session.Host, DropPoint.Host, DropPoint.Bench).Changed)
+                {
+                    message = null;
+                    Render();
+                }
+                return;
+            }
+            if (from.Spot != Spot.Bench || member < 0)
                 return;
             DropResult result = session.Click(member);
             message = result.Allowed ? null : result.Message;

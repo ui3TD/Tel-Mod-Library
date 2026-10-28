@@ -72,11 +72,13 @@ namespace ConcertHype.Tests
             PanelView view = PanelView.Build(session);
             Assert.Equal("Talk Break (2 left)", view.TalkTitle);
             Assert.False(view.TalkOpen);
+            Assert.False(view.TalkShown);  // no talk break place before the first song
             Assert.Equal(-1, view.Host);
             Assert.Null(view.StartLabel);
 
             new FakeStage(concert).PlaySong(session);
             Assert.True(PanelView.Build(session).TalkOpen);
+            Assert.True(PanelView.Build(session).TalkShown);
 
             session.Drop(1, DropPoint.Bench, DropPoint.Host);
             view = PanelView.Build(session);

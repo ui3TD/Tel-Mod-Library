@@ -14,7 +14,38 @@ namespace ConcertHype
         private static readonly Dictionary<IconKind, Sprite> Loaded = new Dictionary<IconKind, Sprite>();
         private static readonly HashSet<IconKind> Failed = new HashSet<IconKind>();
 
+        private static Sprite cancel;
+        private static bool cancelLooked;
+
         public static string FileName(IconKind icon) => icon.ToString().ToLowerInvariant() + ".png";
+
+        /// <summary>
+        /// The game's own cancel icon, from the agency idol list's job cancel button (logged once when missing).
+        /// It's only borrowed, never copied into the mod.
+        /// </summary>
+        public static Sprite GameCancel()
+        {
+            if (cancel != null || cancelLooked)
+                return cancel;
+            cancelLooked = true;
+            foreach (GirlButtonSmall button in Resources.FindObjectsOfTypeAll<GirlButtonSmall>())
+            {
+                if (button == null || button.Button_Cancel == null)
+                    continue;
+                foreach (UnityEngine.UI.Image image in button.Button_Cancel.GetComponentsInChildren<UnityEngine.UI.Image>(true))
+                {
+                    if (image.sprite != null)
+                        return cancel = image.sprite;
+                }
+            }
+            foreach (Sprite sprite in Resources.FindObjectsOfTypeAll<Sprite>())
+            {
+                if (sprite != null && sprite.name == "icon_cancel")
+                    return cancel = sprite;
+            }
+            Log.Warn("couldn't find the game's cancel icon; the talk break host shows none on hover");
+            return null;
+        }
 
         /// <summary>
         /// The icon's sprite; null for no icon, or (logged once) when it can't be loaded.

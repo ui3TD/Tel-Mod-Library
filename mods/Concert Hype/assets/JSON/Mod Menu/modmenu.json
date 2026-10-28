@@ -1,0 +1,8 @@
+[
+	{
+		"type": "checkbox",
+		"varID": "ConcertHype_Enabled",
+		"labelID": "CONCERTHYPE__MODMENU__ENABLED",
+		"defaultValue": true
+	}
+]

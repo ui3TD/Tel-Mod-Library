@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<!--Define the mod's info.json-->
+		<ModName>Concert Hype</ModName>
+		<HarmonyID>com.tel.concerthype</HarmonyID>
+		<ModDescription>A new concert minigame: manage each song's lineup to build and hold the crowd's hype.</ModDescription>
+		<Authors>Tel</Authors>
+		<Version>0.1.0</Version>
+		<Tags>["gameplay"]</Tags>
+
+		<!--For the JSON Load Order mod (leave it at 0 if not using)-->
+		<JSONLoadOrder>0</JSONLoadOrder>
+	</PropertyGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+[h1]REQUIRES: IM-HarmonyIntegration[/h1]
+Download IM-HarmonyIntegration here: [url=https://github.com/ui3TD/IM-HarmonyIntegration]GitHub Link[/url]
+
+A new concert minigame: manage each song's lineup to build and hold the crowd's hype.
+
+[h3]Details[/h3]
+- Each song is performed by its single's senbatsu, in the single's triangle formation.
+- Before each song you fill the places of idols who can't perform, and you can swap in one idol from the bench. A changed lineup surprises the crowd: it pays off most while the crowd is below 100% hype.
+- Idols tire as they perform and recover on the bench. A crowd at 100% hype or more carries them instead. Tired idols perform worse and are more likely to have an accident, which keeps them off stage for a few songs.
+- Call an MC break between songs (twice per show) to pull the crowd's hype toward 100%.
+- The show is scored on its average, its best moment and its finale. The score becomes the concert's hype in your records and for awards.
+- Concert revenue no longer depends on hype: it pays what 200% hype paid before, so it depends only on ticket sales.
+- Action cards, the accident wheel and MC breaks in the setlist are off. Other mods' changes to song hype don't apply during the show.
+- Tick off the setting in the mod menu to play concerts as in the original game.
+
+[url=https://github.com/ui3TD/Tel-Mod-Library]source code[/url]
+
+[h3]Changelog[/h3]
+- 0.1.0: First playtest version of the new concert minigame.

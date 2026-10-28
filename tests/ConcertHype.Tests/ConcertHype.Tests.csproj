@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
+		<Compile Include="..\..\mods\Concert Hype\**\*.cs" Exclude="..\..\mods\Concert Hype\obj\**;..\..\mods\Concert Hype\bin\**" LinkBase="Mod" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!--Copy this from the game's IM_Data\Managed folder. The lineup panel uses CanvasGroup-->
+		<Reference Include="UnityEngine.UIModule">
+			<HintPath>$(dllDir)\UnityEngine.UIModule.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+</Project>

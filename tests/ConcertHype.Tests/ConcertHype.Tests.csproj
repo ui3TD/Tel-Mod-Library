@@ -8,12 +8,16 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!--Copy these from the game's IM_Data\Managed folder. The lineup panel uses CanvasGroup, and its drags the mouse button-->
+		<!--Copy these from the game's IM_Data\Managed folder. The lineup panel uses CanvasGroup, its drags the mouse
+		    button, and its icons load PNGs-->
 		<Reference Include="UnityEngine.UIModule">
 			<HintPath>$(dllDir)\UnityEngine.UIModule.dll</HintPath>
 		</Reference>
 		<Reference Include="UnityEngine.InputLegacyModule">
 			<HintPath>$(dllDir)\UnityEngine.InputLegacyModule.dll</HintPath>
+		</Reference>
+		<Reference Include="UnityEngine.ImageConversionModule">
+			<HintPath>$(dllDir)\UnityEngine.ImageConversionModule.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 </Project>

@@ -48,30 +48,45 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void ASecondChange_PutsTheFirstBack()
+        public void ASongTakesAnyNumberOfSubstitutes()
         {
             ShowState state = Start();
-            Allowed(DropRules.Drop(state, new[] { 5, 1, 2 }, -1, 6, Bench, Place(2)), new[] { 0, 1, 6 });
+            Allowed(DropRules.Drop(state, new[] { 5, 1, 2 }, -1, 6, Bench, Place(2)), new[] { 5, 1, 6 });
+            Allowed(DropRules.Drop(state, new[] { 5, 1, 6 }, -1, 7, Bench, Place(1)), new[] { 5, 7, 6 });
             Allowed(DropRules.Drop(state, new[] { 5, 1, 2 }, -1, 6, Bench, Place(0)), new[] { 6, 1, 2 });
         }
 
         [Fact]
-        public void FillingAPlaceWhoseIdolCantPerform_IsFree()
+        public void APlaceWhoseIdolCantPerform_TakesAnyBenchIdol()
         {
             ShowState state = Start();
             state.Absence[1] = 2;
             int[] lineup = Engine.DefaultLineup(state);
-            Assert.Equal(3, lineup[1]);  // the best fill: every bench member is alike, so the first
+            Assert.Equal(3, lineup[1]);  // the best on the bench: every bench member is alike, so the first
             Allowed(DropRules.Drop(state, lineup, -1, 5, Bench, Place(0)), new[] { 5, 3, 2 });
             Allowed(DropRules.Drop(state, new[] { 5, 3, 2 }, -1, 6, Bench, Place(1)), new[] { 5, 6, 2 });
         }
 
         [Fact]
-        public void ABenchIdolWithHerOwnPlace_TakesOnlyThatOne()
+        public void ABenchIdolTakesAnyPlace_HerOwnOrAnother()
         {
             ShowState state = Start();
-            Refused(DropRules.Drop(state, new[] { 5, 1, 2 }, -1, 0, Bench, Place(2)), new[] { 5, 1, 2 }, -1, "M0 has her own place in this song.");
+            Allowed(DropRules.Drop(state, new[] { 5, 1, 2 }, -1, 0, Bench, Place(2)), new[] { 5, 1, 0 });
             Allowed(DropRules.Drop(state, new[] { 5, 1, 2 }, -1, 0, Bench, Place(0)), new[] { 0, 1, 2 });
+        }
+
+        [Fact]
+        public void MovedOntoAnEmptyPlace_HerOwnPlaceGetsTheBestOnTheBench()
+        {
+            ShowState state = Start();
+            state.Absence[1] = 2;
+            // Place 1's idol can't perform and nobody stands in: moving the center there gives the center to the bench's best
+            Allowed(DropRules.Drop(state, new[] { 0, -1, 2 }, -1, 0, Place(0), Place(1)), new[] { 3, 0, 2 });
+            // With nobody left on the bench, her own place would be empty: refused
+            ShowState small = Shows.Start(Shows.Setup(members: 3));
+            small.Absence[1] = 2;
+            Refused(DropRules.Drop(small, new[] { 0, -1, 2 }, -1, 0, Place(0), Place(1)), new[] { 0, -1, 2 }, -1,
+                "That change isn't allowed in this song.");
         }
 
         [Fact]
@@ -91,10 +106,13 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void AnOriginalOrAFill_CantJustLeave()
+        public void AnIdolWhosePlaceCantGoBackToItsOwnIdol_CantJustLeave()
         {
             ShowState state = Start();
             Refused(DropRules.Drop(state, new[] { 0, 1, 2 }, -1, 1, Place(1), Bench), new[] { 0, 1, 2 }, -1,
+                "M1 can't just leave: drag an idol from the bench onto her place.");
+            // A swapped original: the place's own idol is on stage elsewhere
+            Refused(DropRules.Drop(state, new[] { 1, 0, 2 }, -1, 1, Place(0), Bench), new[] { 1, 0, 2 }, -1,
                 "M1 can't just leave: drag an idol from the bench onto her place.");
             state.Absence[1] = 2;
             Refused(DropRules.Drop(state, new[] { 0, 3, 2 }, -1, 3, Place(1), Bench), new[] { 0, 3, 2 }, -1,
@@ -102,11 +120,11 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void PlacesCantBeSwapped_AndDroppingBackChangesNothing()
+        public void TwoIdolsOnStage_SwapPlaces_AndDroppingBackChangesNothing()
         {
             ShowState state = Start();
-            Refused(DropRules.Drop(state, new[] { 0, 1, 2 }, -1, 0, Place(0), Place(1)), new[] { 0, 1, 2 }, -1,
-                "Idols can't swap places: drag an idol from the bench instead.");
+            Allowed(DropRules.Drop(state, new[] { 0, 1, 2 }, -1, 0, Place(0), Place(1)), new[] { 1, 0, 2 });
+            Allowed(DropRules.Drop(state, new[] { 1, 0, 2 }, -1, 0, Place(1), Place(0)), new[] { 0, 1, 2 });
             Allowed(DropRules.Drop(state, new[] { 0, 1, 2 }, -1, 0, Place(0), Place(0)), new[] { 0, 1, 2 }, changed: false);
             Allowed(DropRules.Drop(state, new[] { 0, 1, 2 }, -1, 5, Bench, Bench), new[] { 0, 1, 2 }, changed: false);
         }
@@ -170,9 +188,9 @@ namespace ConcertHype.Tests
         [Fact]
         public void EveryRefusal_HasItsText()
         {
-            foreach (string key in new[] { "NO_SWAP", "CANT_LEAVE", "OWN_PLACE", "CANT_PERFORM", "NOT_ALLOWED", "CLICK_DRAG", "TALK_NOT_YET", "TALK_DONE", "TALK_NONE_LEFT" })
+            foreach (string key in new[] { "CANT_LEAVE", "CANT_PERFORM", "NOT_ALLOWED", "CLICK_DRAG", "TALK_NOT_YET", "TALK_DONE", "TALK_NONE_LEFT" })
                 Assert.True(Texts.English.ContainsKey("CONCERTHYPE__" + key), key);
-            Assert.All(new[] { "NO_SWAP", "NOT_ALLOWED", "TALK_NOT_YET" }.Select(k => Texts.English["CONCERTHYPE__" + k]), text => Assert.DoesNotContain("{0}", text));
+            Assert.All(new[] { "NOT_ALLOWED", "TALK_NOT_YET" }.Select(k => Texts.English["CONCERTHYPE__" + k]), text => Assert.DoesNotContain("{0}", text));
         }
     }
 }

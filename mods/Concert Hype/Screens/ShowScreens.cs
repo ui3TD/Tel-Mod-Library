@@ -133,12 +133,81 @@ namespace ConcertHype
     }
 
     /// <summary>
+    /// While hovered, shows its text in the game's tooltip, as a game button with a tooltip does. It takes no
+    /// press, so a press on it goes on to the portrait it sits on.
+    /// </summary>
+    internal sealed class IconTip : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    {
+        public string Text = "";
+        private bool hovering;
+        private TooltipManager tooltips;
+
+        public void OnPointerEnter(PointerEventData eventData) => hovering = true;
+
+        public void OnPointerExit(PointerEventData eventData) => hovering = false;
+
+        private void OnDisable() => hovering = false;
+
+        private void Update()
+        {
+            if (!hovering || string.IsNullOrEmpty(Text))
+                return;
+            if (tooltips == null)
+                tooltips = Camera.main?.GetComponent<mainScript>()?.Data?.GetComponent<TooltipManager>();
+            tooltips?.ShowTooltip(Text);
+        }
+    }
+
+    /// <summary>
+    /// A lineup icon with its meaning as a tooltip, and a number beside it (how many songs a hurt idol is out).
+    /// Without its picture it shows the old text symbol.
+    /// </summary>
+    internal sealed class IconWidget
+    {
+        public const float Size = 16f;
+
+        public GameObject Root;
+        public Image Image;
+        public IconTip Tip;
+        public TextMeshProUGUI Text;
+
+        public static IconWidget Make(GameObject labelTemplate, Transform parent, string name)
+        {
+            GameObject root = new GameObject(name, typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+            IconWidget icon = new IconWidget { Root = root, Image = root.AddComponent<Image>(), Tip = root.AddComponent<IconTip>() };
+            icon.Image.preserveAspect = true;
+            icon.Text = Ui.Label(labelTemplate, root.transform, "Text", -Size - 10f, -1f, Size + 8f, Size, 12f);
+            icon.Text.alignment = TextAlignmentOptions.TopRight;
+            icon.Text.fontStyle = FontStyles.Bold;
+            icon.Text.color = Color.white;
+            Ui.Place(root, 0f, 0f, Size, Size);
+            return icon;
+        }
+
+        public void Set(IconKind kind, string tip, string count = "")
+        {
+            Root.SetActive(kind != IconKind.None);
+            if (kind == IconKind.None)
+                return;
+            Sprite sprite = Icons.Get(kind);
+            Image.sprite = sprite;
+            Image.color = sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+            Tip.Text = tip;
+            Text.text = sprite != null ? count : PanelView.FallbackText(kind, count);
+        }
+
+        public void PlaceAt(float x, float y) => Ui.Place(Root, x, y, Size, Size);
+    }
+
+    /// <summary>
     /// A copy of the concert's idol portrait (the picture is a game button, with its hover profile) whose energy
-    /// bar shows the show's energy, with a short label. Pressing and holding the picture drags her.
+    /// bar shows the show's energy, with a short label and an icon. Pressing and holding the picture drags her.
     /// </summary>
     internal sealed class PortraitWidget
     {
         public GameObject Root;
+        public CanvasGroup Group;
         public Button Button;
         public ButtonDefault Hover;
         public DragSource Drag;
@@ -146,11 +215,14 @@ namespace ConcertHype
         public Image Background;
         public Image Bar;
         public TextMeshProUGUI Label;
+        public IconWidget Icon;
         private Color backgroundColor;
 
-        public static PortraitWidget Make(GameObject prefab, GameObject labelTemplate, Transform parent, string name, DropPoint from)
+        /// <param name="iconOnPicture">The icon sits on the picture (the bench), else beside the label under it.</param>
+        public static PortraitWidget Make(GameObject prefab, GameObject labelTemplate, Transform parent, string name, DropPoint from, bool iconOnPicture = false)
         {
             PortraitWidget widget = new PortraitWidget { Root = Ui.Copy(prefab, parent, Shapes.Portrait, "idol portrait", name) };
+            widget.Group = widget.Root.AddComponent<CanvasGroup>();
             Transform center = widget.Root.transform.Find("Center");
             widget.Picture = center?.GetComponent<Image>();
             widget.Button = center?.GetComponent<Button>();
@@ -175,8 +247,11 @@ namespace ConcertHype
                 widget.Drag = center.gameObject.AddComponent<DragSource>();
                 widget.Drag.From = from;
             }
-            widget.Label = Ui.Label(labelTemplate, widget.Root.transform, "Label", -8f, 58f, 70f, 18f, 13f);
-            widget.Label.alignment = TextAlignmentOptions.Top;
+            widget.Label = Ui.Label(labelTemplate, widget.Root.transform, "Label", -20f, 58f, 46f, 18f, 13f);
+            widget.Label.alignment = TextAlignmentOptions.TopRight;
+            // On the picture, the icon is part of it: a press there still drags her
+            widget.Icon = IconWidget.Make(labelTemplate, iconOnPicture && center != null ? center : widget.Root.transform, "Icon");
+            widget.Icon.PlaceAt(iconOnPicture ? 27f : 29f, iconOnPicture ? 27f : 59f);
             return widget;
         }
 
@@ -306,7 +381,7 @@ namespace ConcertHype
 
         private static Concert_Popup owner;
         private static GameObject root;
-        private static TextMeshProUGUI hype, expected, last, hint, talkTitle, talkText;
+        private static TextMeshProUGUI hype, expected, last, hint, talkTitle, formationNote;
         private static Button resetLineup;
         private static PortraitWidget hostPlace;
         private static readonly List<PortraitWidget> Slots = new List<PortraitWidget>();
@@ -389,7 +464,6 @@ namespace ConcertHype
             talkTitle = Ui.Label(labelTemplate, root.transform, "TalkTitle", 30f, 258f, 300f, 22f, 15f);
             hostPlace = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Host", DropPoint.Host);
             Ui.Place(hostPlace.Root, 30f, 282f, 54f, 58f);
-            talkText = Ui.Label(labelTemplate, root.transform, "TalkText", 96f, 290f, 400f, 44f, 14f);
             hint = Ui.Label(labelTemplate, root.transform, "Hint", 30f, 350f, 470f, 64f, 14f);
             // Level with the game's Start button beside it, whose left edge leaves room for a narrower button
             Rect start = Ui.Placed(popup.NextSong_Button, container);
@@ -399,6 +473,8 @@ namespace ConcertHype
 
             for (int j = 0; j < GameReader.SenbatsuPositions; j++)
                 Slots.Add(PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Slot " + j, DropPoint.AtPlace(j)));
+            formationNote = Ui.Label(labelTemplate, root.transform, "AfterTalk", TriangleCenterX - 170f, TriangleTop, 340f, 22f, 15f);
+            formationNote.alignment = TextAlignmentOptions.Top;
 
             startLabel = popup.NextSong_Button.GetComponentInChildren<TextMeshProUGUI>(true);
             gameStartText = null;
@@ -428,7 +504,6 @@ namespace ConcertHype
             last.text = view.Last;
             hint.text = view.Hint;
             talkTitle.text = view.TalkTitle;
-            talkText.text = view.TalkText;
             SetStartLabel(view.StartLabel);
 
             data_girls.girls hostGirl = view.Host < 0 ? null : session.Show.Girls[view.Host];
@@ -436,10 +511,17 @@ namespace ConcertHype
             Ui.SetEnergyBar(hostPlace.Bar, hostGirl is null ? 0 : session.State.Energy[view.Host]);
             hostPlace.SetHighlight(view.HostHighlight, hostGirl is null);
             hostPlace.SetDimmed(drag != null && drag.From.Spot == Spot.Host && view.Host >= 0 && drag.Over?.Spot != Spot.Host);
+            hostPlace.Icon.Set(IconKind.None, "");
+            // Greyed out while no talk break can be called
+            hostPlace.Group.alpha = view.TalkOpen || view.Host >= 0 ? 1f : 0.45f;
 
             int[] perRow = new int[5], placed = new int[5];
+            int rows = 0;
             foreach (SlotView slot in view.Slots)
+            {
                 perRow[slot.Row]++;
+                rows = Math.Max(rows, slot.Row + 1);
+            }
             for (int j = 0; j < Slots.Count; j++)
             {
                 PortraitWidget widget = Slots[j];
@@ -452,13 +534,21 @@ namespace ConcertHype
                 widget.Root.SetActive(true);
                 float x = TriangleCenterX + (placed[slot.Row]++ - (perRow[slot.Row] - 1) / 2f) * CellWidth - 27f;
                 Ui.Place(widget.Root, x, TriangleTop + slot.Row * RowHeight, 54f, 58f);
-                widget.SetGirl(slot.Member < 0 ? null : session.Show.Girls[slot.Member]);
-                Ui.SetEnergyBar(widget.Bar, slot.Member < 0 ? 0 : session.State.Energy[slot.Member]);
+                // A place whose idol hosts the talk break shows empty until the song
+                bool shown = slot.Member >= 0 && !slot.Hosting;
+                widget.SetGirl(shown ? session.Show.Girls[slot.Member] : null);
+                Ui.SetEnergyBar(widget.Bar, shown ? session.State.Energy[slot.Member] : 0);
                 widget.SetDimmed(slot.Dragged);
-                string badge = PanelView.BadgeText(slot.Badge);
-                widget.Label.text = slot.Roll + (badge.Length > 0 && slot.Roll.Length > 0 ? " " : "") + badge;
-                widget.SetHighlight(slot.Highlight, slot.Member < 0);
+                widget.SetHighlight(slot.Highlight, !shown);
+                widget.Label.text = slot.Roll;
+                widget.Icon.Set(slot.Icon, slot.Tip);
+                // The roll, then the icon; the icon alone sits in the middle
+                widget.Icon.PlaceAt(slot.Roll.Length > 0 ? 29f : 27f - IconWidget.Size / 2f, 59f);
+                // With a talk break first, the formation waits for it
+                widget.Group.alpha = view.Faded ? 0.45f : 1f;
             }
+            formationNote.text = view.FormationNote;
+            Ui.Place(formationNote.gameObject, TriangleCenterX - 170f, TriangleTop + rows * RowHeight, 340f, 22f);
             BenchColumn.Render(view);
         }
 
@@ -502,6 +592,7 @@ namespace ConcertHype
 
         /// <summary>
         /// Who a drag from this spot picks up: the bench portrait's idol, or whoever is on the place or host place.
+        /// A place whose idol hosts the talk break shows empty, so nobody is picked up there.
         /// </summary>
         public static int MemberAt(DropPoint from, int benchMember)
         {
@@ -511,7 +602,8 @@ namespace ConcertHype
             switch (from.Spot)
             {
                 case Spot.Place:
-                    return from.Place >= 0 && from.Place < session.Lineup.Length ? session.Lineup[from.Place] : -1;
+                    int member = from.Place >= 0 && from.Place < session.Lineup.Length ? session.Lineup[from.Place] : -1;
+                    return member == session.Host ? -1 : member;
                 case Spot.Host:
                     return session.Host;
                 default:
@@ -684,15 +776,12 @@ namespace ConcertHype
             GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
             for (int m = 0; m < session.Show.Girls.Count; m++)
             {
-                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, column, "Bench " + m, DropPoint.Bench);
+                // Why she can't perform is an icon on her picture
+                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, column, "Bench " + m, DropPoint.Bench, iconOnPicture: true);
                 widget.SetGirl(session.Show.Girls[m]);
                 if (widget.Drag != null)
                     widget.Drag.BenchMember = m;
-                // The cells are tight: a small label over the bottom of the picture
-                Ui.Place(widget.Label.gameObject, -8f, 34f, 70f, 14f);
-                widget.Label.fontSize = 12f;
-                widget.Label.color = Color.white;
-                widget.Label.fontStyle = FontStyles.Bold;
+                widget.Label.gameObject.SetActive(false);
                 Widgets.Add(widget);
             }
             Render(PanelView.Build(session));
@@ -740,8 +829,8 @@ namespace ConcertHype
                 Ui.Place(widget.Root, x, y, PortraitWidth, PortraitHeight);
                 widget.Root.transform.localScale = new Vector3(scale, scale, 1f);
                 Ui.SetEnergyBar(widget.Bar, bench.Energy);
-                widget.Label.text = bench.State;
-                // An idol who can't perform is dimmed and can't be dragged; the label saying why stays readable
+                widget.Icon.Set(bench.Icon, bench.Tip, bench.Count);
+                // An idol who can't perform is dimmed and can't be dragged; the icon saying why stays bright
                 widget.SetDimmed(!bench.Available);
             }
         }

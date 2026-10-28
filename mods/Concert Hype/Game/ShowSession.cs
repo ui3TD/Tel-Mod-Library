@@ -377,7 +377,7 @@ namespace ConcertHype
                     log.AppendLine($"{place}: empty (roll 0)");
                     continue;
                 }
-                string role = slot.Member == song.Slots[j].Original ? "original" : Engine.IsForced(State, song, j) ? "fill" : "substitute";
+                string role = slot.Member == song.Slots[j].Original ? "original" : "substitute";
                 RollParts p = slot.Parts;
                 log.AppendLine($"{place}: {Name(slot.Member)} ({role}) roll {F(slot.Roll)} = {F(p.EnergyFactor)} x skill {F(p.Skill)} + appeal {F(p.Appeal)} + senbatsu {F(p.Senbatsu)} + noise; " +
                     $"energy {F(slot.EnergyBefore)} -> {F(slot.EnergyAfter)}" + (slot.Accident ? $"; ACCIDENT (chance {F(slot.AccidentChance)}), out {slot.AbsenceLength}" : ""));

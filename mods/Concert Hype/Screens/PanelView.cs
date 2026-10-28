@@ -6,12 +6,28 @@ using System.Linq;
 
 namespace ConcertHype
 {
+    /// <summary>
+    /// Who holds a place: her own idol from the single, anyone else, or nobody.
+    /// </summary>
     public enum SlotBadge
     {
         Original,
         Substitute,
-        Fill,
         Empty,
+    }
+
+    /// <summary>
+    /// The lineup icons, each a PNG of this name in lower case in the mod's Images folder.
+    /// </summary>
+    public enum IconKind
+    {
+        None,
+        Original,
+        Substitute,
+        Empty,
+        Hosting,
+        Hurt,
+        Resting,
     }
 
     /// <summary>
@@ -41,6 +57,18 @@ namespace ConcertHype
         /// The idol here is being dragged away.
         /// </summary>
         public bool Dragged;
+
+        /// <summary>
+        /// Her own place while she hosts the talk break: shown empty, and hers again for the song.
+        /// </summary>
+        public bool Hosting;
+
+        public IconKind Icon;
+
+        /// <summary>
+        /// The icon's meaning, shown when it's hovered.
+        /// </summary>
+        public string Tip = "";
     }
 
     public sealed class BenchView
@@ -50,9 +78,16 @@ namespace ConcertHype
         public bool Available;
 
         /// <summary>
-        /// Why she can't perform ("out 2", "resting"), or empty.
+        /// Why she can't perform (hurt or resting), or none.
         /// </summary>
-        public string State = "";
+        public IconKind Icon;
+
+        public string Tip = "";
+
+        /// <summary>
+        /// Songs she's still out when hurt; empty otherwise.
+        /// </summary>
+        public string Count = "";
     }
 
     /// <summary>
@@ -82,11 +117,26 @@ namespace ConcertHype
         public string Hype = "";
         public string Expected = "";
         public string Last = "";
+        /// <summary>
+        /// Why the last drop, or the one hovered now, is refused; empty otherwise.
+        /// </summary>
         public string Hint = "";
+
         public string TalkTitle = "";
-        public string TalkText = "";
         public int Host = -1;
         public Highlight HostHighlight;
+
+        /// <summary>
+        /// A talk break can be called now; the host place is greyed out when it can't and nobody is on it.
+        /// </summary>
+        public bool TalkOpen;
+
+        /// <summary>
+        /// A talk break plays first: the formation is greyed out, with a note under it.
+        /// </summary>
+        public bool Faded;
+
+        public string FormationNote = "";
 
         /// <summary>
         /// The Start button's label, or null for the game's own ("Start Next Song").
@@ -104,7 +154,7 @@ namespace ConcertHype
             PanelView view = new PanelView();
             int[] lineup = session.Lineup;
             int host = session.Host;
-            string hint = string.IsNullOrEmpty(message) ? Texts.Get("CONCERTHYPE__HINT_DRAG") : message;
+            string hint = message ?? "";
 
             // Over nothing that takes her, the drop goes to the bench
             DropPoint target = drag?.Over ?? DropPoint.Bench;
@@ -132,22 +182,39 @@ namespace ConcertHype
                 {
                     int member = lineup[j];
                     DropPoint place = DropPoint.AtPlace(j);
-                    view.Slots.Add(new SlotView
+                    SlotView slot = new SlotView
                     {
                         Member = member,
                         Row = song.Slots[j].Row,
-                        Badge = member < 0 ? SlotBadge.Empty : member == song.Slots[j].Original ? SlotBadge.Original
-                            : preview.Forced[j] ? SlotBadge.Fill : SlotBadge.Substitute,
+                        Badge = member < 0 ? SlotBadge.Empty : member == song.Slots[j].Original ? SlotBadge.Original : SlotBadge.Substitute,
                         Roll = preview.Slots[j] == null ? "" : Whole(preview.Slots[j].Expected),
                         Highlight = drag != null && target.Equals(place) && !drag.From.Equals(place) ? over : Highlight.None,
                         // In the hand: still in her place in the preview, and not dropped back on it or on the host place
                         Dragged = drag != null && drag.From.Equals(place) && !target.Equals(place) && target.Spot != Spot.Host && member == drag.Member,
-                    });
+                        Hosting = member >= 0 && member == host,
+                    };
+                    if (slot.Hosting)
+                    {
+                        slot.Roll = "";
+                        slot.Icon = IconKind.Hosting;
+                        slot.Tip = Texts.Format("CONCERTHYPE__TIP_HOSTING", session.Name(member));
+                    }
+                    else
+                    {
+                        slot.Icon = IconOf(slot.Badge);
+                        slot.Tip = TipOf(slot.Badge);
+                    }
+                    view.Slots.Add(slot);
                 }
                 double h = state.Hype, band = state.Config.NoveltyBlendBand;
                 string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
                 view.Hype = Texts.Format("CONCERTHYPE__HYPE", Whole(h), Texts.Get(mood));
-                view.Expected = Texts.Format("CONCERTHYPE__EXPECTED", Whole(100 * preview.Novelty), Signed(preview.Change), Signed(preview.Low), Signed(preview.High));
+                // With a talk break first, the song's lineup waits for it
+                view.Faded = host >= 0;
+                view.Expected = view.Faded
+                    ? Texts.Format("CONCERTHYPE__EXPECTED_TALK", Whole(Engine.McHype(state, host)))
+                    : Texts.Format("CONCERTHYPE__EXPECTED", Whole(100 * preview.Novelty), Signed(preview.Change), Signed(preview.Low), Signed(preview.High));
+                view.FormationNote = view.Faded ? Texts.Get("CONCERTHYPE__AFTER_TALK") : "";
             }
 
             view.Last = LastLine(session);
@@ -155,10 +222,7 @@ namespace ConcertHype
             view.TalkTitle = Texts.Format("CONCERTHYPE__TALK_BREAK", state.McCharges);
             view.Host = host;
             view.HostHighlight = drag != null && target.Spot == Spot.Host && drag.From.Spot != Spot.Host ? over : Highlight.None;
-            string blocked = DropRules.TalkBlocked(state);
-            view.TalkText = host >= 0
-                ? Texts.Format("CONCERTHYPE__TALK_PULL", session.Name(host), Whole(Engine.McHype(state, host)))
-                : Texts.Get(blocked ?? "CONCERTHYPE__TALK_DROP");
+            view.TalkOpen = DropRules.TalkBlocked(state) == null;
             view.StartLabel = session.Host >= 0 ? Texts.Get("CONCERTHYPE__START_TALK") : null;
 
             // The bench is the committed lineup's: a hover preview doesn't move idols in or out of the column
@@ -166,15 +230,19 @@ namespace ConcertHype
             {
                 if (session.Lineup.Contains(m) || m == session.Host)
                     continue;
-                string why = state.Absence[m] > 0 ? Texts.Format("CONCERTHYPE__OUT", state.Absence[m])
-                    : state.Exhausted[m] ? Texts.Get("CONCERTHYPE__RESTING") : "";
-                view.Bench.Add(new BenchView
+                BenchView bench = new BenchView { Member = m, Energy = state.Energy[m], Available = state.IsAvailable(m) };
+                if (state.Absence[m] > 0)
                 {
-                    Member = m,
-                    Energy = state.Energy[m],
-                    Available = state.IsAvailable(m),
-                    State = why,
-                });
+                    bench.Icon = IconKind.Hurt;
+                    bench.Count = state.Absence[m].ToString(CultureInfo.InvariantCulture);
+                    bench.Tip = Texts.Format("CONCERTHYPE__TIP_HURT", SongCount(state.Absence[m]));
+                }
+                else if (state.Exhausted[m])
+                {
+                    bench.Icon = IconKind.Resting;
+                    bench.Tip = Texts.Format("CONCERTHYPE__TIP_RESTING", Whole(state.Config.ReturnThreshold));
+                }
+                view.Bench.Add(bench);
             }
             return view;
         }
@@ -192,17 +260,32 @@ namespace ConcertHype
             List<string> parts = new List<string> { Texts.Format("CONCERTHYPE__LAST_SONG", Signed(last.Change)) };
             foreach (SlotResult slot in last.Slots.Where(s => s.Accident))
             {
-                string length = slot.AbsenceLength == 1 ? Texts.Get("CONCERTHYPE__SONG") : Texts.Format("CONCERTHYPE__SONGS", slot.AbsenceLength);
-                parts.Add(Texts.Format("CONCERTHYPE__HURT", session.Name(slot.Member), length));
+                parts.Add(Texts.Format("CONCERTHYPE__HURT", session.Name(slot.Member), SongCount(slot.AbsenceLength)));
             }
             foreach (int member in last.Exhausted)
                 parts.Add(Texts.Format("CONCERTHYPE__EXHAUSTED", session.Name(member)));
             return string.Join("; ", parts);
         }
 
+        private static string SongCount(int songs) => songs == 1 ? Texts.Get("CONCERTHYPE__SONG") : Texts.Format("CONCERTHYPE__SONGS", songs);
+
+        public static IconKind IconOf(SlotBadge badge) =>
+            badge == SlotBadge.Substitute ? IconKind.Substitute : badge == SlotBadge.Empty ? IconKind.Empty : IconKind.Original;
+
+        public static string TipOf(SlotBadge badge) =>
+            Texts.Get(badge == SlotBadge.Substitute ? "CONCERTHYPE__TIP_SUB" : badge == SlotBadge.Empty ? "CONCERTHYPE__TIP_EMPTY" : "CONCERTHYPE__TIP_ORIGINAL");
+
+        /// <summary>
+        /// The text symbol shown when an icon's picture can't be loaded.
+        /// </summary>
+        public static string FallbackText(IconKind icon, string count) =>
+            icon == IconKind.Hurt ? Texts.Format("CONCERTHYPE__OUT", count)
+            : icon == IconKind.Resting ? Texts.Get("CONCERTHYPE__RESTING")
+            : icon == IconKind.Substitute ? BadgeText(SlotBadge.Substitute)
+            : icon == IconKind.Empty ? BadgeText(SlotBadge.Empty) : icon == IconKind.Original ? BadgeText(SlotBadge.Original) : "";
+
         public static string BadgeText(SlotBadge badge) =>
             badge == SlotBadge.Substitute ? Texts.Get("CONCERTHYPE__BADGE_SUB")
-            : badge == SlotBadge.Fill ? Texts.Get("CONCERTHYPE__BADGE_FILL")
             : badge == SlotBadge.Empty ? Texts.Get("CONCERTHYPE__BADGE_EMPTY")
             : Texts.Get("CONCERTHYPE__BADGE_ORIGINAL");
 

@@ -32,7 +32,6 @@
 	"pMax": 0.5,
 	"absenceMin": 1,
 	"absenceMax": 3,
-	"substitutionsPerSong": 1,
 	"mcCharges": 2,
 	"kMc": 0.5,
 	"mcRecovery": 10,

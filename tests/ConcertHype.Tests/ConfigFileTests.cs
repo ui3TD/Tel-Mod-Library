@@ -32,7 +32,7 @@ namespace ConcertHype.Tests
             Assert.Equal(new double[] { 1.5, 1.0, 0.6, 0.6, 0.6 }, config.RowWeights);
             Assert.Equal(new double[] { 8, 1, 2, 0.1, 10, 30 }, new[] { config.EnergyCostBase, config.KRollCost, config.HypeLiftBase, config.HypeLiftPerPoint, config.BenchRecovery, config.ReturnThreshold });
             Assert.Equal(new double[] { 0.005, 40, 0.01, 0.05, 0.5 }, new[] { config.PBase, config.AccidentRollThreshold, config.PRoll, config.PTired, config.PMax });
-            Assert.Equal(new[] { 1, 3, 1, 2, 1 }, new[] { config.AbsenceMin, config.AbsenceMax, config.SubstitutionsPerSong, config.McCharges, config.McTimeUnits });
+            Assert.Equal(new[] { 1, 3, 2, 1 }, new[] { config.AbsenceMin, config.AbsenceMax, config.McCharges, config.McTimeUnits });
             Assert.Equal(new double[] { 0.5, 10, 0.5, 0.25, 0.25 }, new[] { config.KMc, config.McRecovery, config.WAvg, config.WPeak, config.WEnd });
         }
 

@@ -15,8 +15,9 @@ namespace InGameTests.TelMods
     /// Concert Hype's show in the game's real concert popup. The unit tests cover the rules, the drop rules, the
     /// panel's text, the payout and each patch; this checks what only the engine does: real clicks reaching the
     /// panel's and the bench's buttons on screen, a real drag through the game's input and drag-and-drop manager,
-    /// a talk break played by the popup's own coroutine, the transpiled song length, the popup's tweens landing
-    /// hype on the show's value, the score line on the real results screen, and no crisis popup.
+    /// the icons' pictures and the game's tooltip over one, the game's profile card placed at the host place, a
+    /// talk break played by the popup's own coroutine, the transpiled song length, the popup's tweens landing hype
+    /// on the show's value, the score line on the real results screen, and no crisis popup.
     /// </summary>
     [ModUnderTest(HarmonyId)]
     internal static class ConcertHypeTests
@@ -160,6 +161,19 @@ namespace InGameTests.TelMods
                     ctx.Fail($"The dragged idol isn't in the center: lineup {string.Join(",", Lineup())}, still on the bench: {Bench(sub).gameObject.activeInHierarchy}");
                 mouse.Off();
 
+                // Every icon on screen has its picture, and the mouse over one shows its meaning in the game's tooltip
+                List<Image> icons = panel.GetComponentsInChildren<Image>().Concat(popup.Girls.GetComponentsInChildren<Image>()).Where(i => i.name == "Icon").ToList();
+                ctx.Record("icons", icons.Count);
+                foreach (Image icon in icons.Where(i => i.sprite == null || !i.sprite.name.StartsWith("ConcertHype")).Take(3))
+                    ctx.Fail("An icon has no picture: " + icon.transform.parent.name);
+                object view = AccessTools.Method(mod.GetType("ConcertHype.PanelView", true), "Build").Invoke(null, new object[] { session, null, null });
+                string tip = Get<string>(Get<IList>(view, "Slots")[1], "Tip");
+                yield return mouse.Hover(ScreenRect(panel.Find("Slot 1/Icon")).center, 0.5f);
+                string shown = AccessTools.Field(typeof(TooltipManager), "TooltipText").GetValue(Game.Main.Data.GetComponent<TooltipManager>()) as string;
+                mouse.Off();
+                if (shown != tip)
+                    ctx.Fail($"Over the second place's icon the tooltip reads '{shown}', not '{tip}'");
+
                 // Each song: the popup's tween ends exactly on the show's hype, with no crisis popup. Before the
                 // second song, a talk break hosted by a bench idol dragged onto the host place.
                 int songs = concert.SetListItems.Count;
@@ -173,7 +187,19 @@ namespace InGameTests.TelMods
                             ctx.Fail("Nobody on the bench to host a talk break");
                             yield break;
                         }
-                        yield return mouse.Drag(ScreenRect(Bench(host)).center, ScreenRect(panel.Find("Host/Center")).center, null);
+                        // Her profile card shows at her bench portrait first, then comes along to the host place
+                        Transform hostPlace = panel.Find("Host/Center");
+                        yield return mouse.Hover(ScreenRect(Bench(host)).center, 1f);
+                        yield return mouse.Drag(ScreenRect(Bench(host)).center, ScreenRect(hostPlace).center, null);
+                        yield return new WaitForSecondsRealtime(1f);
+                        TooltipStatusButton card = UnityEngine.Object.FindObjectOfType<TooltipStatusButton>();
+                        // Where the game places the card next to a portrait (TooltipStatusButton.SetPosition)
+                        Vector2 expected = new(hostPlace.position.x + 0.45f, Mathf.Max(hostPlace.position.y + 0.37f, -3f));
+                        if (expected.x > 6f)
+                            expected.x -= 4f;
+                        ctx.Record("profile card", card == null ? "not shown" : card.transform.position.ToString("F2") + ", expected " + expected.ToString("F2"));
+                        if (card == null || Vector2.Distance(card.transform.position, expected) > 0.01f)
+                            ctx.Fail("The host's profile card isn't at the host place");
                         mouse.Off();
                         if (Get<int>(session, "Host") != host)
                         {
@@ -306,6 +332,15 @@ namespace InGameTests.TelMods
                 if (held)
                     Left(false);
                 position.SetValue(null, null);
+            }
+
+            /// <summary>
+            /// Rests the mouse on a point, without pressing.
+            /// </summary>
+            public IEnumerator Hover(Vector2 at, float seconds)
+            {
+                MoveTo(at);
+                yield return new WaitForSecondsRealtime(seconds);
             }
 
             /// <summary>

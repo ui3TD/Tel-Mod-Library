@@ -49,16 +49,33 @@ namespace ConcertHype.Tests
             string description = SteamDescription();
             Assert.Contains("triangle formation", description);
             Assert.Contains("every idol in your agency who isn't on stage", description);
-            Assert.Contains("you can swap in one idol", description);
+            Assert.Contains("swap them in, as many as you like", description);
+            Assert.Contains("replaced by the best idol on the bench", description);
             Assert.Contains("twice per show", description);
             Assert.Contains("play in 5 seconds instead of 10", description);
             Assert.Contains("it pays what 200% hype paid before", description);
             Assert.Contains("Action cards, the accident wheel and talk breaks in the setlist are off", description);
             ConcertHype.Model.Config config = new();
             Assert.Equal(2, config.McCharges);
-            Assert.Equal(1, config.SubstitutionsPerSong);
             Assert.Equal(5, config.SongSeconds);
             Assert.Equal(10, Pace.GameSeconds);
+        }
+
+        [Fact]
+        public void EveryIcon_IsA64PixelRgbaPng_AndEveryPngIsAnIcon()
+        {
+            string folder = ModFile("assets", Icons.Folder);
+            List<string> expected = System.Enum.GetValues(typeof(IconKind)).Cast<IconKind>().Where(k => k != IconKind.None).Select(Icons.FileName).ToList();
+            Assert.Equal(expected.OrderBy(n => n), Directory.GetFiles(folder).Select(Path.GetFileName).OrderBy(n => n));
+            foreach (string name in expected)
+            {
+                byte[] png = File.ReadAllBytes(Path.Combine(folder, name));
+                Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }, png.Take(8));
+                int width = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
+                int height = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
+                Assert.True(width == 64 && height == 64, $"{name} is {width}x{height}");
+                Assert.True(png[24] == 8 && png[25] == 6, $"{name} isn't 8-bit RGBA");
+            }
         }
 
         [Fact]

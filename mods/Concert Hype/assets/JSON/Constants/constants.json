@@ -8,14 +8,6 @@
 		text: "Talk Break ({0} left)"
 	},
 	{
-		id: "CONCERTHYPE__TALK_DROP",
-		text: "Drag an idol here to host a talk break before this song."
-	},
-	{
-		id: "CONCERTHYPE__TALK_PULL",
-		text: "{0} pulls hype to about {1}%. Drag her away to cancel."
-	},
-	{
 		id: "CONCERTHYPE__TALK_NOT_YET",
 		text: "Talk breaks can start after the first song."
 	},
@@ -36,20 +28,40 @@
 		text: "Reset Lineup"
 	},
 	{
-		id: "CONCERTHYPE__HINT_DRAG",
-		text: "Drag an idol from the bench on the right onto a place. One change per song; filling the place of an idol who can't perform is free.\n★ original  ⇄ substitute  ! fill  ✖ empty"
+		id: "CONCERTHYPE__EXPECTED_TALK",
+		text: "Talk break first: hype goes to about {0}%."
 	},
 	{
-		id: "CONCERTHYPE__NO_SWAP",
-		text: "Idols can't swap places: drag an idol from the bench instead."
+		id: "CONCERTHYPE__AFTER_TALK",
+		text: "This lineup plays after the talk break."
+	},
+	{
+		id: "CONCERTHYPE__TIP_ORIGINAL",
+		text: "Original: her own place in the single, where she gets the senbatsu bonus."
+	},
+	{
+		id: "CONCERTHYPE__TIP_SUB",
+		text: "Substitute: performs in another idol's place, without the senbatsu bonus."
+	},
+	{
+		id: "CONCERTHYPE__TIP_EMPTY",
+		text: "Empty: nobody on the bench can fill this place."
+	},
+	{
+		id: "CONCERTHYPE__TIP_HOSTING",
+		text: "{0} hosts the talk break first and is back here for the song."
+	},
+	{
+		id: "CONCERTHYPE__TIP_HURT",
+		text: "Hurt: out for {0}. A talk break counts as one song."
+	},
+	{
+		id: "CONCERTHYPE__TIP_RESTING",
+		text: "Exhausted: resting until her energy is back to {0}%."
 	},
 	{
 		id: "CONCERTHYPE__CANT_LEAVE",
 		text: "{0} can't just leave: drag an idol from the bench onto her place."
-	},
-	{
-		id: "CONCERTHYPE__OWN_PLACE",
-		text: "{0} has her own place in this song."
 	},
 	{
 		id: "CONCERTHYPE__CANT_PERFORM",
@@ -106,10 +118,6 @@
 	{
 		id: "CONCERTHYPE__BADGE_SUB",
 		text: "⇄"
-	},
-	{
-		id: "CONCERTHYPE__BADGE_FILL",
-		text: "!"
 	},
 	{
 		id: "CONCERTHYPE__BADGE_EMPTY",

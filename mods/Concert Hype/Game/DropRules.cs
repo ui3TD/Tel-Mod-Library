@@ -58,10 +58,10 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// The drag-and-drop rules of the lineup screen. A bench idol dropped on a place takes it, and its previous
-    /// idol returns to the bench; changing a place whose original can perform is the song's one change. A
-    /// substitute dragged off her place brings the original back. Places can't be swapped. Any idol who can
-    /// perform can host the talk break, performers included.
+    /// The drag-and-drop rules of the lineup screen. A bench idol dropped on a place takes it, and its previous idol
+    /// returns to the bench; a song can have any number of substitutes. Two idols on stage dropped on each other
+    /// swap places. A substitute dragged off her place brings the place's own idol back. Any idol who can perform
+    /// can host the talk break, performers included.
     /// </summary>
     public static class DropRules
     {
@@ -76,7 +76,7 @@ namespace ConcertHype
                     return new DropResult { Allowed = true, Changed = host >= 0, Lineup = lineup, Host = -1 };
                 case Spot.Place:
                     if (to.Spot == Spot.Place)
-                        return Refuse(state, lineup, host, "CONCERTHYPE__NO_SWAP", member);
+                        return Swaps(state, lineup, host, from.Place, to.Place);
                     if (to.Spot == Spot.Host)
                         return Hosts(state, lineup, host, member);
                     return Leaves(state, lineup, host, from.Place);
@@ -125,27 +125,25 @@ namespace ConcertHype
 
         private static DropResult Takes(ShowState state, int[] lineup, int host, int member, int slot)
         {
-            Song song = state.CurrentSong;
             if (slot < 0 || slot >= lineup.Length || lineup.Contains(member))
                 return Keep(lineup, host);
             if (!state.IsAvailable(member))
                 return Refuse(state, lineup, host, "CONCERTHYPE__CANT_PERFORM", member);
-            if (song.Slots.Where((s, k) => k != slot && s.Original == member).Any())
-                return Refuse(state, lineup, host, "CONCERTHYPE__OWN_PLACE", member);
-
-            bool[] forced = Engine.ForcedSlots(state);
             int[] next = (int[])lineup.Clone();
             next[slot] = member;
-            // A change on a place whose original can perform is the song's one change: an earlier one is put back
-            if (!forced[slot] && member != song.Slots[slot].Original)
-            {
-                for (int k = 0; k < next.Length; k++)
-                {
-                    if (k != slot && !forced[k] && next[k] != song.Slots[k].Original)
-                        next[k] = song.Slots[k].Original;
-                }
-            }
             return Checked(state, lineup, host, next, member);
+        }
+
+        private static DropResult Swaps(ShowState state, int[] lineup, int host, int from, int to)
+        {
+            if (from < 0 || from >= lineup.Length || to < 0 || to >= lineup.Length || lineup[from] < 0)
+                return Keep(lineup, host);
+            int[] next = (int[])lineup.Clone();
+            next[from] = lineup[to];
+            next[to] = lineup[from];
+            // Moved onto an empty place, she leaves hers empty: it gets its own idol back, or the best on the bench
+            FillEmpties(state, next);
+            return Checked(state, lineup, host, next, lineup[from]);
         }
 
         private static DropResult Leaves(ShowState state, int[] lineup, int host, int slot)
@@ -154,11 +152,27 @@ namespace ConcertHype
             if (slot < 0 || slot >= lineup.Length || lineup[slot] < 0)
                 return Keep(lineup, host);
             int member = lineup[slot];
-            if (member == song.Slots[slot].Original || Engine.IsForced(state, song, slot))
+            int original = song.Slots[slot].Original;
+            // Only the place's own idol can take it back: she must be free to perform and not on stage elsewhere
+            if (member == original || original < 0 || !state.IsAvailable(original) || lineup.Contains(original))
                 return Refuse(state, lineup, host, "CONCERTHYPE__CANT_LEAVE", member);
             int[] next = (int[])lineup.Clone();
-            next[slot] = song.Slots[slot].Original;
+            next[slot] = original;
             return Checked(state, lineup, host, next, member);
+        }
+
+        private static void FillEmpties(ShowState state, int[] next)
+        {
+            Song song = state.CurrentSong;
+            for (int k = 0; k < next.Length; k++)
+            {
+                if (next[k] >= 0)
+                    continue;
+                int original = song.Slots[k].Original;
+                next[k] = original >= 0 && state.IsAvailable(original) && !next.Contains(original)
+                    ? original
+                    : Engine.BestFill(state, k, next.Where(m => m >= 0).ToList());
+            }
         }
 
         private static DropResult Hosts(ShowState state, int[] lineup, int host, int member)

@@ -1,9 +1,42 @@
 using HarmonyLib;
 using System;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace ConcertHype
 {
+    /// <summary>
+    /// The game's idol profile card moves to a portrait only when the idol changes, so the same idol hovered on
+    /// another of the show's portraits (bench, place, host place) kept the card where she was first hovered.
+    /// </summary>
+    public static class ProfileCard
+    {
+        public static bool NeedsMove(bool sameGirl, bool sameButton, bool newIsOurs, bool cachedGone) =>
+            sameGirl && !sameButton && (newIsOurs || cachedGone);
+    }
+
+    // The profile card goes to the show's portrait that's hovered, with the game's own placement.
+    [HarmonyPatch(typeof(TooltipStatusButton), nameof(TooltipStatusButton.Set), new[] { typeof(GameObject), typeof(data_girls.girls), typeof(bool) })]
+    public class TooltipStatusButton_Set
+    {
+        public static void Postfix(TooltipStatusButton __instance, GameObject _StatusButton, data_girls.girls _girl, ref GameObject ___StatusButton, data_girls.girls ___Girl)
+        {
+            try
+            {
+                bool cachedGone = !ReferenceEquals(___StatusButton, null) && ___StatusButton == null;
+                bool ours = _StatusButton != null && _StatusButton.GetComponent<DragSource>() != null;
+                if (!ProfileCard.NeedsMove(ReferenceEquals(___Girl, _girl), ReferenceEquals(___StatusButton, _StatusButton), ours, cachedGone))
+                    return;
+                ___StatusButton = _StatusButton;
+                __instance.Render();
+            }
+            catch (Exception ex)
+            {
+                Log.WarnOnce("profile card", "couldn't move the idol's profile card to the hovered portrait: " + ex.Message);
+            }
+        }
+    }
+
     // Before each song: the lineup panel for the new show, the game's readouts for its own.
     [HarmonyPatch(typeof(Concert_Popup), nameof(Concert_Popup.SetNextSongScreen))]
     public class Concert_Popup_SetNextSongScreen

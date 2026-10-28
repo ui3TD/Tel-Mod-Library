@@ -435,22 +435,22 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void Validate_AllowsOneSubstitution_AndFreeChoiceForForcedSlots()
+        public void Validate_AllowsAnyNumberOfSubstitutes()
         {
             ShowSetup setup = Shows.Setup();
             setup.Members[2].CanPerform = false;
             ShowState state = Shows.Start(setup);
             Assert.Null(Engine.Validate(state, new[] { 3, 1, 4 }));
-            Assert.NotNull(Engine.Validate(state, new[] { 3, 5, 4 }));
+            Assert.Null(Engine.Validate(state, new[] { 3, 5, 4 }));
         }
 
         [Fact]
-        public void Validate_RejectsSwapsDuplicatesEmptiesAndUnavailableIdols()
+        public void Validate_AllowsSwaps_AndRejectsDuplicatesEmptiesAndUnavailableIdols()
         {
             ShowSetup setup = Shows.Setup();
             setup.Members[7].CanPerform = false;
             ShowState state = Shows.Start(setup);
-            Assert.NotNull(Engine.Validate(state, new[] { 1, 0, 2 }));   // position swap
+            Assert.Null(Engine.Validate(state, new[] { 1, 0, 2 }));      // two idols swapped
             Assert.NotNull(Engine.Validate(state, new[] { 3, 1, 3 }));   // twice
             Assert.NotNull(Engine.Validate(state, new[] { -1, 1, 2 }));  // original can perform
             Assert.NotNull(Engine.Validate(state, new[] { 7, 1, 2 }));   // can't perform

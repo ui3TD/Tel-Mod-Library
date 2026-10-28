@@ -48,7 +48,6 @@ namespace ConcertHype.Model
         public int AbsenceMax = 3;
 
         // Player actions
-        public int SubstitutionsPerSong = 1;
         public int McCharges = 2;
         public double KMc = 0.5;
         public double McRecovery = 10;

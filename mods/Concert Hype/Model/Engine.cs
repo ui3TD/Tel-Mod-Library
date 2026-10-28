@@ -89,16 +89,6 @@ namespace ConcertHype.Model
             return Enumerable.Range(0, song.Slots.Count).Select(j => IsForced(state, song, j)).ToArray();
         }
 
-        private static bool IsOriginalElsewhere(Song song, int member, int slot)
-        {
-            for (int k = 0; k < song.Slots.Count; k++)
-            {
-                if (k != slot && song.Slots[k].Original == member)
-                    return true;
-            }
-            return false;
-        }
-
         public static RollParts ExpectedRoll(ShowState state, int slot, int member)
         {
             Config config = state.Config;
@@ -120,12 +110,11 @@ namespace ConcertHype.Model
         /// </summary>
         public static int BestFill(ShowState state, int slot, ICollection<int> taken)
         {
-            Song song = state.CurrentSong;
             int best = -1;
             double bestRoll = double.MinValue;
             for (int m = 0; m < state.Setup.Members.Count; m++)
             {
-                if (!state.IsAvailable(m) || taken.Contains(m) || IsOriginalElsewhere(song, m, slot))
+                if (!state.IsAvailable(m) || taken.Contains(m))
                     continue;
                 double roll = ExpectedRoll(state, slot, m).Expected;
                 if (roll > bestRoll)
@@ -157,7 +146,7 @@ namespace ConcertHype.Model
 
             int preset = song.PresetSubstitute;
             int center = song.Slots.FindIndex(s => s.Position == 0);
-            if (preset >= 0 && center >= 0 && state.IsAvailable(preset) && !taken.Contains(preset) && !IsOriginalElsewhere(song, preset, center))
+            if (preset >= 0 && center >= 0 && state.IsAvailable(preset) && !taken.Contains(preset))
             {
                 if (lineup[center] >= 0)
                     taken.Remove(lineup[center]);
@@ -178,7 +167,9 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// Null when the lineup is legal for the current song, else why not.
+        /// Null when the lineup is legal for the current song, else why not. Any idol can perform in any place, and
+        /// any number of places can have a substitute; a place whose original can't perform must have one when
+        /// someone on the bench can.
         /// </summary>
         public static string Validate(ShowState state, int[] lineup)
         {
@@ -189,14 +180,12 @@ namespace ConcertHype.Model
                 return "the lineup doesn't match the song's slots";
 
             HashSet<int> seen = new HashSet<int>();
-            int changes = 0;
             for (int j = 0; j < lineup.Length; j++)
             {
                 int m = lineup[j];
-                bool forced = IsForced(state, song, j);
                 if (m < 0)
                 {
-                    if (!forced)
+                    if (!IsForced(state, song, j))
                         return $"slot {j} is empty but its original member can perform";
                     continue;
                 }
@@ -204,13 +193,7 @@ namespace ConcertHype.Model
                     return $"member {m} can't perform";
                 if (!seen.Add(m))
                     return $"member {m} is in two slots";
-                if (IsOriginalElsewhere(song, m, j))
-                    return $"member {m} belongs in another slot";
-                if (!forced && m != song.Slots[j].Original)
-                    changes++;
             }
-            if (changes > state.Config.SubstitutionsPerSong)
-                return $"{changes} substitutions; at most {state.Config.SubstitutionsPerSong} per song";
 
             for (int j = 0; j < lineup.Length; j++)
             {

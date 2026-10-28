@@ -131,7 +131,8 @@ namespace ConcertHype
         public static string BadgeText(SlotBadge badge) =>
             badge == SlotBadge.Substitute ? Texts.Get("CONCERTHYPE__BADGE_SUB")
             : badge == SlotBadge.Fill ? Texts.Get("CONCERTHYPE__BADGE_FILL")
-            : badge == SlotBadge.Empty ? Texts.Get("CONCERTHYPE__BADGE_EMPTY") : "";
+            : badge == SlotBadge.Empty ? Texts.Get("CONCERTHYPE__BADGE_EMPTY")
+            : Texts.Get("CONCERTHYPE__BADGE_ORIGINAL");
 
         public static string ScoreLine(Score score) =>
             Texts.Format("CONCERTHYPE__SCORE", Whole(score.Total), Whole(score.Average), Whole(score.Peak), Whole(score.Finale));

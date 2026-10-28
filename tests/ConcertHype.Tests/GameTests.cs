@@ -177,9 +177,36 @@ namespace ConcertHype.Tests
             session.AfterSong(stage);
 
             Assert.Equal((float)session.State.History[0], concert.Hype, 4);
-            Assert.Same(session.LastResult, session.LastResult);
+
+            // The game's animation takes a last step after the song ended; a frame later the hype lands again
+            stage.AddHype(-0.2f, false);
+            stage.EndFrame();
+            Assert.Equal((float)session.State.History[0], concert.Hype, 4);
             Assert.False(session.HypeFor((_concert._song)concert.SetListItems[0], out _));
             Assert.Equal(1, session.State.SongIndex);
+        }
+
+        [Fact]
+        public void TheSecondLanding_LeavesBigChangesAndTheLastSongAlone()
+        {
+            _concert concert = ThreeSongs();
+            concert.Hype = 50;
+            ShowSession session = GameFixture.Begin(concert);
+            FakeStage stage = new(concert);
+            session.BeforeSong(stage);
+            session.AfterSong(stage);
+            stage.AddHype(5f, false);  // another mod's bonus, not animation residue
+            stage.EndFrame();
+            Assert.Equal((float)session.State.History[0] + 5f, concert.Hype, 4);
+
+            stage.SongCounter = 1;
+            session.BeforeSong(stage);
+            session.AfterSong(stage);
+            stage.EndFrame();
+            stage.SongCounter = 2;
+            session.BeforeSong(stage);
+            session.AfterSong(stage);
+            Assert.Empty(stage.NextFrameActions);  // after the last song the score takes over
         }
 
         [Fact]

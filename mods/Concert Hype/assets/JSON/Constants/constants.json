@@ -13,7 +13,7 @@
 	},
 	{
 		id: "CONCERTHYPE__HINT_PLACE",
-		text: "Click a place to change who performs it, then an idol on the right. One change per song; empty places must be filled."
+		text: "Click a place to change who performs it, then an idol on the right. One change per song; empty places must be filled.\n★ original  ⇄ substitute  ! fill  ✖ empty"
 	},
 	{
 		id: "CONCERTHYPE__HINT_PICK",
@@ -60,24 +60,28 @@
 		text: "Talk break by {0}: hype {1}% to {2}%"
 	},
 	{
+		id: "CONCERTHYPE__BADGE_ORIGINAL",
+		text: "★"
+	},
+	{
 		id: "CONCERTHYPE__BADGE_SUB",
-		text: "SUB"
+		text: "⇄"
 	},
 	{
 		id: "CONCERTHYPE__BADGE_FILL",
-		text: "FILL"
+		text: "!"
 	},
 	{
 		id: "CONCERTHYPE__BADGE_EMPTY",
-		text: "EMPTY"
+		text: "✖"
 	},
 	{
 		id: "CONCERTHYPE__OUT",
-		text: "out {0}"
+		text: "✚{0}"
 	},
 	{
 		id: "CONCERTHYPE__RESTING",
-		text: "resting"
+		text: "Zz"
 	},
 	{
 		id: "CONCERTHYPE__SONGS",

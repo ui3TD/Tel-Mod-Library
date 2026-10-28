@@ -1,6 +1,7 @@
 using ConcertHype.Model;
 using HarmonyLib;
 using System;
+using System.Collections;
 using System.IO;
 using UnityEngine;
 
@@ -23,6 +24,21 @@ namespace ConcertHype
         public int SongCounter => SongCounterField(popup);
 
         public void AddHype(float value, bool animate) => popup.AddHype(value, animate);
+
+        public void NextFrame(Action action) => popup.StartCoroutine(AfterAFrame(action));
+
+        private static IEnumerator AfterAFrame(Action action)
+        {
+            yield return null;
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                Log.WarnOnce("next frame", "couldn't land the hype after the song: " + ex.Message);
+            }
+        }
     }
 
     // Start the new show for a qualifying concert, after the game opened its popup.
@@ -268,8 +284,6 @@ namespace ConcertHype
     [HarmonyPatch(typeof(Concert_Popup), nameof(Concert_Popup.FinishConcert))]
     public class Concert_Popup_FinishConcert
     {
-        public const float MaxDrift = 1f;
-
         public static void Prefix(Concert_Popup __instance)
         {
             try
@@ -278,7 +292,7 @@ namespace ConcertHype
                 if (score == null || !ReferenceEquals(ShowSession.LastScoreConcert, __instance.Concert))
                     return;
                 float drift = (float)score.Total - __instance.Concert.Hype;
-                if (drift != 0f && Mathf.Abs(drift) < MaxDrift)
+                if (drift != 0f && Mathf.Abs(drift) < ShowSession.MaxDrift)
                     __instance.AddHype(drift);
             }
             catch (Exception ex)

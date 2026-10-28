@@ -147,8 +147,7 @@ namespace InGameTests.TelMods
                         ctx.Fail("Song " + (song + 1) + " didn't play within 30 s");
                         yield break;
                     }
-                    // The game's hype animation can take its last step a frame after the song ends
-                    if (song < songs - 1 && Math.Abs(concert.Hype - history[song]) > 0.1)
+                    if (song < songs - 1 && Math.Abs(concert.Hype - history[song]) > 0.01)
                         ctx.Fail($"After song {song + 1} the bar is at {concert.Hype}, the show at {history[song]}");
                 }
                 yield return new WaitForSeconds(2f);

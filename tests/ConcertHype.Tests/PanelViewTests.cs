@@ -39,8 +39,10 @@ namespace ConcertHype.Tests
             SongPreview preview = session.Preview();
             Assert.Equal(Math.Round(preview.Slots[1].Expected).ToString(), view.Slots[1].Roll);
             Assert.Equal(new[] { false, true, false }, view.Slots.Select(s => s.Selected));
-            Assert.Equal("SUB", PanelView.BadgeText(SlotBadge.Substitute));
-            Assert.Equal("", PanelView.BadgeText(SlotBadge.Original));
+            Assert.Equal("\u21C4", PanelView.BadgeText(SlotBadge.Substitute));
+            Assert.Equal("\u2605", PanelView.BadgeText(SlotBadge.Original));
+            Assert.Equal("!", PanelView.BadgeText(SlotBadge.Fill));
+            Assert.Equal("\u2716", PanelView.BadgeText(SlotBadge.Empty));
         }
 
         [Fact]
@@ -100,9 +102,9 @@ namespace ConcertHype.Tests
             session.State.Exhausted[3] = true;
             session.State.Energy[3] = 10;
             PanelView view = PanelView.Build(session, -1, false);
-            Assert.Equal("out 2", view.Cast[1].State);
+            Assert.Equal("\u271A2", view.Cast[1].State);
             Assert.False(view.Cast[1].Available);
-            Assert.Equal("resting", view.Cast[3].State);
+            Assert.Equal("Zz", view.Cast[3].State);
             Assert.Equal(10, view.Cast[3].Energy);
             Assert.True(view.Cast[0].OnStage);
             Assert.Equal("", view.Cast[0].State);

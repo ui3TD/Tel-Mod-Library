@@ -24,6 +24,20 @@ namespace ConcertHype.Tests
 
         public readonly List<(float value, bool animate)> Calls = new();
 
+        /// <summary>
+        /// Actions for the next frame; the tests run them with <see cref="EndFrame"/>.
+        /// </summary>
+        public readonly List<Action> NextFrameActions = new();
+
+        public void NextFrame(Action action) => NextFrameActions.Add(action);
+
+        public void EndFrame()
+        {
+            List<Action> actions = new(NextFrameActions);
+            NextFrameActions.Clear();
+            actions.ForEach(a => a());
+        }
+
         public void AddHype(float value, bool animate)
         {
             Calls.Add((value, animate));
@@ -39,6 +53,7 @@ namespace ConcertHype.Tests
             if (session.HypeFor(session.Show.Items[SongCounter], out float change))
                 AddHype(change, false);
             session.AfterSong(this);
+            EndFrame();
             SongCounter++;
         }
     }

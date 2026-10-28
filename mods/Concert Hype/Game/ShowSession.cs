@@ -20,6 +20,11 @@ namespace ConcertHype
         int SongCounter { get; }
 
         void AddHype(float value, bool animate);
+
+        /// <summary>
+        /// Runs the action on the next frame.
+        /// </summary>
+        void NextFrame(Action action);
     }
 
     /// <summary>
@@ -43,6 +48,11 @@ namespace ConcertHype
         public static string LogPath;
 
         public static event Action Changed;
+
+        /// <summary>
+        /// The most the concert's hype may differ from the show's before a correction leaves it alone.
+        /// </summary>
+        public const float MaxDrift = 1f;
 
         public readonly SEvent_Concerts._concert Concert;
         public readonly GameShow Show;
@@ -205,8 +215,20 @@ namespace ConcertHype
         {
             if (Pending == null)
                 return;
-            stage.AddHype((float)(Pending.HypeAfter - stage.Concert.Hype), false);
-            LastResult = Pending;
+            SongResult song = Pending;
+            stage.AddHype((float)(song.HypeAfter - stage.Concert.Hype), false);
+            // The game's hype animation can take its last step after the song ends: land again a frame later.
+            // A bigger difference is another mod's doing and stays. After the last song the score takes over.
+            if (!State.Finished)
+            {
+                stage.NextFrame(() =>
+                {
+                    float drift = (float)song.HypeAfter - stage.Concert.Hype;
+                    if (ReferenceEquals(Current, this) && Pending == null && ReferenceEquals(LastResult, song) && drift != 0f && Math.Abs(drift) < MaxDrift)
+                        stage.AddHype(drift, false);
+                });
+            }
+            LastResult = song;
             LastMc = null;
             Pending = null;
             PendingItem = null;

@@ -127,7 +127,6 @@ namespace ConcertHype
         public Image Background;
         public Image Bar;
         public TextMeshProUGUI Label;
-        public CanvasGroup Group;
         private Color backgroundColor;
 
         public static PortraitWidget Make(GameObject prefab, GameObject labelTemplate, Transform parent, string name, UnityAction onClick)
@@ -138,7 +137,6 @@ namespace ConcertHype
             widget.Button = center?.GetComponent<Button>();
             widget.Background = widget.Root.transform.Find("BG")?.GetComponent<Image>();
             widget.Bar = widget.Root.transform.Find("Stamina")?.GetComponent<Image>();
-            widget.Group = widget.Root.AddComponent<CanvasGroup>();
             if (widget.Background != null)
                 widget.backgroundColor = widget.Background.color;
             if (widget.Button != null)
@@ -174,6 +172,17 @@ namespace ConcertHype
             {
                 hover.enabled = true;
                 hover.Set(girl);
+            }
+        }
+
+        public void SetDimmed(bool dimmed)
+        {
+            if (Picture != null)
+                Picture.color = dimmed ? new Color(0.45f, 0.45f, 0.45f, 1f) : Color.white;
+            if (Bar != null)
+            {
+                Color bar = Bar.color;
+                Bar.color = new Color(bar.r, bar.g, bar.b, dimmed ? 0.45f : 1f);
             }
         }
 
@@ -419,7 +428,7 @@ namespace ConcertHype
                 widget.Root.transform.localScale = new Vector3(scale, scale, 1f);
                 // The column's cells are tight: a small label over the bottom of the picture
                 Ui.Place(widget.Label.gameObject, -8f, 34f, 70f, 14f);
-                widget.Label.fontSize = 11f;
+                widget.Label.fontSize = 12f;
                 widget.Label.color = Color.white;
                 widget.Label.fontStyle = FontStyles.Bold;
                 Widgets.Add(widget);
@@ -468,7 +477,8 @@ namespace ConcertHype
                 CastView cast = view.Cast[m];
                 Ui.SetEnergyBar(widget.Bar, cast.Energy);
                 widget.Label.text = cast.State;
-                widget.Group.alpha = cast.Available ? 1f : 0.45f;
+                // An idol who can't perform is dimmed; the label saying why stays readable
+                widget.SetDimmed(!cast.Available);
             }
         }
     }

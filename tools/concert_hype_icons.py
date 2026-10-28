@@ -8,7 +8,6 @@ game icon, since those already mean something in the game.
 """
 
 import argparse
-import math
 from pathlib import Path
 
 from PIL import Image, ImageDraw

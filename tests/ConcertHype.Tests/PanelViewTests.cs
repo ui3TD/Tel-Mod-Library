@@ -97,7 +97,10 @@ namespace ConcertHype.Tests
             stage.PlaySong(session);
             string last = PanelView.Build(session).Last;
             Assert.StartsWith("Last song: " + PanelView.Signed(session.LastResult.Change) + " hype; ", last);
-            Assert.Contains("Idol0 is hurt and out for 2 songs", last);
+            Assert.Equal("Last song: " + PanelView.Signed(session.LastResult.Change) + " hype; 3 hurt", last);  // names show on the bench
+            session.LastResult.Exhausted.Add(1);
+            Assert.EndsWith("; 3 hurt, 1 exhausted", PanelView.Build(session).Last);
+            session.LastResult.Exhausted.Clear();
 
             session.State.Config.PBase = 0;
             session.Drop(2, DropPoint.AtPlace(0), DropPoint.Host);

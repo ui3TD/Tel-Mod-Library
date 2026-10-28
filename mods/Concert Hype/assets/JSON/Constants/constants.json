@@ -100,12 +100,12 @@
 		text: "Last song: {0} hype"
 	},
 	{
-		id: "CONCERTHYPE__HURT",
-		text: "{0} is hurt and out for {1}"
+		id: "CONCERTHYPE__HURT_COUNT",
+		text: "{0} hurt"
 	},
 	{
-		id: "CONCERTHYPE__EXHAUSTED",
-		text: "{0} is exhausted"
+		id: "CONCERTHYPE__EXHAUSTED_COUNT",
+		text: "{0} exhausted"
 	},
 	{
 		id: "CONCERTHYPE__TALK_RESULT",

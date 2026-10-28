@@ -378,13 +378,15 @@ namespace ConcertHype
     {
         private const string Name = "ConcertHype Lineup";
         private const float TriangleCenterX = 610f, TriangleTop = 135f, RowHeight = 76f, CellWidth = 70f;
+        private const float LastTop = 206f, LinesWidth = 470f, TalkBoxTop = 258f, TalkBoxWidth = 230f, TalkBoxHeight = 96f;
 
         private static Concert_Popup owner;
         private static GameObject root;
         private static TextMeshProUGUI hype, expected, last, hint, talkTitle, formationNote;
         private static Button resetLineup;
         private static PortraitWidget hostPlace;
-        private static GameObject cancelOverlay;
+        private static GameObject cancelOverlay, emptyMark, talkBox;
+        private static CanvasGroup talkBoxGroup;
         private static readonly List<PortraitWidget> Slots = new List<PortraitWidget>();
         private static readonly List<GameObject> Hidden = new List<GameObject>();
         private static TextMeshProUGUI startLabel;
@@ -461,11 +463,21 @@ namespace ConcertHype
             GameObject labelTemplate = container.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
             hype = Ui.Label(labelTemplate, root.transform, "Hype", 30f, 148f, 470f, 28f, 18f);
             expected = Ui.Label(labelTemplate, root.transform, "Expected", 30f, 178f, 470f, 24f, 15f);
-            last = Ui.Label(labelTemplate, root.transform, "Last", 30f, 206f, 470f, 48f, 15f);
-            talkTitle = Ui.Label(labelTemplate, root.transform, "TalkTitle", 30f, 258f, 300f, 22f, 15f);
-            hostPlace = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Host", DropPoint.Host);
-            Ui.Place(hostPlace.Root, 30f, 282f, 54f, 58f);
+            last = Ui.Label(labelTemplate, root.transform, "Last", 30f, LastTop, LinesWidth, 48f, 15f);
+            // The talk break in its own framed box, apart from the lines above
+            talkBox = new GameObject("TalkBreak", typeof(RectTransform));
+            talkBox.transform.SetParent(root.transform, false);
+            Ui.Place(talkBox, 30f, TalkBoxTop, TalkBoxWidth, TalkBoxHeight);
+            talkBox.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.4f);
+            Outline frame = talkBox.AddComponent<Outline>();
+            frame.effectColor = new Color(1f, 1f, 1f, 0.35f);
+            frame.effectDistance = new Vector2(1.5f, -1.5f);
+            talkBoxGroup = talkBox.AddComponent<CanvasGroup>();
+            talkTitle = Ui.Label(labelTemplate, talkBox.transform, "TalkTitle", 10f, 6f, TalkBoxWidth - 20f, 22f, 15f);
+            hostPlace = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, talkBox.transform, "Host", DropPoint.Host);
+            Ui.Place(hostPlace.Root, 10f, 32f, 54f, 58f);
             cancelOverlay = MakeCancelOverlay(hostPlace);
+            emptyMark = MakeEmptyMark(hostPlace);
             hint = Ui.Label(labelTemplate, root.transform, "Hint", 30f, 350f, 470f, 64f, 14f);
             // Level with the game's Start button beside it, whose left edge leaves room for a narrower button
             Rect start = Ui.Placed(popup.NextSong_Button, container);
@@ -508,20 +520,28 @@ namespace ConcertHype
             talkTitle.text = view.TalkTitle;
             SetStartLabel(view.StartLabel);
 
-            // No talk break place before the first song
-            talkTitle.gameObject.SetActive(view.TalkShown);
-            hostPlace.Root.SetActive(view.TalkShown);
+            // No talk break box before the first song; below the lines above it, however long they run
+            talkBox.SetActive(view.TalkShown);
+            float lastBottom = LastTop + Mathf.Max(24f, last.GetPreferredValues(LinesWidth, 0f).y);
+            float boxTop = Mathf.Max(TalkBoxTop, lastBottom + 12f);
+            Ui.Place(talkBox, 30f, boxTop, TalkBoxWidth, TalkBoxHeight);
+            Ui.Place(hint.gameObject, 30f, view.TalkShown ? boxTop + TalkBoxHeight + 8f : Mathf.Max(TalkBoxTop, lastBottom + 8f), LinesWidth, 64f);
             data_girls.girls hostGirl = view.Host < 0 ? null : session.Show.Girls[view.Host];
             hostPlace.SetGirl(hostGirl);
             Ui.SetEnergyBar(hostPlace.Bar, hostGirl is null ? 0 : session.State.Energy[view.Host]);
             hostPlace.SetHighlight(view.HostHighlight, hostGirl is null);
+            // An empty host place reads as a place to drop: a light tile with the empty mark
+            if (hostGirl is null && view.HostHighlight == Highlight.None && hostPlace.Background != null)
+                hostPlace.Background.color = new Color(1f, 1f, 1f, 0.15f);
+            if (emptyMark != null)
+                emptyMark.SetActive(hostGirl is null);
             if (cancelOverlay != null)
                 cancelOverlay.SetActive(false);
             hostPlace.SetDimmed(false);
             ShowCancel();
             hostPlace.Icon.Set(IconKind.None, "");
             // Greyed out while no talk break can be called
-            hostPlace.Group.alpha = view.TalkOpen || view.Host >= 0 ? 1f : 0.45f;
+            talkBoxGroup.alpha = view.TalkOpen || view.Host >= 0 ? 1f : 0.45f;
 
             int[] perRow = new int[5], placed = new int[5];
             int rows = 0;
@@ -755,6 +775,28 @@ namespace ConcertHype
             rect.sizeDelta = new Vector2(34f, 34f);
             overlay.SetActive(false);
             return overlay;
+        }
+
+        /// <summary>
+        /// The empty icon centred on the host place while nobody is on it. It takes no raycast.
+        /// </summary>
+        private static GameObject MakeEmptyMark(PortraitWidget host)
+        {
+            Sprite sprite = Icons.Get(IconKind.Empty);
+            Transform center = host.Picture?.transform;
+            if (sprite == null || center == null)
+                return null;
+            GameObject mark = new GameObject("EmptyMark", typeof(RectTransform));
+            mark.transform.SetParent(center, false);
+            Image image = mark.AddComponent<Image>();
+            image.sprite = sprite;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            RectTransform rect = (RectTransform)mark.transform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(26f, 26f);
+            return mark;
         }
 
         /// <summary>

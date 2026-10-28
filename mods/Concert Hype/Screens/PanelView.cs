@@ -263,14 +263,15 @@ namespace ConcertHype
             SongResult last = session.LastResult;
             if (last == null)
                 return "";
-            List<string> parts = new List<string> { Texts.Format("CONCERTHYPE__LAST_SONG", Signed(last.Change)) };
-            foreach (SlotResult slot in last.Slots.Where(s => s.Accident))
-            {
-                parts.Add(Texts.Format("CONCERTHYPE__HURT", session.Name(slot.Member), SongCount(slot.AbsenceLength)));
-            }
-            foreach (int member in last.Exhausted)
-                parts.Add(Texts.Format("CONCERTHYPE__EXHAUSTED", session.Name(member)));
-            return string.Join("; ", parts);
+            // Who is out, and for how long, shows on the bench: here only how many
+            List<string> counts = new List<string>();
+            int hurt = last.Slots.Count(s => s.Accident);
+            if (hurt > 0)
+                counts.Add(Texts.Format("CONCERTHYPE__HURT_COUNT", hurt));
+            if (last.Exhausted.Count > 0)
+                counts.Add(Texts.Format("CONCERTHYPE__EXHAUSTED_COUNT", last.Exhausted.Count));
+            string line = Texts.Format("CONCERTHYPE__LAST_SONG", Signed(last.Change));
+            return counts.Count == 0 ? line : line + "; " + string.Join(", ", counts);
         }
 
         private static string SongCount(int songs) => songs == 1 ? Texts.Get("CONCERTHYPE__SONG") : Texts.Format("CONCERTHYPE__SONGS", songs);

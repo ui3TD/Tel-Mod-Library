@@ -112,7 +112,7 @@ namespace InGameTests.TelMods
                 Transform panel = popup.NextSong_Container.transform.Find("ConcertHype Lineup");
                 List<Button> buttons = panel.GetComponentsInChildren<Button>().Concat(popup.Girls.GetComponentsInChildren<Button>()).ToList();
                 ctx.Record("buttons", buttons.Count);
-                if (panel.Find("Host/Center") == null || panel.Find("Host/Center").gameObject.activeInHierarchy)
+                if (panel.Find("TalkBreak/Host/Center") == null || panel.Find("TalkBreak/Host/Center").gameObject.activeInHierarchy)
                     ctx.Fail("The talk break place shows before the first song");
                 Rect screen = new(0, 0, Screen.width, Screen.height);
                 foreach (Button button in buttons)
@@ -129,7 +129,11 @@ namespace InGameTests.TelMods
                 object show = Get<object>(session, "Show");
                 IList<data_girls.girls> girls = Get<IList<data_girls.girls>>(show, "Girls");
                 IList<double> history = Get<IList<double>>(state, "History");
-                double songSeconds = Get<double>(Get<object>(state, "Config"), "SongSeconds");
+                object showConfig = Get<object>(state, "Config");
+                double songSeconds = Get<double>(showConfig, "SongSeconds");
+                // No accidents: the rolls are unit-tested, and random injuries could leave nobody to bring in
+                foreach (string chance in new[] { "PBase", "PRoll", "PTired" })
+                    AccessTools.Field(showConfig.GetType(), chance).SetValue(showConfig, 0.0);
                 int[] Lineup() => Get<int[]>(session, "Lineup");
                 bool Available(int m) => (bool)AccessTools.Method(state.GetType(), "IsAvailable").Invoke(state, new object[] { m });
                 Transform Bench(int m) => popup.Girls.transform.Find("Bench " + m + "/Center");
@@ -146,6 +150,9 @@ namespace InGameTests.TelMods
                     yield break;
                 }
                 Transform center = panel.Find("Slot 0/Center");
+                GameObject underBench = TopHit(ScreenRect(Bench(sub)).center), underCenter = TopHit(ScreenRect(center).center);
+                ctx.Record("under the mouse before the first drag", (underBench == null ? "nothing" : underBench.transform.parent?.name + "/" + underBench.name)
+                    + " -> " + (underCenter == null ? "nothing" : underCenter.transform.parent?.name + "/" + underCenter.name));
                 bool portraitShown = false, hovered = false;
                 yield return mouse.Drag(ScreenRect(Bench(sub)).center, ScreenRect(center).center, () =>
                 {
@@ -190,7 +197,15 @@ namespace InGameTests.TelMods
                             yield break;
                         }
                         // Her profile card shows at her bench portrait first, then comes along to the host place
-                        Transform hostPlace = panel.Find("Host/Center");
+                        Transform hostPlace = panel.Find("TalkBreak/Host/Center");
+                        // The talk break box sits below the lines above it as TMP actually draws them
+                        TextMeshProUGUI lastLine = panel.Find("Last").GetComponent<TextMeshProUGUI>();
+                        Vector3[] box = new Vector3[4];
+                        ((RectTransform)panel.Find("TalkBreak")).GetWorldCorners(box);
+                        float textBottom = lastLine.transform.TransformPoint(lastLine.textBounds.min).y;
+                        ctx.Record("gap above the talk break box", (textBottom - box[1].y).ToString("F3"));
+                        if (box[1].y > textBottom)
+                            ctx.Fail("The talk break box overlaps the line above it: " + lastLine.text);
                         yield return mouse.Hover(ScreenRect(Bench(host)).center, 1f);
                         yield return mouse.Drag(ScreenRect(Bench(host)).center, ScreenRect(hostPlace).center, null);
                         yield return new WaitForSecondsRealtime(1f);

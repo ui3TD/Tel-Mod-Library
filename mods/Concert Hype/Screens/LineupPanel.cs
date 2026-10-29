@@ -342,9 +342,10 @@ namespace ConcertHype
                 widget.SetEnergy(slot.Member >= 0 ? session.State.Energy[slot.Member] : 0);
                 widget.SetDimmed(slot.Dragged);
                 widget.SetHighlight(slot.Highlight);
-                widget.Label.text = "";
+                widget.SetGapCost(slot.GapText);
                 widget.SetSuccess(slot.Success);
-                widget.SetBarTips(slot.EnergyTip, slot.SuccessTip, view.Dragging);
+                // An empty place's strip over its bars' row explains its cost
+                widget.SetBarTips(slot.Member < 0 ? slot.GapTip : slot.EnergyTip, slot.SuccessTip, view.Dragging);
                 widget.Icon.Set(slot.Icon, slot.Tip);
                 widget.SetBarIcon(slot.Icon != IconKind.None);
             }

@@ -521,6 +521,19 @@ namespace ConcertHype
         }
 
         /// <summary>
+        /// An empty place in the lineup: the hype it costs in red where the bars would be, empty otherwise.
+        /// </summary>
+        public void SetGapCost(string text)
+        {
+            Label.text = text ?? "";
+            if (Label.text.Length == 0)
+                return;
+            Ui.Place(Label.gameObject, 4f, 50f, 46f, 16f);
+            Label.alignment = TextAlignmentOptions.Center;
+            Label.color = mainScript.red32;
+        }
+
+        /// <summary>
         /// Her chance of a success in percent on the success bar; below 0 hides it (an empty place).
         /// </summary>
         public void SetSuccess(double chance)

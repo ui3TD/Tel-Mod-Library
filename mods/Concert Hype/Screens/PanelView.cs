@@ -86,6 +86,12 @@ namespace ConcertHype
         /// Shown when her energy bar or her success bar is hovered; empty for an empty place.
         /// </summary>
         public string EnergyTip = "", SuccessTip = "";
+
+        /// <summary>
+        /// An empty place's expected hype cost this song, as shown under it ("-3%"), and its tooltip; empty for a
+        /// filled place.
+        /// </summary>
+        public string GapText = "", GapTip = "";
     }
 
     /// <summary>
@@ -248,6 +254,12 @@ namespace ConcertHype
         private static string Whole(double value) => Math.Round(value).ToString(CultureInfo.InvariantCulture);
 
         /// <summary>
+        /// A gap's hype cost in whole percent, or to one decimal under 1, so a small cost doesn't read as none.
+        /// </summary>
+        public static string GapCost(double cost) =>
+            cost >= 0.95 ? Whole(cost) : Math.Max(0.1, Math.Round(cost, 1)).ToString("0.#", CultureInfo.InvariantCulture);
+
+        /// <summary>
         /// The chance in percent that a roll of this expected value is a success or a critical success.
         /// </summary>
         public static double SuccessChance(Config config, double expected)
@@ -304,6 +316,7 @@ namespace ConcertHype
             if (song != null)
             {
                 SongPreview preview = Engine.Preview(state, lineup);
+                double[] gaps = Engine.GapCosts(state, lineup);
                 for (int j = 0; j < song.Slots.Count; j++)
                 {
                     int member = lineup[j];
@@ -323,6 +336,12 @@ namespace ConcertHype
                         slot.EnergyTip = PlaceEnergyTip(state.Config, state.Energy[member], slot.Row);
                     if (preview.Slots[j] != null)
                         slot.SuccessTip = SuccessTipOf(state.Config, preview.Slots[j].Expected);
+                    if (member < 0)
+                    {
+                        string cost = GapCost(gaps[j]);
+                        slot.GapText = Texts.Format("CONCERTHYPE__GAP", cost);
+                        slot.GapTip = Texts.Format("CONCERTHYPE__GAP_TIP", cost);
+                    }
                     view.Slots.Add(slot);
                 }
                 if (tab == FormationTab.Song)
@@ -330,7 +349,8 @@ namespace ConcertHype
                     double h = state.Hype, band = state.Config.NoveltyBlendBand;
                     string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
                     view.Expected = Change("CONCERTHYPE__EXPECTED_TITLE", preview.Change);
-                    view.Expected.Tip = Texts.Format("CONCERTHYPE__EXPECTED_TIP", Signed(preview.Low) + "%", Signed(preview.High) + "%", Whole(h), Texts.Get(mood));
+                    view.Expected.Tip = Texts.Format("CONCERTHYPE__EXPECTED_TIP", Signed(preview.Low) + "%", Signed(preview.High) + "%", Whole(h), Texts.Get(mood))
+                        + " " + Texts.Format("CONCERTHYPE__CROWD_TIP", preview.CrowdMultiplier.ToString("0.##", CultureInfo.InvariantCulture));
                     view.Changed = new Readout
                     {
                         Title = Texts.Get("CONCERTHYPE__CHANGED_TITLE"),

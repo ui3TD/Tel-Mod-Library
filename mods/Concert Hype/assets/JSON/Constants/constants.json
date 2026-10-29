@@ -100,6 +100,18 @@
 		text: "Likely {0} to {1}, depending on how the idols perform. Hype {2}%: {3}."
 	},
 	{
+		id: "CONCERTHYPE__CROWD_TIP",
+		text: "Song appeal to this lineup's fans: ×{0}."
+	},
+	{
+		id: "CONCERTHYPE__GAP",
+		text: "-{0}%"
+	},
+	{
+		id: "CONCERTHYPE__GAP_TIP",
+		text: "Empty place: costs about {0}% hype."
+	},
+	{
 		id: "CONCERTHYPE__BAND_LOW",
 		text: "a changed lineup surprises the crowd"
 	},

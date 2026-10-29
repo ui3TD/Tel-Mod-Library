@@ -56,7 +56,7 @@ namespace ConcertHype.Tests
             Assert.Equal(PanelView.Signed(preview.Change) + "%", view.Expected.Value);
             Assert.Equal(Math.Round(preview.Change) >= 0 ? Tone.Good : Tone.Bad, view.Expected.Tone);
             Assert.Equal($"Likely {PanelView.Signed(preview.Low)}% to {PanelView.Signed(preview.High)}%, depending on how the idols perform. "
-                + "Hype 50%: a changed lineup surprises the crowd.", view.Expected.Tip);
+                + "Hype 50%: a changed lineup surprises the crowd. Song appeal to this lineup's fans: ×1.", view.Expected.Tip);
             Assert.Equal("Changed Lineup:", view.Changed.Title);
             Assert.Equal(Math.Round(100 * preview.Novelty) + "%", view.Changed.Value);
             Assert.Equal(Tone.Plain, view.Changed.Tone);
@@ -66,9 +66,9 @@ namespace ConcertHype.Tests
             Assert.Equal("M can't perform right now.", PanelView.Build(session, message: "M can't perform right now.").Hint);
 
             session.State.Hype = 150;
-            Assert.EndsWith("Hype 150%: the crowd wants the hits.", PanelView.Build(session).Expected.Tip);
+            Assert.Contains("Hype 150%: the crowd wants the hits.", PanelView.Build(session).Expected.Tip);
             session.State.Hype = 95;
-            Assert.EndsWith("Hype 95%: the crowd is close to 100%.", PanelView.Build(session).Expected.Tip);
+            Assert.Contains("Hype 95%: the crowd is close to 100%.", PanelView.Build(session).Expected.Tip);
         }
 
         [Theory]
@@ -240,6 +240,46 @@ namespace ConcertHype.Tests
 
             // While an idol is dragged, the strips let the mouse through to the places
             Assert.True(PanelView.Build(session, new DragView { Member = 1, From = DropPoint.Bench }).Dragging);
+        }
+
+        [Fact]
+        public void TheExpectedHypeTip_ShowsTheCrowdMultiplier_AndFollowsADragPreview()
+        {
+            ShowSession session = ThreeSongs(out _concert concert);
+            // Song 1 appeals to male fans only; Idol0 and Idol1 have male fans (the fixture's), Idol3 female fans
+            session.State.Setup.Songs[0].Appeal = new double[] { 1, 0, 0, 0, 0, 0, 0 };
+            session.State.Setup.Members[2].FanMix = new double[] { 0, 1, 0.5, 0.5, 1, 0, 0 };
+            string Tip(PanelView v) => v.Expected.Tip.Substring(v.Expected.Tip.IndexOf("Song appeal", StringComparison.Ordinal));
+
+            PanelView view = PanelView.Build(session);
+            string expected = Engine.CrowdMultiplier(session.State.Config, Engine.CrowdAppeal(session.State, session.State.CurrentSong, session.Lineup))
+                .ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            Assert.Equal($"Song appeal to this lineup's fans: ×{expected}.", Tip(view));
+
+            // Holding Idol3 (female fans) over the center lowers it
+            PanelView dragged = PanelView.Build(session, new DragView { Member = 2, From = DropPoint.Bench, Over = DropPoint.AtPlace(0) });
+            Assert.NotEqual(Tip(view), Tip(dragged));
+        }
+
+        [Fact]
+        public void AnEmptyPlace_ShowsItsHypeCost_AndExplainsItWhenHovered()
+        {
+            data_girls.girls[] idols = Enumerable.Range(0, 3).Select(i => GameFixture.Idol("Idol" + i, dance: 60, vocal: 60)).ToArray();
+            idols[2].status = data_girls._status.injured;
+            _concert concert = GameFixture.Concert(GameFixture.Single("S1", idols));
+            data_girls.girl.RemoveAll(g => !idols.Contains(g));
+            ShowSession session = GameFixture.Begin(concert, Shows.Quiet());
+            Assert.Equal(-1, session.Lineup[2]);
+
+            PanelView view = PanelView.Build(session);
+            string cost = PanelView.GapCost(Engine.GapCosts(session.State, session.Lineup)[2]);
+            Assert.Equal($"-{cost}%", view.Slots[2].GapText);
+            Assert.Equal($"Empty place: costs about {cost}% hype.", view.Slots[2].GapTip);
+            Assert.Equal("", view.Slots[0].GapText);
+            Assert.Equal("", view.Slots[0].GapTip);
+            Assert.Equal("0.3", PanelView.GapCost(0.3));
+            Assert.Equal("0.1", PanelView.GapCost(0.01));
+            Assert.Equal("4", PanelView.GapCost(3.6));
         }
 
         [Fact]

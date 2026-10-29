@@ -54,6 +54,25 @@ namespace ConcertHype
             new string[0]);
 
         /// <summary>
+        /// The café popup's idol list scrollbar: a slider with a thin track and a round thumb.
+        /// </summary>
+        /// <summary>
+        /// The settings popup's Quality dropdown: its box, and the list that opens under it.
+        /// </summary>
+        public static readonly VanillaShape Dropdown = new VanillaShape(
+            new[] { typeof(RectTransform), typeof(CanvasRenderer), typeof(Michsky.UI.ModernUIPack.CustomDropdown), typeof(Button), typeof(Michsky.UI.ModernUIPack.UIManagerDropdown), typeof(Animator) },
+            new[] { "Trigger", "Content", "Content/Item List", "Content/Item List/Shadow", "Content/Item List/Scroll Area", "Content/Item List/Scroll Area/List",
+                "Content/Item List/Scroll Area/Scrollbar", "Content/Item List/Scroll Area/Scrollbar/Background", "Content/Item List/Scroll Area/Scrollbar/Sliding Area",
+                "Content/Item List/Scroll Area/Scrollbar/Sliding Area/Handle", "Content/Main", "Content/Main/Selected Image", "Content/Main/Selected Text", "Content/Main/Expand" });
+
+        /// <summary>
+        /// The café popup's idol list scrollbar: a slider with a thin track and a round thumb.
+        /// </summary>
+        public static readonly VanillaShape Scrollbar = new VanillaShape(
+            new[] { typeof(RectTransform), typeof(Slider), typeof(SliderDefault) },
+            new[] { "Background", "Fill Area", "Fill Area/Fill", "Handle Slide Area", "Handle Slide Area/Handle" });
+
+        /// <summary>
         /// A tab of the group appeal popup: a tinted box with its label (Unity's own Text) inside.
         /// </summary>
         public static readonly VanillaShape Tab = new VanillaShape(
@@ -860,7 +879,7 @@ namespace ConcertHype
                     if (Alive && root.activeInHierarchy && ShowSession.Current != null)
                         Render();
                     else
-                        BenchColumn.Render(ShowSession.Current == null ? null : PanelView.Build(ShowSession.Current, tab: Tab));
+                        BenchColumn.Render(ShowSession.Current == null ? null : PanelView.Build(ShowSession.Current, tab: Tab, group: BenchColumn.Group));
                 };
                 subscribed = true;
             }
@@ -888,7 +907,7 @@ namespace ConcertHype
             // The talk break's tab is disabled while none can be called
             if (Tab == FormationTab.Talk && DropRules.TalkBlocked(session.State) != null)
                 Tab = FormationTab.Song;
-            PanelView view = PanelView.Build(session, drag, message, Tab);
+            PanelView view = PanelView.Build(session, drag, message, Tab, BenchColumn.Group);
             LevelReset();
             // Before the readouts get their text: measuring a title's width leaves it on the label
             Layout(view);
@@ -1016,7 +1035,7 @@ namespace ConcertHype
                 ReadoutsBottom = lastBottom - lift + Gap,
                 ButtonsRight = Math.Max(start.xMax, reset.xMax) + Gap,
                 ButtonsTop = buttonsTop - Gap,
-                BenchLeft = Ui.Placed(owner.Girls, container).xMin - Gap,
+                BenchLeft = BenchColumn.LeftEdge(owner, container) - Gap,
                 Top = TriangleTop,
                 Bottom = height - Gap,
                 Margin = hintLeft,
@@ -1753,13 +1772,31 @@ namespace ConcertHype
 
     /// <summary>
     /// The popup's column of idols becomes the show's bench: everyone in the agency who isn't in the shown tab's
-    /// set-up (on stage, or hosting the talk break), with the show's energy, to drag onto its places. The column
-    /// picks its columns and scale from how many it holds.
+    /// set-up (on stage, or hosting the talk break), with the show's energy, to drag onto its places. Two columns
+    /// fill a strip at the column's right edge, from its top (under the group dropdown, when there is one) to the
+    /// bottom of the screen; a longer bench scrolls, with a scrollbar left of it.
     /// </summary>
     internal static class BenchColumn
     {
-        private const int MaxColumns = 4;
         private const float PortraitWidth = 54f, PortraitHeight = 58f, CellWidth = 62f, CellHeight = 66f;
+
+        /// <summary>
+        /// The bench's width, between the game's column (about 200) and two portraits at full size (124).
+        /// </summary>
+        public const float BenchWidth = 160f;
+
+        private const float WheelStep = 30f, BarGap = 4f, DropdownGap = 6f, DefaultBarWidth = 20f;
+
+        /// <summary>
+        /// The bench reaches down to this far above the popup's bottom edge.
+        /// </summary>
+        private const float BottomMargin = 12f;
+
+        private static RectTransform content;
+        private static GameObject scrollbar;
+        private static GameObject dropdown;
+        private static float barWidth = DefaultBarWidth;
+        private static List<GroupChoice> groups = new List<GroupChoice>();
 
         private static Concert_Popup owner;
         private static readonly List<PortraitWidget> Widgets = new List<PortraitWidget>();
@@ -1767,10 +1804,16 @@ namespace ConcertHype
         private static bool gridWasEnabled;
         private static bool saved;
 
+        /// <summary>
+        /// The group the bench shows, by ID; -1 for everyone. Each show starts with everyone.
+        /// </summary>
+        public static int Group { get; private set; } = -1;
+
         public static void Build(Concert_Popup popup, ShowSession session)
         {
             owner = popup;
             Widgets.Clear();
+            Group = -1;
             Transform column = popup.Girls.transform;
             for (int i = column.childCount - 1; i >= 0; i--)
                 UnityEngine.Object.Destroy(column.GetChild(i).gameObject);
@@ -1787,18 +1830,190 @@ namespace ConcertHype
                 grid.enabled = false;
             }
 
+            content = MakeScroll(column, out WheelScroll scroll);
+            scrollbar = MakeScrollbar(column, scroll);
+            groups = session.Show.Groups;
+            dropdown = MakeDropdown(column, PanelView.GroupChoices(groups));
             GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
             for (int m = 0; m < session.Show.Girls.Count; m++)
             {
                 // Why she can't perform is an icon on her picture
-                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, column, "Bench " + m, DropPoint.Bench, iconOnPicture: true);
+                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, content, "Bench " + m, DropPoint.Bench, iconOnPicture: true);
                 widget.SetGirl(session.Show.Girls[m]);
                 if (widget.Drag != null)
                     widget.Drag.BenchMember = m;
                 widget.Label.gameObject.SetActive(false);
                 Widgets.Add(widget);
             }
-            Render(PanelView.Build(session, tab: LineupPanel.Tab));
+            Render(PanelView.Build(session, tab: LineupPanel.Tab, group: Group));
+        }
+
+        /// <summary>
+        /// The left edge of the bench and its scrollbar's strip, in the coordinates of <see cref="Ui.Place"/> for
+        /// this container: the formation stays left of it.
+        /// </summary>
+        public static float LeftEdge(Concert_Popup popup, Transform container) =>
+            Ui.Placed(popup.Girls, container).xMax - BenchWidth - BarGap - barWidth;
+
+        /// <summary>
+        /// Lays out the dropdown at the column's top, and the bench and its scrollbar under it down to the bottom of
+        /// the screen, which the window's shape moves. Gives the bench's height.
+        /// </summary>
+        private static float Arrange()
+        {
+            float extra = Math.Max(0f, ((RectTransform)owner.transform).rect.height - BottomMargin - Ui.Placed(owner.Girls, owner.transform).yMax);
+            float top = 0f;
+            if (dropdown != null)
+            {
+                RectTransform box = (RectTransform)dropdown.transform;
+                // The game's dropdown is built at a larger size and scaled down: its size is set in its own units, so
+                // on screen it spans the bench and its scrollbar
+                float scale = box.localScale.x > 0.01f ? box.localScale.x : 1f;
+                if (box.parent == owner.Girls.transform)
+                {
+                    box.anchorMin = box.anchorMax = box.pivot = new Vector2(1f, 1f);
+                    box.anchoredPosition = Vector2.zero;
+                    box.sizeDelta = new Vector2((BenchWidth + BarGap + barWidth) / scale, box.sizeDelta.y);
+                }
+                // Its drawn box (Main) is taller than its own rect: the bench starts under what's drawn
+                Transform drawn = box.Find("Content/Main") ?? box;
+                top = Math.Max(Ui.Placed(drawn.gameObject, owner.Girls.transform).yMax, box.sizeDelta.y * box.localScale.y) + DropdownGap;
+            }
+            Fit(content.parent, -BenchWidth, 0f, top, extra);
+            if (scrollbar != null)
+                Fit(scrollbar.transform, -BenchWidth - BarGap - barWidth, -BenchWidth - BarGap, top, extra);
+            return ((RectTransform)owner.Girls.transform).rect.height + extra - top;
+        }
+
+        /// <summary>
+        /// A strip of the column, from x left to x right of its right edge, top down from its top, and reaching extra
+        /// below its bottom.
+        /// </summary>
+        private static void Fit(Transform obj, float left, float right, float top, float extra)
+        {
+            RectTransform rect = (RectTransform)obj;
+            rect.anchorMin = new Vector2(1f, 0f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.offsetMin = new Vector2(left, -extra);
+            rect.offsetMax = new Vector2(right, -top);
+        }
+
+        /// <summary>
+        /// A view that clips the bench and scrolls it with the mouse wheel when it's longer than it shows. Its
+        /// transparent box takes the wheel between portraits too.
+        /// </summary>
+        private static RectTransform MakeScroll(Transform column, out WheelScroll scroll)
+        {
+            GameObject view = new GameObject("Bench Scroll", typeof(RectTransform));
+            view.transform.SetParent(column, false);
+            Ui.Stretch(view);
+            view.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0f);
+            view.AddComponent<RectMask2D>();
+            GameObject inside = new GameObject("Content", typeof(RectTransform));
+            inside.transform.SetParent(view.transform, false);
+            RectTransform rect = (RectTransform)inside.transform;
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = Vector2.zero;
+            scroll = view.AddComponent<WheelScroll>();
+            scroll.viewport = (RectTransform)view.transform;
+            scroll.content = rect;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = WheelStep;
+            return rect;
+        }
+
+        /// <summary>
+        /// A copy of the café popup's idol list scrollbar, wired to the bench as the game wires its own: the list
+        /// moves the slider and the slider moves the list. Null (logged once) without the game's.
+        /// </summary>
+        private static GameObject MakeScrollbar(Transform column, WheelScroll scroll)
+        {
+            GameObject template = PopupManager.GetObject(PopupManager._type.cafe)?.GetComponent<Cafe_Popup>()?.SelectGirl_ScrollBar;
+            if (template == null || template.GetComponent<Slider>() == null || template.GetComponent<SliderDefault>() == null)
+            {
+                Log.WarnOnce("scrollbar", "couldn't find the game's scrollbar; a long bench scrolls with the mouse wheel only");
+                barWidth = DefaultBarWidth;
+                return null;
+            }
+            GameObject bar = Ui.Copy(template, column, Shapes.Scrollbar, "scrollbar", "Bench Scrollbar");
+            float width = ((RectTransform)template.transform).rect.width;
+            barWidth = width > 1f ? width : DefaultBarWidth;
+            // The café's is scaled up a little; at that scale it would stick out past the bench
+            bar.transform.localScale = Vector3.one;
+            Slider slider = bar.GetComponent<Slider>();
+            SliderDefault follow = bar.GetComponent<SliderDefault>();
+            // New events drop the game's listeners, which move the café's list
+            slider.onValueChanged = new Slider.SliderEvent();
+            slider.onValueChanged.AddListener(value => scroll.verticalNormalizedPosition = value);
+            scroll.onValueChanged = new ScrollRect.ScrollRectEvent();
+            scroll.onValueChanged.AddListener(follow.setValueFromVector);
+            slider.value = 1f;
+            bar.SetActive(false);
+            return bar;
+        }
+
+        /// <summary>
+        /// A copy of the game's dropdown (the settings' Quality one, as ModMenus copies it) listing the groups to
+        /// show. None with fewer than two groups, or without the game's (logged once).
+        /// </summary>
+        private static GameObject MakeDropdown(Transform column, List<string> choices)
+        {
+            if (choices.Count == 0)
+                return null;
+            Transform panel = PopupManager.GetObject(PopupManager._type.main_menu_settings)?.transform.Find("Panel");
+            Transform screen = panel?.Cast<Transform>().FirstOrDefault(t => t.name.Contains("Screen"));
+            GameObject template = screen?.Find("Quality/Dropdown")?.gameObject;
+            if (template == null || template.GetComponent<Michsky.UI.ModernUIPack.CustomDropdown>() == null)
+            {
+                Log.WarnOnce("dropdown", "couldn't find the game's dropdown; the bench shows every group");
+                return null;
+            }
+            GameObject box = Ui.Copy(template, column, Shapes.Dropdown, "dropdown", "Bench Group");
+            Michsky.UI.ModernUIPack.CustomDropdown list = box.GetComponent<Michsky.UI.ModernUIPack.CustomDropdown>();
+            list.dropdownItems.Clear();
+            foreach (string choice in choices)
+                list.CreateNewItemFast(choice, null);
+            // A new event drops the game's listeners, which set the graphics quality
+            list.dropdownEvent = new Michsky.UI.ModernUIPack.CustomDropdown.DropdownEvent();
+            list.dropdownEvent.AddListener(OnGroup);
+            list.saveSelected = false;
+            list.invokeAtStart = false;
+            list.isListItem = false;
+            list.SetupDropdown();
+            list.ChangeDropdownInfo(0);
+            // The game's box is far wider: its texts stay on one line here, shrinking to fit
+            foreach (TextMeshProUGUI text in box.GetComponentsInChildren<TextMeshProUGUI>(true))
+                FitOneLine(text);
+            return box;
+        }
+
+        private static void FitOneLine(TextMeshProUGUI text)
+        {
+            float size = text.enableAutoSizing ? text.fontSizeMax : text.fontSize;
+            text.enableWordWrapping = false;
+            text.overflowMode = TextOverflowModes.Ellipsis;
+            text.enableAutoSizing = true;
+            text.fontSizeMax = size;
+            text.fontSizeMin = size * 0.75f;
+        }
+
+        private static void OnGroup(int item)
+        {
+            try
+            {
+                Group = PanelView.GroupAt(groups, item);
+                LineupPanel.Render();
+            }
+            catch (Exception ex)
+            {
+                ShowSession.Fail(ex, "filtering the bench");
+            }
         }
 
         /// <summary>
@@ -1822,17 +2037,25 @@ namespace ConcertHype
                 grid.enabled = gridWasEnabled;
             saved = false;
             Widgets.Clear();
+            content = null;
+            scrollbar = null;
+            dropdown = null;
+            groups = new List<GroupChoice>();
+            Group = -1;
             owner = null;
         }
 
         public static void Render(PanelView view)
         {
             ShowSession session = ShowSession.Current;
-            if (view == null || session == null || owner == null || Widgets.Count != session.Show.Girls.Count)
+            if (view == null || session == null || owner == null || content == null || Widgets.Count != session.Show.Girls.Count)
                 return;
-            Rect area = ((RectTransform)owner.Girls.transform).rect;
-            float scale = PanelView.BenchGrid(view.Bench.Count, area.width, area.height, CellWidth, CellHeight, MaxColumns, out int columns);
-            float blockWidth = columns * CellWidth * scale;
+            float shown = Arrange();
+            float scale = PanelView.TwoColumnBench(view.Bench.Count, BenchWidth, shown, CellWidth, CellHeight, out float height, out bool scrolls);
+            content.sizeDelta = new Vector2(0f, height);
+            // Only while there's more than it shows
+            if (scrollbar != null)
+                scrollbar.SetActive(scrolls);
             Dictionary<int, int> order = new Dictionary<int, int>();
             for (int i = 0; i < view.Bench.Count; i++)
                 order[view.Bench[i].Member] = i;
@@ -1849,9 +2072,9 @@ namespace ConcertHype
                 }
                 BenchView bench = view.Bench[i];
                 widget.Root.SetActive(true);
-                // Right-aligned like the game's column, read left to right
-                float x = area.width - blockWidth + ((i % columns) * CellWidth + (CellWidth - PortraitWidth) / 2f) * scale;
-                float y = ((i / columns) * CellHeight + (CellHeight - PortraitHeight) / 2f) * scale;
+                // Read left to right, two to a row
+                float x = ((i % 2) * CellWidth + (CellWidth - PortraitWidth) / 2f) * scale;
+                float y = ((i / 2) * CellHeight + (CellHeight - PortraitHeight) / 2f) * scale;
                 Ui.Place(widget.Root, x, y, PortraitWidth, PortraitHeight);
                 widget.Root.transform.localScale = new Vector3(scale, scale, 1f);
                 Ui.SetEnergyBar(widget.Bar, bench.Energy);
@@ -1860,6 +2083,18 @@ namespace ConcertHype
                 widget.SetDimmed(!bench.Available);
             }
         }
+    }
+
+    /// <summary>
+    /// Scrolls with the mouse wheel only: a drag on the bench drags an idol, not the list.
+    /// </summary>
+    internal sealed class WheelScroll : ScrollRect
+    {
+        public override void OnBeginDrag(PointerEventData eventData) { }
+
+        public override void OnDrag(PointerEventData eventData) { }
+
+        public override void OnEndDrag(PointerEventData eventData) { }
     }
 
     /// <summary>

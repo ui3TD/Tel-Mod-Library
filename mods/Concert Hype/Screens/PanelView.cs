@@ -218,7 +218,8 @@ namespace ConcertHype
         private static string Whole(double value) => Math.Round(value).ToString(CultureInfo.InvariantCulture);
 
         /// <param name="message">The last refused drop's reason, shown in the hint line.</param>
-        public static PanelView Build(ShowSession session, DragView drag = null, string message = null, FormationTab tab = FormationTab.Song)
+        /// <param name="group">The group the bench shows, by ID; -1 for everyone.</param>
+        public static PanelView Build(ShowSession session, DragView drag = null, string message = null, FormationTab tab = FormationTab.Song, int group = -1)
         {
             ShowState state = session.State;
             PanelView view = new PanelView();
@@ -316,6 +317,8 @@ namespace ConcertHype
             for (int m = 0; m < state.Setup.Members.Count; m++)
             {
                 if (tab == FormationTab.Song ? session.Lineup.Contains(m) : session.Hosts.Contains(m))
+                    continue;
+                if (group >= 0 && state.Setup.Members[m].Group != group)
                     continue;
                 BenchView bench = new BenchView { Member = m, Energy = state.Energy[m], Available = state.IsAvailable(m) };
                 if (state.Absence[m] > 0)
@@ -445,26 +448,28 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// The bench column's grid for this many idols in an area this size: the column count that lets the cells
-        /// be largest, never above their full size, with fewer columns on a tie. Returns the cells' scale.
+        /// The group dropdown's labels, everyone first then each group; empty with fewer than two groups, when there's
+        /// nothing to filter. Item i stands for <see cref="GroupAt"/>(i).
         /// </summary>
-        public static float BenchGrid(int count, float width, float height, float cellWidth, float cellHeight, int maxColumns, out int columns)
+        public static List<string> GroupChoices(IList<GroupChoice> groups) =>
+            groups.Count < 2 ? new List<string>() : new[] { Texts.Get("CONCERTHYPE__ALL_GROUPS") }.Concat(groups.Select(g => g.Title)).ToList();
+
+        /// <summary>
+        /// The group ID a dropdown item stands for; -1 for everyone.
+        /// </summary>
+        public static int GroupAt(IList<GroupChoice> groups, int item) => item >= 1 && item <= groups.Count ? groups[item - 1].Id : -1;
+
+        /// <summary>
+        /// The bench in two columns that fill its width: the cells' scale, the height its rows take, and whether
+        /// that's more than its area shows, so it scrolls.
+        /// </summary>
+        public static float TwoColumnBench(int count, float width, float height, float cellWidth, float cellHeight, out float contentHeight, out bool scrolls)
         {
-            columns = 1;
-            if (count <= 0)
-                return 1f;
-            float bestScale = 0f;
-            for (int c = 1; c <= Math.Max(1, maxColumns); c++)
-            {
-                int rows = (count + c - 1) / c;
-                float scale = Math.Min(1f, Math.Min(width / (c * cellWidth), height / (rows * cellHeight)));
-                if (scale > bestScale + 1e-4f)
-                {
-                    bestScale = scale;
-                    columns = c;
-                }
-            }
-            return bestScale;
+            float scale = width / (2 * cellWidth);
+            int rows = (Math.Max(0, count) + 1) / 2;
+            contentHeight = rows * cellHeight * scale;
+            scrolls = contentHeight > height + 0.5f;
+            return scale;
         }
     }
 }

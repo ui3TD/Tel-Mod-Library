@@ -9,7 +9,10 @@
 
 	<ItemGroup>
 		<!--Copy these from the game's IM_Data\Managed folder. The lineup panel uses CanvasGroup, its drags the mouse
-		    button, and its icons load PNGs-->
+		    button, its icons load PNGs, and the bench's group dropdown has an Animator-->
+		<Reference Include="UnityEngine.AnimationModule">
+			<HintPath>$(dllDir)\UnityEngine.AnimationModule.dll</HintPath>
+		</Reference>
 		<Reference Include="UnityEngine.UIModule">
 			<HintPath>$(dllDir)\UnityEngine.UIModule.dll</HintPath>
 		</Reference>

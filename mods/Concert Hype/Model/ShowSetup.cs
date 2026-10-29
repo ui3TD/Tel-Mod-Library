@@ -24,6 +24,11 @@ namespace ConcertHype.Model
         public double Fans;
 
         /// <summary>
+        /// Her group's ID, or -1 when she's in none.
+        /// </summary>
+        public int Group = -1;
+
+        /// <summary>
         /// (funny + smart) / 200, used when she hosts an MC.
         /// </summary>
         public double Talk;

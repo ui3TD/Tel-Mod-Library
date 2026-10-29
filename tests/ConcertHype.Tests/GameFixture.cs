@@ -80,6 +80,7 @@ namespace ConcertHype.Tests
             ShowSession.End();
             ShowSession.LogPath = null;
             data_girls.girl = new List<data_girls.girls>();
+            Groups.Groups_ = new List<Groups._group>();
             variables.variable = new List<variables._variable>();
             Awards._Awards = new List<Awards._award>();
             Awards._Nominations = new List<Awards._award>();
@@ -89,6 +90,16 @@ namespace ConcertHype.Tests
             resources.resource = new List<long>(new long[32]);
             resources.Fans = new List<resources._fan> { new() { hardcoreness = resources.fanType.hardcore, people = 10_000_000 } };
             SEvent_Concerts.UnlockedVenue = SEvent_Concerts._venue.stadium;
+        }
+
+        /// <summary>
+        /// A group with these idols, added to the agency's groups.
+        /// </summary>
+        public static Groups._group Group(int id, string title, bool disbanded, params data_girls.girls[] idols)
+        {
+            Groups._group group = new() { ID = id, Title = title, Girls = idols.ToList(), Status = disbanded ? Groups._group._status.disbanded : Groups._group._status.normal };
+            Groups.Groups_.Add(group);
+            return group;
         }
 
         public static void SetVariable(string name, string value)

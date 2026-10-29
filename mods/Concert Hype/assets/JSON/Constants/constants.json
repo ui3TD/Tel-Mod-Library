@@ -8,6 +8,10 @@
 		text: "Song"
 	},
 	{
+		id: "CONCERTHYPE__ALL_GROUPS",
+		text: "All Groups"
+	},
+	{
 		id: "CONCERTHYPE__TALK_BREAK",
 		text: "Talk Break ({0} left)"
 	},

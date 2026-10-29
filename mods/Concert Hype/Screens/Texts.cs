@@ -11,6 +11,7 @@ namespace ConcertHype
         {
             ["CONCERTHYPE__MODMENU__ENABLED"] = "New concert minigame (off: original concerts)",
             ["CONCERTHYPE__TAB_SONG"] = "Song",
+            ["CONCERTHYPE__ALL_GROUPS"] = "All Groups",
             ["CONCERTHYPE__TALK_BREAK"] = "Talk Break ({0} left)",
             ["CONCERTHYPE__TALK_NOT_YET"] = "Talk breaks can start after the first song.",
             ["CONCERTHYPE__TALK_NONE_LEFT"] = "No talk breaks left in this show.",

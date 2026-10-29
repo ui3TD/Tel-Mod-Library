@@ -13,6 +13,17 @@ namespace ConcertHype
         public ShowSetup Setup;
         public List<data_girls.girls> Girls = new List<data_girls.girls>();
         public List<SEvent_Concerts._concert._song> Items = new List<SEvent_Concerts._concert._song>();
+
+        /// <summary>
+        /// The groups the bench can be filtered by: those not disbanded with someone in the cast, main group first.
+        /// </summary>
+        public List<GroupChoice> Groups = new List<GroupChoice>();
+    }
+
+    public sealed class GroupChoice
+    {
+        public int Id;
+        public string Title = "";
     }
 
     /// <summary>
@@ -63,8 +74,21 @@ namespace ConcertHype
             };
             setup.Skill = show.Girls.Select(girl => show.Items.Select(item => Skill(item.Single, girl)).ToArray()).ToArray();
             show.Setup = setup;
+            show.Groups = ReadGroups(setup);
             return show;
         }
+
+        private static List<GroupChoice> ReadGroups(ShowSetup setup)
+        {
+            HashSet<int> cast = new HashSet<int>(setup.Members.Select(m => m.Group).Where(id => id >= 0));
+            return (Groups.Groups_ ?? new List<Groups._group>())
+                .Where(group => group != null && group.Status != Groups._group._status.disbanded && cast.Contains(group.ID))
+                .OrderBy(group => group.IsMain() ? 0 : 1)
+                .Select(group => new GroupChoice { Id = group.ID, Title = group.Title ?? "" })
+                .ToList();
+        }
+
+        private static int GroupOf(data_girls.girls girl) => Groups.GetGroup(girl)?.ID ?? -1;
 
         private static IEnumerable<data_girls.girls> Senbatsu(singles._single single)
         {
@@ -93,6 +117,7 @@ namespace ConcertHype
             Talk = Talk(girl),
             Appeal = FanOrder.Select(fan => Stats.Sum(stat => (double)girl.GetAppealOfStat(stat, fan))).ToArray(),
             InSetlist = inSetlist,
+            Group = GroupOf(girl),
         };
 
         /// <summary>

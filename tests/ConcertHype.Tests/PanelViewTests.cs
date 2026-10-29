@@ -320,17 +320,55 @@ namespace ConcertHype.Tests
         }
 
         [Theory]
-        [InlineData(0, 1, 1f)]
-        [InlineData(7, 1, 1f)]
-        [InlineData(30, 4, 0.81)]
-        [InlineData(60, 4, 0.49)]
-        public void TheBenchGrid_PicksTheColumnsThatGiveTheLargestCells(int count, int columns, double scale)
+        [InlineData(0, 0, false)]
+        [InlineData(13, 596.1, false)]  // 7 rows fit the 600
+        [InlineData(15, 681.3, true)]  // 8 rows don't: it scrolls
+        public void TheBench_IsTwoColumnsFillingItsWidth_AndScrollsWhenTaller(int count, double height, bool scrolls)
         {
-            float fit = PanelView.BenchGrid(count, 201, 487, 62, 66, 4, out int fitColumns);
-            Assert.Equal(columns, fitColumns);
-            Assert.Equal(scale, fit, 2);
-            int rows = (count + fitColumns - 1) / fitColumns;
-            Assert.True(count == 0 || (fitColumns * 62 * fit <= 201.01 && rows * 66 * fit <= 487.01));
+            float scale = PanelView.TwoColumnBench(count, 160, 600, 62, 66, out float contentHeight, out bool scrolling);
+            Assert.Equal(160 / 124.0, scale, 3);
+            Assert.Equal(height, contentHeight, 1);
+            Assert.Equal(scrolls, scrolling);
+        }
+
+        /// <summary>
+        /// Main (Idol0-2), Sister (Idol3-4), a disbanded group (Idol5); song 1 is 0, 1, 2 and song 2 is 3, 4, 0.
+        /// </summary>
+        private static ShowSession TwoGroups()
+        {
+            data_girls.girls[] idols = Enumerable.Range(0, 6).Select(i => GameFixture.Idol("Idol" + i)).ToArray();
+            // The game's order, with the sister group before the main one: the dropdown still lists the main group first
+            GameFixture.Group(1, "Sister", false, idols[3], idols[4]);
+            GameFixture.Group(0, "Main", false, idols[0], idols[1], idols[2]);
+            GameFixture.Group(2, "Old", true, idols[5]);
+            _concert concert = GameFixture.Concert(
+                GameFixture.Single("S1", idols[0], idols[1], idols[2]),
+                GameFixture.Single("S2", idols[3], idols[4], idols[0]));
+            return GameFixture.Begin(concert, new Config { Seed = 3 });
+        }
+
+        [Fact]
+        public void TheGroupDropdown_ListsEveryoneThenTheMainGroupThenTheOthersInTheCast()
+        {
+            ShowSession session = TwoGroups();
+            Assert.Equal(new[] { 0, 0, 0, 1, 1, 2 }, session.State.Setup.Members.Select(m => m.Group));
+            Assert.Equal(new[] { (0, "Main"), (1, "Sister") }, session.Show.Groups.Select(g => (g.Id, g.Title)));  // the disbanded one is left out
+            Assert.Equal(new[] { "All Groups", "Main", "Sister" }, PanelView.GroupChoices(session.Show.Groups));
+            Assert.Equal(new[] { -1, 0, 1, -1 }, new[] { 0, 1, 2, 3 }.Select(i => PanelView.GroupAt(session.Show.Groups, i)));
+            Assert.Empty(PanelView.GroupChoices(session.Show.Groups.Take(1).ToList()));  // one group: nothing to filter
+        }
+
+        [Fact]
+        public void TheGroupFilter_KeepsOnlyThatGroupOnTheBench_OnEitherTab()
+        {
+            ShowSession session = TwoGroups();
+            Assert.Equal(new[] { 0, 1, 2 }, session.Lineup);
+            Assert.Equal(new[] { 3, 4, 5 }, PanelView.Build(session).Bench.Select(b => b.Member));
+            Assert.Equal(new[] { 3, 4 }, PanelView.Build(session, group: 1).Bench.Select(b => b.Member));
+            Assert.Empty(PanelView.Build(session, group: 0).Bench);  // the main group is all on stage
+            Assert.Equal(new[] { 0, 1, 2 }, PanelView.Build(session, tab: FormationTab.Talk, group: 0).Bench.Select(b => b.Member));
+            // Only the bench is filtered
+            Assert.Equal(PanelView.Build(session).Slots.Select(s => s.Member), PanelView.Build(session, group: 1).Slots.Select(s => s.Member));
         }
 
         private static readonly PanelView.FormationSpace Space = new()

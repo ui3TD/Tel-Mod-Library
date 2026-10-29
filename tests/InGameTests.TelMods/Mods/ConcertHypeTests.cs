@@ -97,6 +97,9 @@ namespace InGameTests.TelMods
                 VanillaShapes.AssertCovers(ctx, shapes, "Wheel", wheel.Spinner_Container.transform.parent.gameObject, "marketing wheel");
                 VanillaShapes.AssertCovers(ctx, shapes, "Pointer", wheel.Spinner_Icon, "marketing wheel pointer");
                 VanillaShapes.AssertCovers(ctx, shapes, "Tab", PopupManager.GetObject(PopupManager._type.group_appeal).GetComponent<Group_Appeal_Popup>().Tab_TotalFans, "group appeal tab");
+                VanillaShapes.AssertCovers(ctx, shapes, "Scrollbar", PopupManager.GetObject(PopupManager._type.cafe).GetComponent<Cafe_Popup>().SelectGirl_ScrollBar, "café idol list scrollbar");
+                Transform settingsScreen = PopupManager.GetObject(PopupManager._type.main_menu_settings).transform.Find("Panel").Cast<Transform>().First(t => t.name.Contains("Screen"));
+                VanillaShapes.AssertCovers(ctx, shapes, "Dropdown", settingsScreen.Find("Quality/Dropdown").gameObject, "settings Quality dropdown");
 
                 // No card draw: the opening goes straight to the first song, and the deck never shows
                 float start = Time.realtimeSinceStartup, deckShown = 0f;
@@ -118,13 +121,15 @@ namespace InGameTests.TelMods
                 // Every place, both tabs, Reset Lineup and every idol on the bench is a button a click reaches; before
                 // the first song the talk break's tab is disabled and its row hidden
                 Transform panel = popup.NextSong_Container.transform.Find("ConcertHype Lineup");
-                List<Button> buttons = panel.GetComponentsInChildren<Button>().Concat(popup.Girls.GetComponentsInChildren<Button>()).ToList();
+                // A closed dropdown's list is there but invisible, and clicks go through it
+                List<Button> buttons = panel.GetComponentsInChildren<Button>().Concat(popup.Girls.GetComponentsInChildren<Button>())
+                    .Where(b => b.GetComponentsInParent<CanvasGroup>().All(g => g.alpha > 0.01f)).ToList();
                 ctx.Record("buttons", buttons.Count);
                 if (panel.Find("TalkTab").GetComponent<Button>().interactable || panel.Find("TalkBreak/Host 0/Center").gameObject.activeInHierarchy)
                     ctx.Fail("The talk break's tab works, or its row shows, before the first song");
                 // Its reason shows in the game's tooltip while it's hovered
                 string talkTip = Get<string>(AccessTools.Method(mod.GetType("ConcertHype.PanelView", true), "Build")
-                    .Invoke(null, new object[] { session, null, null, Enum.ToObject(mod.GetType("ConcertHype.FormationTab", true), 0) }), "TalkTip");
+                    .Invoke(null, new object[] { session, null, null, Enum.ToObject(mod.GetType("ConcertHype.FormationTab", true), 0), -1 }), "TalkTip");
                 yield return mouse.Hover(ScreenRect(panel.Find("TalkTab")).center, 0.5f);
                 string talkShown = AccessTools.Field(typeof(TooltipManager), "TooltipText").GetValue(Game.Main.Data.GetComponent<TooltipManager>()) as string;
                 mouse.Off();
@@ -152,7 +157,7 @@ namespace InGameTests.TelMods
                     AccessTools.Field(showConfig.GetType(), chance).SetValue(showConfig, 0.0);
                 int[] Lineup() => Get<int[]>(session, "Lineup");
                 bool Available(int m) => (bool)AccessTools.Method(state.GetType(), "IsAvailable").Invoke(state, new object[] { m });
-                Transform Bench(int m) => popup.Girls.transform.Find("Bench " + m + "/Center");
+                Transform Bench(int m) => popup.Girls.transform.Find("Bench Scroll/Content/Bench " + m + "/Center");
                 DragAndDropManager manager = Game.Main.Data.GetComponent<DragAndDropManager>();
 
                 // A real drag of a bench idol onto the center: the game's floating portrait follows the mouse, the
@@ -192,7 +197,7 @@ namespace InGameTests.TelMods
                 foreach (Image icon in icons.Where(i => i.sprite == null || !i.sprite.name.StartsWith("ConcertHype")).Take(3))
                     ctx.Fail("An icon has no picture: " + icon.transform.parent.name);
                 object songTab = Enum.ToObject(mod.GetType("ConcertHype.FormationTab", true), 0);
-                object view = AccessTools.Method(mod.GetType("ConcertHype.PanelView", true), "Build").Invoke(null, new object[] { session, null, null, songTab });
+                object view = AccessTools.Method(mod.GetType("ConcertHype.PanelView", true), "Build").Invoke(null, new object[] { session, null, null, songTab, -1 });
                 string tip = Get<string>(Get<IList>(view, "Slots")[1], "Tip");
                 yield return mouse.Hover(ScreenRect(panel.Find("Slot 1/Icon")).center, 0.5f);
                 string shown = AccessTools.Field(typeof(TooltipManager), "TooltipText").GetValue(Game.Main.Data.GetComponent<TooltipManager>()) as string;
@@ -206,6 +211,40 @@ namespace InGameTests.TelMods
                 mouse.Off();
                 if (shown != expectedTip)
                     ctx.Fail($"Over the Expected Hype info icon the tooltip reads '{shown}', not '{expectedTip}'");
+
+                // The group dropdown, with real clicks: the fixture's sister group leaves only its idols on the bench,
+                // and All Groups brings everyone back
+                Transform groupBox = popup.Girls.transform.Find("Bench Group");
+                if (groupBox == null)
+                {
+                    ctx.Fail("No group dropdown, though the fixture has a sister group");
+                }
+                else
+                {
+                    var dropdown = groupBox.GetComponent<Michsky.UI.ModernUIPack.CustomDropdown>();
+                    PropertyInfo benchGroup = AccessTools.Property(mod.GetType("ConcertHype.BenchColumn", true), "Group");
+                    IList members = Get<IList>(Get<object>(state, "Setup"), "Members");
+                    List<int> ShownBench() => popup.Girls.transform.Find("Bench Scroll/Content").Cast<Transform>().Where(t => t.gameObject.activeSelf)
+                        .Select(t => int.Parse(t.name.Substring("Bench ".Length))).ToList();
+                    int everyone = ShownBench().Count;
+                    yield return mouse.Click(ScreenRect(groupBox.Find("Content/Main")).center);
+                    yield return new WaitForSecondsRealtime(0.6f);
+                    Transform lastItem = dropdown.itemParent.GetChild(dropdown.itemParent.childCount - 1);
+                    yield return mouse.Click(ScreenRect(lastItem).center);
+                    yield return new WaitForSecondsRealtime(0.6f);
+                    int group = (int)benchGroup.GetValue(null, null);
+                    List<int> filtered = ShownBench();
+                    ctx.Record("bench of the last group", group + ": " + filtered.Count + " of " + everyone);
+                    if (group < 0 || filtered.Count == 0 || filtered.Any(m => Get<int>(members[m], "Group") != group))
+                        ctx.Fail($"Choosing the last group didn't leave only its idols on the bench: group {group}, bench {string.Join(",", filtered)}");
+                    yield return mouse.Click(ScreenRect(groupBox.Find("Content/Main")).center);
+                    yield return new WaitForSecondsRealtime(0.6f);
+                    yield return mouse.Click(ScreenRect(dropdown.itemParent.GetChild(0)).center);
+                    yield return new WaitForSecondsRealtime(0.6f);
+                    mouse.Off();
+                    if ((int)benchGroup.GetValue(null, null) != -1 || ShownBench().Count != everyone)
+                        ctx.Fail("All Groups didn't bring the whole bench back");
+                }
 
                 // Each song: the popup's tween ends exactly on the show's hype, with no crisis popup. Before the
                 // second song, a talk break hosted by a bench idol dragged onto the host place.
@@ -372,7 +411,7 @@ namespace InGameTests.TelMods
         /// The fade of each bench portrait shown: each one's own group, not the game's column or the labels in it.
         /// </summary>
         private static IEnumerable<float> BenchAlphas(Concert_Popup popup) =>
-            popup.Girls.transform.Cast<Transform>().Where(t => t.gameObject.activeSelf).Select(t => t.GetComponent<CanvasGroup>()).Where(g => g != null).Select(g => g.alpha);
+            popup.Girls.transform.Find("Bench Scroll/Content").Cast<Transform>().Where(t => t.gameObject.activeSelf).Select(t => t.GetComponent<CanvasGroup>()).Where(g => g != null).Select(g => g.alpha);
 
         private static bool NextSongShown(Concert_Popup popup) =>
             popup.NextSong_Container.activeSelf && popup.NextSong_Container.GetComponent<CanvasGroup>().alpha > 0.99f;

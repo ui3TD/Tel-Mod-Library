@@ -224,8 +224,10 @@ namespace ConcertHype
             GameObject card = tooltips.TooltipStatusButton;
             if (card != null && card.activeSelf)
             {
-                DG.Tweening.ShortcutExtensions.DOKill(card.GetComponent<CanvasGroup>());
-                card.GetComponent<CanvasGroup>().alpha = 0f;
+                CanvasGroup fade = card.GetComponent<CanvasGroup>();
+                // What DOKill does, without the extension the unit tests can't compile against
+                DG.Tweening.DOTween.Kill(fade);
+                fade.alpha = 0f;
                 card.SetActive(false);
             }
             tooltips.ShowTooltip(Text);

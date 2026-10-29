@@ -539,9 +539,20 @@ namespace ConcertHype
         private static readonly Color SuccessTrack = mainScript.red32;
 
         /// <summary>
-        /// The icon's top under the bars of a place in the lineup.
+        /// The space between a place's bars and its icon beside them.
         /// </summary>
-        public const float IconTop = 65f;
+        private const float IconGap = 2f;
+
+        /// <summary>
+        /// A place's bars and their tracks and hover strips, each with its full-width size and position.
+        /// </summary>
+        private readonly List<BarPart> barParts = new List<BarPart>();
+
+        private sealed class BarPart
+        {
+            public RectTransform Rect;
+            public Vector2 Size, At;
+        }
 
         public GameObject Root;
         public CanvasGroup Group;
@@ -598,6 +609,14 @@ namespace ConcertHype
                 else
                 {
                     widget.EnergyHover = HoverStrip(widget.Bar, "Energy Hover", 0f, HoverPad, HoverPad);
+                }
+                foreach (Component part in new Component[] { widget.Bar, widget.BarTrack, widget.SuccessBack, widget.Success, widget.EnergyHover, widget.SuccessHover })
+                {
+                    if (part != null)
+                    {
+                        RectTransform rect = (RectTransform)part.transform;
+                        widget.barParts.Add(new BarPart { Rect = rect, Size = rect.sizeDelta, At = rect.anchoredPosition });
+                    }
                 }
             }
             if (widget.Background != null)
@@ -678,6 +697,30 @@ namespace ConcertHype
             image.raycastTarget = false;
             obj.transform.SetAsLastSibling();
             return obj.AddComponent<IconTip>();
+        }
+
+        /// <summary>
+        /// A place in the lineup: its icon sits right of its bars, as tall as the bars together, and the bars end
+        /// short of it. With no icon the bars fill the full width.
+        /// </summary>
+        public void SetBarIcon(bool icon)
+        {
+            foreach (BarPart part in barParts)
+            {
+                part.Rect.sizeDelta = part.Size;
+                part.Rect.anchoredPosition = part.At;
+            }
+            if (!icon || BarTrack == null)
+                return;
+            Rect top = Ui.Placed(BarTrack.gameObject, Root.transform), bottom = SuccessBack != null ? Ui.Placed(SuccessBack.gameObject, Root.transform) : top;
+            float side = bottom.yMax - top.yMin, cut = side + IconGap;
+            Ui.Place(Icon.Root, top.xMax - side, top.yMin, side, side);
+            foreach (BarPart part in barParts)
+            {
+                // Shorter from the right, whatever the part's anchors and pivot
+                part.Rect.sizeDelta = new Vector2(part.Size.x - cut, part.Size.y);
+                part.Rect.anchoredPosition = new Vector2(part.At.x - cut * part.Rect.pivot.x, part.At.y);
+            }
         }
 
         /// <summary>
@@ -1106,7 +1149,7 @@ namespace ConcertHype
                 widget.SetSuccess(slot.Success);
                 widget.SetBarTips(slot.EnergyTip, slot.SuccessTip, view.Dragging);
                 widget.Icon.Set(slot.Icon, slot.Tip);
-                widget.Icon.PlaceAt(27f - IconWidget.Size / 2f, PortraitWidget.IconTop);
+                widget.SetBarIcon(slot.Icon != IconKind.None);
             }
             BenchColumn.Render(view);
         }

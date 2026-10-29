@@ -486,9 +486,9 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// A place is its portrait, its energy and success bars, and its icon under them.
+        /// A place is its portrait over its energy and success bars, with its icon beside them.
         /// </summary>
-        public const float PlaceWidth = 54f, PlaceHeight = 82f, CellWidth = 70f, RowHeight = 82f, MaxScale = 1.4f, MinScale = 0.5f;
+        public const float PlaceWidth = 54f, PlaceHeight = 66f, CellWidth = 70f, RowHeight = 70f, MaxScale = 1.4f, MinScale = 0.5f;
 
         /// <summary>
         /// The largest scale (up to <see cref="MaxScale"/>, in steps of 0.05) at which every row fits the space,

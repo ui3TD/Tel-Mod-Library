@@ -518,6 +518,18 @@ namespace ConcertHype
         }
 
         /// <summary>
+        /// How many places each row has, from the front row to the highest row given; empty with no places.
+        /// </summary>
+        /// <param name="rows">Each place's row, in place order.</param>
+        public static int[] RowSizes(IList<int> rows)
+        {
+            int[] sizes = new int[rows.Count == 0 ? 0 : rows.Max() + 1];
+            foreach (int row in rows)
+                sizes[row]++;
+            return sizes;
+        }
+
+        /// <summary>
         /// The group dropdown's labels, everyone first then each group; empty with fewer than two groups, when there's
         /// nothing to filter. Item i stands for <see cref="GroupAt"/>(i).
         /// </summary>

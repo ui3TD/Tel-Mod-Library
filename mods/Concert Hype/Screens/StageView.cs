@@ -274,10 +274,9 @@ namespace ConcertHype
             StagePlace[] places = new StagePlace[rows.Count];
             if (rows.Count == 0)
                 return places;
-            int rowCount = rows.Max() + 1;
-            int[] perRow = new int[rowCount], placed = new int[rowCount];
-            foreach (int row in rows)
-                perRow[row]++;
+            int[] perRow = PanelView.RowSizes(rows);
+            int rowCount = perRow.Length;
+            int[] placed = new int[rowCount];
             int widest = perRow.Max();
 
             double width = AreaRight - AreaLeft, height = AreaBottom - AreaTop;

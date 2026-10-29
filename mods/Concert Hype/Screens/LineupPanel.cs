@@ -124,6 +124,17 @@ namespace ConcertHype
         private static string gameStartText;
         private static bool subscribed;
 
+        /// <summary>
+        /// A click, drop or reset is changing the session: it redraws once when it's done, so the session's own
+        /// change notice doesn't redraw first.
+        /// </summary>
+        private static bool handling;
+
+        /// <summary>
+        /// The second readout column's widest title, measured once per panel.
+        /// </summary>
+        private static float? titlesWidth;
+
         private static DragView drag;
         private static string message;
 
@@ -197,6 +208,7 @@ namespace ConcertHype
             if (Alive && ReferenceEquals(owner, popup))
                 return;
             owner = popup;
+            titlesWidth = null;
             Slots.Clear();
             HostPlaces.Clear();
             CancelOverlays.Clear();
@@ -250,6 +262,8 @@ namespace ConcertHype
             {
                 ShowSession.Changed += () =>
                 {
+                    if (handling)
+                        return;
                     if (Alive && root.activeInHierarchy && ShowSession.Current != null)
                         Render();
                     else
@@ -283,7 +297,7 @@ namespace ConcertHype
                 Tab = FormationTab.Song;
             PanelView view = PanelView.Build(session, drag, message, Tab, BenchColumn.Group);
             LevelReset();
-            // Before the readouts get their text: measuring a title's width leaves it on the label
+            // Before the readouts get their text: the first layout measures the titles, which leaves text on the label
             Layout(view);
             expected.Set(view.Expected);
             changed.Set(view.Changed);
@@ -365,9 +379,7 @@ namespace ConcertHype
         /// </summary>
         public static Vector2[] FormationPlaces(IList<int> rows)
         {
-            int[] perRow = new int[5], placed = new int[5];
-            foreach (int row in rows)
-                perRow[row]++;
+            int[] perRow = PanelView.RowSizes(rows), placed = new int[perRow.Length];
             Vector2[] places = new Vector2[rows.Count];
             float scale = frame.Scale;
             for (int j = 0; j < rows.Count; j++)
@@ -401,15 +413,9 @@ namespace ConcertHype
             Ui.Place(hint.gameObject, hintLeft, Math.Max(start.yMax, reset.yMax) + HintGap, Math.Max(start.xMax - hintLeft, 128f), hintAt.height);
 
             // The second column's widest title, as the readouts draw it
-            float titles = new[] { "CONCERTHYPE__CHANGED_TITLE", "CONCERTHYPE__LAST_SONG_TITLE", "CONCERTHYPE__LAST_TALK_TITLE" }
+            float titles = titlesWidth ??= new[] { "CONCERTHYPE__CHANGED_TITLE", "CONCERTHYPE__LAST_SONG_TITLE", "CONCERTHYPE__LAST_TALK_TITLE" }
                 .Max(key => changed.Title.GetPreferredValues(Texts.Get(key)).x);
-            List<int> widths = new List<int>();
-            foreach (SlotView slot in view.Slots)
-            {
-                while (widths.Count <= slot.Row)
-                    widths.Add(0);
-                widths[slot.Row]++;
-            }
+            List<int> widths = PanelView.RowSizes(view.Slots.Select(slot => slot.Row).ToList()).ToList();
             // The talk break's row sits where the front row is
             if (widths.Count == 0)
                 widths.Add(0);
@@ -452,10 +458,32 @@ namespace ConcertHype
             startLabel.text = text;
         }
 
+        /// <summary>
+        /// A change to the session that the caller redraws for itself.
+        /// </summary>
+        private static T Quietly<T>(Func<T> change)
+        {
+            handling = true;
+            try
+            {
+                return change();
+            }
+            finally
+            {
+                handling = false;
+            }
+        }
+
+        private static void Quietly(Action change) => Quietly(() =>
+        {
+            change();
+            return true;
+        });
+
         private static void OnReset() => Ui.Safely(() =>
         {
             message = null;
-            ShowSession.Current?.ResetLineup();
+            Quietly(() => ShowSession.Current?.ResetLineup());
             Render();
         }, "resetting the lineup");
 
@@ -572,7 +600,7 @@ namespace ConcertHype
                 if (cancel || session == null || !Alive)
                     return;
                 DropPoint target = Hovered() ?? done.Over ?? DropPoint.Bench;
-                DropResult result = session.Drop(done.Member, done.From, target);
+                DropResult result = Quietly(() => session.Drop(done.Member, done.From, target));
                 message = result.Allowed ? null : result.Message;
                 if (result.Allowed && result.Changed)
                     manager?.OnInsert();
@@ -652,7 +680,7 @@ namespace ConcertHype
                 return;
             if (from.Spot == Spot.Host)
             {
-                if (member >= 0 && session.Drop(member, from, DropPoint.Bench).Changed)
+                if (member >= 0 && Quietly(() => session.Drop(member, from, DropPoint.Bench)).Changed)
                 {
                     message = null;
                     Render();
@@ -661,7 +689,7 @@ namespace ConcertHype
             }
             if (from.Spot != Spot.Bench || member < 0)
                 return;
-            DropResult result = Tab == FormationTab.Song ? session.Click(member) : session.ClickHost(member);
+            DropResult result = Quietly(() => Tab == FormationTab.Song ? session.Click(member) : session.ClickHost(member));
             message = result.Allowed ? null : result.Message;
             if (result.Allowed && result.Changed)
                 Manager()?.OnInsert();

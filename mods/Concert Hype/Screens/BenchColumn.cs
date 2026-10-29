@@ -45,6 +45,11 @@ namespace ConcertHype
         private static GameObject scrollbar;
         private static GameObject dropdown;
         private static TextMeshProUGUI title;
+
+        /// <summary>
+        /// The title's height on one line, measured once per show.
+        /// </summary>
+        private static float? titleHeight;
         private static RectTransform panel;
 
         /// <summary>
@@ -88,6 +93,7 @@ namespace ConcertHype
 
             panel = MakePanel(column);
             title = MakeTitle(popup, column);
+            titleHeight = null;
             content = MakeScroll(column, out WheelScroll scroll);
             scrollbar = MakeScrollbar(column, scroll);
             groups = session.Show.Groups;
@@ -133,7 +139,7 @@ namespace ConcertHype
             float top = 0f;
             if (title != null)
             {
-                float height = title.GetPreferredValues(title.text).y;
+                float height = titleHeight ??= title.GetPreferredValues(title.text).y;
                 Fit(title.transform, -strip, 0f, 0f, 0f);
                 RectTransform rect = title.rectTransform;
                 rect.anchorMin = new Vector2(1f, 1f);

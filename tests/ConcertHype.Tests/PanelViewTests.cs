@@ -389,6 +389,16 @@ namespace ConcertHype.Tests
             Assert.Equal(scrolls, scrolling);
         }
 
+        [Fact]
+        public void RowSizes_CountEachRowsPlaces_UpToTheHighestRow()
+        {
+            // The game's full triangle: rows of 1, 2, 3, 4 and 5
+            int[] triangle = Enumerable.Range(0, 5).SelectMany(row => Enumerable.Repeat(row, row + 1)).ToArray();
+            Assert.Equal(new[] { 1, 2, 3, 4, 5 }, PanelView.RowSizes(triangle));
+            Assert.Empty(PanelView.RowSizes(new int[0]));
+            Assert.Equal(new[] { 1, 0, 0, 0, 0, 2 }, PanelView.RowSizes(new[] { 5, 0, 5 }));
+        }
+
         /// <summary>
         /// Main (Idol0-2), Sister (Idol3-4), a disbanded group (Idol5); song 1 is 0, 1, 2 and song 2 is 3, 4, 0.
         /// </summary>

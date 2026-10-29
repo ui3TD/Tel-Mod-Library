@@ -56,8 +56,6 @@ namespace ConcertHype.Model
         public double KRollCost = 1.0;
         public double RollCostMin = 0.5;
         public double RollCostMax = 1.5;
-        public double HypeLiftBase = 2;
-        public double HypeLiftPerPoint = 0.1;
         public double BenchRecovery = 10;
         public double ReturnThreshold = 30;
 

@@ -419,10 +419,7 @@ namespace ConcertHype.Model
                 if (m < 0)
                     continue;
                 performing[m] = true;
-                double change = after < 100
-                    ? -EnergyCost(config, song.Slots[j].Row, rolls[j])
-                    : config.HypeLiftBase + config.HypeLiftPerPoint * (after - 100);
-                state.Energy[m] = Clamp(state.Energy[m] + change, 0, 100);
+                state.Energy[m] = Clamp(state.Energy[m] - EnergyCost(config, song.Slots[j].Row, rolls[j]), 0, 100);
             }
             for (int m = 0; m < members; m++)
             {

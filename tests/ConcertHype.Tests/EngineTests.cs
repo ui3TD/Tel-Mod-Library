@@ -263,7 +263,7 @@ namespace ConcertHype.Tests
     public class EnergyTests
     {
         [Fact]
-        public void BelowFullHype_PerformersPayByRowAndRoll_BenchRecovers()
+        public void Performers_PayByRowAndRoll_BenchRecovers()
         {
             ShowState state = Shows.Start(Shows.Setup(skill: 45));
             state.Energy[5] = 50;
@@ -286,15 +286,14 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void AtOrAbove100_TheCrowdLiftsPerformers()
+        public void HighHype_DoesntChangeWhatPerformersPay()
         {
             ShowState state = Shows.Start(Shows.Setup(skill: 45));
             state.Hype = 140;
-            state.Energy[0] = 50;
             SongResult result = Engine.Play(state, Engine.DefaultLineup(state));
             Assert.True(result.HypeAfter >= 100);
-            Assert.Equal(50 + 2 + 0.1 * (result.HypeAfter - 100), state.Energy[0], 9);
-            Assert.Equal(100, state.Energy[1]);
+            Assert.Equal(100 - 12, state.Energy[0], 9);
+            Assert.Equal(100 - 8, state.Energy[1], 9);
         }
 
         [Fact]

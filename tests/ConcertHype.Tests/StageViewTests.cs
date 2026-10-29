@@ -41,8 +41,6 @@ namespace ConcertHype.Tests
                 Assert.Equal(Outcomes.Of(state.Config, slot.Roll), place.Outcome);
                 Assert.Equal(Outcomes.Chances(state.Config, slot.Parts.Expected), place.Chances);
                 Assert.Equal(7200 + 3.6 * Outcomes.WheelPercent(state.Config, slot.Parts.Expected, slot.Roll), place.Angle, 9);
-                Assert.Equal(slot.EnergyBefore, place.EnergyBefore);
-                Assert.Equal(slot.EnergyAfter, place.EnergyAfter);
                 Assert.False(place.Hurt);
             }
         }

@@ -40,11 +40,11 @@ namespace ConcertHype
             new[] { "BG", "Center", "Center/shadow_corner (1)", "Center/shadow_right (1)", "Center/shadow_bottom (1)", "Stamina" });
 
         /// <summary>
-        /// The turning part of a single's marketing wheel: its four rings.
+        /// A single's marketing wheel: its turning rings and the dark disc in the middle.
         /// </summary>
         public static readonly VanillaShape Wheel = new VanillaShape(
-            new[] { typeof(RectTransform) },
-            new[] { "Ring_Fail", "Ring_Crit_Fail", "Ring_Crit_Succ", "Ring_Succ" });
+            new[] { typeof(RectTransform), typeof(CanvasRenderer), typeof(Image) },
+            new[] { "Spinny_Part", "Spinny_Part/Ring_Fail", "Spinny_Part/Ring_Crit_Fail", "Spinny_Part/Ring_Crit_Succ", "Spinny_Part/Ring_Succ", "Fill" });
 
         /// <summary>
         /// The marketing wheel's pointer: a font symbol over the top of the wheel.
@@ -746,7 +746,10 @@ namespace ConcertHype
         /// The top-left corner of each place's portrait in the game's triangle, given each place's row: each row
         /// centred under the one before, in place order.
         /// </summary>
-        public static Vector2[] FormationPlaces(IList<int> rows)
+        public static Vector2[] FormationPlaces(IList<int> rows) => FormationPlaces(rows, TriangleTop, RowHeight, CellWidth);
+
+        /// <param name="top">Where the first row's portraits start.</param>
+        public static Vector2[] FormationPlaces(IList<int> rows, float top, float rowHeight, float cellWidth)
         {
             int[] perRow = new int[5], placed = new int[5];
             foreach (int row in rows)
@@ -755,7 +758,7 @@ namespace ConcertHype
             for (int j = 0; j < rows.Count; j++)
             {
                 int row = rows[j];
-                places[j] = new Vector2(TriangleCenterX + (placed[row]++ - (perRow[row] - 1) / 2f) * CellWidth - 27f, TriangleTop + row * RowHeight);
+                places[j] = new Vector2(TriangleCenterX + (placed[row]++ - (perRow[row] - 1) / 2f) * cellWidth - 27f, top + row * rowHeight);
             }
             return places;
         }
@@ -1001,21 +1004,24 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// A small copy of a single's marketing wheel behind an idol's portrait: its coloured discs without the dark
-    /// one in the middle, a little larger than the picture, so the arcs frame her picture. The arcs are her
-    /// chances; the pointer over the top takes the colour of the arc under it, as the game's.
+    /// A copy of a single's marketing wheel: its arcs are an idol's chances, her face sits in its dark middle where
+    /// the game shows the marketing icon, and the pointer takes the colour of the arc under it, as the game's.
     /// </summary>
     internal sealed class WheelWidget
     {
         /// <summary>
         /// The pointer is drawn this much larger than the wheel's scale, so it reads at this size.
         /// </summary>
-        private const float PointerBoost = 1.4f;
+        private const float PointerBoost = 1.3f;
+
+        /// <summary>
+        /// Her face's width as a share of the dark middle, which shows as a thin dark ring around it.
+        /// </summary>
+        private const float FaceShare = 0.88f;
 
         public GameObject Root;
-        private CanvasGroup group, pointerGroup;
         private Transform spin;
-        private Image success, criticalSuccess, criticalFailure;
+        private Image success, criticalSuccess, criticalFailure, face;
         private TextMeshProUGUI pointer;
         private double[] chances = new double[Outcomes.Count];
 
@@ -1036,70 +1042,71 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// A wheel this wide behind the portrait, centred on (x, y) of it in <see cref="Ui.Place"/> coordinates,
-        /// with its pointer over the portrait.
+        /// A wheel this wide centred on (x, y) of the parent, in <see cref="Ui.Place"/> coordinates.
         /// </summary>
-        public static WheelWidget Make(Single_Marketing_Roll game, Transform portrait, float x, float y, float size)
+        public static WheelWidget Make(Single_Marketing_Roll game, Transform parent, float x, float y, float size)
         {
-            RectTransform frame = (RectTransform)game.Spinner_Container.transform.parent;
-            Vector2 gameSize = frame.rect.size;
+            GameObject frame = game.Spinner_Container.transform.parent.gameObject;
+            RectTransform frameRect = (RectTransform)frame.transform;
+            Vector2 gameSize = frameRect.rect.size;
             float scale = size / gameSize.x;
-            GameObject root = new GameObject("Wheel", typeof(RectTransform));
-            root.transform.SetParent(portrait, false);
-            root.transform.SetAsFirstSibling();
+            GameObject root = Ui.Copy(frame, parent, Shapes.Wheel, "marketing wheel", "Wheel");
             RectTransform rect = (RectTransform)root.transform;
             rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = new Vector2(x, -y);
             rect.sizeDelta = gameSize;
             rect.localScale = new Vector3(scale, scale, 1f);
-            WheelWidget wheel = new WheelWidget { Root = root, group = root.AddComponent<CanvasGroup>() };
-            wheel.group.blocksRaycasts = false;
-            wheel.group.interactable = false;
+            rect.localRotation = Quaternion.identity;
+            WheelWidget wheel = new WheelWidget { Root = root };
 
-            GameObject spin = Ui.Copy(game.Spinner_Container, root.transform, Shapes.Wheel, "marketing wheel", "Spin");
-            Ui.Stretch(spin);
-            wheel.spin = spin.transform;
-            wheel.success = spin.transform.Find(game.Spinner_Bar_LightGreen.name)?.GetComponent<Image>();
-            wheel.criticalSuccess = spin.transform.Find(game.Spinner_Bar_DarkGreen.name)?.GetComponent<Image>();
-            wheel.criticalFailure = spin.transform.Find(game.Spinner_Bar_DarkRed.name)?.GetComponent<Image>();
+            wheel.spin = root.transform.Find(game.Spinner_Container.name);
+            wheel.success = wheel.spin?.Find(game.Spinner_Bar_LightGreen.name)?.GetComponent<Image>();
+            wheel.criticalSuccess = wheel.spin?.Find(game.Spinner_Bar_DarkGreen.name)?.GetComponent<Image>();
+            wheel.criticalFailure = wheel.spin?.Find(game.Spinner_Bar_DarkRed.name)?.GetComponent<Image>();
 
-            // Where the game's pointer sits from the wheel's centre, in the wheel's own size
+            // Her face in the dark middle, cut to its circle
+            Image middle = root.transform.Find("Fill")?.GetComponent<Image>();
+            if (middle != null)
+            {
+                middle.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+                GameObject faceObject = new GameObject("Face", typeof(RectTransform));
+                faceObject.transform.SetParent(middle.transform, false);
+                RectTransform faceRect = (RectTransform)faceObject.transform;
+                faceRect.anchorMin = faceRect.anchorMax = faceRect.pivot = new Vector2(0.5f, 0.5f);
+                faceRect.anchoredPosition = Vector2.zero;
+                faceRect.sizeDelta = ((RectTransform)middle.transform).rect.size * FaceShare;
+                wheel.face = faceObject.AddComponent<Image>();
+            }
+            else
+            {
+                Log.WarnOnce("wheel middle", "couldn't find the middle of the game's marketing wheel; the wheels show without faces");
+            }
+
+            // Where the game's pointer sits from the wheel's centre
             RectTransform gamePointer = (RectTransform)game.Spinner_Icon.transform;
             Vector3[] corners = new Vector3[4];
             gamePointer.GetWorldCorners(corners);
-            Vector2 offset = (Vector2)frame.InverseTransformPoint((corners[0] + corners[2]) / 2f) - frame.rect.center;
-            GameObject copy = Ui.Copy(game.Spinner_Icon, portrait, Shapes.Pointer, "marketing wheel pointer", "WheelPointer");
-            copy.transform.SetAsLastSibling();
+            Vector2 offset = (Vector2)frameRect.InverseTransformPoint((corners[0] + corners[2]) / 2f) - frameRect.rect.center;
+            GameObject copy = Ui.Copy(game.Spinner_Icon, root.transform, Shapes.Pointer, "marketing wheel pointer", "Pointer");
             RectTransform pointerRect = (RectTransform)copy.transform;
-            pointerRect.anchorMin = pointerRect.anchorMax = new Vector2(0f, 1f);
-            pointerRect.pivot = new Vector2(0.5f, 0.5f);
-            pointerRect.anchoredPosition = new Vector2(x, -y) + offset * scale;
+            pointerRect.anchorMin = pointerRect.anchorMax = pointerRect.pivot = new Vector2(0.5f, 0.5f);
+            pointerRect.anchoredPosition = offset;
             pointerRect.sizeDelta = gamePointer.rect.size;
-            pointerRect.localScale = new Vector3(scale * PointerBoost, scale * PointerBoost, 1f);
+            pointerRect.localScale = new Vector3(PointerBoost, PointerBoost, 1f);
             wheel.pointer = copy.GetComponent<TextMeshProUGUI>();
-            wheel.pointerGroup = copy.AddComponent<CanvasGroup>();
-            wheel.pointerGroup.blocksRaycasts = false;
-            wheel.pointerGroup.interactable = false;
 
-            foreach (Graphic graphic in root.GetComponentsInChildren<Graphic>(true).Concat(copy.GetComponentsInChildren<Graphic>(true)))
+            foreach (Graphic graphic in root.GetComponentsInChildren<Graphic>(true))
                 graphic.raycastTarget = false;
             return wheel;
         }
 
-        public void SetShown(bool shown)
+        public void SetFace(Sprite sprite)
         {
-            Root.SetActive(shown);
-            pointerGroup.gameObject.SetActive(shown);
-        }
-
-        public float Alpha
-        {
-            set
-            {
-                group.alpha = value;
-                pointerGroup.alpha = value;
-            }
+            if (face == null)
+                return;
+            face.sprite = sprite;
+            face.color = sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
         }
 
         /// <summary>
@@ -1121,7 +1128,8 @@ namespace ConcertHype
         public void SetAngle(double angle)
         {
             float turned = (float)(angle % 360);
-            spin.localRotation = Quaternion.Euler(0f, 0f, turned);
+            if (spin != null)
+                spin.localRotation = Quaternion.Euler(0f, 0f, turned);
             if (pointer == null)
                 return;
             double at = turned / 3.6, s = chances[(int)Outcome.Success], cs = chances[(int)Outcome.CriticalSuccess], cf = chances[(int)Outcome.CriticalFailure];
@@ -1135,23 +1143,24 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// The formation on stage while a song plays: each idol's marketing-style wheel spins as the song starts and
-    /// lands one by one, back row first and the center last; then her wheel fades and her roll shows in its
-    /// outcome's colour, with the outcome and her chances on hover. It hides itself when the song ends.
+    /// The formation on stage while a song plays, each idol as a marketing wheel with her face in the middle. The
+    /// wheels spin as the song starts and land one by one, back row first and the center last; her roll then
+    /// shows under her wheel in its outcome's colour, with the outcome and her chances on hover. It hides itself
+    /// when the song ends.
     /// </summary>
     internal static class StageRolls
     {
         private const string Name = "ConcertHype Stage";
-        private const float FadeSeconds = 0.25f, PunchSeconds = 0.3f, PunchScale = 0.5f, NumberSize = 17f;
+        private const float PunchSeconds = 0.3f, PunchScale = 0.5f, NumberSize = 18f;
 
         /// <summary>
-        /// The portraits are drawn smaller on stage, so a wheel that fits its place shows a wide band of arcs
-        /// around the picture.
+        /// The song screen is free from the hype bar to the title strip, so the stage's triangle is larger than the
+        /// next-song screen's: rows of a wheel and a number.
         /// </summary>
-        private const float PortraitScale = 0.8f, WheelSize = 68f;
+        private const float Top = 42f, RowHeight = 96f, CellWidth = 80f, WheelSize = 72f;
 
         /// <summary>
-        /// The middle of the portrait's picture, from its top-left corner.
+        /// The middle of the portrait's picture, from its top-left corner: the wheel's centre.
         /// </summary>
         private static readonly Vector2 PictureCentre = new Vector2(26.5f, 25.5f);
 
@@ -1190,7 +1199,7 @@ namespace ConcertHype
                     return;
                 }
                 Ensure(popup);
-                Vector2[] places = LineupPanel.FormationPlaces(view.Slots.Select(slot => slot.Row).ToList());
+                Vector2[] places = LineupPanel.FormationPlaces(view.Slots.Select(slot => slot.Row).ToList(), Top, RowHeight, CellWidth);
                 for (int j = 0; j < Places.Count; j++)
                 {
                     PortraitWidget widget = Places[j];
@@ -1200,19 +1209,18 @@ namespace ConcertHype
                     if (!used)
                         continue;
                     StageSlotView slot = view.Slots[j];
-                    // Smaller about the middle of the place
-                    Ui.Place(widget.Root, places[j].x + 27f * (1f - PortraitScale), places[j].y + 29f * (1f - PortraitScale), 54f, 58f);
-                    widget.Root.transform.localScale = new Vector3(PortraitScale, PortraitScale, 1f);
-                    widget.SetGirl(slot.HasRoll ? session.Show.Girls[slot.Member] : null);
-                    Ui.SetEnergyBar(widget.Bar, slot.HasRoll ? slot.EnergyBefore : 0);
+                    data_girls.girls girl = slot.HasRoll ? session.Show.Girls[slot.Member] : null;
+                    Ui.Place(widget.Root, places[j].x, places[j].y, 54f, 58f);
+                    // Under her wheel, the picture still shows her profile when hovered
+                    widget.SetGirl(girl);
                     widget.Icon.Set(IconKind.None, "");
                     widget.Label.gameObject.SetActive(false);
                     if (wheel != null)
                     {
-                        wheel.SetShown(slot.HasRoll);
-                        wheel.Alpha = 1f;
+                        wheel.Root.SetActive(slot.HasRoll);
                         if (slot.HasRoll)
                         {
+                            wheel.SetFace(girl?.texture?.small);
                             wheel.SetChances(slot.Chances);
                             wheel.SetAngle(0);
                         }
@@ -1262,20 +1270,22 @@ namespace ConcertHype
 
             GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
             Single_Marketing_Roll template = WheelWidget.Template();
+            float wheelBottom = PictureCentre.y + WheelSize / 2f;
             for (int j = 0; j < GameReader.SenbatsuPositions; j++)
             {
-                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Place " + j, DropPoint.AtPlace(j), iconOnPicture: true);
-                // Nobody is dragged off the stage while she sings
+                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Place " + j, DropPoint.AtPlace(j));
+                // Nobody is dragged off the stage while she sings, and the show's energy waits for the next screen
                 if (widget.Drag != null)
                     UnityEngine.Object.Destroy(widget.Drag);
+                widget.Bar?.gameObject.SetActive(false);
                 TextMeshProUGUI number = widget.Label;
-                Ui.Place(number.gameObject, 0f, 58f, 54f, 22f);
+                Ui.Place(number.gameObject, 0f, wheelBottom, 54f, 22f);
                 // It pops from its middle
                 RectTransform numberRect = (RectTransform)number.transform;
                 numberRect.pivot = new Vector2(0.5f, 0.5f);
-                numberRect.anchoredPosition = new Vector2(27f, -69f);
+                numberRect.anchoredPosition = new Vector2(PictureCentre.x, -wheelBottom - 11f);
                 number.alignment = TextAlignmentOptions.Top;
-                number.fontSize = NumberSize / PortraitScale;
+                number.fontSize = NumberSize;
                 number.fontStyle = FontStyles.Bold;
                 // Readable over the stage lights
                 number.outlineWidth = 0.25f;
@@ -1283,8 +1293,13 @@ namespace ConcertHype
                 number.raycastTarget = true;
                 NumberTips.Add(number.gameObject.AddComponent<IconTip>());
                 Places.Add(widget);
-                if (template != null)
-                    Wheels.Add(WheelWidget.Make(template, widget.Root.transform, PictureCentre.x, PictureCentre.y, WheelSize / PortraitScale));
+                if (template == null)
+                    continue;
+                WheelWidget wheel = WheelWidget.Make(template, widget.Root.transform, PictureCentre.x, PictureCentre.y, WheelSize);
+                // Over her picture, under her number and icon
+                wheel.Root.transform.SetSiblingIndex(number.transform.GetSiblingIndex());
+                Wheels.Add(wheel);
+                widget.Icon.PlaceAt(PictureCentre.x + WheelSize / 2f - IconWidget.Size, wheelBottom - IconWidget.Size);
             }
         }
 
@@ -1317,19 +1332,16 @@ namespace ConcertHype
                     StageSlotView slot = view.Slots[j];
                     if (!slot.HasRoll)
                         continue;
-                    WheelWidget wheel = j < Wheels.Count ? Wheels[j] : null;
                     if (landedAt[j] < 0f)
                     {
                         double t = Math.Min(1.0, elapsed / Math.Max(0.01, slot.LandAt * song));
-                        wheel?.SetAngle(slot.Angle * (1 - Math.Pow(1 - t, 4)));
+                        if (j < Wheels.Count)
+                            Wheels[j].SetAngle(slot.Angle * (1 - Math.Pow(1 - t, 4)));
                         if (t >= 1.0)
                             Land(j, slot);
                         continue;
                     }
-                    float since = elapsed - landedAt[j];
-                    if (wheel != null)
-                        wheel.Alpha = Mathf.Clamp01(1f - since / FadeSeconds);
-                    float punch = 1f + PunchScale * (1f - Mathf.Clamp01(since / PunchSeconds));
+                    float punch = 1f + PunchScale * (1f - Mathf.Clamp01((elapsed - landedAt[j]) / PunchSeconds));
                     Places[j].Label.transform.localScale = new Vector3(punch, punch, 1f);
                 }
             }
@@ -1348,7 +1360,6 @@ namespace ConcertHype
             widget.Label.text = slot.Roll;
             widget.Label.color = ColorOf(slot.Outcome);
             NumberTips[j].Text = slot.Tip;
-            Ui.SetEnergyBar(widget.Bar, slot.EnergyAfter);
             if (slot.Hurt)
                 widget.Icon.Set(IconKind.Hurt, slot.HurtTip);
             if (slot.Outcome == Outcome.CriticalSuccess)

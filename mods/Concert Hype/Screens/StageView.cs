@@ -38,9 +38,6 @@ namespace ConcertHype
         /// </summary>
         public double LandAt;
 
-        public double EnergyBefore;
-        public double EnergyAfter;
-
         /// <summary>
         /// Hurt in this song: the hurt icon shows when her wheel lands.
         /// </summary>
@@ -95,8 +92,6 @@ namespace ConcertHype
                 place.Roll = Whole(slot.Roll);
                 place.Chances = Outcomes.Chances(config, expected);
                 place.Angle = 360 * Turns + 3.6 * Outcomes.WheelPercent(config, expected, slot.Roll);
-                place.EnergyBefore = slot.EnergyBefore;
-                place.EnergyAfter = slot.EnergyAfter;
                 place.Hurt = slot.Accident;
                 if (slot.Accident)
                     place.HurtTip = Texts.Format("CONCERTHYPE__TIP_HURT", slot.AbsenceLength == 1 ? Texts.Get("CONCERTHYPE__SONG") : Texts.Format("CONCERTHYPE__SONGS", slot.AbsenceLength));

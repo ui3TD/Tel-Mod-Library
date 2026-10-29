@@ -94,7 +94,7 @@ namespace InGameTests.TelMods
                 VanillaShapes.AssertCovers(ctx, shapes, "Portrait", popup.prefab_concertGirl, "concert idol portrait");
                 Single_Marketing_Roll wheel = PopupManager.GetObject(PopupManager._type.single_release).GetComponent<Single_Release>()
                     .Marketing_Roll_Container.GetComponentInChildren<Single_Marketing_Roll>(true);
-                VanillaShapes.AssertCovers(ctx, shapes, "Wheel", wheel.Spinner_Container, "marketing wheel");
+                VanillaShapes.AssertCovers(ctx, shapes, "Wheel", wheel.Spinner_Container.transform.parent.gameObject, "marketing wheel");
                 VanillaShapes.AssertCovers(ctx, shapes, "Pointer", wheel.Spinner_Icon, "marketing wheel pointer");
 
                 // No card draw: the opening goes straight to the first song, and the deck never shows
@@ -379,7 +379,8 @@ namespace InGameTests.TelMods
 
         /// <summary>
         /// Near the end of a song, every filled place has its copy of the marketing wheel with its four rings
-        /// drawn from the game's sprites, and her roll shows, landed by the stage's own clock.
+        /// drawn from the game's sprites and her face masked into its middle, and her roll shows, landed by the
+        /// stage's own clock.
         /// </summary>
         private static void CheckStage(TestContext ctx, Concert_Popup popup, object pending)
         {
@@ -397,9 +398,12 @@ namespace InGameTests.TelMods
                 ctx.Fail($"{places.Count} wheels on stage for {filled} idols");
             foreach (Transform place in places)
             {
-                Image[] rings = place.Find("Wheel/Spin").GetComponentsInChildren<Image>();
+                Image[] rings = place.Find("Wheel/Spinny_Part").GetComponentsInChildren<Image>();
                 if (rings.Length != 4 || rings.Any(ring => ring.sprite == null))
                     ctx.Fail(place.name + "'s wheel doesn't have the game's four rings");
+                Image face = place.Find("Wheel/Fill/Face")?.GetComponent<Image>();
+                if (face == null || face.sprite == null || face.GetComponentInParent<Mask>() == null)
+                    ctx.Fail(place.name + "'s wheel doesn't show her face in its middle");
                 TextMeshProUGUI number = place.Find("Label")?.GetComponent<TextMeshProUGUI>();
                 if (number == null || !number.gameObject.activeInHierarchy || number.text.Length == 0)
                     ctx.Fail(place.name + " shows no roll by the end of the song");

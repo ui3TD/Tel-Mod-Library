@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace ConcertHype
 {
     /// <summary>
-    /// The lineup icons from the mod's Images folder, each loaded once as a sprite.
+    /// The lineup icons and stage effects from the mod's Images folder, each loaded once as a sprite.
     /// </summary>
     public static class Icons
     {
@@ -19,7 +20,10 @@ namespace ConcertHype
         private static UnityEngine.UI.Image emptyPlace;
         private static bool emptyPlaceLooked;
 
-        public static string FileName(IconKind icon) => icon.ToString().ToLowerInvariant() + ".png";
+        /// <summary>
+        /// The icon's name in lower case, its words joined by underscores: CriticalSuccess is critical_success.png.
+        /// </summary>
+        public static string FileName(IconKind icon) => Regex.Replace(icon.ToString(), "(?<=[a-z])(?=[A-Z])", "_").ToLowerInvariant() + ".png";
 
         /// <summary>
         /// The game's own cancel icon, from the agency idol list's job cancel button (logged once when missing).

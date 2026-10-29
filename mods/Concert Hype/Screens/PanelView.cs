@@ -17,7 +17,8 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// The lineup icons, each a PNG of this name in lower case in the mod's Images folder.
+    /// The lineup icons and the stage's outcome effects, each a PNG in the mod's Images folder named as
+    /// <see cref="Icons.FileName"/> names it.
     /// </summary>
     public enum IconKind
     {
@@ -26,6 +27,15 @@ namespace ConcertHype
         Substitute,
         Hurt,
         Resting,
+        CriticalSuccess,
+        Success,
+        Failure,
+        CriticalFailure,
+
+        /// <summary>
+        /// The small sparkles a critical success sends out.
+        /// </summary>
+        Burst,
     }
 
     /// <summary>

@@ -129,7 +129,7 @@ namespace ConcertHype
         /// The size of an effect once it has settled into her mark, the size of a critical success's sparkles, and
         /// the hurt icon's size.
         /// </summary>
-        public const double MarkSize = 32, SparkleSize = 14, HurtIconSize = 26;
+        public const double MarkSize = 32, SparkleSize = 20, HurtIconSize = 26;
 
         /// <summary>
         /// The slam of a critical outcome: it starts this large and settles over this long, opaque after the first

@@ -1817,10 +1817,10 @@ namespace ConcertHype
                     if (since <= StageView.SettledSeconds + 0.1)
                     {
                         Pose(Effects[j], StageView.EffectMotion(since, slot.Outcome), ColorOf(slot.Outcome));
-                        if (slot.Outcome == Outcome.CriticalSuccess)
+                        if (StageView.SparkleScale(slot.Outcome) > 0)
                         {
                             for (int k = 0; k < Sparkles[j].Length; k++)
-                                Pose(Sparkles[j][k], StageView.SparkleMotion(since, k), ColorOf(slot.Outcome));
+                                Pose(Sparkles[j][k], StageView.SparkleMotion(since, k, slot.Outcome), ColorOf(slot.Outcome));
                         }
                     }
                     if (slot.Hurt)
@@ -1849,9 +1849,10 @@ namespace ConcertHype
             Pose(effect, new EffectPose { Scale = 1, Alpha = 0 });
             effect.gameObject.SetActive(true);
             EffectTips[j].Text = slot.Tip;
-            if (slot.Outcome == Outcome.CriticalSuccess)
+            if (StageView.SparkleScale(slot.Outcome) > 0)
             {
-                Sprite burst = Icons.Get(IconKind.Burst);
+                // A success sends out small copies of its own sparkle
+                Sprite burst = Icons.Get(slot.Outcome == Outcome.CriticalSuccess ? IconKind.Burst : IconKind.Success);
                 foreach (Image sparkle in Sparkles[j])
                 {
                     sparkle.sprite = burst;

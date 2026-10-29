@@ -135,10 +135,10 @@ namespace ConcertHype
 
         /// <summary>
         /// A critical success's sparkles fly out this far (in pixels, along each diagonal) and fade, starting
-        /// partway through the slam.
+        /// partway through the slam. A success's are this much smaller and fly this much less far.
         /// </summary>
         public const int SparkleCount = 4;
-        public const double SparkleDelay = 0.15, SparkleSeconds = 0.6, SparkleDistance = 36;
+        public const double SparkleDelay = 0.15, SparkleSeconds = 0.6, SparkleDistance = 36, SuccessSparkleScale = 0.7;
 
         /// <summary>
         /// From this long after it lands, an effect is her mark and no longer moves.
@@ -210,18 +210,30 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// Sparkle k (0 to 3) of a critical success this long after it landed, in units of its own size: it flies
-        /// out along its diagonal from the star's middle, shrinking and fading.
+        /// How large an outcome's sparkles are, against a critical success's; 0 for an outcome that sends none.
         /// </summary>
-        public static EffectPose SparkleMotion(double since, int k)
+        public static double SparkleScale(Outcome outcome) => outcome switch
         {
+            Outcome.CriticalSuccess => 1,
+            Outcome.Success => SuccessSparkleScale,
+            _ => 0,
+        };
+
+        /// <summary>
+        /// Sparkle k (0 to 3) of a success or critical success this long after it landed, in units of a critical
+        /// success's sparkle: it flies out along its diagonal from the effect's middle, shrinking and fading. A
+        /// failure sends none.
+        /// </summary>
+        public static EffectPose SparkleMotion(double since, int k, Outcome outcome)
+        {
+            double size = SparkleScale(outcome);
             double u = (since - SparkleDelay) / SparkleSeconds;
-            if (u <= 0 || u >= 1)
+            if (size <= 0 || u <= 0 || u >= 1)
                 return new EffectPose { Scale = 1, Alpha = 0 };
-            double away = SparkleDistance * (1 - Math.Pow(1 - u, 3));
+            double away = size * SparkleDistance * (1 - Math.Pow(1 - u, 3));
             return new EffectPose
             {
-                Scale = 1 - 0.4 * u,
+                Scale = size * (1 - 0.4 * u),
                 OffsetX = (k % 2 == 0 ? -1 : 1) * away,
                 OffsetY = (k < 2 ? -1 : 1) * away * 0.8,
                 Alpha = 1 - u,

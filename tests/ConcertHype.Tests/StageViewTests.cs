@@ -259,17 +259,38 @@ namespace ConcertHype.Tests
             Assert.Equal(4, StageView.SparkleCount);
             for (int k = 0; k < StageView.SparkleCount; k++)
             {
-                Assert.Equal(0, StageView.SparkleMotion(0, k).Alpha);
-                Assert.Equal(0, StageView.SparkleMotion(StageView.SparkleDelay + StageView.SparkleSeconds, k).Alpha);
-                EffectPose mid = StageView.SparkleMotion(StageView.SparkleDelay + StageView.SparkleSeconds / 2, k);
+                Assert.Equal(0, StageView.SparkleMotion(0, k, Outcome.CriticalSuccess).Alpha);
+                Assert.Equal(0, StageView.SparkleMotion(StageView.SparkleDelay + StageView.SparkleSeconds, k, Outcome.CriticalSuccess).Alpha);
+                EffectPose mid = StageView.SparkleMotion(StageView.SparkleDelay + StageView.SparkleSeconds / 2, k, Outcome.CriticalSuccess);
                 Assert.InRange(mid.Alpha, 0.4, 0.6);
                 Assert.True(mid.Scale < 1);
-                double[] away = Times(StageView.SparkleSeconds).Select(t => System.Math.Abs(StageView.SparkleMotion(StageView.SparkleDelay + t, k).OffsetX)).ToArray();
+                double[] away = Times(StageView.SparkleSeconds).Select(t => System.Math.Abs(StageView.SparkleMotion(StageView.SparkleDelay + t, k, Outcome.CriticalSuccess).OffsetX)).ToArray();
                 Assert.All(away.Zip(away.Skip(1), (a, b) => b >= a - 1e-9 || b == 0), Assert.True);
                 Assert.True(away.Max() <= StageView.SparkleDistance + 1e-9);
             }
-            EffectPose[] sparkles = Enumerable.Range(0, StageView.SparkleCount).Select(k => StageView.SparkleMotion(StageView.SparkleDelay + 0.3, k)).ToArray();
+            EffectPose[] sparkles = Enumerable.Range(0, StageView.SparkleCount).Select(k => StageView.SparkleMotion(StageView.SparkleDelay + 0.3, k, Outcome.CriticalSuccess)).ToArray();
             Assert.Equal(4, sparkles.Select(p => (System.Math.Sign(p.OffsetX), System.Math.Sign(p.OffsetY))).Distinct().Count());
+        }
+
+        [Fact]
+        public void ASuccess_SendsSmallerSparklesOut_ThanACriticalSuccess_AndAFailureNone()
+        {
+            foreach (double t in Times(StageView.SparkleSeconds).Select(t => StageView.SparkleDelay + t))
+            {
+                for (int k = 0; k < StageView.SparkleCount; k++)
+                {
+                    EffectPose critical = StageView.SparkleMotion(t, k, Outcome.CriticalSuccess), success = StageView.SparkleMotion(t, k, Outcome.Success);
+                    Assert.Equal(critical.Alpha, success.Alpha, 9);
+                    if (critical.Alpha <= 0)
+                        continue;
+                    Assert.Equal(critical.Scale * StageView.SuccessSparkleScale, success.Scale, 9);
+                    Assert.Equal(critical.OffsetX * StageView.SuccessSparkleScale, success.OffsetX, 9);
+                    Assert.Equal(critical.OffsetY * StageView.SuccessSparkleScale, success.OffsetY, 9);
+                    Assert.Equal(0, StageView.SparkleMotion(t, k, Outcome.Failure).Alpha);
+                    Assert.Equal(0, StageView.SparkleMotion(t, k, Outcome.CriticalFailure).Alpha);
+                }
+            }
+            Assert.InRange(StageView.SuccessSparkleScale, 0.5, 0.9);
         }
 
         [Fact]

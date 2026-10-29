@@ -189,6 +189,15 @@ namespace ConcertHype
             bar.color = energy < 30 ? mainScript.red32 : energy >= 70 ? mainScript.green32 : mainScript.blue32;
             bar.transform.localScale = new Vector3((float)(energy / 100.0), 1f, 1f);
         }
+
+        /// <summary>
+        /// A success bar this full: its chance of a success or a critical success, in percent.
+        /// </summary>
+        public static void SetSuccessBar(Image bar, double chance)
+        {
+            if (bar != null)
+                bar.transform.localScale = new Vector3((float)(Math.Max(0, Math.Min(100, chance)) / 100.0), 1f, 1f);
+        }
     }
 
     /// <summary>
@@ -515,10 +524,25 @@ namespace ConcertHype
 
     /// <summary>
     /// A copy of the concert's idol portrait (the picture is a game button, with its hover profile) whose energy
-    /// bar shows the show's energy, with a short label and an icon. Pressing and holding the picture drags her.
+    /// bar shows the show's energy over a grey track, with a short label and an icon. A place in the lineup also
+    /// has a success bar under the energy bar: her chance of a success, green over red. Pressing and holding the
+    /// picture drags her.
     /// </summary>
     internal sealed class PortraitWidget
     {
+        /// <summary>
+        /// The energy bar's empty part; the success bar's filled part (a green unlike the energy bar's) and its
+        /// empty part.
+        /// </summary>
+        private static readonly Color EnergyTrack = new Color(0.67f, 0.67f, 0.66f, 0.55f);
+        private static readonly Color SuccessFill = new Color32(96, 196, 176, 255);
+        private static readonly Color SuccessTrack = mainScript.red32;
+
+        /// <summary>
+        /// The icon's top under the bars of a place in the lineup.
+        /// </summary>
+        public const float IconTop = 65f;
+
         public GameObject Root;
         public CanvasGroup Group;
         public Button Button;
@@ -527,6 +551,9 @@ namespace ConcertHype
         public Image Picture;
         public Image Background;
         public Image Bar;
+        public Image BarTrack;
+        public Image Success;
+        public Image SuccessBack;
         public TextMeshProUGUI Label;
         public IconWidget Icon;
         private Color backgroundColor;
@@ -536,7 +563,9 @@ namespace ConcertHype
         private readonly List<GameObject> shadows = new List<GameObject>();
 
         /// <param name="iconOnPicture">The icon sits on the picture (the bench), else beside the label under it.</param>
-        public static PortraitWidget Make(GameObject prefab, GameObject labelTemplate, Transform parent, string name, DropPoint from, bool iconOnPicture = false)
+        /// <param name="successBar">A place in the lineup: it shows her chance of a success under her energy.</param>
+        public static PortraitWidget Make(GameObject prefab, GameObject labelTemplate, Transform parent, string name, DropPoint from, bool iconOnPicture = false,
+            bool successBar = false)
         {
             PortraitWidget widget = new PortraitWidget { Root = Ui.Copy(prefab, parent, Shapes.Portrait, "idol portrait", name) };
             widget.Group = widget.Root.AddComponent<CanvasGroup>();
@@ -551,6 +580,16 @@ namespace ConcertHype
             widget.Hover = center?.GetComponent<ButtonDefault>();
             widget.Background = widget.Root.transform.Find("BG")?.GetComponent<Image>();
             widget.Bar = widget.Root.transform.Find("Stamina")?.GetComponent<Image>();
+            if (widget.Bar != null)
+            {
+                widget.BarTrack = BarLike(widget.Bar, "Stamina Track", EnergyTrack, 0f);
+                if (successBar)
+                {
+                    float below = ((RectTransform)widget.Bar.transform).rect.height + 1f;
+                    widget.SuccessBack = BarLike(widget.Bar, "Success Track", SuccessTrack, below);
+                    widget.Success = BarLike(widget.Bar, "Success", SuccessFill, below);
+                }
+            }
             if (widget.Background != null)
                 widget.backgroundColor = widget.Background.color;
             if (widget.Button != null)
@@ -580,6 +619,45 @@ namespace ConcertHype
         }
 
         /// <summary>
+        /// A plain bar where the game's energy bar sits, this far under it, at full length: the energy bar's track
+        /// sits just behind it, a success bar's parts after it.
+        /// </summary>
+        private static Image BarLike(Image bar, string name, Color color, float below)
+        {
+            RectTransform from = (RectTransform)bar.transform;
+            GameObject obj = new GameObject(name, typeof(RectTransform));
+            obj.transform.SetParent(from.parent, false);
+            RectTransform rect = (RectTransform)obj.transform;
+            rect.anchorMin = from.anchorMin;
+            rect.anchorMax = from.anchorMax;
+            rect.pivot = from.pivot;
+            rect.sizeDelta = from.sizeDelta;
+            rect.anchoredPosition = from.anchoredPosition - new Vector2(0f, below);
+            Image image = obj.AddComponent<Image>();
+            image.sprite = bar.sprite;
+            image.type = bar.type;
+            image.color = color;
+            image.raycastTarget = false;
+            obj.transform.SetSiblingIndex(below > 0f ? from.parent.childCount - 1 : from.GetSiblingIndex());
+            return image;
+        }
+
+        /// <summary>
+        /// Her chance of a success in percent on the success bar; below 0 hides it (an empty place).
+        /// </summary>
+        public void SetSuccess(double chance)
+        {
+            bool shown = chance >= 0;
+            if (Success != null)
+            {
+                Success.gameObject.SetActive(shown);
+                Ui.SetSuccessBar(Success, chance);
+            }
+            if (SuccessBack != null)
+                SuccessBack.gameObject.SetActive(shown);
+        }
+
+        /// <summary>
         /// An empty place looks like the game's empty senbatsu place: its framed box, with no shadows.
         /// </summary>
         public void SetGirl(data_girls.girls girl)
@@ -588,6 +666,8 @@ namespace ConcertHype
             hasGirl = girl != null;
             foreach (GameObject shadow in shadows)
                 shadow.SetActive(hasGirl);
+            if (BarTrack != null)
+                BarTrack.gameObject.SetActive(hasGirl);
             if (girl is null)
             {
                 if (hover != null)
@@ -624,6 +704,15 @@ namespace ConcertHype
                 Color bar = Bar.color;
                 Bar.color = new Color(bar.r, bar.g, bar.b, dimmed ? 0.45f : 1f);
             }
+            Dim(BarTrack, EnergyTrack, dimmed);
+            Dim(Success, SuccessFill, dimmed);
+            Dim(SuccessBack, SuccessTrack, dimmed);
+        }
+
+        private static void Dim(Image image, Color color, bool dimmed)
+        {
+            if (image != null)
+                image.color = new Color(color.r, color.g, color.b, color.a * (dimmed ? 0.45f : 1f));
         }
 
         public void SetHighlight(Highlight highlight)
@@ -861,7 +950,7 @@ namespace ConcertHype
             LevelReset();
 
             for (int j = 0; j < GameReader.SenbatsuPositions; j++)
-                Slots.Add(PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Slot " + j, DropPoint.AtPlace(j)));
+                Slots.Add(PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Slot " + j, DropPoint.AtPlace(j), successBar: true));
 
             // The tabs side by side, centred over the formation
             GameObject tabTemplate = TabWidget.Template(popup);
@@ -955,10 +1044,10 @@ namespace ConcertHype
                 Ui.SetEnergyBar(widget.Bar, slot.Member >= 0 ? session.State.Energy[slot.Member] : 0);
                 widget.SetDimmed(slot.Dragged);
                 widget.SetHighlight(slot.Highlight);
-                widget.Label.text = slot.Roll;
+                widget.Label.text = "";
+                widget.SetSuccess(slot.Success);
                 widget.Icon.Set(slot.Icon, slot.Tip);
-                // The roll, then the icon; the icon alone sits in the middle
-                widget.Icon.PlaceAt(slot.Roll.Length > 0 ? 29f : 27f - IconWidget.Size / 2f, 59f);
+                widget.Icon.PlaceAt(27f - IconWidget.Size / 2f, PortraitWidget.IconTop);
             }
             BenchColumn.Render(view);
         }
@@ -1598,6 +1687,10 @@ namespace ConcertHype
                 Places.Add(widget);
                 if (template != null)
                     Wheels.Add(WheelWidget.Make(template, widget.Root.transform, WheelCentre.x, WheelCentre.y, (float)StageView.WheelSize));
+                // Over the wheel, which shrinks away as the effect lands
+                foreach (Image sparkle in sparkles)
+                    sparkle.transform.SetAsLastSibling();
+                effect.transform.SetAsLastSibling();
             }
         }
 

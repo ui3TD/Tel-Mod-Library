@@ -18,7 +18,7 @@ namespace ConcertHype.Tests
         /// <summary>
         /// Cast: Idol0, Idol1, Idol3, Idol4, Idol5 (Idol2 is injured, so song 1's third place must be filled).
         /// </summary>
-        private static ShowSession ThreeSongs(out _concert concert)
+        private static ShowSession ThreeSongs(out _concert concert, double rollSigma = 0)
         {
             data_girls.girls[] idols = Enumerable.Range(0, 6).Select(i => GameFixture.Idol("Idol" + i, dance: 50 + 5 * i, vocal: 55)).ToArray();
             idols[2].status = data_girls._status.injured;
@@ -27,11 +27,11 @@ namespace ConcertHype.Tests
                 GameFixture.Single("S2", idols[3], idols[4], idols[5]),
                 GameFixture.Single("S3", idols[0], idols[3], idols[4]));
             concert.Hype = 50;
-            return GameFixture.Begin(concert, new Config { Seed = 3, RollSigma = 0, PBase = 0, PRoll = 0, PTired = 0 });
+            return GameFixture.Begin(concert, new Config { Seed = 3, RollSigma = rollSigma, PBase = 0, PRoll = 0, PTired = 0 });
         }
 
         [Fact]
-        public void Slots_ShowRowsBadgesAndExpectedRolls()
+        public void Slots_ShowRowsBadgesAndSuccessChances()
         {
             ShowSession session = ThreeSongs(out _);
             Assert.True(session.Drop(3, DropPoint.Bench, DropPoint.AtPlace(0)).Changed);
@@ -40,7 +40,7 @@ namespace ConcertHype.Tests
             Assert.Equal(new[] { 0, 1, 1 }, view.Slots.Select(s => s.Row));
             Assert.Equal(new[] { SlotBadge.Substitute, SlotBadge.Original, SlotBadge.Substitute }, view.Slots.Select(s => s.Badge));
             SongPreview preview = session.Preview();
-            Assert.Equal(Math.Round(preview.Slots[1].Expected).ToString(), view.Slots[1].Roll);
+            Assert.Equal(PanelView.SuccessChance(session.State.Config, preview.Slots[1].Expected), view.Slots[1].Success);
             Assert.All(view.Slots, s => Assert.Equal(Highlight.None, s.Highlight));
             Assert.Equal("⇄", PanelView.BadgeText(SlotBadge.Substitute));
             Assert.Equal("★", PanelView.BadgeText(SlotBadge.Original));
@@ -229,7 +229,7 @@ namespace ConcertHype.Tests
             PanelView song = PanelView.Build(session);
             Assert.Equal((before.Expected.Title, before.Expected.Value, before.Changed.Value), (song.Expected.Title, song.Expected.Value, song.Changed.Value));
             Assert.Equal(2, song.Slots[0].Member);
-            Assert.Equal(before.Slots[0].Roll, song.Slots[0].Roll);
+            Assert.Equal(before.Slots[0].Success, song.Slots[0].Success);
             Assert.Equal((before.Slots[0].Icon, before.Slots[0].Tip), (song.Slots[0].Icon, song.Slots[0].Tip));
             Assert.Equal(new[] { 2, 3, 4 }, session.Lineup);
         }
@@ -293,6 +293,27 @@ namespace ConcertHype.Tests
             PanelView view = PanelView.Build(session, new DragView { Member = 2, From = DropPoint.Bench, Over = DropPoint.AtHost(1) }, tab: FormationTab.Talk);
             Assert.Equal(Highlight.Refused, view.Hosts[1].Highlight);
             Assert.Equal("Talk breaks can start after the first song.", view.Hint);
+        }
+
+        [Fact]
+        public void TheSuccessChance_IsASuccessOrACriticalSuccess_AndFollowsADragPreview()
+        {
+            Config config = new Config();
+            double[] chances = Outcomes.Chances(config, 55);
+            Assert.Equal(100 - chances[(int)Outcome.CriticalFailure] - chances[(int)Outcome.Failure], PanelView.SuccessChance(config, 55), 9);
+            Assert.True(PanelView.SuccessChance(config, 40) < PanelView.SuccessChance(config, 70));
+            Assert.Equal(-1, new SlotView().Success);
+
+            ShowSession session = ThreeSongs(out _, rollSigma: 10);
+            PanelView view = PanelView.Build(session);
+            Assert.All(view.Slots, slot => Assert.InRange(slot.Success, 0.001, 99.999));
+            // An idol from the bench held over the third place shows her chance there, not the idol's who's in it
+            int held = view.Bench.Where(b => b.Available).Select(b => b.Member).Last();
+            PanelView over = PanelView.Build(session, new DragView { Member = held, From = DropPoint.Bench, Over = DropPoint.AtPlace(2) });
+            SongPreview preview = Engine.Preview(session.State, over.Slots.Select(s => s.Member).ToArray());
+            Assert.Equal(held, over.Slots[2].Member);
+            Assert.Equal(PanelView.SuccessChance(session.State.Config, preview.Slots[2].Expected), over.Slots[2].Success, 9);
+            Assert.NotEqual(view.Slots[2].Success, over.Slots[2].Success);
         }
 
         [Fact]

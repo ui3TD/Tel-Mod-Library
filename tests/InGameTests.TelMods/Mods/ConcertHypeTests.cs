@@ -463,14 +463,16 @@ namespace InGameTests.TelMods
 
         /// <summary>
         /// Near the end of a song, every filled place has its copy of the marketing wheel with its four rings
-        /// drawn from the game's sprites, and her roll shows in the game's heavy font on its own material, landed by
-        /// the stage's own clock. As drawn, the
-        /// places are on screen, apart from each other and clear of the song's title and progress bar, and the
-        /// bench is faded out.
+        /// drawn from the game's sprites, and her outcome's effect shows (its picture loaded from the mod's files),
+        /// landed by the stage's own clock. As drawn, the places are on screen, apart from each other and clear of
+        /// the song's title and progress bar, and the bench is faded out.
         /// </summary>
         private static void CheckStage(TestContext ctx, Concert_Popup popup, object pending)
         {
-            string fontName = (string)AccessTools.Field(pending.GetType().Assembly.GetType("ConcertHype.StageRolls", true), "NumberFontName").GetValue(null);
+            Assembly mod = pending.GetType().Assembly;
+            object view = AccessTools.Field(mod.GetType("ConcertHype.StageRolls", true), "view").GetValue(null);
+            IList slots = (IList)AccessTools.Field(view.GetType(), "Slots").GetValue(view);
+            MethodInfo effectOf = AccessTools.Method(mod.GetType("ConcertHype.StageView", true), "EffectOf");
             int filled = ((Array)AccessTools.Field(pending.GetType(), "Slots").GetValue(pending)).Cast<object>()
                 .Count(slot => (int)AccessTools.Field(slot.GetType(), "Member").GetValue(slot) >= 0);
             Transform stage = popup.transform.Find("ConcertHype Stage");
@@ -488,25 +490,27 @@ namespace InGameTests.TelMods
                 Image[] rings = place.Find("Wheel/Spinny_Part").GetComponentsInChildren<Image>();
                 if (rings.Length != 4 || rings.Any(ring => ring.sprite == null))
                     ctx.Fail(place.name + "'s wheel doesn't have the game's four rings");
-                TextMeshProUGUI number = place.Find("Label")?.GetComponent<TextMeshProUGUI>();
-                if (number == null || !number.gameObject.activeInHierarchy || number.text.Length == 0)
+                Image effect = place.Find("Effect")?.GetComponent<Image>();
+                if (effect == null || !effect.gameObject.activeInHierarchy)
                 {
-                    ctx.Fail(place.name + " shows no roll by the end of the song");
+                    ctx.Fail(place.name + " shows no effect by the end of the song");
                     continue;
                 }
-                // The game's heavy font, on the number's own material, so the game's other text keeps its look
-                if (number.font == null || number.font.name != fontName)
-                    ctx.Fail(place.name + "'s roll is drawn in " + (number.font == null ? "no font" : number.font.name) + ", not " + fontName);
-                else if (number.fontSharedMaterial == number.font.material)
-                    ctx.Fail(place.name + "'s roll styles the font's shared material");
+                object slot = slots[int.Parse(place.name.Substring("Place ".Length))];
+                object outcome = AccessTools.Field(slot.GetType(), "Outcome").GetValue(slot);
+                string expected = "ConcertHype " + effectOf.Invoke(null, new[] { outcome });
+                if (effect.sprite == null || effect.sprite.name != expected)
+                    ctx.Fail(place.name + " shows " + (effect.sprite == null ? "no picture" : effect.sprite.name) + " for " + outcome + ", not " + expected);
+                if (place.Find("Label") is Transform label && label.gameObject.activeSelf)
+                    ctx.Fail(place.name + " still shows a number");
             }
 
-            // Each place as drawn: her picture and her number
+            // Each place as drawn: her picture and her effect
             List<Rect> drawn = places.Select(place =>
             {
-                Rect picture = ScreenRect(place.Find("Center")), number = ScreenRect(place.Find("Label"));
-                return Rect.MinMaxRect(Mathf.Min(picture.xMin, number.xMin), Mathf.Min(picture.yMin, number.yMin),
-                    Mathf.Max(picture.xMax, number.xMax), Mathf.Max(picture.yMax, number.yMax));
+                Rect picture = ScreenRect(place.Find("Center")), effect = ScreenRect(place.Find("Effect"));
+                return Rect.MinMaxRect(Mathf.Min(picture.xMin, effect.xMin), Mathf.Min(picture.yMin, effect.yMin),
+                    Mathf.Max(picture.xMax, effect.xMax), Mathf.Max(picture.yMax, effect.yMax));
             }).ToList();
             Rect screen = new(0, 0, Screen.width, Screen.height);
             Rect title = ScreenRect(popup.SongTitle.transform), progress = ScreenRect(popup.SongProgress.transform);

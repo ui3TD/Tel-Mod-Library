@@ -64,9 +64,9 @@ namespace ConcertHype
         public SlotBadge Badge;
 
         /// <summary>
-        /// The expected roll, rounded; empty for an empty slot.
+        /// Her chance of a success or a critical success in percent; -1 for an empty place.
         /// </summary>
-        public string Roll = "";
+        public double Success = -1;
 
         public Highlight Highlight;
 
@@ -227,6 +227,15 @@ namespace ConcertHype
 
         private static string Whole(double value) => Math.Round(value).ToString(CultureInfo.InvariantCulture);
 
+        /// <summary>
+        /// The chance in percent that a roll of this expected value is a success or a critical success.
+        /// </summary>
+        public static double SuccessChance(Config config, double expected)
+        {
+            double[] chances = Outcomes.Chances(config, expected);
+            return chances[(int)Outcome.Success] + chances[(int)Outcome.CriticalSuccess];
+        }
+
         /// <param name="message">The last refused drop's reason, shown in the hint line.</param>
         /// <param name="group">The group the bench shows, by ID; -1 for everyone.</param>
         public static PanelView Build(ShowSession session, DragView drag = null, string message = null, FormationTab tab = FormationTab.Song, int group = -1)
@@ -268,7 +277,7 @@ namespace ConcertHype
                         Member = member,
                         Row = song.Slots[j].Row,
                         Badge = member < 0 ? SlotBadge.Empty : member == song.Slots[j].Original ? SlotBadge.Original : SlotBadge.Substitute,
-                        Roll = preview.Slots[j] == null ? "" : Whole(preview.Slots[j].Expected),
+                        Success = preview.Slots[j] == null ? -1 : SuccessChance(state.Config, preview.Slots[j].Expected),
                         Highlight = HighlightAt(drag, target, place, over),
                         Dragged = InHand(drag, target, place, member),
                     };
@@ -428,7 +437,10 @@ namespace ConcertHype
             public float TabsHalf;
         }
 
-        public const float PlaceWidth = 54f, PlaceHeight = 76f, CellWidth = 70f, RowHeight = 76f, MaxScale = 1.4f, MinScale = 0.5f;
+        /// <summary>
+        /// A place is its portrait, its energy and success bars, and its icon under them.
+        /// </summary>
+        public const float PlaceWidth = 54f, PlaceHeight = 82f, CellWidth = 70f, RowHeight = 82f, MaxScale = 1.4f, MinScale = 0.5f;
 
         /// <summary>
         /// The largest scale (up to <see cref="MaxScale"/>, in steps of 0.05) at which every row fits the space,

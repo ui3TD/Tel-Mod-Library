@@ -19,7 +19,7 @@ namespace InGameTests.TelMods
     /// draws them clear of the places, the empty host place showing the game's empty senbatsu place, the game's
     /// profile card placed at the host place, the
     /// game's cancel icon over the hovered host and a real click cancelling her, a
-    /// talk break played by the popup's own coroutine, the transpiled song length, the popup's tweens landing hype
+    /// talk break played by the popup's own coroutine with its host on stage and the bench faded, the transpiled song length, the popup's tweens landing hype
     /// on the show's value, the stage's copies of the marketing wheel and the rolls they land on during a song,
     /// the score line on the real results screen, and no crisis popup.
     /// </summary>
@@ -348,7 +348,30 @@ namespace InGameTests.TelMods
                         if (popup.SongTitle.GetComponent<TextMeshProUGUI>()?.text != talk.GetTitle() || !talk.GetTitle().EndsWith(" #1"))
                             ctx.Fail("The popup doesn't show the talk break's title: " + popup.SongTitle.GetComponent<TextMeshProUGUI>()?.text);
                         float talkLength = -1f;
-                        yield return PlayOut(popup, false, length => talkLength = length);
+                        bool talkChecked = false;
+                        // Halfway through, the host is on stage without a wheel and the bench has faded out
+                        yield return PlayOut(popup, false, length => talkLength = length, playing: progress =>
+                        {
+                            if (talkChecked || progress < 0.5f)
+                                return;
+                            talkChecked = true;
+                            Transform talkStage = popup.transform.Find("ConcertHype Stage");
+                            List<Transform> onStage = talkStage == null || !talkStage.gameObject.activeInHierarchy ? new List<Transform>()
+                                : talkStage.Cast<Transform>().Where(place => place.gameObject.activeSelf).ToList();
+                            ctx.Record("hosts on stage", onStage.Count);
+                            if (onStage.Count != 1 || onStage.Any(place => place.Find("Wheel") is Transform wheel && wheel.gameObject.activeSelf))
+                                ctx.Fail($"{onStage.Count} places on stage during the talk break, not its one host without a wheel");
+                            float talkBench = BenchAlphas(popup).DefaultIfEmpty(0f).Max();
+                            ctx.Record("bench alpha during the talk break", talkBench);
+                            if (talkBench > 0.05f)
+                                ctx.Fail("The bench shows during the talk break (alpha " + talkBench + ")");
+                        });
+                        if (!talkChecked)
+                            ctx.Fail("The talk break ended before the stage was checked");
+                        if (popup.transform.Find("ConcertHype Stage") is Transform talkStageAfter && talkStageAfter.gameObject.activeInHierarchy)
+                            ctx.Fail("The stage still shows after the talk break");
+                        if (BenchAlphas(popup).DefaultIfEmpty(1f).Min() < 0.99f)
+                            ctx.Fail("The bench is still faded after the talk break");
                         ctx.Record("talk break seconds", talkLength);
                         if (Math.Abs(talkLength - songSeconds) > 0.5)
                             ctx.Fail($"The talk break played {talkLength} s, not about {songSeconds}");

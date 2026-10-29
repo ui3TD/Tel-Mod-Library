@@ -1022,7 +1022,8 @@ namespace ConcertHype
                 widget.SetDimmed(host.Dragged);
                 if (CancelOverlays[k] != null)
                     CancelOverlays[k].SetActive(false);
-                Ui.Place(widget.Root, frame.CenterX + (k - (Engine.MaxHosts - 1) / 2f) * CellWidth * frame.Scale - 27f * frame.Scale, TriangleTop, 54f, 58f);
+                Vector2 at = HostCorners(new[] { k })[0];
+                Ui.Place(widget.Root, at.x, at.y, 54f, 58f);
                 widget.Root.transform.localScale = new Vector3(frame.Scale, frame.Scale, 1f);
             }
             ShowCancel();
@@ -1062,6 +1063,12 @@ namespace ConcertHype
             message = null;
             Render();
         }, "switching tabs");
+
+        /// <summary>
+        /// The top-left corner of each of these host places' portraits on the talk break's tab, as Render places them.
+        /// </summary>
+        public static Vector2[] HostCorners(IList<int> places) =>
+            places.Select(k => new Vector2(frame.CenterX + ((k - (Engine.MaxHosts - 1) / 2f) * CellWidth - 27f) * frame.Scale, TriangleTop)).ToArray();
 
         /// <summary>
         /// The top-left corner of each place's portrait in the game's triangle, given each place's row: each row
@@ -1561,7 +1568,7 @@ namespace ConcertHype
         };
 
         /// <summary>
-        /// The song now playing; a talk break shows no stage. A failure here only loses the stage, not the show.
+        /// The song now playing, or the talk break's hosts. A failure here only loses the stage, not the show.
         /// </summary>
         public static void Show(Concert_Popup popup, ShowSession session)
         {
@@ -1575,7 +1582,7 @@ namespace ConcertHype
                 }
                 Ensure(popup);
                 List<int> rows = view.Slots.Select(slot => slot.Row).ToList();
-                from = LineupPanel.FormationPlaces(rows);
+                from = view.Talk ? LineupPanel.HostCorners(view.Slots.Select(slot => slot.HostPlace).ToList()) : LineupPanel.FormationPlaces(rows);
                 StagePlace[] stage = StageView.Layout(rows);
                 stageScale = (float)stage[0].Scale;
                 to = stage.Select(place => new Vector2(
@@ -1587,15 +1594,15 @@ namespace ConcertHype
                     PortraitWidget widget = Places[j];
                     WheelWidget wheel = j < Wheels.Count ? Wheels[j] : null;
                     // A place nobody performs in isn't shown on stage
-                    bool used = j < view.Slots.Count && view.Slots[j].HasRoll;
+                    bool used = j < view.Slots.Count && view.Slots[j].OnStage;
                     widget.Root.SetActive(used);
                     if (wheel != null && !used)
                         wheel.Root.SetActive(false);
                     if (!used)
                         continue;
                     StageSlotView slot = view.Slots[j];
-                    widget.SetGirl(slot.HasRoll ? session.Show.Girls[slot.Member] : null);
-                    Ui.SetEnergyBar(widget.Bar, slot.HasRoll ? slot.EnergyBefore : 0);
+                    widget.SetGirl(session.Show.Girls[slot.Member]);
+                    Ui.SetEnergyBar(widget.Bar, slot.EnergyBefore);
                     widget.Icon.Set(IconKind.None, "");
                     widget.Label.gameObject.SetActive(false);
                     Effects[j].gameObject.SetActive(false);
@@ -1754,7 +1761,7 @@ namespace ConcertHype
                     Hide();
                     return;
                 }
-                if (phase != Phase.Leaving && session.Pending == null)
+                if (phase != Phase.Leaving && (view.Talk ? session.PendingTalk == null : session.Pending == null))
                 {
                     phase = Phase.Leaving;
                     phaseTime = 0f;

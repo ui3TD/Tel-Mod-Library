@@ -79,6 +79,11 @@ namespace ConcertHype
         internal SongResult Pending;
         internal SEvent_Concerts._concert._mc PendingTalkItem;
         internal McResult PendingTalk;
+
+        /// <summary>
+        /// The host place each of the talk break's hosts came from, in host order.
+        /// </summary>
+        internal int[] PendingTalkPlaces = new int[0];
         private bool[] forcedBeforeTalk;
 
         private readonly StringBuilder log = new StringBuilder();
@@ -203,6 +208,7 @@ namespace ConcertHype
         {
             CheckStep(stage);
             int[] hosts = Hosts.Where(h => h >= 0).ToArray();
+            int[] places = Enumerable.Range(0, Hosts.Length).Where(k => Hosts[k] >= 0).ToArray();
             State.Hype = stage.Concert.Hype;
             bool[] forced = Engine.ForcedSlots(State);
             McResult result = Engine.CallMc(State, hosts);
@@ -217,6 +223,7 @@ namespace ConcertHype
 
             PendingTalkItem = item;
             PendingTalk = result;
+            PendingTalkPlaces = places;
             Hosts = DropRules.NoHosts();
             log.AppendLine();
             log.AppendLine($"{item.GetTitle()} hosted by {string.Join(", ", hosts.Select(Name))} (talk {F(result.Talk)}): hype {F(result.HypeBefore)} -> {F(result.HypeAfter)}");

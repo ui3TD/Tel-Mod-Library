@@ -6,14 +6,26 @@ using System.Linq;
 namespace ConcertHype
 {
     /// <summary>
-    /// One place on stage while a song plays: her wheel and how it lands.
+    /// One place on stage while a song plays (her wheel and how it lands), or a host during a talk break.
     /// </summary>
     public sealed class StageSlotView
     {
         public int Member = -1;
         public int Row;
 
-        public bool HasRoll => Member >= 0;
+        /// <summary>
+        /// A talk break's host: on stage, with no wheel.
+        /// </summary>
+        public bool Host;
+
+        /// <summary>
+        /// The host place she came from on the talk break's tab.
+        /// </summary>
+        public int HostPlace;
+
+        public bool OnStage => Member >= 0;
+
+        public bool HasRoll => Member >= 0 && !Host;
 
         public Outcome Outcome;
 
@@ -73,7 +85,7 @@ namespace ConcertHype
 
     /// <summary>
     /// What the stage shows while a song plays, worked out from the song's result alone (no Unity). The wheels land
-    /// one by one, back row first and the center last; a talk break shows no stage.
+    /// one by one, back row first and the center last. A talk break shows its hosts in one row, with no wheels.
     /// </summary>
     public sealed class StageView
     {
@@ -90,6 +102,11 @@ namespace ConcertHype
         public List<StageSlotView> Slots = new List<StageSlotView>();
 
         public bool Shown => Slots.Count > 0;
+
+        /// <summary>
+        /// A talk break's hosts, not a song.
+        /// </summary>
+        public bool Talk;
 
         /// <summary>
         /// The stage's free area while a song plays: under the hype bar, over the title strip, the full width (the
@@ -286,7 +303,33 @@ namespace ConcertHype
             return places;
         }
 
-        public static StageView Build(ShowSession session) => Build(session.State, session.Pending, session.Name);
+        public static StageView Build(ShowSession session) => session.PendingTalk != null
+            ? BuildTalk(session.State, session.PendingTalk, session.PendingTalkPlaces)
+            : Build(session.State, session.Pending, session.Name);
+
+        /// <summary>
+        /// A talk break's hosts in one row, in host order, with their energy (hosts don't recover during it).
+        /// </summary>
+        /// <param name="places">The host place each host came from.</param>
+        public static StageView BuildTalk(ShowState state, McResult talk, IList<int> places)
+        {
+            StageView view = new StageView { Talk = true };
+            if (talk == null)
+                return view;
+            for (int k = 0; k < talk.Hosts.Count; k++)
+            {
+                int member = talk.Hosts[k];
+                view.Slots.Add(new StageSlotView
+                {
+                    Member = member,
+                    Host = true,
+                    HostPlace = k < places.Count ? places[k] : k,
+                    EnergyBefore = state.Energy[member],
+                    EnergyAfter = state.Energy[member],
+                });
+            }
+            return view;
+        }
 
         public static StageView Build(ShowState state, SongResult result, Func<int, string> name)
         {

@@ -313,9 +313,33 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void ATalkBreak_ShowsNoStage()
+        public void NoSongOrTalkBreak_ShowsNoStage()
         {
             Assert.False(StageView.Build(SixPlaces(), null, Name).Shown);
+            Assert.False(StageView.BuildTalk(SixPlaces(), null, new int[0]).Shown);
+        }
+
+        [Fact]
+        public void ATalkBreak_PutsItsHostsOnStage_InOneRow_WithNoWheels()
+        {
+            ShowState state = SixPlaces();
+            Engine.Play(state, Engine.DefaultLineup(state));
+            McResult talk = Engine.CallMc(state, 6, 2);
+            StageView view = StageView.BuildTalk(state, talk, new[] { 0, 2 });
+
+            Assert.True(view.Shown);
+            Assert.True(view.Talk);
+            Assert.Equal(new[] { 6, 2 }, view.Slots.Select(s => s.Member));
+            Assert.Equal(new[] { 0, 2 }, view.Slots.Select(s => s.HostPlace));
+            Assert.All(view.Slots, s =>
+            {
+                Assert.True(s.OnStage);
+                Assert.False(s.HasRoll);
+                Assert.False(s.Critical);
+                Assert.Equal(0, s.Row);
+                Assert.Equal(state.Energy[s.Member], s.EnergyBefore);
+                Assert.Equal(s.EnergyBefore, s.EnergyAfter);
+            });
         }
 
         [Fact]

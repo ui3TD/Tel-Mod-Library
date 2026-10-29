@@ -246,6 +246,21 @@ namespace InGameTests.TelMods
                         ctx.Fail("All Groups didn't bring the whole bench back");
                 }
 
+                // The Backstage title, as TMP draws it, stays over the bench's panel, above the dropdown (or the panel)
+                Transform benchTitle = popup.Girls.transform.Find("Bench Title"), benchPanel = popup.Girls.transform.Find("Bench Panel");
+                if (benchTitle == null || benchPanel == null)
+                {
+                    ctx.Fail("The bench has no Backstage title or no panel");
+                }
+                else
+                {
+                    Rect drawnTitle = DrawnRect(benchTitle.GetComponent<TextMeshProUGUI>()), panelRect = WorldRect(benchPanel);
+                    Rect under = groupBox != null ? WorldRect(groupBox.Find("Content/Main")) : panelRect;
+                    ctx.Record("backstage title", drawnTitle.ToString("F2") + " over " + under.ToString("F2"));
+                    if (drawnTitle.xMin < panelRect.xMin - 0.01f || drawnTitle.xMax > panelRect.xMax + 0.01f || drawnTitle.yMin < under.yMax - 0.01f)
+                        ctx.Fail("The Backstage title runs past the bench's panel or into what's under it");
+                }
+
                 // Each song: the popup's tween ends exactly on the show's hype, with no crisis popup. Before the
                 // second song, a talk break hosted by a bench idol dragged onto the host place.
                 int songs = concert.SetListItems.Count;

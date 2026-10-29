@@ -1785,7 +1785,19 @@ namespace ConcertHype
         /// </summary>
         public const float BenchWidth = 160f;
 
-        private const float WheelStep = 30f, BarGap = 4f, DropdownGap = 6f, DefaultBarWidth = 20f;
+        private const float WheelStep = 30f, BarGap = 4f, DropdownGap = 6f, DefaultBarWidth = 20f, TitleGap = 4f;
+
+        /// <summary>
+        /// The panel behind the idols: its inner margin, and its tint, dark and see-through.
+        /// </summary>
+        private const float PanelPad = 6f;
+
+        private static readonly Color PanelTint = new Color(0f, 0f, 0f, 0.35f);
+
+        /// <summary>
+        /// The idols' width inside the panel: the two columns fill it.
+        /// </summary>
+        private const float InnerWidth = BenchWidth - 2 * PanelPad;
 
         /// <summary>
         /// The bench reaches down to this far above the popup's bottom edge.
@@ -1795,6 +1807,8 @@ namespace ConcertHype
         private static RectTransform content;
         private static GameObject scrollbar;
         private static GameObject dropdown;
+        private static TextMeshProUGUI title;
+        private static RectTransform panel;
         private static float barWidth = DefaultBarWidth;
         private static List<GroupChoice> groups = new List<GroupChoice>();
 
@@ -1830,6 +1844,8 @@ namespace ConcertHype
                 grid.enabled = false;
             }
 
+            panel = MakePanel(column);
+            title = MakeTitle(popup, column);
             content = MakeScroll(column, out WheelScroll scroll);
             scrollbar = MakeScrollbar(column, scroll);
             groups = session.Show.Groups;
@@ -1856,13 +1872,23 @@ namespace ConcertHype
             Ui.Placed(popup.Girls, container).xMax - BenchWidth - BarGap - barWidth;
 
         /// <summary>
-        /// Lays out the dropdown at the column's top, and the bench and its scrollbar under it down to the bottom of
-        /// the screen, which the window's shape moves. Gives the bench's height.
+        /// Lays out, from the column's top: the Backstage title, the group dropdown, and the panel holding the bench and
+        /// its scrollbar down to the bottom of the screen, which the window's shape moves. Gives the bench's height.
         /// </summary>
         private static float Arrange()
         {
             float extra = Math.Max(0f, ((RectTransform)owner.transform).rect.height - BottomMargin - Ui.Placed(owner.Girls, owner.transform).yMax);
+            float strip = BenchWidth + BarGap + barWidth;
             float top = 0f;
+            if (title != null)
+            {
+                float height = title.GetPreferredValues(title.text).y;
+                Fit(title.transform, -strip, 0f, 0f, 0f);
+                RectTransform rect = title.rectTransform;
+                rect.anchorMin = new Vector2(1f, 1f);
+                rect.offsetMin = new Vector2(-strip, -height);
+                top = height + TitleGap;
+            }
             if (dropdown != null)
             {
                 RectTransform box = (RectTransform)dropdown.transform;
@@ -1872,17 +1898,70 @@ namespace ConcertHype
                 if (box.parent == owner.Girls.transform)
                 {
                     box.anchorMin = box.anchorMax = box.pivot = new Vector2(1f, 1f);
-                    box.anchoredPosition = Vector2.zero;
-                    box.sizeDelta = new Vector2((BenchWidth + BarGap + barWidth) / scale, box.sizeDelta.y);
+                    box.anchoredPosition = new Vector2(0f, -top);
+                    box.sizeDelta = new Vector2(strip / scale, box.sizeDelta.y);
                 }
                 // Its drawn box (Main) is taller than its own rect: the bench starts under what's drawn
                 Transform drawn = box.Find("Content/Main") ?? box;
                 top = Math.Max(Ui.Placed(drawn.gameObject, owner.Girls.transform).yMax, box.sizeDelta.y * box.localScale.y) + DropdownGap;
             }
-            Fit(content.parent, -BenchWidth, 0f, top, extra);
+            // The panel takes the whole strip; the bench and its scrollbar sit inside its margin
+            if (panel != null)
+                Fit(panel, -strip, 0f, top, extra);
+            float inside = top + PanelPad, below = extra - PanelPad;
+            Fit(content.parent, -PanelPad - InnerWidth, -PanelPad, inside, below);
             if (scrollbar != null)
-                Fit(scrollbar.transform, -BenchWidth - BarGap - barWidth, -BenchWidth - BarGap, top, extra);
-            return ((RectTransform)owner.Girls.transform).rect.height + extra - top;
+                Fit(scrollbar.transform, -strip + PanelPad, -strip + PanelPad + barWidth, inside, below);
+            return ((RectTransform)owner.Girls.transform).rect.height + below - inside;
+        }
+
+        /// <summary>
+        /// The game's title label (the next-song screen's, as the readouts' titles), reading Backstage on one line.
+        /// </summary>
+        private static TextMeshProUGUI MakeTitle(Concert_Popup popup, Transform column)
+        {
+            GameObject source = popup.NextSong_Container.transform.Find("CenterTitle")?.gameObject;
+            if (source == null || source.GetComponent<TextMeshProUGUI>() == null)
+            {
+                Log.WarnOnce("bench title", "couldn't find the game's title label; the bench has no title");
+                return null;
+            }
+            GameObject copy = Ui.Copy(source, column, Shapes.Label, "label", "Bench Title");
+            CanvasGroup group = copy.GetComponent<CanvasGroup>();
+            if (group != null)
+                group.alpha = 1f;
+            copy.transform.localScale = Vector3.one;
+            TextMeshProUGUI text = copy.GetComponent<TextMeshProUGUI>();
+            text.raycastTarget = false;
+            text.alignment = TextAlignmentOptions.BottomLeft;
+            text.text = Texts.Get("CONCERTHYPE__BACKSTAGE");
+            FitOneLine(text);
+            return text;
+        }
+
+        /// <summary>
+        /// A dark, see-through rounded box behind the bench, in the game's rounded sprite (the café scrollbar's
+        /// track); without it, a plain box (logged once). It takes no clicks.
+        /// </summary>
+        private static RectTransform MakePanel(Transform column)
+        {
+            GameObject box = new GameObject("Bench Panel", typeof(RectTransform));
+            box.transform.SetParent(column, false);
+            Image image = box.AddComponent<Image>();
+            Image rounded = PopupManager.GetObject(PopupManager._type.cafe)?.GetComponent<Cafe_Popup>()?.SelectGirl_ScrollBar?.transform.Find("Background")?.GetComponent<Image>();
+            if (rounded != null && rounded.sprite != null)
+            {
+                image.sprite = rounded.sprite;
+                image.type = rounded.type;
+                image.pixelsPerUnitMultiplier = rounded.pixelsPerUnitMultiplier;
+            }
+            else
+            {
+                Log.WarnOnce("bench panel", "couldn't find the game's rounded sprite; the bench's panel is a plain box");
+            }
+            image.color = PanelTint;
+            image.raycastTarget = false;
+            return (RectTransform)box.transform;
         }
 
         /// <summary>
@@ -2040,6 +2119,8 @@ namespace ConcertHype
             content = null;
             scrollbar = null;
             dropdown = null;
+            title = null;
+            panel = null;
             groups = new List<GroupChoice>();
             Group = -1;
             owner = null;
@@ -2051,7 +2132,7 @@ namespace ConcertHype
             if (view == null || session == null || owner == null || content == null || Widgets.Count != session.Show.Girls.Count)
                 return;
             float shown = Arrange();
-            float scale = PanelView.TwoColumnBench(view.Bench.Count, BenchWidth, shown, CellWidth, CellHeight, out float height, out bool scrolls);
+            float scale = PanelView.TwoColumnBench(view.Bench.Count, InnerWidth, shown, CellWidth, CellHeight, out float height, out bool scrolls);
             content.sizeDelta = new Vector2(0f, height);
             // Only while there's more than it shows
             if (scrollbar != null)

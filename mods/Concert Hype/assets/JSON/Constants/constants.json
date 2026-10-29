@@ -12,6 +12,10 @@
 		text: "All Groups"
 	},
 	{
+		id: "CONCERTHYPE__BACKSTAGE",
+		text: "Backstage"
+	},
+	{
 		id: "CONCERTHYPE__TALK_BREAK",
 		text: "Talk Break ({0} left)"
 	},

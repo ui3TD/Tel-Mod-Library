@@ -34,7 +34,6 @@ namespace ConcertHype.Model
         public double[] RowWeights = { 1.5, 1.0, 0.6, 0.6, 0.6 };
         public double KPerf = 0.5;
         public double Par = 60;
-        public double GenreFlowBonus = 3;
         public double CapacityFloor = 0.5;
         public double ProductionFloor = 0.75;
         public double ProductionRange = 0.5;

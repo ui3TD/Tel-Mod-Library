@@ -252,7 +252,7 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// The hype steps from a weighted performance: base change, genre flow, show and crowd multipliers on gains,
+        /// The hype steps from a weighted performance: base change, show and crowd multipliers on gains,
         /// then novelty amplification by hype band, then clamping. Fills the result's step fields.
         /// </summary>
         private static void HypeSteps(ShowState state, Song song, int[] lineup, double novelty, double weighted, SongResult result)
@@ -261,8 +261,6 @@ namespace ConcertHype.Model
             double h = state.Hype;
             double d = config.KPerf * (weighted - config.Par);
             result.BaseChange = d;
-            result.GenreFlow = state.PreviousGenre != null && song.Genre.Length > 0 && song.Genre == state.PreviousGenre ? config.GenreFlowBonus : 0;
-            d += result.GenreFlow;
             result.ShowMultiplier = 1;
             result.Crowd = CrowdAppeal(state, song, lineup);
             result.CrowdMultiplier = CrowdMultiplier(config, result.Crowd);
@@ -459,7 +457,6 @@ namespace ConcertHype.Model
             state.EmptyFills += result.EmptyFills;
             state.History.Add(after);
             state.Hype = after;
-            state.PreviousGenre = song.Genre;
             state.SongIndex++;
             state.McInThisGap = false;
             return result;

@@ -83,7 +83,6 @@ namespace ConcertHype.Model
         public double HypeBefore;
         public double Weighted;
         public double BaseChange;
-        public double GenreFlow;
         public double ShowMultiplier = 1;
         public double Crowd;
 

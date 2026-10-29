@@ -161,18 +161,17 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void GenreFlow_AddsHypeWhenTheGenreRepeats_NotOnTheFirstSong()
+        public void ARepeatedGenre_AddsNoHype()
         {
             ShowSetup setup = Shows.Setup(skill: 45);
             setup.Songs[0].Genre = setup.Songs[1].Genre = "Pop";
             ShowState state = Shows.Start(setup);
-            Assert.Equal(0, PlayOriginals(state).GenreFlow);
+            PlayOriginals(state);
             // Fresh again, so the second song rolls par as well
             for (int m = 0; m < state.Energy.Length; m++)
                 state.Energy[m] = 100;
-            SongResult second = PlayOriginals(state);
-            Assert.Equal(3, second.GenreFlow);
-            Assert.Equal(53, state.Hype, 9);
+            PlayOriginals(state);
+            Assert.Equal(50, state.Hype, 9);
         }
 
         [Fact]

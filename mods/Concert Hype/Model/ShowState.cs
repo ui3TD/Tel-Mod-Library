@@ -50,8 +50,6 @@ namespace ConcertHype.Model
         /// </summary>
         public int SongIndex;
 
-        public string PreviousGenre;
-
         /// <summary>
         /// For the balance report: accidents so far, and forced fills that found nobody.
         /// </summary>

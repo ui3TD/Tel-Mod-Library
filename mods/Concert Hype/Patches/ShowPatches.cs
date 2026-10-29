@@ -165,7 +165,7 @@ namespace ConcertHype
             ShowSession session = ShowSession.Current;
             if (session == null || !ReferenceEquals(__instance.Concert, session.Concert))
                 return;
-            bool talk = session.Host >= 0;
+            bool talk = session.HasTalk;
             try
             {
                 if (talk)

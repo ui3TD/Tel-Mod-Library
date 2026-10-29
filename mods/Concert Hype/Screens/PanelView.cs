@@ -24,13 +24,21 @@ namespace ConcertHype
         None,
         Original,
         Substitute,
-        Hosting,
         Hurt,
         Resting,
     }
 
     /// <summary>
-    /// How a place or the host place shows the idol dragged over it.
+    /// The next-song screen's two set-ups: the song's formation, or the talk break's row of hosts before it.
+    /// </summary>
+    public enum FormationTab
+    {
+        Song,
+        Talk,
+    }
+
+    /// <summary>
+    /// How a place or a host place shows the idol dragged over it.
     /// </summary>
     public enum Highlight
     {
@@ -57,17 +65,26 @@ namespace ConcertHype
         /// </summary>
         public bool Dragged;
 
-        /// <summary>
-        /// Her own place while she hosts the talk break: shown empty, and hers again for the song.
-        /// </summary>
-        public bool Hosting;
-
         public IconKind Icon;
 
         /// <summary>
         /// The icon's meaning, shown when it's hovered.
         /// </summary>
         public string Tip = "";
+    }
+
+    /// <summary>
+    /// A place in the talk break's row of hosts.
+    /// </summary>
+    public sealed class HostView
+    {
+        public int Member = -1;
+        public Highlight Highlight;
+
+        /// <summary>
+        /// The host here is being dragged away.
+        /// </summary>
+        public bool Dragged;
     }
 
     public sealed class BenchView
@@ -124,24 +141,31 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// What the lineup panel and the bench column show, worked out from the session alone (no Unity), so the tests
-    /// can check it. While an idol is dragged over a place or the host place, the panel shows the lineup the drop
-    /// would make, or why it's refused.
+    /// What the lineup panel and the bench column show on a tab, worked out from the session alone (no Unity), so
+    /// the tests can check it. While an idol is dragged over a place or a host place, the panel shows the lineup or
+    /// hosts the drop would make, or why it's refused.
     /// </summary>
     public sealed class PanelView
     {
         public List<SlotView> Slots = new List<SlotView>();
 
+        public List<HostView> Hosts = new List<HostView>();
+
         /// <summary>
-        /// The idols who aren't on stage or on the host place, in cast order.
+        /// The idols who could join the tab's set-up, in cast order: on the song's tab everyone not on stage, on
+        /// the talk break's everyone not hosting.
         /// </summary>
         public List<BenchView> Bench = new List<BenchView>();
 
         /// <summary>
-        /// The song's expected hype change, with its range and the crowd's mood in the tip; with a talk break
-        /// first, the hype it's expected to leave.
+        /// On the song's tab, the song's expected hype change, with its range and the crowd's mood in the tip; on
+        /// the talk break's, the hype the talk break is expected to leave, hidden with nobody hosting.
         /// </summary>
         public Readout Expected = new Readout();
+
+        /// <summary>
+        /// Shown on the song's tab only.
+        /// </summary>
 
         public Readout Changed = new Readout();
 
@@ -155,26 +179,20 @@ namespace ConcertHype
         /// </summary>
         public string Hint = "";
 
+        /// <summary>
+        /// The talk break tab's label, with the talk breaks left.
+        /// </summary>
         public string TalkTitle = "";
-        public int Host = -1;
-        public Highlight HostHighlight;
 
         /// <summary>
-        /// A talk break can be called now; the host place is greyed out when it can't and nobody is on it.
+        /// A talk break can be called now: the talk break's tab is disabled otherwise.
         /// </summary>
         public bool TalkOpen;
 
         /// <summary>
-        /// The talk break title and place show from the second song on.
+        /// Why no talk break can be called now, shown when the disabled tab is hovered; empty while one can.
         /// </summary>
-        public bool TalkShown;
-
-        /// <summary>
-        /// A talk break plays first: the formation is greyed out, with a note under it.
-        /// </summary>
-        public bool Faded;
-
-        public string FormationNote = "";
+        public string TalkTip = "";
 
         /// <summary>
         /// The Start button's label, or null for the game's own ("Start Next Song").
@@ -200,12 +218,12 @@ namespace ConcertHype
         private static string Whole(double value) => Math.Round(value).ToString(CultureInfo.InvariantCulture);
 
         /// <param name="message">The last refused drop's reason, shown in the hint line.</param>
-        public static PanelView Build(ShowSession session, DragView drag = null, string message = null)
+        public static PanelView Build(ShowSession session, DragView drag = null, string message = null, FormationTab tab = FormationTab.Song)
         {
             ShowState state = session.State;
             PanelView view = new PanelView();
             int[] lineup = session.Lineup;
-            int host = session.Host;
+            int[] hosts = session.Hosts;
             string hint = message ?? "";
 
             // Over nothing that takes her, the drop goes to the bench
@@ -213,12 +231,12 @@ namespace ConcertHype
             Highlight over = Highlight.None;
             if (drag != null && !state.Finished)
             {
-                DropResult result = DropRules.Drop(state, lineup, host, drag.Member, drag.From, target);
+                DropResult result = DropRules.Drop(state, lineup, hosts, drag.Member, drag.From, target);
                 over = result.Allowed ? Highlight.Allowed : Highlight.Refused;
                 if (result.Allowed)
                 {
                     lineup = result.Lineup;
-                    host = result.Host;
+                    hosts = result.Hosts;
                 }
                 else
                 {
@@ -240,64 +258,64 @@ namespace ConcertHype
                         Row = song.Slots[j].Row,
                         Badge = member < 0 ? SlotBadge.Empty : member == song.Slots[j].Original ? SlotBadge.Original : SlotBadge.Substitute,
                         Roll = preview.Slots[j] == null ? "" : Whole(preview.Slots[j].Expected),
-                        Highlight = drag != null && target.Equals(place) && !drag.From.Equals(place) ? over : Highlight.None,
-                        // In the hand: still in her place in the preview, and not dropped back on it or on the host place
-                        Dragged = drag != null && drag.From.Equals(place) && !target.Equals(place) && target.Spot != Spot.Host && member == drag.Member,
-                        Hosting = member >= 0 && member == host,
+                        Highlight = HighlightAt(drag, target, place, over),
+                        Dragged = InHand(drag, target, place, member),
                     };
-                    if (slot.Hosting)
-                    {
-                        slot.Roll = "";
-                        slot.Icon = IconKind.Hosting;
-                        slot.Tip = Texts.Format("CONCERTHYPE__TIP_HOSTING", session.Name(member));
-                    }
-                    else
-                    {
-                        slot.Icon = IconOf(slot.Badge);
-                        slot.Tip = TipOf(slot.Badge);
-                    }
+                    slot.Icon = IconOf(slot.Badge);
+                    slot.Tip = TipOf(slot.Badge);
                     view.Slots.Add(slot);
                 }
-                double h = state.Hype, band = state.Config.NoveltyBlendBand;
-                string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
-                // With a talk break first, the song's lineup waits for it
-                view.Faded = host >= 0;
-                if (view.Faded)
+                if (tab == FormationTab.Song)
+                {
+                    double h = state.Hype, band = state.Config.NoveltyBlendBand;
+                    string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
+                    view.Expected = Change("CONCERTHYPE__EXPECTED_TITLE", preview.Change);
+                    view.Expected.Tip = Texts.Format("CONCERTHYPE__EXPECTED_TIP", Signed(preview.Low) + "%", Signed(preview.High) + "%", Whole(h), Texts.Get(mood));
+                    view.Changed = new Readout
+                    {
+                        Title = Texts.Get("CONCERTHYPE__CHANGED_TITLE"),
+                        Value = Whole(100 * preview.Novelty) + "%",
+                        Tip = Texts.Get("CONCERTHYPE__CHANGED_TIP"),
+                    };
+                }
+            }
+
+            for (int k = 0; k < hosts.Length; k++)
+            {
+                DropPoint place = DropPoint.AtHost(k);
+                view.Hosts.Add(new HostView
+                {
+                    Member = hosts[k],
+                    Highlight = HighlightAt(drag, target, place, over),
+                    Dragged = InHand(drag, target, place, hosts[k]),
+                });
+            }
+            string blocked = DropRules.TalkBlocked(state);
+            if (tab == FormationTab.Talk)
+            {
+                int[] talking = hosts.Where(h => h >= 0).ToArray();
+                if (talking.Length > 0 && blocked == null)
                 {
                     view.Expected = new Readout
                     {
                         Title = Texts.Get("CONCERTHYPE__AFTER_TALK_TITLE"),
-                        Value = Whole(Engine.McHype(state, host)) + "%",
+                        Value = Whole(Engine.McHype(state, talking)) + "%",
                         Tip = Texts.Get("CONCERTHYPE__AFTER_TALK_TIP"),
                     };
                 }
-                else
-                {
-                    view.Expected = Change("CONCERTHYPE__EXPECTED_TITLE", preview.Change);
-                    view.Expected.Tip = Texts.Format("CONCERTHYPE__EXPECTED_TIP", Signed(preview.Low) + "%", Signed(preview.High) + "%", Whole(h), Texts.Get(mood));
-                }
-                view.Changed = new Readout
-                {
-                    Title = Texts.Get("CONCERTHYPE__CHANGED_TITLE"),
-                    Value = Whole(100 * preview.Novelty) + "%",
-                    Tip = Texts.Get("CONCERTHYPE__CHANGED_TIP"),
-                };
-                view.FormationNote = view.Faded ? Texts.Get("CONCERTHYPE__AFTER_TALK") : "";
             }
 
             view.Last = LastReadout(session);
             view.Hint = hint;
             view.TalkTitle = Texts.Format("CONCERTHYPE__TALK_BREAK", state.McCharges);
-            view.Host = host;
-            view.HostHighlight = drag != null && target.Spot == Spot.Host && drag.From.Spot != Spot.Host ? over : Highlight.None;
-            view.TalkOpen = DropRules.TalkBlocked(state) == null;
-            view.TalkShown = state.SongIndex > 0;
-            view.StartLabel = session.Host >= 0 ? Texts.Get("CONCERTHYPE__START_TALK") : null;
+            view.TalkOpen = blocked == null;
+            view.TalkTip = blocked == null ? "" : Texts.Get(blocked);
+            view.StartLabel = session.HasTalk ? Texts.Get("CONCERTHYPE__START_TALK") : null;
 
-            // The bench is the committed lineup's: a hover preview doesn't move idols in or out of the column
+            // The bench is the committed lineup's and hosts': a hover preview doesn't move idols in or out of the column
             for (int m = 0; m < state.Setup.Members.Count; m++)
             {
-                if (session.Lineup.Contains(m) || m == session.Host)
+                if (tab == FormationTab.Song ? session.Lineup.Contains(m) : session.Hosts.Contains(m))
                     continue;
                 BenchView bench = new BenchView { Member = m, Energy = state.Energy[m], Available = state.IsAvailable(m) };
                 if (state.Absence[m] > 0)
@@ -315,6 +333,18 @@ namespace ConcertHype
             }
             return view;
         }
+
+        /// <summary>
+        /// A place shows whether the drop over it is allowed, except while she's held over her own place.
+        /// </summary>
+        private static Highlight HighlightAt(DragView drag, DropPoint target, DropPoint place, Highlight over) =>
+            drag != null && target.Equals(place) && !drag.From.Equals(place) ? over : Highlight.None;
+
+        /// <summary>
+        /// In the hand: still in her place in the preview, and not dropped back on it.
+        /// </summary>
+        private static bool InHand(DragView drag, DropPoint target, DropPoint place, int member) =>
+            drag != null && drag.From.Equals(place) && !target.Equals(place) && member == drag.Member;
 
         /// <summary>
         /// Who is out after it, and for how long, shows on the bench.
@@ -360,6 +390,59 @@ namespace ConcertHype
             Value = Whole(score.Total) + "%",
             Tip = Texts.Format("CONCERTHYPE__SCORE_TIP", Whole(score.Average), Whole(score.Peak), Whole(score.Finale)),
         };
+
+        /// <summary>
+        /// Where the formation goes on the next-song screen, in the popup's top-left coordinates: the centre of its
+        /// rows and how much its places are scaled.
+        /// </summary>
+        public struct FormationFrame
+        {
+            public float CenterX;
+            public float Scale;
+        }
+
+        /// <summary>
+        /// The free space the formation fits in. A row beside the readouts stays right of them, one beside the
+        /// buttons stays right of those, and every row stays left of the bench and above the bottom.
+        /// </summary>
+        public struct FormationSpace
+        {
+            public float ReadoutsRight, ReadoutsBottom, ButtonsRight, ButtonsTop, BenchLeft, Top, Bottom, Margin;
+
+            /// <summary>
+            /// The tabs' half width: they're centred over the formation, right of the readouts.
+            /// </summary>
+            public float TabsHalf;
+        }
+
+        public const float PlaceWidth = 54f, PlaceHeight = 76f, CellWidth = 70f, RowHeight = 76f, MaxScale = 1.4f, MinScale = 0.5f;
+
+        /// <summary>
+        /// The largest scale (up to <see cref="MaxScale"/>, in steps of 0.05) at which every row fits the space,
+        /// centred as near the middle of the space between the readouts and the bench as it can be.
+        /// </summary>
+        /// <param name="rowWidths">How many places each row has, from the front row back.</param>
+        public static FormationFrame FitFormation(IList<int> rowWidths, FormationSpace space)
+        {
+            float middle = (space.ReadoutsRight + space.BenchLeft) / 2f;
+            for (float scale = MaxScale; scale >= MinScale - 1e-4f; scale -= 0.05f)
+            {
+                float lowest = space.ReadoutsRight + space.TabsHalf, highest = space.BenchLeft - space.TabsHalf;
+                bool fits = true;
+                for (int row = 0; row < rowWidths.Count && fits; row++)
+                {
+                    float top = space.Top + row * RowHeight * scale, bottom = top + PlaceHeight * scale;
+                    float half = ((rowWidths[row] - 1) / 2f * CellWidth + PlaceWidth / 2f) * scale;
+                    float left = top < space.ReadoutsBottom ? space.ReadoutsRight : bottom > space.ButtonsTop ? space.ButtonsRight : space.Margin;
+                    lowest = Math.Max(lowest, left + half);
+                    highest = Math.Min(highest, space.BenchLeft - half);
+                    fits = bottom <= space.Bottom;
+                }
+                if (fits && lowest <= highest)
+                    return new FormationFrame { CenterX = Math.Min(Math.Max(middle, lowest), highest), Scale = (float)Math.Round(scale, 2) };
+            }
+            return new FormationFrame { CenterX = middle, Scale = MinScale };
+        }
 
         /// <summary>
         /// The bench column's grid for this many idols in an area this size: the column count that lets the cells

@@ -369,15 +369,36 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void Mc_RestsEveryone_AndCountsDownAbsences()
+        public void Mc_SeveralHostsAddUpTheirTalk_UpToFull()
+        {
+            ShowState state = AfterFirstSong();
+            state.Setup.Members[3].Talk = 0.3;
+            state.Setup.Members[4].Talk = 0.2;
+            state.Setup.Members[5].Talk = 0.7;
+            state.Hype = 40;
+            Assert.Equal(40 + 0.5 * 0.5 * 60, Engine.McHype(state, 3, 4), 9);
+            // 1.2 together counts as 1
+            Assert.Equal(40 + 0.5 * 1 * 60, Engine.McHype(state, 3, 4, 5), 9);
+            McResult mc = Engine.CallMc(state, 3, 4, 5);
+            Assert.Equal(new[] { 3, 4, 5 }, mc.Hosts);
+            Assert.Equal(1, mc.Talk, 9);
+            Assert.Equal(70, state.Hype, 9);
+        }
+
+        [Fact]
+        public void Mc_RestsEveryoneButTheHosts_AndCountsDownAbsences()
         {
             ShowState state = AfterFirstSong();
             state.Energy[0] = 50;
+            state.Energy[4] = 50;
+            state.Energy[5] = 40;
             state.Absence[3] = 2;
             state.Exhausted[2] = true;
             state.Energy[2] = 25;
-            Engine.CallMc(state, 4);
+            Engine.CallMc(state, 4, 5);
             Assert.Equal(60, state.Energy[0], 9);
+            Assert.Equal(50, state.Energy[4], 9);
+            Assert.Equal(40, state.Energy[5], 9);
             Assert.Equal(1, state.Absence[3]);
             Assert.False(state.Exhausted[2]);
         }
@@ -402,11 +423,16 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void Mc_NeedsAnAvailableHost()
+        public void Mc_NeedsOneToThreeDifferentAvailableHosts()
         {
-            ShowState state = AfterFirstSong();
+            ShowState state = AfterFirstSong(songs: 4);
             state.Absence[4] = 1;
             Assert.Throws<InvalidOperationException>(() => Engine.CallMc(state, 4));
+            Assert.Throws<InvalidOperationException>(() => Engine.CallMc(state, 3, 4));
+            Assert.Throws<InvalidOperationException>(() => Engine.CallMc(state));
+            Assert.Throws<InvalidOperationException>(() => Engine.CallMc(state, 0, 1, 2, 3));
+            Assert.Throws<InvalidOperationException>(() => Engine.CallMc(state, 3, 3));
+            Assert.Equal(2, state.McCharges);  // nothing was called
         }
     }
 

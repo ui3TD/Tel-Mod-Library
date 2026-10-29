@@ -90,7 +90,11 @@ namespace ConcertHype.Model
 
     public sealed class McResult
     {
-        public int Host;
+        public List<int> Hosts = new List<int>();
+
+        /// <summary>
+        /// The hosts' talk together, 0 to 1.
+        /// </summary>
         public double Talk;
         public double HypeBefore;
         public double HypeAfter;

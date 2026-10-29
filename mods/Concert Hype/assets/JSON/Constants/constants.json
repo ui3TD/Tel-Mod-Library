@@ -4,8 +4,12 @@
 		text: "New concert minigame (off: original concerts)"
 	},
 	{
+		id: "CONCERTHYPE__TAB_SONG",
+		text: "Song"
+	},
+	{
 		id: "CONCERTHYPE__TALK_BREAK",
-		text: "Talk Break ({0} left):"
+		text: "Talk Break ({0} left)"
 	},
 	{
 		id: "CONCERTHYPE__TALK_NOT_YET",
@@ -28,20 +32,12 @@
 		text: "Reset Lineup"
 	},
 	{
-		id: "CONCERTHYPE__AFTER_TALK",
-		text: "This lineup plays after the talk break."
-	},
-	{
 		id: "CONCERTHYPE__TIP_ORIGINAL",
 		text: "Original: her own place in the single, where she gets the senbatsu bonus."
 	},
 	{
 		id: "CONCERTHYPE__TIP_SUB",
 		text: "Substitute: performs in another idol's place, without the senbatsu bonus."
-	},
-	{
-		id: "CONCERTHYPE__TIP_HOSTING",
-		text: "{0} hosts the talk break first and is back here for the song."
 	},
 	{
 		id: "CONCERTHYPE__TIP_HURT",
@@ -65,7 +61,11 @@
 	},
 	{
 		id: "CONCERTHYPE__CLICK_DRAG",
-		text: "Drag {0} onto a place, or onto the talk break."
+		text: "Drag {0} onto a place."
+	},
+	{
+		id: "CONCERTHYPE__CLICK_DRAG_HOST",
+		text: "Drag {0} onto a talk break place."
 	},
 	{
 		id: "CONCERTHYPE__EXPECTED_TITLE",

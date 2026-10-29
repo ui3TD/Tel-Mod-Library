@@ -325,10 +325,10 @@ namespace ConcertHype.Tests
                 Assert.Equal(new[] { 0, 1, 2 }, session.Lineup);
 
                 new FakeStage(concert).PlaySong(session);
-                session.Drop(7, DropPoint.Bench, DropPoint.Host);
-                Assert.Equal(7, session.Host);
-                session.Drop(7, DropPoint.Host, DropPoint.Bench);
-                Assert.Equal(-1, session.Host);
+                session.Drop(7, DropPoint.Bench, DropPoint.AtHost(0));
+                Assert.Equal(7, session.Hosts[0]);
+                session.Drop(7, DropPoint.AtHost(0), DropPoint.Bench);
+                Assert.Equal(-1, session.Hosts[0]);
             }
             finally
             {
@@ -345,16 +345,19 @@ namespace ConcertHype.Tests
             FakeStage stage = new(concert);
             stage.PlaySong(session);
             concert.Hype = 40;
-            session.Drop(7, DropPoint.Bench, DropPoint.Host);
+            // Two hosts, on the row's last and first places: the item takes them in the row's order
+            session.Drop(7, DropPoint.Bench, DropPoint.AtHost(2));
+            session.Drop(6, DropPoint.Bench, DropPoint.AtHost(0));
             _concert._song second = (_concert._song)concert.SetListItems[1];
 
             session.StartTalkBreak(stage);
             _concert._mc talk = Assert.IsType<_concert._mc>(concert.SetListItems[1]);
             Assert.Same(second, concert.SetListItems[2]);
             Assert.Equal(4, concert.SetListItems.Count);
-            Assert.Same(session.Show.Girls[7], talk.Girls[0]);
+            Assert.Equal(new[] { session.Show.Girls[6], session.Show.Girls[7], null }, talk.Girls);
+            Assert.Equal(new[] { 6, 7 }, session.PendingTalk.Hosts);
             Assert.Equal("Talk Break #1", talk.GetTitle());
-            Assert.Equal(-1, session.Host);
+            Assert.Equal(new[] { -1, -1, -1 }, session.Hosts);
             Assert.True(session.Playing);
 
             // The popup animates the pull, which only this item gets
@@ -388,7 +391,7 @@ namespace ConcertHype.Tests
             stage.PlaySong(session);
             session.Drop(5, DropPoint.Bench, DropPoint.AtPlace(0));
             int[] planned = (int[])session.Lineup.Clone();
-            session.Drop(7, DropPoint.Bench, DropPoint.Host);
+            session.Drop(7, DropPoint.Bench, DropPoint.AtHost(0));
             stage.PlaySong(session);
             Assert.Equal(planned, session.Lineup);
 
@@ -400,7 +403,7 @@ namespace ConcertHype.Tests
             int sub = Enumerable.Range(0, 8).First(m => !new[] { 5, 6, 0, fill }.Contains(m));
             Assert.True(session.Drop(sub, DropPoint.Bench, DropPoint.AtPlace(2)).Changed);
             int host = Enumerable.Range(0, 8).First(m => !session.Lineup.Contains(m) && m != 5);
-            session.Drop(host, DropPoint.Bench, DropPoint.Host);
+            session.Drop(host, DropPoint.Bench, DropPoint.AtHost(0));
             // The talk break brings her back: she takes her place from the fill, and the player's change stays
             stage.PlaySong(session);
             Assert.Equal(0, session.State.Absence[5]);
@@ -416,7 +419,7 @@ namespace ConcertHype.Tests
             ShowSession session = GameFixture.Begin(concert);
             FakeStage stage = new(concert);
             stage.PlaySong(session);
-            session.Drop(7, DropPoint.Bench, DropPoint.Host);
+            session.Drop(7, DropPoint.Bench, DropPoint.AtHost(0));
             session.StartTalkBreak(stage);
             double model = session.State.Hype;
             concert.Hype = 10;  // part way through the popup's animation
@@ -431,7 +434,7 @@ namespace ConcertHype.Tests
             ShowSession session = GameFixture.Begin(concert);
             FakeStage stage = new(concert);
             stage.PlaySong(session);
-            session.Drop(7, DropPoint.Bench, DropPoint.Host);
+            session.Drop(7, DropPoint.Bench, DropPoint.AtHost(0));
             session.StartTalkBreak(stage);
             // Another mod kept the popup from playing it: the next Start finds the show still in its talk break
             Assert.Throws<InvalidOperationException>(() => session.BeforeSong(stage));
@@ -508,7 +511,7 @@ namespace ConcertHype.Tests
             ShowSession session = GameFixture.Begin(concert);
             FakeStage stage = new(concert);
             stage.PlaySong(session);
-            session.Drop(4, DropPoint.Bench, DropPoint.Host);
+            session.Drop(4, DropPoint.Bench, DropPoint.AtHost(0));
             session.StartTalkBreak(stage);
             _concert._mc talk = (_concert._mc)concert.SetListItems[1];
             Assert.Equal((float)(session.PendingTalk.HypeAfter - session.PendingTalk.HypeBefore), talk.GetHype(concert), 4);

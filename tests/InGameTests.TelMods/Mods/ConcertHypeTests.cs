@@ -96,6 +96,7 @@ namespace InGameTests.TelMods
                     .Marketing_Roll_Container.GetComponentInChildren<Single_Marketing_Roll>(true);
                 VanillaShapes.AssertCovers(ctx, shapes, "Wheel", wheel.Spinner_Container.transform.parent.gameObject, "marketing wheel");
                 VanillaShapes.AssertCovers(ctx, shapes, "Pointer", wheel.Spinner_Icon, "marketing wheel pointer");
+                VanillaShapes.AssertCovers(ctx, shapes, "Tab", PopupManager.GetObject(PopupManager._type.group_appeal).GetComponent<Group_Appeal_Popup>().Tab_TotalFans, "group appeal tab");
 
                 // No card draw: the opening goes straight to the first song, and the deck never shows
                 float start = Time.realtimeSinceStartup, deckShown = 0f;
@@ -114,13 +115,21 @@ namespace InGameTests.TelMods
                 if (deckShown > 0.01f)
                     ctx.Fail("The card draw showed (deck or title at alpha " + deckShown + ")");
 
-                // Every place, Reset Lineup and every idol on the bench is a button a click reaches; before the first
-                // song there's no talk break place
+                // Every place, both tabs, Reset Lineup and every idol on the bench is a button a click reaches; before
+                // the first song the talk break's tab is disabled and its row hidden
                 Transform panel = popup.NextSong_Container.transform.Find("ConcertHype Lineup");
                 List<Button> buttons = panel.GetComponentsInChildren<Button>().Concat(popup.Girls.GetComponentsInChildren<Button>()).ToList();
                 ctx.Record("buttons", buttons.Count);
-                if (panel.Find("TalkBreak/Host/Center") == null || panel.Find("TalkBreak/Host/Center").gameObject.activeInHierarchy)
-                    ctx.Fail("The talk break place shows before the first song");
+                if (panel.Find("TalkTab").GetComponent<Button>().interactable || panel.Find("TalkBreak/Host 0/Center").gameObject.activeInHierarchy)
+                    ctx.Fail("The talk break's tab works, or its row shows, before the first song");
+                // Its reason shows in the game's tooltip while it's hovered
+                string talkTip = Get<string>(AccessTools.Method(mod.GetType("ConcertHype.PanelView", true), "Build")
+                    .Invoke(null, new object[] { session, null, null, Enum.ToObject(mod.GetType("ConcertHype.FormationTab", true), 0) }), "TalkTip");
+                yield return mouse.Hover(ScreenRect(panel.Find("TalkTab")).center, 0.5f);
+                string talkShown = AccessTools.Field(typeof(TooltipManager), "TooltipText").GetValue(Game.Main.Data.GetComponent<TooltipManager>()) as string;
+                mouse.Off();
+                if (talkTip.Length == 0 || talkShown != talkTip)
+                    ctx.Fail($"Over the disabled talk break tab the tooltip reads '{talkShown}', not '{talkTip}'");
                 Rect screen = new(0, 0, Screen.width, Screen.height);
                 foreach (Button button in buttons)
                 {
@@ -182,7 +191,8 @@ namespace InGameTests.TelMods
                 ctx.Record("icons", icons.Count);
                 foreach (Image icon in icons.Where(i => i.sprite == null || !i.sprite.name.StartsWith("ConcertHype")).Take(3))
                     ctx.Fail("An icon has no picture: " + icon.transform.parent.name);
-                object view = AccessTools.Method(mod.GetType("ConcertHype.PanelView", true), "Build").Invoke(null, new object[] { session, null, null });
+                object songTab = Enum.ToObject(mod.GetType("ConcertHype.FormationTab", true), 0);
+                object view = AccessTools.Method(mod.GetType("ConcertHype.PanelView", true), "Build").Invoke(null, new object[] { session, null, null, songTab });
                 string tip = Get<string>(Get<IList>(view, "Slots")[1], "Tip");
                 yield return mouse.Hover(ScreenRect(panel.Find("Slot 1/Icon")).center, 0.5f);
                 string shown = AccessTools.Field(typeof(TooltipManager), "TooltipText").GetValue(Game.Main.Data.GetComponent<TooltipManager>()) as string;
@@ -211,25 +221,34 @@ namespace InGameTests.TelMods
                             yield break;
                         }
                         // Her profile card shows at her bench portrait first, then comes along to the host place
-                        Transform hostPlace = panel.Find("TalkBreak/Host/Center");
+                        Transform hostPlace = panel.Find("TalkBreak/Host 0/Center");
                         // The empty host place is the game's empty senbatsu place, found among the scene's objects
                         Image emptyPicture = hostPlace.GetComponent<Image>(), gamePlace = Resources.FindObjectsOfTypeAll<SenbatsuReciever>()
                             .Select(r => r.GetComponent<Image>()).FirstOrDefault(i => i != null && i.sprite != null);
                         ctx.Record("empty host place", emptyPicture.sprite?.name + " " + emptyPicture.type);
                         if (gamePlace == null || emptyPicture.sprite != gamePlace.sprite || emptyPicture.type != gamePlace.type)
                             ctx.Fail("The empty host place doesn't show the game's empty senbatsu place: " + emptyPicture.sprite?.name);
-                        // Every readout, as TMP draws it, stays clear of the places and of the other readouts (a readout's
-                        // own title and value are as close as the game's, whose text boxes touch)
-                        List<Rect> places = panel.Cast<Transform>().Where(t => t.name.StartsWith("Slot ") && t.gameObject.activeSelf).Select(WorldRect)
-                            .Concat(new[] { WorldRect(panel.Find("TalkBreak/Host")) }).ToList();
+                        // Every readout, as TMP draws it, stays clear of the places, the tabs and the talk break's row
+                        // (hidden on this tab), and of the other readouts (a readout's own title and value are as close
+                        // as the game's, whose text boxes touch)
+                        List<Rect> places = panel.Cast<Transform>().Where(t => t.name.StartsWith("Slot ") && t.gameObject.activeSelf)
+                            .Concat(new[] { panel.Find("SongTab"), panel.Find("TalkTab") })
+                            .Concat(panel.Find("TalkBreak").Cast<Transform>().Where(t => t.name.StartsWith("Host "))).Select(WorldRect).ToList();
                         Dictionary<string, Rect> texts = new[] { "Expected", "Changed", "Last" }.SelectMany(r => new[] { r + "/Title", r + "/Value" })
-                            .Concat(new[] { "TalkBreak/TalkTitle" }).ToDictionary(path => path, path => DrawnRect(panel.Find(path).GetComponent<TextMeshProUGUI>()));
+                            .ToDictionary(path => path, path => DrawnRect(panel.Find(path).GetComponent<TextMeshProUGUI>()));
                         foreach (KeyValuePair<string, Rect> text in texts)
                         {
                             List<string> hits = places.Where(p => p.Overlaps(text.Value)).Select(p => "place " + p.ToString("F2"))
                                 .Concat(texts.Where(other => Readout(other.Key) != Readout(text.Key) && other.Value.Overlaps(text.Value)).Select(other => other.Key + " " + other.Value.ToString("F2"))).ToList();
                             if (hits.Count > 0)
                                 ctx.Fail("The readout text " + text.Key + " " + text.Value.ToString("F2") + " overlaps " + string.Join(", ", hits.ToArray()));
+                        }
+                        // A real click on the talk break's tab shows its row
+                        yield return mouse.Click(ScreenRect(panel.Find("TalkTab")).center);
+                        if (!hostPlace.gameObject.activeInHierarchy)
+                        {
+                            ctx.Fail("A click on the talk break's tab didn't show its row");
+                            yield break;
                         }
                         yield return mouse.Hover(ScreenRect(Bench(host)).center, 1f);
                         yield return mouse.Drag(ScreenRect(Bench(host)).center, ScreenRect(hostPlace).center, null);
@@ -242,7 +261,7 @@ namespace InGameTests.TelMods
                         ctx.Record("profile card", card == null ? "not shown" : card.transform.position.ToString("F2") + ", expected " + expected.ToString("F2"));
                         if (card == null || Vector2.Distance(card.transform.position, expected) > 0.01f)
                             ctx.Fail("The host's profile card isn't at the host place");
-                        if (Get<int>(session, "Host") != host)
+                        if (Get<int[]>(session, "Hosts")[0] != host)
                         {
                             ctx.Fail("The drag onto the host place didn't place her");
                             yield break;
@@ -254,11 +273,11 @@ namespace InGameTests.TelMods
                         if (!cancelShown)
                             ctx.Fail("Hovering the host doesn't show the cancel icon");
                         yield return mouse.Click(ScreenRect(hostPlace).center);
-                        if (Get<int>(session, "Host") != -1)
-                            ctx.Fail("A click on the host didn't cancel the talk break");
+                        if (Get<int[]>(session, "Hosts")[0] != -1)
+                            ctx.Fail("A click on the host didn't take her off");
                         yield return mouse.Drag(ScreenRect(Bench(host)).center, ScreenRect(hostPlace).center, null);
                         mouse.Off();
-                        if (Get<int>(session, "Host") != host)
+                        if (Get<int[]>(session, "Hosts")[0] != host)
                         {
                             ctx.Fail("The second drag onto the host place didn't place her");
                             yield break;

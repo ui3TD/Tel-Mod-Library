@@ -45,12 +45,12 @@ namespace ConcertHype.Tests
         }
 
         /// <summary>
-        /// What the popup does on Start: the talk break when a host is placed, else the song; it plays the item
+        /// What the popup does on Start: the talk break when anyone is on its row, else the song; it plays the item
         /// it is on, animates its hype and ends it.
         /// </summary>
         public void PlaySong(ShowSession session)
         {
-            if (session.Host >= 0)
+            if (session.HasTalk)
                 session.StartTalkBreak(this);
             else
                 session.BeforeSong(this);

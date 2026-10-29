@@ -445,24 +445,35 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// An MC break: pulls hype toward 100 by the host's talk, everyone recovers energy, absences count down.
-        /// Adds nothing to the hype history.
+        /// At most this many idols host one MC, as the game's talk break item has places for.
         /// </summary>
-        public static McResult CallMc(ShowState state, int host)
+        public const int MaxHosts = 3;
+
+        /// <summary>
+        /// An MC break: pulls hype toward 100 by the hosts' talk, everyone but the hosts recovers energy, absences
+        /// count down. Adds nothing to the hype history.
+        /// </summary>
+        public static McResult CallMc(ShowState state, params int[] hosts)
         {
             string error = CanCallMc(state);
-            if (error == null && !state.IsAvailable(host))
-                error = $"member {host} can't host";
+            if (error == null && (hosts.Length == 0 || hosts.Length > MaxHosts))
+                error = $"{hosts.Length} hosts, not 1 to {MaxHosts}";
+            if (error == null && hosts.Distinct().Count() != hosts.Length)
+                error = "a host twice";
+            if (error == null && hosts.Any(h => !state.IsAvailable(h)))
+                error = $"member {hosts.First(h => !state.IsAvailable(h))} can't host";
             if (error != null)
                 throw new InvalidOperationException("Can't call an MC: " + error);
 
             Config config = state.Config;
-            McResult result = new McResult { Host = host, Talk = state.Setup.Members[host].Talk, HypeBefore = state.Hype };
-            state.Hype = McHype(state, host);
+            McResult result = new McResult { Hosts = hosts.ToList(), Talk = Talk(state, hosts), HypeBefore = state.Hype };
+            state.Hype = McHype(state, hosts);
             result.HypeAfter = state.Hype;
             for (int m = 0; m < state.Energy.Length; m++)
             {
-                state.Energy[m] = Clamp(state.Energy[m] + config.McRecovery, 0, 100);
+                // The hosts talk instead of resting, as the game leaves them out of the talk break's stamina restore
+                if (!hosts.Contains(m))
+                    state.Energy[m] = Clamp(state.Energy[m] + config.McRecovery, 0, 100);
                 state.Absence[m] = Math.Max(0, state.Absence[m] - config.McTimeUnits);
             }
             ReturnRested(state, null);
@@ -472,10 +483,15 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// The hype an MC hosted by this member would pull the crowd to now.
+        /// The hosts' talk together: added up, as the game adds up its talk break hosts' skill, and at most 1.
         /// </summary>
-        public static double McHype(ShowState state, int host) =>
-            Clamp(state.Hype + state.Config.KMc * state.Setup.Members[host].Talk * (100 - state.Hype), state.Setup.HypeFloor, MaxHype);
+        public static double Talk(ShowState state, IEnumerable<int> hosts) => Math.Min(1, hosts.Sum(h => state.Setup.Members[h].Talk));
+
+        /// <summary>
+        /// The hype an MC hosted by these members would pull the crowd to now.
+        /// </summary>
+        public static double McHype(ShowState state, params int[] hosts) =>
+            Clamp(state.Hype + state.Config.KMc * Talk(state, hosts) * (100 - state.Hype), state.Setup.HypeFloor, MaxHype);
 
         /// <summary>
         /// The peak-end score of a hype history; the starting hype when no song was played.

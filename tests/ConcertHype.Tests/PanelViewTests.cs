@@ -82,24 +82,33 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void TheTalkBreakPlace_OpensAfterTheFirstSong_AndAHostChangesStart()
+        public void TheTalkBreaksTab_IsDisabledWithTheReason_UntilOneCanBeCalled_AndAHostChangesStart()
         {
             ShowSession session = ThreeSongs(out _concert concert);
             PanelView view = PanelView.Build(session);
-            Assert.Equal("Talk Break (2 left):", view.TalkTitle);
-            Assert.False(view.TalkOpen);
-            Assert.False(view.TalkShown);  // no talk break place before the first song
-            Assert.Equal(-1, view.Host);
+            Assert.Equal("Talk Break (2 left)", view.TalkTitle);
+            Assert.False(view.TalkOpen);  // not before the first song
+            Assert.Equal("Talk breaks can start after the first song.", view.TalkTip);
+            Assert.Equal(new[] { -1, -1, -1 }, view.Hosts.Select(h => h.Member));
             Assert.Null(view.StartLabel);
 
-            new FakeStage(concert).PlaySong(session);
-            Assert.True(PanelView.Build(session).TalkOpen);
-            Assert.True(PanelView.Build(session).TalkShown);
+            FakeStage stage = new(concert);
+            stage.PlaySong(session);
+            view = PanelView.Build(session, tab: FormationTab.Talk);
+            Assert.True(view.TalkOpen);
+            Assert.Equal("", view.TalkTip);
+            Assert.Equal("", view.Hint);
 
-            session.Drop(1, DropPoint.Bench, DropPoint.Host);
-            view = PanelView.Build(session);
-            Assert.Equal(1, view.Host);
+            session.Drop(1, DropPoint.Bench, DropPoint.AtHost(1));
+            view = PanelView.Build(session, tab: FormationTab.Talk);
+            Assert.Equal(new[] { -1, 1, -1 }, view.Hosts.Select(h => h.Member));
             Assert.Equal("Start Talk Break", view.StartLabel);
+            Assert.Equal("Start Talk Break", PanelView.Build(session).StartLabel);  // on either tab
+
+            // Once it's played, the next one comes after the song
+            stage.PlaySong(session);
+            Assert.False(PanelView.Build(session).TalkOpen);
+            Assert.Equal("One talk break between songs; the next can come after this song.", PanelView.Build(session).TalkTip);
         }
 
         [Fact]
@@ -117,7 +126,7 @@ namespace ConcertHype.Tests
             session.LastResult.Change = -3;
             Assert.Equal(("-3%", Tone.Bad), (PanelView.Build(session).Last.Value, PanelView.Build(session).Last.Tone));
 
-            session.Drop(2, DropPoint.AtPlace(0), DropPoint.Host);
+            session.Drop(2, DropPoint.Bench, DropPoint.AtHost(0));
             stage.PlaySong(session);
             last = PanelView.Build(session).Last;
             Assert.Equal("Last Talk Break:", last.Title);
@@ -135,35 +144,49 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void TheBench_IsTheCastNotOnStageOrHosting_WithWhoCantPerform()
+        public void TheBench_IsTheCastNotInTheTabsSetUp()
         {
             ShowSession session = ThreeSongs(out _concert concert);
             Assert.Equal(new[] { 0, 1, 4 }, session.Lineup);  // Idol5 (4) fills the injured idol's place
             Assert.Equal(new[] { 2, 3 }, PanelView.Build(session).Bench.Select(b => b.Member));
 
+            // Song 2 is 2, 3, 4: a performer and a bench idol host
             new FakeStage(concert).PlaySong(session);
-            session.Drop(0, DropPoint.Bench, DropPoint.Host);
+            session.Drop(2, DropPoint.Bench, DropPoint.AtHost(0));
+            session.Drop(0, DropPoint.Bench, DropPoint.AtHost(1));
+            // On the song's tab a host who doesn't perform is on the bench, free to perform too
+            Assert.Equal(new[] { 0, 1 }, PanelView.Build(session).Bench.Select(b => b.Member));
+            // On the talk break's tab everyone but the hosts, performers included
+            Assert.Equal(new[] { 1, 3, 4 }, PanelView.Build(session, tab: FormationTab.Talk).Bench.Select(b => b.Member));
+        }
+
+        [Fact]
+        public void TheBench_ShowsWhoCantPerform()
+        {
+            BenchView Idol1(PanelView view) => view.Bench.Single(b => b.Member == 1);
+            ShowSession session = ThreeSongs(out _concert concert);
+            new FakeStage(concert).PlaySong(session);
             session.State.Absence[1] = 2;
             PanelView view = PanelView.Build(session);
-            Assert.Equal(new[] { 1 }, view.Bench.Select(b => b.Member));
-            Assert.Equal(IconKind.Hurt, view.Bench[0].Icon);
-            Assert.Equal("2", view.Bench[0].Count);
-            Assert.Equal("Hurt: out for 2 songs. A talk break counts as one song.", view.Bench[0].Tip);
-            Assert.False(view.Bench[0].Available);
+            Assert.Equal(new[] { 0, 1 }, view.Bench.Select(b => b.Member));
+            Assert.Equal(IconKind.Hurt, Idol1(view).Icon);
+            Assert.Equal("2", Idol1(view).Count);
+            Assert.Equal("Hurt: out for 2 songs. A talk break counts as one song.", Idol1(view).Tip);
+            Assert.False(Idol1(view).Available);
             session.State.Absence[1] = 1;
-            Assert.Equal("Hurt: out for 1 song. A talk break counts as one song.", PanelView.Build(session).Bench[0].Tip);
+            Assert.Equal("Hurt: out for 1 song. A talk break counts as one song.", Idol1(PanelView.Build(session)).Tip);
 
             session.State.Absence[1] = 0;
             session.State.Exhausted[1] = true;
             session.State.Energy[1] = 10;
             view = PanelView.Build(session);
-            Assert.Equal(IconKind.Resting, view.Bench[0].Icon);
-            Assert.Equal("", view.Bench[0].Count);
-            Assert.Equal($"Exhausted: resting until her energy is back to {session.State.Config.ReturnThreshold}%.", view.Bench[0].Tip);
-            Assert.Equal(10, view.Bench[0].Energy);
+            Assert.Equal(IconKind.Resting, Idol1(view).Icon);
+            Assert.Equal("", Idol1(view).Count);
+            Assert.Equal($"Exhausted: resting until her energy is back to {session.State.Config.ReturnThreshold}%.", Idol1(view).Tip);
+            Assert.Equal(10, Idol1(view).Energy);
 
             session.State.Exhausted[1] = false;
-            Assert.Equal(IconKind.None, PanelView.Build(session).Bench[0].Icon);
+            Assert.Equal(IconKind.None, Idol1(PanelView.Build(session)).Icon);
         }
 
         [Fact]
@@ -183,47 +206,45 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void WithATalkBreakFirst_TheFormationWaits_AndTheHostsPlaceShowsEmpty()
+        public void EachTab_HasItsReadouts_AndAHostingPerformerShowsAsUsualInTheSong()
         {
             ShowSession session = ThreeSongs(out _concert concert);
             new FakeStage(concert).PlaySong(session);
-            PanelView before = PanelView.Build(session);
-            Assert.False(before.Faded);
-            Assert.Equal("", before.FormationNote);
-            Assert.Equal("Expected Hype:", before.Expected.Title);
+            PanelView talk = PanelView.Build(session, tab: FormationTab.Talk);
+            Assert.False(talk.Expected.Shown);  // nobody hosts yet
+            Assert.False(talk.Changed.Shown);
 
-            // Song 2 is 2, 3, 4: the center hosts, and stays in the lineup for the song
-            session.Drop(2, DropPoint.AtPlace(0), DropPoint.Host);
-            PanelView view = PanelView.Build(session);
-            string pull = Math.Round(Engine.McHype(session.State, 2)).ToString();
-            Assert.True(view.Faded);
-            Assert.Equal("This lineup plays after the talk break.", view.FormationNote);
-            Assert.Equal("After Talk Break:", view.Expected.Title);
-            Assert.Equal(pull + "%", view.Expected.Value);
-            Assert.Equal(Tone.Plain, view.Expected.Tone);
-            Assert.Equal("The hype expected after the talk break. The song plays after it.", view.Expected.Tip);
-            Assert.True(view.Slots[0].Hosting);
-            Assert.Equal(2, view.Slots[0].Member);
-            Assert.Equal(IconKind.Hosting, view.Slots[0].Icon);
-            Assert.Equal("", view.Slots[0].Roll);
-            Assert.Equal("Idol3 hosts the talk break first and is back here for the song.", view.Slots[0].Tip);
-            Assert.False(view.Slots[1].Hosting);
+            // Song 2 is 2, 3, 4: the center hosts with a bench idol, and stays in the lineup for the song
+            PanelView before = PanelView.Build(session);
+            session.Drop(2, DropPoint.Bench, DropPoint.AtHost(0));
+            session.Drop(0, DropPoint.Bench, DropPoint.AtHost(1));
+            talk = PanelView.Build(session, tab: FormationTab.Talk);
+            string pull = Math.Round(Engine.McHype(session.State, 2, 0)).ToString();
+            Assert.Equal("After Talk Break:", talk.Expected.Title);
+            Assert.Equal(pull + "%", talk.Expected.Value);
+            Assert.Equal(Tone.Plain, talk.Expected.Tone);
+            Assert.Equal("The hype expected after the talk break. The song plays after it.", talk.Expected.Tip);
+            Assert.False(talk.Changed.Shown);
+
+            PanelView song = PanelView.Build(session);
+            Assert.Equal((before.Expected.Title, before.Expected.Value, before.Changed.Value), (song.Expected.Title, song.Expected.Value, song.Changed.Value));
+            Assert.Equal(2, song.Slots[0].Member);
+            Assert.Equal(before.Slots[0].Roll, song.Slots[0].Roll);
+            Assert.Equal((before.Slots[0].Icon, before.Slots[0].Tip), (song.Slots[0].Icon, song.Slots[0].Tip));
             Assert.Equal(new[] { 2, 3, 4 }, session.Lineup);
         }
 
         [Fact]
-        public void DraggingAnIdolOverTheHostPlace_PreviewsTheWaitingFormation()
+        public void Dragging_OverAHostPlace_PreviewsTheRow()
         {
             ShowSession session = ThreeSongs(out _concert concert);
             new FakeStage(concert).PlaySong(session);
-            PanelView view = PanelView.Build(session, new DragView { Member = 3, From = DropPoint.AtPlace(1), Over = DropPoint.Host });
-            Assert.True(view.Faded);
-            Assert.True(view.Slots[1].Hosting);
-            Assert.Equal(-1, session.Host);
-
-            view = PanelView.Build(session, new DragView { Member = 0, From = DropPoint.Bench, Over = DropPoint.Host });
-            Assert.True(view.Faded);
-            Assert.DoesNotContain(view.Slots, s => s.Hosting);
+            session.Drop(1, DropPoint.Bench, DropPoint.AtHost(0));
+            PanelView view = PanelView.Build(session, new DragView { Member = 0, From = DropPoint.Bench, Over = DropPoint.AtHost(0) }, tab: FormationTab.Talk);
+            Assert.Equal(new[] { 0, -1, -1 }, view.Hosts.Select(h => h.Member));
+            Assert.Equal(new[] { Highlight.Allowed, Highlight.None, Highlight.None }, view.Hosts.Select(h => h.Highlight));
+            Assert.Equal(new[] { 1, -1, -1 }, session.Hosts);  // nothing changed yet
+            Assert.Contains(0, view.Bench.Select(b => b.Member));  // still on the bench until she's dropped
         }
 
         [Theory]
@@ -269,8 +290,8 @@ namespace ConcertHype.Tests
         public void Dragging_OverARefusingSpot_SaysWhy()
         {
             ShowSession session = ThreeSongs(out _);
-            PanelView view = PanelView.Build(session, new DragView { Member = 2, From = DropPoint.Bench, Over = DropPoint.Host });
-            Assert.Equal(Highlight.Refused, view.HostHighlight);
+            PanelView view = PanelView.Build(session, new DragView { Member = 2, From = DropPoint.Bench, Over = DropPoint.AtHost(1) }, tab: FormationTab.Talk);
+            Assert.Equal(Highlight.Refused, view.Hosts[1].Highlight);
             Assert.Equal("Talk breaks can start after the first song.", view.Hint);
         }
 
@@ -287,13 +308,13 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void Dragging_TheHostAway_PreviewsTheCancel()
+        public void Dragging_AHostOffTheRow_PreviewsHerLeaving()
         {
             ShowSession session = ThreeSongs(out _concert concert);
             new FakeStage(concert).PlaySong(session);
-            session.Drop(0, DropPoint.Bench, DropPoint.Host);
-            PanelView view = PanelView.Build(session, new DragView { Member = 0, From = DropPoint.Host });
-            Assert.Equal(-1, view.Host);
+            session.Drop(0, DropPoint.Bench, DropPoint.AtHost(1));
+            PanelView view = PanelView.Build(session, new DragView { Member = 0, From = DropPoint.AtHost(1) }, tab: FormationTab.Talk);
+            Assert.Equal(new[] { -1, -1, -1 }, view.Hosts.Select(h => h.Member));
             Assert.True(view.TalkOpen);
             Assert.Equal("Start Talk Break", view.StartLabel);  // still placed until she's dropped
         }
@@ -310,6 +331,48 @@ namespace ConcertHype.Tests
             Assert.Equal(scale, fit, 2);
             int rows = (count + fitColumns - 1) / fitColumns;
             Assert.True(count == 0 || (fitColumns * 62 * fit <= 201.01 && rows * 66 * fit <= 487.01));
+        }
+
+        private static readonly PanelView.FormationSpace Space = new()
+        {
+            ReadoutsRight = 520, ReadoutsBottom = 380, ButtonsRight = 380, ButtonsTop = 400, BenchLeft = 815,
+            Top = 160, Bottom = 624, Margin = 35, TabsHalf = 105,
+        };
+
+        [Fact]
+        public void TheFormation_GrowsToFillTheSpace_CentredBetweenTheReadoutsAndTheBench()
+        {
+            PanelView.FormationFrame frame = PanelView.FitFormation(new[] { 3, 2, 3 }, Space);
+            Assert.Equal(1.4f, frame.Scale);
+            Assert.Equal(667.5f, frame.CenterX, 3);  // the middle of 520 to 815
+        }
+
+        [Theory]
+        [InlineData(new[] { 3, 2, 3, 4, 5 })]
+        [InlineData(new[] { 3, 2 })]
+        [InlineData(new[] { 3, 2, 3, 4 })]
+        public void EveryRow_StaysClearOfTheReadoutsButtonsAndBench_AtTheLargestScaleThatFits(int[] widths)
+        {
+            static bool Fits(int[] widths, float scale, float center, PanelView.FormationSpace space)
+            {
+                if (center - space.TabsHalf < space.ReadoutsRight - 1e-3 || center + space.TabsHalf > space.BenchLeft + 1e-3)
+                    return false;
+                for (int row = 0; row < widths.Length; row++)
+                {
+                    float top = space.Top + row * PanelView.RowHeight * scale, bottom = top + PanelView.PlaceHeight * scale;
+                    float half = ((widths[row] - 1) / 2f * PanelView.CellWidth + PanelView.PlaceWidth / 2f) * scale;
+                    float left = top < space.ReadoutsBottom ? space.ReadoutsRight : bottom > space.ButtonsTop ? space.ButtonsRight : space.Margin;
+                    if (center - half < left - 1e-3 || center + half > space.BenchLeft + 1e-3 || bottom > space.Bottom + 1e-3)
+                        return false;
+                }
+                return true;
+            }
+
+            PanelView.FormationFrame frame = PanelView.FitFormation(widths, Space);
+            Assert.True(Fits(widths, frame.Scale, frame.CenterX, Space), $"scale {frame.Scale} at {frame.CenterX}");
+            // A step larger doesn't fit anywhere between the readouts and the bench
+            if (frame.Scale < PanelView.MaxScale)
+                Assert.DoesNotContain(Enumerable.Range(0, 300).Select(x => Space.ReadoutsRight + x), center => Fits(widths, frame.Scale + 0.05f, center, Space));
         }
 
         [Fact]

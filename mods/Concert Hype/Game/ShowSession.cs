@@ -64,9 +64,12 @@ namespace ConcertHype
         public int[] Lineup;
 
         /// <summary>
-        /// The idol on the host place: Start plays a talk break she hosts before the next song. -1 for none.
+        /// The talk break's row of host places, -1 where nobody is: with anyone on it, Start plays a talk break they
+        /// host before the next song.
         /// </summary>
-        public int Host = -1;
+        public int[] Hosts = DropRules.NoHosts();
+
+        public bool HasTalk => Hosts.Any(h => h >= 0);
 
         public SongResult LastResult;
         public McResult LastMc;
@@ -149,19 +152,24 @@ namespace ConcertHype
         /// <summary>
         /// An idol dragged from one spot to another, by the drop rules. Refused drops change nothing.
         /// </summary>
-        public DropResult Drop(int member, DropPoint from, DropPoint to) => Apply(DropRules.Drop(State, Lineup, Host, member, from, to));
+        public DropResult Drop(int member, DropPoint from, DropPoint to) => Apply(DropRules.Drop(State, Lineup, Hosts, member, from, to));
 
         /// <summary>
-        /// A quick click on a bench idol.
+        /// A quick click on a bench idol on the song's tab.
         /// </summary>
-        public DropResult Click(int member) => Apply(DropRules.Click(State, Lineup, Host, member));
+        public DropResult Click(int member) => Apply(DropRules.Click(State, Lineup, Hosts, member));
+
+        /// <summary>
+        /// A quick click on a bench idol on the talk break's tab.
+        /// </summary>
+        public DropResult ClickHost(int member) => Apply(DropRules.ClickHost(State, Lineup, Hosts, member));
 
         private DropResult Apply(DropResult result)
         {
             if (result.Allowed && result.Changed && !Playing && !State.Finished)
             {
                 Lineup = result.Lineup;
-                Host = result.Host;
+                Hosts = result.Hosts;
                 Changed?.Invoke();
             }
             return result;
@@ -187,30 +195,31 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// The player started a talk break: the host's MC plays in the model now, and a talk break item for her goes
-        /// into the setlist where the popup is, so the popup plays it as the game plays a planned one. The next
-        /// song stays next.
+        /// The player started a talk break: the hosts' MC plays in the model now, and a talk break item with them, in
+        /// their row's order, goes into the setlist where the popup is, so the popup plays it as the game plays a
+        /// planned one. The next song stays next.
         /// </summary>
         public void StartTalkBreak(IConcertStage stage)
         {
             CheckStep(stage);
-            int host = Host;
+            int[] hosts = Hosts.Where(h => h >= 0).ToArray();
             State.Hype = stage.Concert.Hype;
             bool[] forced = Engine.ForcedSlots(State);
-            McResult result = Engine.CallMc(State, host);
+            McResult result = Engine.CallMc(State, hosts);
             forcedBeforeTalk = forced;
 
             SEvent_Concerts._concert._mc item = new SEvent_Concerts._concert._mc();
-            item.SetGirl(Show.Girls[host], 0);
+            for (int i = 0; i < hosts.Length; i++)
+                item.SetGirl(Show.Girls[hosts[i]], i);
             var items = stage.Concert.SetListItems;
             items.Insert(stage.SongCounter, item);
             item.SetTitle(TalkTitle(items.Take(stage.SongCounter + 1).Count(i => i.isMC())));
 
             PendingTalkItem = item;
             PendingTalk = result;
-            Host = -1;
+            Hosts = DropRules.NoHosts();
             log.AppendLine();
-            log.AppendLine($"{item.GetTitle()} hosted by {Name(host)} (talk {F(result.Talk)}): hype {F(result.HypeBefore)} -> {F(result.HypeAfter)}");
+            log.AppendLine($"{item.GetTitle()} hosted by {string.Join(", ", hosts.Select(Name))} (talk {F(result.Talk)}): hype {F(result.HypeBefore)} -> {F(result.HypeAfter)}");
             Changed?.Invoke();
         }
 

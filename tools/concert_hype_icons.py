@@ -22,7 +22,6 @@ OUT = Path(__file__).resolve().parents[1] / "mods" / "Concert Hype" / "assets" /
 COLOURS = {
     "original": (58, 166, 92),
     "substitute": (232, 128, 36),
-    "hosting": (142, 91, 214),
     "hurt": (214, 69, 69),
     "resting": (66, 100, 190),
 }
@@ -60,15 +59,6 @@ def swap(draw, colour):
     arrow(draw, 160, False)
 
 
-
-def hosting(draw, colour):
-    # A speech bubble with three dots: she talks
-    draw.rounded_rectangle((52, 62, 204, 162), radius=34, fill=WHITE)
-    draw.polygon([(88, 150), (128, 150), (80, 200)], fill=WHITE)
-    for x in (92, 128, 164):
-        draw.ellipse((x - 13, 99, x + 13, 125), fill=colour + (255,))
-
-
 def hurt(draw, colour):
     # A bandage across the circle, with its pad and holes
     layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
@@ -89,7 +79,6 @@ def resting(draw, colour):
 SYMBOLS = {
     "original": formation,
     "substitute": swap,
-    "hosting": hosting,
     "hurt": hurt,
     "resting": resting,
 }

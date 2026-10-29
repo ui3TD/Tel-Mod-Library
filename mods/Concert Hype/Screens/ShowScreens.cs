@@ -52,6 +52,13 @@ namespace ConcertHype
         public static readonly VanillaShape Pointer = new VanillaShape(
             new[] { typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI) },
             new string[0]);
+
+        /// <summary>
+        /// A tab of the group appeal popup: a tinted box with its label (Unity's own Text) inside.
+        /// </summary>
+        public static readonly VanillaShape Tab = new VanillaShape(
+            new[] { typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(ButtonDefault), typeof(FixScrollWheel) },
+            new[] { "Text" });
     }
 
     internal static class Ui
@@ -231,6 +238,152 @@ namespace ConcertHype
         }
 
         public void PlaceAt(float x, float y) => Ui.Place(Root, x, y, Size, Size);
+    }
+
+    /// <summary>
+    /// A copy of one of the game's tabs (the group appeal popup's Total Fans), tinted as the game tints its tabs:
+    /// full for the tab shown, faded for the other. Without the game's tab, a copy of the Start button.
+    /// </summary>
+    internal sealed class TabWidget
+    {
+        /// <summary>
+        /// The tabs' top: under the song's title, which ends about 122 down, and above the formation.
+        /// </summary>
+        public const float Top = 128f;
+
+        /// <summary>
+        /// Narrower than the game's tab, so the two clear the readouts' titles; the label shrinks to fit, as the
+        /// game's does.
+        /// </summary>
+        public const float Width = 105f;
+
+        public Button Button;
+        private Image box;
+        private Text text;
+        private TextMeshProUGUI tmpText;
+
+        /// <summary>
+        /// The game's tab, or the Start button (logged once) when it can't be found.
+        /// </summary>
+        public static GameObject Template(Concert_Popup popup)
+        {
+            GameObject tab = PopupManager.GetObject(PopupManager._type.group_appeal)?.GetComponent<Group_Appeal_Popup>()?.Tab_TotalFans;
+            if (tab != null && tab.GetComponent<Button>() != null && tab.GetComponent<Image>() != null && tab.transform.Find("Text")?.GetComponent<Text>() != null)
+                return tab;
+            Log.WarnOnce("tab", "couldn't find the game's tab; the tabs are copies of the Start button");
+            return popup.NextSong_Button;
+        }
+
+        /// <summary>
+        /// The tab's width, at the template's own height as the game lays it out.
+        /// </summary>
+        public static Vector2 Size(GameObject template)
+        {
+            float height = ((RectTransform)template.transform).rect.height;
+            return new Vector2(Width, height > 1f ? height : 24f);
+        }
+
+        public static TabWidget Make(GameObject template, Transform parent, string name, float x, float y, Vector2 size, UnityAction onClick)
+        {
+            bool gameTab = template.GetComponent<Text>() == null && template.transform.Find("Text")?.GetComponent<Text>() != null;
+            GameObject copy = Ui.Copy(template, parent, gameTab ? Shapes.Tab : Shapes.Button, gameTab ? "tab" : "button", name);
+            Ui.Place(copy, x, y, size.x, size.y);
+            TabWidget tab = new TabWidget { Button = copy.GetComponent<Button>(), box = copy.GetComponent<Image>() };
+            // A new event drops the game's own listener, which would switch the group appeal popup's tab
+            tab.Button.onClick = new Button.ButtonClickedEvent();
+            tab.Button.onClick.AddListener(onClick);
+            tab.text = copy.transform.Find("Text")?.GetComponent<Text>();
+            if (tab.text == null)
+                tab.tmpText = copy.GetComponentInChildren<TextMeshProUGUI>(true);
+            return tab;
+        }
+
+        /// <summary>
+        /// A disabled tab still shows its tooltip, as the game's disabled buttons can.
+        /// </summary>
+        public void Enable(bool enabled, string tip)
+        {
+            ButtonDefault buttonDefault = Button.GetComponent<ButtonDefault>();
+            if (buttonDefault == null)
+            {
+                Button.interactable = enabled;
+                return;
+            }
+            buttonDefault.Activate(enabled, showTooltip: !enabled);
+            buttonDefault.SetTooltip(enabled ? "" : tip);
+        }
+
+        public void Set(string label, bool shown)
+        {
+            if (text != null)
+                text.text = label;
+            if (tmpText != null)
+                tmpText.text = label;
+            if (box != null)
+                box.color = shown ? mainScript.blue_tab_active : mainScript.blue_tab_not_active;
+        }
+    }
+
+    /// <summary>
+    /// While the show's panel is up, the next song's title ends before the tabs: a long one shrinks, and past the
+    /// smallest size it ends in an ellipsis. The game's settings come back when the panel goes.
+    /// </summary>
+    internal static class SongTitle
+    {
+        private const float SmallestShare = 0.6f;
+
+        private static TextMeshProUGUI title;
+        private static Vector2 offsetMax;
+        private static bool autoSizing, wrapping;
+        private static float fontSize, fontSizeMin, fontSizeMax;
+        private static TextOverflowModes overflow;
+
+        /// <param name="right">Where the title's right edge goes, in <see cref="Ui.Place"/> coordinates.</param>
+        public static void Fit(GameObject obj, Transform container, float right)
+        {
+            TextMeshProUGUI text = obj != null ? obj.GetComponent<TextMeshProUGUI>() : null;
+            if (text == null)
+            {
+                Log.WarnOnce("title", "couldn't find the next song's title; a long one may run under the tabs");
+                return;
+            }
+            if (title != text)
+            {
+                Restore();
+                title = text;
+                offsetMax = text.rectTransform.offsetMax;
+                autoSizing = text.enableAutoSizing;
+                wrapping = text.enableWordWrapping;
+                fontSize = text.fontSize;
+                fontSizeMin = text.fontSizeMin;
+                fontSizeMax = text.fontSizeMax;
+                overflow = text.overflowMode;
+            }
+            RectTransform rect = text.rectTransform;
+            rect.offsetMax = offsetMax;
+            float over = Ui.Placed(obj, container).xMax - right;
+            if (over > 0f)
+                rect.offsetMax = new Vector2(offsetMax.x - over, offsetMax.y);
+            text.enableWordWrapping = false;
+            text.overflowMode = TextOverflowModes.Ellipsis;
+            text.enableAutoSizing = true;
+            text.fontSizeMax = fontSize;
+            text.fontSizeMin = fontSize * SmallestShare;
+        }
+
+        public static void Restore()
+        {
+            if (title == null)
+                return;
+            title.rectTransform.offsetMax = offsetMax;
+            title.enableAutoSizing = autoSizing;
+            title.enableWordWrapping = wrapping;
+            title.fontSizeMin = fontSizeMin;
+            title.fontSizeMax = fontSizeMax;
+            title.fontSize = fontSize;
+            title.overflowMode = overflow;
+            title = null;
+        }
     }
 
     /// <summary>
@@ -536,29 +689,41 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// The lineup panel on the next-song screen, in place of the game's center, stamina and accident readouts: the
-    /// song's formation, the talk break's host place, and readouts like the game's saying how the song is expected to go.
+    /// The lineup panel on the next-song screen, in place of the game's center, stamina and accident readouts: two
+    /// tabs, one with the song's formation and one with the talk break's row of hosts, and readouts like the game's
+    /// saying how the song or talk break is expected to go.
     /// </summary>
     internal static class LineupPanel
     {
         private const string Name = "ConcertHype Lineup";
-        private const float TriangleCenterX = 610f, TriangleTop = 135f, RowHeight = 76f, CellWidth = 70f;
+        private const float TriangleCenterX = 630f, TriangleTop = 160f, RowHeight = PanelView.RowHeight, CellWidth = PanelView.CellWidth;
+
+        /// <summary>
+        /// The space kept between the formation and what's around it, and between the Last readout and the buttons.
+        /// </summary>
+        private const float Gap = 16f;
 
         /// <summary>
         /// The readouts sit as the game's do (Center, Stamina Cost), in two columns left of the formation: the
         /// second row a readout's height below the first, the second column where the first's titles end.
         /// </summary>
-        private const float SecondRow = 131f, SecondColumnX = 290f, HintTop = 470f, HintWidth = 470f;
+        private const float SecondRow = 131f, SecondColumnX = 290f, HintTop = 470f, HintWidth = 470f, HintGap = 10f;
+
+        /// <summary>
+        /// The song's title ends this far left of the tabs.
+        /// </summary>
+        private const float TitleGap = 16f;
 
         private static Concert_Popup owner;
         private static GameObject root;
         private static ReadoutWidget expected, changed, last;
-        private static TextMeshProUGUI hint, talkTitle, formationNote;
+        private static TextMeshProUGUI hint;
         private static Button resetLineup;
-        private static PortraitWidget hostPlace;
-        private static GameObject cancelOverlay, talkBox;
-        private static CanvasGroup talkBoxGroup;
+        private static TabWidget songTab, talkTab;
+        private static GameObject talkBox;
         private static readonly List<PortraitWidget> Slots = new List<PortraitWidget>();
+        private static readonly List<PortraitWidget> HostPlaces = new List<PortraitWidget>();
+        private static readonly List<GameObject> CancelOverlays = new List<GameObject>();
         private static readonly List<GameObject> Hidden = new List<GameObject>();
         private static TextMeshProUGUI startLabel;
         private static string gameStartText;
@@ -567,6 +732,18 @@ namespace ConcertHype
         private static DragView drag;
         private static string message;
 
+        /// <summary>
+        /// The tab shown: the song's on each new next-song screen.
+        /// </summary>
+        public static FormationTab Tab { get; private set; }
+
+        private static PanelView.FormationFrame frame = new PanelView.FormationFrame { CenterX = TriangleCenterX, Scale = 1f };
+
+        /// <summary>
+        /// How much the formation's places are scaled on the next-song screen: the stage's portraits start from it.
+        /// </summary>
+        public static float FormationScale => frame.Scale;
+
         private static bool Alive => root != null && owner != null;
 
         public static void Show(Concert_Popup popup, ShowSession session)
@@ -574,6 +751,7 @@ namespace ConcertHype
             Ensure(popup);
             drag = null;
             message = null;
+            Tab = FormationTab.Song;
             HideVanilla(popup);
             root.SetActive(true);
             Render();
@@ -589,6 +767,7 @@ namespace ConcertHype
                 root.SetActive(false);
                 SetStartLabel(null);
             }
+            SongTitle.Restore();
             foreach (GameObject obj in Hidden)
             {
                 if (obj != null)
@@ -624,6 +803,8 @@ namespace ConcertHype
                 return;
             owner = popup;
             Slots.Clear();
+            HostPlaces.Clear();
+            CancelOverlays.Clear();
             Hidden.Clear();
             Transform container = popup.NextSong_Container.transform;
             root = new GameObject(Name, typeof(RectTransform));
@@ -642,30 +823,32 @@ namespace ConcertHype
             expected = ReadoutWidget.Make(root.transform, container, "Expected", labelTemplate, popup.NextSong_Stamina, info, columnX, first.yMin, plain);
             changed = ReadoutWidget.Make(root.transform, container, "Changed", labelTemplate, popup.NextSong_Stamina, info, SecondColumnX, first.yMin, plain);
             last = ReadoutWidget.Make(root.transform, container, "Last", labelTemplate, popup.NextSong_Stamina, null, SecondColumnX, first.yMin + SecondRow, plain);
-            // The talk break as the game shows the center: its title over its place
+            // The talk break's tab: its hosts in a row where the formation's top would be
             talkBox = new GameObject("TalkBreak", typeof(RectTransform));
             talkBox.transform.SetParent(root.transform, false);
             Ui.Stretch(talkBox);
-            talkBoxGroup = talkBox.AddComponent<CanvasGroup>();
-            GameObject talkCopy = Ui.Copy(centerTitle, talkBox.transform, Shapes.Label, "label", "TalkTitle");
-            Ui.MoveTo(talkCopy, container, first.xMin, first.yMin + SecondRow);
-            talkTitle = talkCopy.GetComponent<TextMeshProUGUI>();
-            talkTitle.raycastTarget = false;
-            Rect center = popup.NextSong_Center.Length > 0 && popup.NextSong_Center[0] != null ? Ui.Placed(popup.NextSong_Center[0], container) : new Rect(first.xMin, first.yMin + 60f, 54f, 58f);
-            hostPlace = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, talkBox.transform, "Host", DropPoint.Host);
-            Ui.Place(hostPlace.Root, center.xMin, center.yMin + SecondRow, 54f, 58f);
-            cancelOverlay = MakeCancelOverlay(hostPlace);
+            for (int k = 0; k < Engine.MaxHosts; k++)
+            {
+                PortraitWidget host = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, talkBox.transform, "Host " + k, DropPoint.AtHost(k));
+                Ui.Place(host.Root, TriangleCenterX + (k - (Engine.MaxHosts - 1) / 2f) * CellWidth - 27f, TriangleTop, 54f, 58f);
+                host.Label.text = "";
+                host.Icon.Set(IconKind.None, "");
+                HostPlaces.Add(host);
+                CancelOverlays.Add(MakeCancelOverlay(host));
+            }
             hint = Ui.Label(labelTemplate, root.transform, "Hint", first.xMin, HintTop, HintWidth, 64f, 14f);
-            // Level with the game's Start button beside it, whose left edge leaves room for a narrower button
-            Rect start = Ui.Placed(popup.NextSong_Button, container);
-            bool level = start.height > 1f && start.yMin > 300f && start.yMax < 640f;
-            resetLineup = Ui.Button(popup.NextSong_Button, root.transform, "ResetLineup", 30f, level ? start.yMin : 420f, 128f, level ? start.height : 39f, OnReset);
+            resetLineup = Ui.Button(popup.NextSong_Button, root.transform, "ResetLineup", 30f, 420f, 128f, 39f, OnReset);
             Ui.SetButtonText(resetLineup, Texts.Get("CONCERTHYPE__RESET_LINEUP"));
+            LevelReset();
 
             for (int j = 0; j < GameReader.SenbatsuPositions; j++)
                 Slots.Add(PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Slot " + j, DropPoint.AtPlace(j)));
-            formationNote = Ui.Label(labelTemplate, root.transform, "AfterTalk", TriangleCenterX - 170f, TriangleTop, 340f, 22f, 15f);
-            formationNote.alignment = TextAlignmentOptions.Top;
+
+            // The tabs side by side, centred over the formation
+            GameObject tabTemplate = TabWidget.Template(popup);
+            Vector2 tabSize = TabWidget.Size(tabTemplate);
+            songTab = TabWidget.Make(tabTemplate, root.transform, "SongTab", TriangleCenterX - tabSize.x, TabWidget.Top, tabSize, () => OnTab(FormationTab.Song));
+            talkTab = TabWidget.Make(tabTemplate, root.transform, "TalkTab", TriangleCenterX, TabWidget.Top, tabSize, () => OnTab(FormationTab.Talk));
 
             startLabel = popup.NextSong_Button.GetComponentInChildren<TextMeshProUGUI>(true);
             gameStartText = null;
@@ -677,10 +860,23 @@ namespace ConcertHype
                     if (Alive && root.activeInHierarchy && ShowSession.Current != null)
                         Render();
                     else
-                        BenchColumn.Render(ShowSession.Current == null ? null : PanelView.Build(ShowSession.Current));
+                        BenchColumn.Render(ShowSession.Current == null ? null : PanelView.Build(ShowSession.Current, tab: Tab));
                 };
                 subscribed = true;
             }
+        }
+
+        /// <summary>
+        /// Level with the game's Start button beside it, whose left edge leaves room for a narrower button. Done on
+        /// each redraw: the game anchors its button to the popup's bottom, which moves with the window's shape.
+        /// </summary>
+        private static void LevelReset()
+        {
+            Transform container = owner.NextSong_Container.transform;
+            Rect start = Ui.Placed(owner.NextSong_Button, container);
+            float height = ((RectTransform)container).rect.height;
+            bool level = start.height > 1f && start.yMin > 300f && start.yMax < height;
+            Ui.Place(resetLineup.gameObject, 30f, level ? start.yMin : 420f, 128f, level ? start.height : 39f);
         }
 
         public static void Render()
@@ -689,34 +885,45 @@ namespace ConcertHype
             if (session == null || !Alive)
                 return;
             session.SyncHype();
-            PanelView view = PanelView.Build(session, drag, message);
+            // The talk break's tab is disabled while none can be called
+            if (Tab == FormationTab.Talk && DropRules.TalkBlocked(session.State) != null)
+                Tab = FormationTab.Song;
+            PanelView view = PanelView.Build(session, drag, message, Tab);
+            LevelReset();
+            // Before the readouts get their text: measuring a title's width leaves it on the label
+            Layout(view);
             expected.Set(view.Expected);
             changed.Set(view.Changed);
             last.Set(view.Last);
             hint.text = view.Hint;
-            talkTitle.text = view.TalkTitle;
             SetStartLabel(view.StartLabel);
+            bool song = Tab == FormationTab.Song;
+            songTab.Set(Texts.Get("CONCERTHYPE__TAB_SONG"), song);
+            talkTab.Set(view.TalkTitle, !song);
+            talkTab.Enable(view.TalkOpen, view.TalkTip);
 
-            // No talk break before the first song
-            talkBox.SetActive(view.TalkShown);
-            data_girls.girls hostGirl = view.Host < 0 ? null : session.Show.Girls[view.Host];
-            hostPlace.SetGirl(hostGirl);
-            Ui.SetEnergyBar(hostPlace.Bar, hostGirl is null ? 0 : session.State.Energy[view.Host]);
-            hostPlace.SetHighlight(view.HostHighlight);
-            if (cancelOverlay != null)
-                cancelOverlay.SetActive(false);
-            hostPlace.SetDimmed(false);
+            talkBox.SetActive(!song);
+            for (int k = 0; k < HostPlaces.Count && k < view.Hosts.Count; k++)
+            {
+                PortraitWidget widget = HostPlaces[k];
+                HostView host = view.Hosts[k];
+                data_girls.girls girl = host.Member < 0 ? null : session.Show.Girls[host.Member];
+                widget.SetGirl(girl);
+                Ui.SetEnergyBar(widget.Bar, girl is null ? 0 : session.State.Energy[host.Member]);
+                widget.SetHighlight(host.Highlight);
+                widget.SetDimmed(host.Dragged);
+                if (CancelOverlays[k] != null)
+                    CancelOverlays[k].SetActive(false);
+                Ui.Place(widget.Root, frame.CenterX + (k - (Engine.MaxHosts - 1) / 2f) * CellWidth * frame.Scale - 27f * frame.Scale, TriangleTop, 54f, 58f);
+                widget.Root.transform.localScale = new Vector3(frame.Scale, frame.Scale, 1f);
+            }
             ShowCancel();
-            hostPlace.Icon.Set(IconKind.None, "");
-            // Greyed out while no talk break can be called
-            talkBoxGroup.alpha = view.TalkOpen || view.Host >= 0 ? 1f : 0.45f;
 
-            int rows = view.Slots.Count == 0 ? 0 : view.Slots.Max(slot => slot.Row) + 1;
             Vector2[] places = FormationPlaces(view.Slots.Select(slot => slot.Row).ToList());
             for (int j = 0; j < Slots.Count; j++)
             {
                 PortraitWidget widget = Slots[j];
-                if (j >= view.Slots.Count)
+                if (!song || j >= view.Slots.Count)
                 {
                     widget.Root.SetActive(false);
                     continue;
@@ -724,27 +931,33 @@ namespace ConcertHype
                 SlotView slot = view.Slots[j];
                 widget.Root.SetActive(true);
                 Ui.Place(widget.Root, places[j].x, places[j].y, 54f, 58f);
-                // A place whose idol hosts the talk break shows empty until the song
-                bool shown = slot.Member >= 0 && !slot.Hosting;
-                widget.SetGirl(shown ? session.Show.Girls[slot.Member] : null);
-                Ui.SetEnergyBar(widget.Bar, shown ? session.State.Energy[slot.Member] : 0);
+                widget.Root.transform.localScale = new Vector3(frame.Scale, frame.Scale, 1f);
+                widget.SetGirl(slot.Member >= 0 ? session.Show.Girls[slot.Member] : null);
+                Ui.SetEnergyBar(widget.Bar, slot.Member >= 0 ? session.State.Energy[slot.Member] : 0);
                 widget.SetDimmed(slot.Dragged);
                 widget.SetHighlight(slot.Highlight);
                 widget.Label.text = slot.Roll;
                 widget.Icon.Set(slot.Icon, slot.Tip);
                 // The roll, then the icon; the icon alone sits in the middle
                 widget.Icon.PlaceAt(slot.Roll.Length > 0 ? 29f : 27f - IconWidget.Size / 2f, 59f);
-                // With a talk break first, the formation waits for it
-                widget.Group.alpha = view.Faded ? 0.45f : 1f;
             }
-            formationNote.text = view.FormationNote;
-            Ui.Place(formationNote.gameObject, TriangleCenterX - 170f, TriangleTop + rows * RowHeight, 340f, 22f);
             BenchColumn.Render(view);
         }
 
+        private static void OnTab(FormationTab tab) => Safely(() =>
+        {
+            if (drag != null || Tab == tab || ShowSession.Current == null)
+                return;
+            if (tab == FormationTab.Talk && DropRules.TalkBlocked(ShowSession.Current.State) != null)
+                return;
+            Tab = tab;
+            message = null;
+            Render();
+        }, "switching tabs");
+
         /// <summary>
         /// The top-left corner of each place's portrait in the game's triangle, given each place's row: each row
-        /// centred under the one before, in place order.
+        /// centred under the one before, in place order, at the formation's scale.
         /// </summary>
         public static Vector2[] FormationPlaces(IList<int> rows)
         {
@@ -752,12 +965,68 @@ namespace ConcertHype
             foreach (int row in rows)
                 perRow[row]++;
             Vector2[] places = new Vector2[rows.Count];
+            float scale = frame.Scale;
             for (int j = 0; j < rows.Count; j++)
             {
                 int row = rows[j];
-                places[j] = new Vector2(TriangleCenterX + (placed[row]++ - (perRow[row] - 1) / 2f) * CellWidth - 27f, TriangleTop + row * RowHeight);
+                places[j] = new Vector2(frame.CenterX + ((placed[row]++ - (perRow[row] - 1) / 2f) * CellWidth - 27f) * scale, TriangleTop + row * RowHeight * scale);
             }
             return places;
+        }
+
+        /// <summary>
+        /// Lays the panel out for the window's shape, which moves the game's Start button: the Last readout stays a
+        /// gap above the buttons, the hint goes under them, and the tabs and formation are centred in the space
+        /// between the readouts and the bench, as large as fits. The song's title ends before the tabs.
+        /// </summary>
+        private static void Layout(PanelView view)
+        {
+            Transform container = owner.NextSong_Container.transform;
+            float height = ((RectTransform)container).rect.height;
+            Rect start = Ui.Placed(owner.NextSong_Button, container), reset = Ui.Placed(resetLineup.gameObject, container);
+            float buttonsTop = Math.Min(start.yMin, reset.yMin);
+
+            RectTransform lastRect = (RectTransform)last.Root.transform;
+            lastRect.anchoredPosition = Vector2.zero;
+            float lastBottom = Ui.Placed(last.Value.gameObject, container).yMax;
+            float lift = Math.Max(0f, lastBottom + Gap - buttonsTop);
+            lastRect.anchoredPosition = new Vector2(0f, lift);
+
+            Rect hintAt = Ui.Placed(hint.gameObject, container);
+            float hintLeft = hintAt.xMin;
+            Ui.Place(hint.gameObject, hintLeft, Math.Max(start.yMax, reset.yMax) + HintGap, Math.Max(start.xMax - hintLeft, 128f), hintAt.height);
+
+            // The second column's widest title, as the readouts draw it
+            float titles = new[] { "CONCERTHYPE__CHANGED_TITLE", "CONCERTHYPE__LAST_SONG_TITLE", "CONCERTHYPE__LAST_TALK_TITLE" }
+                .Max(key => changed.Title.GetPreferredValues(Texts.Get(key)).x);
+            List<int> widths = new List<int>();
+            foreach (SlotView slot in view.Slots)
+            {
+                while (widths.Count <= slot.Row)
+                    widths.Add(0);
+                widths[slot.Row]++;
+            }
+            // The talk break's row sits where the front row is
+            if (widths.Count == 0)
+                widths.Add(0);
+            widths[0] = Math.Max(widths[0], Engine.MaxHosts);
+            frame = PanelView.FitFormation(widths, new PanelView.FormationSpace
+            {
+                ReadoutsRight = Ui.Placed(changed.Title.gameObject, container).xMin + titles + Gap,
+                ReadoutsBottom = lastBottom - lift + Gap,
+                ButtonsRight = Math.Max(start.xMax, reset.xMax) + Gap,
+                ButtonsTop = buttonsTop - Gap,
+                BenchLeft = Ui.Placed(owner.Girls, container).xMin - Gap,
+                Top = TriangleTop,
+                Bottom = height - Gap,
+                Margin = hintLeft,
+                TabsHalf = TabWidget.Width,
+            });
+
+            Vector2 tab = ((RectTransform)songTab.Button.transform).rect.size;
+            Ui.Place(songTab.Button.gameObject, frame.CenterX - TabWidget.Width, TabWidget.Top, TabWidget.Width, tab.y);
+            Ui.Place(talkTab.Button.gameObject, frame.CenterX, TabWidget.Top, TabWidget.Width, tab.y);
+            SongTitle.Fit(owner.NextSong_Title, container, frame.CenterX - TabWidget.Width - TitleGap);
         }
 
         /// <summary>
@@ -800,7 +1069,6 @@ namespace ConcertHype
 
         /// <summary>
         /// Who a drag from this spot picks up: the bench portrait's idol, or whoever is on the place or host place.
-        /// A place whose idol hosts the talk break shows empty, so nobody is picked up there.
         /// </summary>
         public static int MemberAt(DropPoint from, int benchMember)
         {
@@ -810,11 +1078,9 @@ namespace ConcertHype
             switch (from.Spot)
             {
                 case Spot.Place:
-                    int member = from.Place >= 0 && from.Place < session.Lineup.Length ? session.Lineup[from.Place] : -1;
-                    return member == session.Host ? -1 : member;
+                    return from.Place >= 0 && from.Place < session.Lineup.Length ? session.Lineup[from.Place] : -1;
                 case Spot.Host:
-                    // The host is cancelled with a click, not dragged off
-                    return -1;
+                    return from.Place >= 0 && from.Place < session.Hosts.Length ? session.Hosts[from.Place] : -1;
                 default:
                     return benchMember;
             }
@@ -880,15 +1146,21 @@ namespace ConcertHype
         {
             if (!Alive)
                 return null;
+            // Only the shown tab's places: a hidden one may still think it's hovered
             for (int j = 0; j < Slots.Count; j++)
             {
-                if (Slots[j].Root.activeSelf && Slots[j].Hover != null && Slots[j].Hover.hovering)
+                if (Hovering(Slots[j]))
                     return DropPoint.AtPlace(j);
             }
-            if (hostPlace.Hover != null && hostPlace.Hover.hovering)
-                return DropPoint.Host;
+            for (int k = 0; k < HostPlaces.Count; k++)
+            {
+                if (Hovering(HostPlaces[k]))
+                    return DropPoint.AtHost(k);
+            }
             return null;
         }
+
+        private static bool Hovering(PortraitWidget widget) => widget.Root.activeInHierarchy && widget.Hover != null && widget.Hover.hovering;
 
         /// <summary>
         /// The mouse let go: the drop by the rules, and the game's "plop" when it changed something; a refused drop
@@ -958,23 +1230,29 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// While the mouse is over the talk break's host, the game's cancel icon over her says a click cancels it.
+        /// While the mouse is over a talk break host, the game's cancel icon over her says a click takes her off.
         /// </summary>
         private static void ShowCancel()
         {
-            if (!Alive || cancelOverlay == null)
+            if (!Alive)
                 return;
             ShowSession session = ShowSession.Current;
-            bool show = session != null && session.Host >= 0 && !session.Playing && hostPlace.Hover != null && hostPlace.Hover.hovering;
-            if (cancelOverlay.activeSelf == show)
-                return;
-            cancelOverlay.SetActive(show);
-            hostPlace.SetDimmed(show);
+            for (int k = 0; k < HostPlaces.Count; k++)
+            {
+                GameObject overlay = CancelOverlays[k];
+                if (overlay == null)
+                    continue;
+                bool show = session != null && k < session.Hosts.Length && session.Hosts[k] >= 0 && !session.Playing && drag == null && Hovering(HostPlaces[k]);
+                if (overlay.activeSelf == show)
+                    continue;
+                overlay.SetActive(show);
+                HostPlaces[k].SetDimmed(show);
+            }
         }
 
         /// <summary>
-        /// A quick click: a bench idol takes the first empty place she can, otherwise the hint says to drag; the
-        /// talk break's host is cancelled.
+        /// A quick click: a bench idol takes the first empty place she can on the tab shown, otherwise the hint says
+        /// to drag; a talk break host is taken off.
         /// </summary>
         public static void OnClick(int member, DropPoint from) => Safely(() =>
         {
@@ -983,7 +1261,7 @@ namespace ConcertHype
                 return;
             if (from.Spot == Spot.Host)
             {
-                if (session.Host >= 0 && session.Drop(session.Host, DropPoint.Host, DropPoint.Bench).Changed)
+                if (member >= 0 && session.Drop(member, from, DropPoint.Bench).Changed)
                 {
                     message = null;
                     Render();
@@ -992,7 +1270,7 @@ namespace ConcertHype
             }
             if (from.Spot != Spot.Bench || member < 0)
                 return;
-            DropResult result = session.Click(member);
+            DropResult result = Tab == FormationTab.Song ? session.Click(member) : session.ClickHost(member);
             message = result.Allowed ? null : result.Message;
             if (result.Allowed && result.Changed)
                 Manager()?.OnInsert();
@@ -1346,7 +1624,7 @@ namespace ConcertHype
         /// </summary>
         private static void Move(float share)
         {
-            float scale = Mathf.Lerp(1f, stageScale, share);
+            float scale = Mathf.Lerp(LineupPanel.FormationScale, stageScale, share);
             for (int j = 0; j < view.Slots.Count && j < Places.Count; j++)
             {
                 Vector2 at = Vector2.Lerp(from[j], to[j], share);
@@ -1474,9 +1752,9 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// The popup's column of idols becomes the show's bench: everyone in the agency who isn't on stage or hosting,
-    /// with the show's energy, to drag onto a place or the host place. The column picks its columns and scale from
-    /// how many it holds.
+    /// The popup's column of idols becomes the show's bench: everyone in the agency who isn't in the shown tab's
+    /// set-up (on stage, or hosting the talk break), with the show's energy, to drag onto its places. The column
+    /// picks its columns and scale from how many it holds.
     /// </summary>
     internal static class BenchColumn
     {
@@ -1520,7 +1798,7 @@ namespace ConcertHype
                 widget.Label.gameObject.SetActive(false);
                 Widgets.Add(widget);
             }
-            Render(PanelView.Build(session));
+            Render(PanelView.Build(session, tab: LineupPanel.Tab));
         }
 
         /// <summary>

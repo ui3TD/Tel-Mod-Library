@@ -222,7 +222,18 @@ namespace ConcertHype
                 return;
             if (tooltips == null)
                 tooltips = Camera.main?.GetComponent<mainScript>()?.Data?.GetComponent<TooltipManager>();
-            tooltips?.ShowTooltip(Text);
+            if (tooltips == null)
+                return;
+            // The game hides its tooltips only in a frame nobody shows one, so an idol's profile card left from her
+            // picture would stay under this tip: put it away as the game's hide does
+            GameObject card = tooltips.TooltipStatusButton;
+            if (card != null && card.activeSelf)
+            {
+                DG.Tweening.ShortcutExtensions.DOKill(card.GetComponent<CanvasGroup>());
+                card.GetComponent<CanvasGroup>().alpha = 0f;
+                card.SetActive(false);
+            }
+            tooltips.ShowTooltip(Text);
         }
     }
 

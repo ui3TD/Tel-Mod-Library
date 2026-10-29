@@ -22,7 +22,7 @@ namespace ConcertHype.Tests
         {
             Config config = new();
             Assert.Equal(new double[] { 30, 0.7, 15, 10, 0.7 }, new[] { config.SkillBase, config.SkillScale, config.KSenbatsu, config.RollSigma, config.EnergyMinFactor });
-            Assert.Equal(new double[] { 0, 4, 8, 8, 8 }, config.RowEase);
+            Assert.Equal(new double[] { 0, 4, 8, 12, 16 }, config.RowEase);
             Assert.Equal(new double[] { 0.3, 0.8, 1.2 }, new[] { config.KCrowd, config.CrowdMin, config.CrowdMax });
             Assert.Equal(new double[] { 50, 0.25, 0.5, 60, 3 }, new[] { config.StartingHype, config.FanWeightFloor, config.KPerf, config.Par, config.GenreFlowBonus });
             Assert.Equal(new double[] { 20, 1.5, 0.5 }, new[] { config.NoveltyBlendBand, config.AmpHigh, config.AmpLow });

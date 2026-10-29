@@ -40,7 +40,7 @@ namespace ConcertHype.Tests
                 Assert.Equal(config.RowEaseOf(song.Slots[j].Row), parts.RowEase);
                 Assert.Equal(30 + 0.7 * 40 + 15 + parts.RowEase, parts.Expected, 9);
             }
-            Assert.Equal(new double[] { 0, 4, 8, 8, 8 }, config.RowEase);
+            Assert.Equal(new double[] { 0, 4, 8, 12, 16 }, config.RowEase);
             double front = PanelView.SuccessChance(config, Engine.ExpectedRoll(state, 0, song.Slots[0].Original).Expected);
             double back = PanelView.SuccessChance(config, Engine.ExpectedRoll(state, 5, song.Slots[5].Original).Expected);
             Assert.True(back > front);

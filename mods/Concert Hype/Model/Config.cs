@@ -20,7 +20,7 @@ namespace ConcertHype.Model
         /// <summary>
         /// Roll points added in each row: back rows have an easier skill check.
         /// </summary>
-        public double[] RowEase = { 0, 4, 8, 8, 8 };
+        public double[] RowEase = { 0, 4, 8, 12, 16 };
 
         /// <summary>
         /// The lowest roll that is a critical success. Under par is a failure, under accidentRollThreshold a

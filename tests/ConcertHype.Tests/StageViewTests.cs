@@ -41,6 +41,8 @@ namespace ConcertHype.Tests
                 Assert.Equal(Outcomes.Of(state.Config, slot.Roll), place.Outcome);
                 Assert.Equal(Outcomes.Chances(state.Config, slot.Parts.Expected), place.Chances);
                 Assert.Equal(7200 + 3.6 * Outcomes.WheelPercent(state.Config, slot.Parts.Expected, slot.Roll), place.Angle, 9);
+                Assert.Equal(slot.EnergyBefore, place.EnergyBefore);
+                Assert.Equal(slot.EnergyAfter, place.EnergyAfter);
                 Assert.False(place.Hurt);
             }
         }
@@ -96,6 +98,61 @@ namespace ConcertHype.Tests
             StageView view = PlayFirstSong(state, out SongResult result);
             string roll = System.Math.Round(result.Slots[0].Roll).ToString();
             Assert.Equal($"M0: Critical Success, with a roll of {roll} (expected {roll}). Her chances were 0% critical failure, 0% failure, 0% success and 100% critical success.", view.Slots[0].Tip);
+        }
+
+        /// <summary>
+        /// The rows of a single's triangle with this many places, in place order (rows of 1, 2, 3, 4 and 5).
+        /// </summary>
+        private static int[] Triangle(int places) => Enumerable.Range(0, places).Select(Slot.RowOf).ToArray();
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(6)]
+        [InlineData(7)]
+        [InlineData(10)]
+        [InlineData(12)]
+        [InlineData(15)]
+        public void TheLayout_KeepsEveryItemInsideTheFreeArea_ApartFromTheOthers(int count)
+        {
+            int[] rows = Triangle(count);
+            StagePlace[] places = StageView.Layout(rows);
+            double scale = places[0].Scale, half = StageView.ItemWidth * scale / 2, halfHeight = StageView.ItemHeight * scale / 2;
+            Assert.All(places, place =>
+            {
+                Assert.Equal(scale, place.Scale);
+                Assert.InRange(place.CenterX - half, StageView.AreaLeft - 1e-9, StageView.AreaRight - 2 * half + 1e-9);
+                Assert.InRange(place.CenterY - halfHeight, StageView.AreaTop - 1e-9, StageView.AreaBottom - 2 * halfHeight + 1e-9);
+            });
+            for (int a = 0; a < places.Length; a++)
+            {
+                for (int b = a + 1; b < places.Length; b++)
+                {
+                    bool apartSideways = System.Math.Abs(places[a].CenterX - places[b].CenterX) >= 2 * half + StageView.MinGap - 1e-9;
+                    bool apartDown = System.Math.Abs(places[a].CenterY - places[b].CenterY) >= 2 * halfHeight + StageView.MinGap - 1e-9;
+                    Assert.True(apartSideways || apartDown, $"places {a} and {b} of {count} are too close");
+                }
+            }
+            // Each row centred on the screen's middle
+            foreach (IGrouping<int, int> row in Enumerable.Range(0, count).GroupBy(j => rows[j]))
+                Assert.Equal(512, row.Average(j => places[j].CenterX), 6);
+        }
+
+        [Fact]
+        public void TheLayout_ShrinksOnlyFormationsOfFourRowsOrMore_AndCapsTheSpacingForSmallFormations()
+        {
+            Assert.Equal(1, StageView.Layout(Triangle(6))[0].Scale);
+            Assert.InRange(StageView.Layout(Triangle(10))[0].Scale, 0.94, 0.95);
+            double five = StageView.Layout(Triangle(15))[0].Scale;
+            Assert.InRange(five, 0.72, 0.75);
+
+            StagePlace[] three = StageView.Layout(Triangle(6));
+            Assert.Equal(StageView.MaxRowPitch, three[1].CenterY - three[0].CenterY, 6);
+            Assert.Equal(StageView.MaxPlacePitch, three[2].CenterX - three[1].CenterX, 6);
+            StagePlace[] one = StageView.Layout(Triangle(1));
+            Assert.Equal(512, one[0].CenterX, 6);
+            Assert.Equal((StageView.AreaTop + StageView.AreaBottom) / 2, one[0].CenterY, 6);
         }
 
         [Fact]

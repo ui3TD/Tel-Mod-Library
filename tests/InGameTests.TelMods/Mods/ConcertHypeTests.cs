@@ -315,6 +315,9 @@ namespace InGameTests.TelMods
                         Transform stageAfter = popup.transform.Find("ConcertHype Stage");
                         if (stageAfter != null && stageAfter.gameObject.activeInHierarchy)
                             ctx.Fail("The stage still shows after song 1");
+                        float benchAfter = BenchAlphas(popup).DefaultIfEmpty(1f).Min();
+                        if (benchAfter < 0.99f)
+                            ctx.Fail("The bench is still faded after song 1 (alpha " + benchAfter + ")");
                         ctx.Record("song seconds", songLength);
                         if (Math.Abs(songLength - songSeconds) > 0.5)
                             ctx.Fail($"Song 1 played {songLength} s, not about {songSeconds}");
@@ -345,6 +348,12 @@ namespace InGameTests.TelMods
             }
             yield return Game.CloseAllPopups(ctx);
         }
+
+        /// <summary>
+        /// The fade of each bench portrait shown: each one's own group, not the game's column or the labels in it.
+        /// </summary>
+        private static IEnumerable<float> BenchAlphas(Concert_Popup popup) =>
+            popup.Girls.transform.Cast<Transform>().Where(t => t.gameObject.activeSelf).Select(t => t.GetComponent<CanvasGroup>()).Where(g => g != null).Select(g => g.alpha);
 
         private static bool NextSongShown(Concert_Popup popup) =>
             popup.NextSong_Container.activeSelf && popup.NextSong_Container.GetComponent<CanvasGroup>().alpha > 0.99f;
@@ -379,8 +388,9 @@ namespace InGameTests.TelMods
 
         /// <summary>
         /// Near the end of a song, every filled place has its copy of the marketing wheel with its four rings
-        /// drawn from the game's sprites and her face masked into its middle, and her roll shows, landed by the
-        /// stage's own clock.
+        /// drawn from the game's sprites, and her roll shows, landed by the stage's own clock. As drawn, the
+        /// places are on screen, apart from each other and clear of the song's title and progress bar, and the
+        /// bench is faded out.
         /// </summary>
         private static void CheckStage(TestContext ctx, Concert_Popup popup, object pending)
         {
@@ -401,13 +411,36 @@ namespace InGameTests.TelMods
                 Image[] rings = place.Find("Wheel/Spinny_Part").GetComponentsInChildren<Image>();
                 if (rings.Length != 4 || rings.Any(ring => ring.sprite == null))
                     ctx.Fail(place.name + "'s wheel doesn't have the game's four rings");
-                Image face = place.Find("Wheel/Fill/Face")?.GetComponent<Image>();
-                if (face == null || face.sprite == null || face.GetComponentInParent<Mask>() == null)
-                    ctx.Fail(place.name + "'s wheel doesn't show her face in its middle");
                 TextMeshProUGUI number = place.Find("Label")?.GetComponent<TextMeshProUGUI>();
                 if (number == null || !number.gameObject.activeInHierarchy || number.text.Length == 0)
                     ctx.Fail(place.name + " shows no roll by the end of the song");
             }
+
+            // Each place as drawn: her picture and her number
+            List<Rect> drawn = places.Select(place =>
+            {
+                Rect picture = ScreenRect(place.Find("Center")), number = ScreenRect(place.Find("Label"));
+                return Rect.MinMaxRect(Mathf.Min(picture.xMin, number.xMin), Mathf.Min(picture.yMin, number.yMin),
+                    Mathf.Max(picture.xMax, number.xMax), Mathf.Max(picture.yMax, number.yMax));
+            }).ToList();
+            Rect screen = new(0, 0, Screen.width, Screen.height);
+            Rect title = ScreenRect(popup.SongTitle.transform), progress = ScreenRect(popup.SongProgress.transform);
+            for (int a = 0; a < drawn.Count; a++)
+            {
+                if (!screen.Contains(drawn[a].min) || !screen.Contains(drawn[a].max))
+                    ctx.Fail(places[a].name + " is partly off screen: " + drawn[a]);
+                if (drawn[a].Overlaps(title) || drawn[a].Overlaps(progress))
+                    ctx.Fail(places[a].name + " covers the song's title or progress bar");
+                for (int b = a + 1; b < drawn.Count; b++)
+                {
+                    if (drawn[a].Overlaps(drawn[b]))
+                        ctx.Fail(places[a].name + " overlaps " + places[b].name);
+                }
+            }
+            float bench = BenchAlphas(popup).DefaultIfEmpty(0f).Max();
+            ctx.Record("bench alpha during the song", bench);
+            if (bench > 0.05f)
+                ctx.Fail("The bench shows during the song (alpha " + bench + ")");
         }
 
         /// <summary>

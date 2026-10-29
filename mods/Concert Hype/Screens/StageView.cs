@@ -38,6 +38,9 @@ namespace ConcertHype
         /// </summary>
         public double LandAt;
 
+        public double EnergyBefore;
+        public double EnergyAfter;
+
         /// <summary>
         /// Hurt in this song: the hurt icon shows when her wheel lands.
         /// </summary>
@@ -49,6 +52,15 @@ namespace ConcertHype
         /// The outcome and her chances, shown when her number is hovered.
         /// </summary>
         public string Tip = "";
+    }
+
+    /// <summary>
+    /// Where one place's item (her wheel over her portrait) sits on stage: its centre in the concert popup's
+    /// 1024 x 640 coordinates, from the top left, and the scale every item shares.
+    /// </summary>
+    public struct StagePlace
+    {
+        public double CenterX, CenterY, Scale;
     }
 
     /// <summary>
@@ -71,6 +83,63 @@ namespace ConcertHype
 
         public bool Shown => Slots.Count > 0;
 
+        /// <summary>
+        /// The stage's free area while a song plays: under the hype bar, over the title strip, the full width (the
+        /// bench is faded out).
+        /// </summary>
+        public const double AreaLeft = 40, AreaRight = 984, AreaTop = 40, AreaBottom = 500;
+
+        /// <summary>
+        /// One item at full size: a wheel, a gap, then the portrait with its energy bar.
+        /// </summary>
+        public const double ItemWidth = 54, ItemHeight = 112, WheelSize = 48, PortraitTop = 54;
+
+        /// <summary>
+        /// The least space between two items, and the most from one row or place to the next, so a small
+        /// formation doesn't fly apart.
+        /// </summary>
+        public const double MinGap = 12, MaxRowPitch = 130, MaxPlacePitch = 240;
+
+        /// <summary>
+        /// The formation spread over the free area: rows evenly apart and centred as a block, each row's places
+        /// evenly apart and centred. When the rows don't fit at full size with the least gap between them, every
+        /// item shrinks alike.
+        /// </summary>
+        /// <param name="rows">Each place's row, in place order.</param>
+        public static StagePlace[] Layout(IList<int> rows)
+        {
+            StagePlace[] places = new StagePlace[rows.Count];
+            if (rows.Count == 0)
+                return places;
+            int rowCount = rows.Max() + 1;
+            int[] perRow = new int[rowCount], placed = new int[rowCount];
+            foreach (int row in rows)
+                perRow[row]++;
+            int widest = perRow.Max();
+
+            double width = AreaRight - AreaLeft, height = AreaBottom - AreaTop;
+            double scale = Math.Min(1, Math.Min(
+                (height - (rowCount - 1) * MinGap) / (rowCount * ItemHeight),
+                (width - (widest - 1) * MinGap) / (widest * ItemWidth)));
+            double itemHeight = ItemHeight * scale, itemWidth = ItemWidth * scale;
+            double rowPitch = rowCount == 1 ? 0 : Math.Min(MaxRowPitch, (height - itemHeight) / (rowCount - 1));
+            double placePitch = widest == 1 ? 0 : Math.Min(MaxPlacePitch, (width - itemWidth) / (widest - 1));
+            double top = AreaTop + (height - ((rowCount - 1) * rowPitch + itemHeight)) / 2;
+            double middle = (AreaLeft + AreaRight) / 2;
+
+            for (int j = 0; j < rows.Count; j++)
+            {
+                int row = rows[j];
+                places[j] = new StagePlace
+                {
+                    CenterX = middle + (placed[row]++ - (perRow[row] - 1) / 2.0) * placePitch,
+                    CenterY = top + row * rowPitch + itemHeight / 2,
+                    Scale = scale,
+                };
+            }
+            return places;
+        }
+
         public static StageView Build(ShowSession session) => Build(session.State, session.Pending, session.Name);
 
         public static StageView Build(ShowState state, SongResult result, Func<int, string> name)
@@ -92,6 +161,8 @@ namespace ConcertHype
                 place.Roll = Whole(slot.Roll);
                 place.Chances = Outcomes.Chances(config, expected);
                 place.Angle = 360 * Turns + 3.6 * Outcomes.WheelPercent(config, expected, slot.Roll);
+                place.EnergyBefore = slot.EnergyBefore;
+                place.EnergyAfter = slot.EnergyAfter;
                 place.Hurt = slot.Accident;
                 if (slot.Accident)
                     place.HurtTip = Texts.Format("CONCERTHYPE__TIP_HURT", slot.AbsenceLength == 1 ? Texts.Get("CONCERTHYPE__SONG") : Texts.Format("CONCERTHYPE__SONGS", slot.AbsenceLength));

@@ -746,10 +746,7 @@ namespace ConcertHype
         /// The top-left corner of each place's portrait in the game's triangle, given each place's row: each row
         /// centred under the one before, in place order.
         /// </summary>
-        public static Vector2[] FormationPlaces(IList<int> rows) => FormationPlaces(rows, TriangleTop, RowHeight, CellWidth);
-
-        /// <param name="top">Where the first row's portraits start.</param>
-        public static Vector2[] FormationPlaces(IList<int> rows, float top, float rowHeight, float cellWidth)
+        public static Vector2[] FormationPlaces(IList<int> rows)
         {
             int[] perRow = new int[5], placed = new int[5];
             foreach (int row in rows)
@@ -758,7 +755,7 @@ namespace ConcertHype
             for (int j = 0; j < rows.Count; j++)
             {
                 int row = rows[j];
-                places[j] = new Vector2(TriangleCenterX + (placed[row]++ - (perRow[row] - 1) / 2f) * cellWidth - 27f, top + row * rowHeight);
+                places[j] = new Vector2(TriangleCenterX + (placed[row]++ - (perRow[row] - 1) / 2f) * CellWidth - 27f, TriangleTop + row * RowHeight);
             }
             return places;
         }
@@ -1004,25 +1001,21 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// A copy of a single's marketing wheel: its arcs are an idol's chances, her face sits in its dark middle where
-    /// the game shows the marketing icon, and the pointer takes the colour of the arc under it, as the game's.
+    /// A small copy of a single's marketing wheel: its arcs are an idol's chances, and the pointer takes the colour
+    /// of the arc under it, as the game's.
     /// </summary>
     internal sealed class WheelWidget
     {
         /// <summary>
         /// The pointer is drawn this much larger than the wheel's scale, so it reads at this size.
         /// </summary>
-        private const float PointerBoost = 1.3f;
-
-        /// <summary>
-        /// Her face's width as a share of the dark middle, which shows as a thin dark ring around it.
-        /// </summary>
-        private const float FaceShare = 0.88f;
+        private const float PointerBoost = 1.8f;
 
         public GameObject Root;
         private Transform spin;
-        private Image success, criticalSuccess, criticalFailure, face;
+        private Image success, criticalSuccess, criticalFailure;
         private TextMeshProUGUI pointer;
+        private float scale;
         private double[] chances = new double[Outcomes.Count];
 
         /// <summary>
@@ -1049,39 +1042,20 @@ namespace ConcertHype
             GameObject frame = game.Spinner_Container.transform.parent.gameObject;
             RectTransform frameRect = (RectTransform)frame.transform;
             Vector2 gameSize = frameRect.rect.size;
-            float scale = size / gameSize.x;
             GameObject root = Ui.Copy(frame, parent, Shapes.Wheel, "marketing wheel", "Wheel");
             RectTransform rect = (RectTransform)root.transform;
             rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = new Vector2(x, -y);
             rect.sizeDelta = gameSize;
-            rect.localScale = new Vector3(scale, scale, 1f);
             rect.localRotation = Quaternion.identity;
-            WheelWidget wheel = new WheelWidget { Root = root };
+            WheelWidget wheel = new WheelWidget { Root = root, scale = size / gameSize.x };
+            wheel.SetPop(1f);
 
             wheel.spin = root.transform.Find(game.Spinner_Container.name);
             wheel.success = wheel.spin?.Find(game.Spinner_Bar_LightGreen.name)?.GetComponent<Image>();
             wheel.criticalSuccess = wheel.spin?.Find(game.Spinner_Bar_DarkGreen.name)?.GetComponent<Image>();
             wheel.criticalFailure = wheel.spin?.Find(game.Spinner_Bar_DarkRed.name)?.GetComponent<Image>();
-
-            // Her face in the dark middle, cut to its circle
-            Image middle = root.transform.Find("Fill")?.GetComponent<Image>();
-            if (middle != null)
-            {
-                middle.gameObject.AddComponent<Mask>().showMaskGraphic = true;
-                GameObject faceObject = new GameObject("Face", typeof(RectTransform));
-                faceObject.transform.SetParent(middle.transform, false);
-                RectTransform faceRect = (RectTransform)faceObject.transform;
-                faceRect.anchorMin = faceRect.anchorMax = faceRect.pivot = new Vector2(0.5f, 0.5f);
-                faceRect.anchoredPosition = Vector2.zero;
-                faceRect.sizeDelta = ((RectTransform)middle.transform).rect.size * FaceShare;
-                wheel.face = faceObject.AddComponent<Image>();
-            }
-            else
-            {
-                Log.WarnOnce("wheel middle", "couldn't find the middle of the game's marketing wheel; the wheels show without faces");
-            }
 
             // Where the game's pointer sits from the wheel's centre
             RectTransform gamePointer = (RectTransform)game.Spinner_Icon.transform;
@@ -1101,13 +1075,10 @@ namespace ConcertHype
             return wheel;
         }
 
-        public void SetFace(Sprite sprite)
-        {
-            if (face == null)
-                return;
-            face.sprite = sprite;
-            face.color = sprite != null ? Color.white : new Color(1f, 1f, 1f, 0f);
-        }
+        /// <summary>
+        /// How much of its size the wheel shows: 0 to 1 as it pops in, 1 to 0 as it gives way to her number.
+        /// </summary>
+        public void SetPop(float share) => Root.transform.localScale = new Vector3(scale * share, scale * share, 1f);
 
         /// <summary>
         /// The arcs as the game fills them: success, then critical success, then critical failure, from the top
@@ -1143,37 +1114,48 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// The formation on stage while a song plays, each idol as a marketing wheel with her face in the middle. The
-    /// wheels spin as the song starts and land one by one, back row first and the center last; her roll then
-    /// shows under her wheel in its outcome's colour, with the outcome and her chances on hover. It hides itself
-    /// when the song ends.
+    /// The formation on stage while a song plays, spread over the screen: each idol's portrait with a small
+    /// marketing wheel above it. The portraits slide from the lineup panel's places to the stage's as the song
+    /// starts, and back as it ends, while the bench fades out and in. The wheels spin as the song starts and land
+    /// one by one, back row first and the center last; each then gives way to her roll in its outcome's colour,
+    /// with the outcome and her chances on hover.
     /// </summary>
     internal static class StageRolls
     {
         private const string Name = "ConcertHype Stage";
-        private const float PunchSeconds = 0.3f, PunchScale = 0.5f, NumberSize = 18f;
+        private const float EnterSeconds = 0.5f, LeaveSeconds = 0.4f, PopSeconds = 0.2f, PunchSeconds = 0.3f, PunchScale = 0.5f, NumberSize = 20f;
 
         /// <summary>
-        /// The song screen is free from the hype bar to the title strip, so the stage's triangle is larger than the
-        /// next-song screen's: rows of a wheel and a number.
+        /// The wheel's and the number's centre, from the portrait's top-left corner.
         /// </summary>
-        private const float Top = 42f, RowHeight = 96f, CellWidth = 80f, WheelSize = 72f;
+        private static readonly Vector2 WheelCentre = new Vector2(27f, (float)(StageView.WheelSize / 2 - StageView.PortraitTop));
 
-        /// <summary>
-        /// The middle of the portrait's picture, from its top-left corner: the wheel's centre.
-        /// </summary>
-        private static readonly Vector2 PictureCentre = new Vector2(26.5f, 25.5f);
+        private enum Phase
+        {
+            Entering,
+            Playing,
+            Leaving,
+        }
 
         private static Concert_Popup owner;
         private static GameObject root;
+        private static CanvasGroup group;
         private static readonly List<PortraitWidget> Places = new List<PortraitWidget>();
         private static readonly List<WheelWidget> Wheels = new List<WheelWidget>();
         private static readonly List<IconTip> NumberTips = new List<IconTip>();
 
         private static StageView view;
+        private static Phase phase;
+        private static float phaseTime;
         private static bool started;
         private static float elapsed, waited;
         private static float[] landedAt;
+
+        /// <summary>
+        /// Each place's portrait corner on the lineup panel and on stage, and its scale on stage.
+        /// </summary>
+        private static Vector2[] from, to;
+        private static float stageScale = 1f;
 
         private static bool Alive => root != null && owner != null;
 
@@ -1199,7 +1181,14 @@ namespace ConcertHype
                     return;
                 }
                 Ensure(popup);
-                Vector2[] places = LineupPanel.FormationPlaces(view.Slots.Select(slot => slot.Row).ToList(), Top, RowHeight, CellWidth);
+                List<int> rows = view.Slots.Select(slot => slot.Row).ToList();
+                from = LineupPanel.FormationPlaces(rows);
+                StagePlace[] stage = StageView.Layout(rows);
+                stageScale = (float)stage[0].Scale;
+                to = stage.Select(place => new Vector2(
+                    (float)(place.CenterX - StageView.ItemWidth / 2 * place.Scale),
+                    (float)(place.CenterY + (StageView.PortraitTop - StageView.ItemHeight / 2) * place.Scale))).ToArray();
+
                 for (int j = 0; j < Places.Count; j++)
                 {
                     PortraitWidget widget = Places[j];
@@ -1209,26 +1198,28 @@ namespace ConcertHype
                     if (!used)
                         continue;
                     StageSlotView slot = view.Slots[j];
-                    data_girls.girls girl = slot.HasRoll ? session.Show.Girls[slot.Member] : null;
-                    Ui.Place(widget.Root, places[j].x, places[j].y, 54f, 58f);
-                    // Under her wheel, the picture still shows her profile when hovered
-                    widget.SetGirl(girl);
+                    widget.SetGirl(slot.HasRoll ? session.Show.Girls[slot.Member] : null);
+                    Ui.SetEnergyBar(widget.Bar, slot.HasRoll ? slot.EnergyBefore : 0);
                     widget.Icon.Set(IconKind.None, "");
                     widget.Label.gameObject.SetActive(false);
                     if (wheel != null)
                     {
                         wheel.Root.SetActive(slot.HasRoll);
+                        wheel.SetPop(0f);
                         if (slot.HasRoll)
                         {
-                            wheel.SetFace(girl?.texture?.small);
                             wheel.SetChances(slot.Chances);
                             wheel.SetAngle(0);
                         }
                     }
                 }
+                phase = Phase.Entering;
+                phaseTime = 0f;
                 started = false;
                 elapsed = waited = 0f;
                 landedAt = Enumerable.Repeat(-1f, view.Slots.Count).ToArray();
+                Move(0f);
+                group.alpha = 1f;
                 // Over the song's title strip, under the bench column and the hype bar
                 root.transform.SetSiblingIndex(popup.Song.transform.GetSiblingIndex() + 1);
                 root.SetActive(true);
@@ -1253,6 +1244,7 @@ namespace ConcertHype
         {
             if (root != null)
                 root.SetActive(false);
+            BenchColumn.Fade(1f);
         }
 
         private static void Ensure(Concert_Popup popup)
@@ -1266,25 +1258,24 @@ namespace ConcertHype
             root = new GameObject(Name, typeof(RectTransform));
             root.transform.SetParent(popup.transform, false);
             Ui.Stretch(root);
+            group = root.AddComponent<CanvasGroup>();
             root.AddComponent<StageDriver>();
 
             GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
             Single_Marketing_Roll template = WheelWidget.Template();
-            float wheelBottom = PictureCentre.y + WheelSize / 2f;
             for (int j = 0; j < GameReader.SenbatsuPositions; j++)
             {
-                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Place " + j, DropPoint.AtPlace(j));
-                // Nobody is dragged off the stage while she sings, and the show's energy waits for the next screen
+                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Place " + j, DropPoint.AtPlace(j), iconOnPicture: true);
+                // Nobody is dragged off the stage while she sings
                 if (widget.Drag != null)
                     UnityEngine.Object.Destroy(widget.Drag);
-                widget.Bar?.gameObject.SetActive(false);
                 TextMeshProUGUI number = widget.Label;
-                Ui.Place(number.gameObject, 0f, wheelBottom, 54f, 22f);
-                // It pops from its middle
+                // In the wheel's place, popping from its middle
                 RectTransform numberRect = (RectTransform)number.transform;
+                Ui.Place(number.gameObject, 0f, 0f, 54f, 24f);
                 numberRect.pivot = new Vector2(0.5f, 0.5f);
-                numberRect.anchoredPosition = new Vector2(PictureCentre.x, -wheelBottom - 11f);
-                number.alignment = TextAlignmentOptions.Top;
+                numberRect.anchoredPosition = new Vector2(WheelCentre.x, -WheelCentre.y);
+                number.alignment = TextAlignmentOptions.Center;
                 number.fontSize = NumberSize;
                 number.fontStyle = FontStyles.Bold;
                 // Readable over the stage lights
@@ -1293,13 +1284,24 @@ namespace ConcertHype
                 number.raycastTarget = true;
                 NumberTips.Add(number.gameObject.AddComponent<IconTip>());
                 Places.Add(widget);
-                if (template == null)
-                    continue;
-                WheelWidget wheel = WheelWidget.Make(template, widget.Root.transform, PictureCentre.x, PictureCentre.y, WheelSize);
-                // Over her picture, under her number and icon
-                wheel.Root.transform.SetSiblingIndex(number.transform.GetSiblingIndex());
-                Wheels.Add(wheel);
-                widget.Icon.PlaceAt(PictureCentre.x + WheelSize / 2f - IconWidget.Size, wheelBottom - IconWidget.Size);
+                if (template != null)
+                    Wheels.Add(WheelWidget.Make(template, widget.Root.transform, WheelCentre.x, WheelCentre.y, (float)StageView.WheelSize));
+            }
+        }
+
+        private static float Ease(float t) => t < 0.5f ? 2f * t * t : 1f - Mathf.Pow(-2f * t + 2f, 2f) / 2f;
+
+        /// <summary>
+        /// The portraits this far (0 to 1) from the lineup panel's places to the stage's.
+        /// </summary>
+        private static void Move(float share)
+        {
+            float scale = Mathf.Lerp(1f, stageScale, share);
+            for (int j = 0; j < view.Slots.Count && j < Places.Count; j++)
+            {
+                Vector2 at = Vector2.Lerp(from[j], to[j], share);
+                Ui.Place(Places[j].Root, at.x, at.y, 54f, 58f);
+                Places[j].Root.transform.localScale = new Vector3(scale, scale, 1f);
             }
         }
 
@@ -1310,38 +1312,74 @@ namespace ConcertHype
             try
             {
                 ShowSession session = ShowSession.Current;
-                if (session == null || session.Pending == null || !ReferenceEquals(owner.Concert, session.Concert))
+                if (session == null || !ReferenceEquals(owner.Concert, session.Concert))
                 {
                     Hide();
                     return;
                 }
-                // The wheels start with the song's progress bar
+                if (phase != Phase.Leaving && session.Pending == null)
+                {
+                    phase = Phase.Leaving;
+                    phaseTime = 0f;
+                }
+                phaseTime += Time.deltaTime;
+
+                if (phase == Phase.Leaving)
+                {
+                    float back = Mathf.Clamp01(phaseTime / LeaveSeconds);
+                    Move(1f - Ease(back));
+                    group.alpha = 1f - back;
+                    BenchColumn.Fade(back);
+                    if (back >= 1f)
+                        Hide();
+                    return;
+                }
+
+                if (phase == Phase.Entering)
+                {
+                    float there = Mathf.Clamp01(phaseTime / EnterSeconds);
+                    Move(Ease(there));
+                    BenchColumn.Fade(1f - there);
+                    if (there >= 1f)
+                    {
+                        phase = Phase.Playing;
+                        phaseTime = 0f;
+                    }
+                }
+                float pop = phase == Phase.Playing ? Mathf.Clamp01(phaseTime / PopSeconds) : 0f;
+
+                // The wheels turn with the song's progress bar
                 if (!started)
                 {
                     float bar = owner.SongProgressBar != null ? owner.SongProgressBar.transform.localScale.x : 0f;
                     waited += Time.unscaledDeltaTime;
-                    if (!(bar > 0f && bar < 0.5f) && waited < 2f)
-                        return;
-                    started = true;
-                    mainScript.playAudioClip("spinner");
+                    if (bar > 0f && bar < 0.5f || waited >= 2f)
+                    {
+                        started = true;
+                        mainScript.playAudioClip("spinner");
+                    }
                 }
-                elapsed += Time.deltaTime;
+                if (started)
+                    elapsed += Time.deltaTime;
                 float song = Pace.SongSeconds();
                 for (int j = 0; j < view.Slots.Count; j++)
                 {
                     StageSlotView slot = view.Slots[j];
                     if (!slot.HasRoll)
                         continue;
+                    WheelWidget wheel = j < Wheels.Count ? Wheels[j] : null;
                     if (landedAt[j] < 0f)
                     {
+                        wheel?.SetPop(pop);
                         double t = Math.Min(1.0, elapsed / Math.Max(0.01, slot.LandAt * song));
-                        if (j < Wheels.Count)
-                            Wheels[j].SetAngle(slot.Angle * (1 - Math.Pow(1 - t, 4)));
-                        if (t >= 1.0)
+                        wheel?.SetAngle(slot.Angle * (1 - Math.Pow(1 - t, 4)));
+                        if (started && t >= 1.0)
                             Land(j, slot);
                         continue;
                     }
-                    float punch = 1f + PunchScale * (1f - Mathf.Clamp01((elapsed - landedAt[j]) / PunchSeconds));
+                    float since = elapsed - landedAt[j];
+                    wheel?.SetPop(Mathf.Min(pop, 1f - Mathf.Clamp01(since / PopSeconds)));
+                    float punch = 1f + PunchScale * (1f - Mathf.Clamp01(since / PunchSeconds));
                     Places[j].Label.transform.localScale = new Vector3(punch, punch, 1f);
                 }
             }
@@ -1360,6 +1398,7 @@ namespace ConcertHype
             widget.Label.text = slot.Roll;
             widget.Label.color = ColorOf(slot.Outcome);
             NumberTips[j].Text = slot.Tip;
+            Ui.SetEnergyBar(widget.Bar, slot.EnergyAfter);
             if (slot.Hurt)
                 widget.Icon.Set(IconKind.Hurt, slot.HurtTip);
             if (slot.Outcome == Outcome.CriticalSuccess)
@@ -1417,6 +1456,18 @@ namespace ConcertHype
                 Widgets.Add(widget);
             }
             Render(PanelView.Build(session));
+        }
+
+        /// <summary>
+        /// The bench portraits fade while a song plays: they're the show's own, so the game's column is untouched.
+        /// </summary>
+        public static void Fade(float alpha)
+        {
+            foreach (PortraitWidget widget in Widgets)
+            {
+                if (widget.Group != null)
+                    widget.Group.alpha = alpha;
+            }
         }
 
         /// <summary>

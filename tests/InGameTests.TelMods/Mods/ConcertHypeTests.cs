@@ -423,10 +423,12 @@ namespace InGameTests.TelMods
         }
 
         /// <summary>
-        /// The fade of each bench portrait shown: each one's own group, not the game's column or the labels in it.
+        /// The fade of each bench portrait shown and of the bench's title, dropdown, panel and scrollbar: each one's own
+        /// group, not the game's column or the parts inside them.
         /// </summary>
         private static IEnumerable<float> BenchAlphas(Concert_Popup popup) =>
-            popup.Girls.transform.Find("Bench Scroll/Content").Cast<Transform>().Where(t => t.gameObject.activeSelf).Select(t => t.GetComponent<CanvasGroup>()).Where(g => g != null).Select(g => g.alpha);
+            popup.Girls.transform.Find("Bench Scroll/Content").Cast<Transform>().Concat(popup.Girls.transform.Cast<Transform>())
+                .Where(t => t.gameObject.activeSelf).Select(t => t.GetComponent<CanvasGroup>()).Where(g => g != null).Select(g => g.alpha);
 
         private static bool NextSongShown(Concert_Popup popup) =>
             popup.NextSong_Container.activeSelf && popup.NextSong_Container.GetComponent<CanvasGroup>().alpha > 0.99f;

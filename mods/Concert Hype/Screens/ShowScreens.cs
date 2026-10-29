@@ -1809,6 +1809,11 @@ namespace ConcertHype
         private static GameObject dropdown;
         private static TextMeshProUGUI title;
         private static RectTransform panel;
+
+        /// <summary>
+        /// The bench's title, dropdown, panel and scrollbar, which fade with the portraits while a song plays.
+        /// </summary>
+        private static readonly List<CanvasGroup> Frame = new List<CanvasGroup>();
         private static float barWidth = DefaultBarWidth;
         private static List<GroupChoice> groups = new List<GroupChoice>();
 
@@ -1850,6 +1855,15 @@ namespace ConcertHype
             scrollbar = MakeScrollbar(column, scroll);
             groups = session.Show.Groups;
             dropdown = MakeDropdown(column, PanelView.GroupChoices(groups));
+            Frame.Clear();
+            foreach (Component part in new Component[] { title, panel, dropdown?.transform, scrollbar?.transform })
+            {
+                if (part == null)
+                    continue;
+                CanvasGroup group = part.GetComponent<CanvasGroup>() ?? part.gameObject.AddComponent<CanvasGroup>();
+                group.alpha = 1f;
+                Frame.Add(group);
+            }
             GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
             for (int m = 0; m < session.Show.Girls.Count; m++)
             {
@@ -2096,7 +2110,8 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// The bench portraits fade while a song plays: they're the show's own, so the game's column is untouched.
+        /// The bench fades while a song plays, its title, dropdown, panel and scrollbar with it, and takes no clicks
+        /// until it's back: they're the show's own, so the game's column is untouched.
         /// </summary>
         public static void Fade(float alpha)
         {
@@ -2104,6 +2119,13 @@ namespace ConcertHype
             {
                 if (widget.Group != null)
                     widget.Group.alpha = alpha;
+            }
+            foreach (CanvasGroup group in Frame)
+            {
+                if (group == null)
+                    continue;
+                group.alpha = alpha;
+                group.blocksRaycasts = group.interactable = alpha > 0.99f;
             }
         }
 
@@ -2121,6 +2143,7 @@ namespace ConcertHype
             dropdown = null;
             title = null;
             panel = null;
+            Frame.Clear();
             groups = new List<GroupChoice>();
             Group = -1;
             owner = null;

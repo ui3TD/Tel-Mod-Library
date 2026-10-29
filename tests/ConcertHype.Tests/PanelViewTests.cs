@@ -206,6 +206,43 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
+        public void TheBars_ExplainEnergyAndSuccess_WhenHovered()
+        {
+            ShowSession session = ThreeSongs(out _concert concert);
+            new FakeStage(concert).PlaySong(session);
+            ShowState state = session.State;
+            Config config = state.Config;
+            string Whole(double value) => Math.Round(value).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            // Song 2 is 3, 4, 5 in rows 0, 1, 1: a front place costs more than a back one
+            PanelView view = PanelView.Build(session);
+            SongPreview preview = session.Preview();
+            for (int j = 0; j < view.Slots.Count; j++)
+            {
+                SlotView slot = view.Slots[j];
+                double cost = config.EnergyCostBase * config.RowCostOf(slot.Row);
+                Assert.Equal($"Energy {Whole(state.Energy[slot.Member])}%. This song uses about {Whole(cost)}.", slot.EnergyTip);
+                double[] chances = Outcomes.Chances(config, preview.Slots[j].Expected);
+                Assert.Equal($"Success {Whole(chances[(int)Outcome.Success] + chances[(int)Outcome.CriticalSuccess])}% "
+                    + $"(critical {Whole(chances[(int)Outcome.CriticalSuccess])}%). Critical failure {Whole(chances[(int)Outcome.CriticalFailure])}%.", slot.SuccessTip);
+            }
+            Assert.Equal("12", Whole(config.EnergyCostBase * config.RowCostOf(0)));
+            Assert.NotEqual(view.Slots[0].EnergyTip, view.Slots[1].EnergyTip);
+            BenchView bench = view.Bench.First(b => b.Member == 0);
+            Assert.Equal($"Energy {Whole(state.Energy[0])}%. Recovers {Whole(config.BenchRecovery)} per song sat out.", bench.EnergyTip);
+            Assert.False(view.Dragging);
+
+            // A host's energy doesn't come back during the talk break; an empty host place has no tip
+            session.Drop(0, DropPoint.Bench, DropPoint.AtHost(1));
+            PanelView talk = PanelView.Build(session, tab: FormationTab.Talk);
+            Assert.Equal($"Energy {Whole(state.Energy[0])}%. Hosts don't recover.", talk.Hosts[1].EnergyTip);
+            Assert.Equal("", talk.Hosts[0].EnergyTip);
+
+            // While an idol is dragged, the strips let the mouse through to the places
+            Assert.True(PanelView.Build(session, new DragView { Member = 1, From = DropPoint.Bench }).Dragging);
+        }
+
+        [Fact]
         public void EachTab_HasItsReadouts_AndAHostingPerformerShowsAsUsualInTheSong()
         {
             ShowSession session = ThreeSongs(out _concert concert);

@@ -554,6 +554,8 @@ namespace ConcertHype
         public Image BarTrack;
         public Image Success;
         public Image SuccessBack;
+        public IconTip EnergyHover;
+        public IconTip SuccessHover;
         public TextMeshProUGUI Label;
         public IconWidget Icon;
         private Color backgroundColor;
@@ -583,11 +585,19 @@ namespace ConcertHype
             if (widget.Bar != null)
             {
                 widget.BarTrack = BarLike(widget.Bar, "Stamina Track", EnergyTrack, 0f);
+                float barHeight = ((RectTransform)widget.Bar.transform).rect.height;
                 if (successBar)
                 {
-                    float below = ((RectTransform)widget.Bar.transform).rect.height + 1f;
+                    float below = barHeight + 1f;
                     widget.SuccessBack = BarLike(widget.Bar, "Success Track", SuccessTrack, below);
                     widget.Success = BarLike(widget.Bar, "Success", SuccessFill, below);
+                    // The energy strip reaches up, the success strip down, so they don't overlap
+                    widget.EnergyHover = HoverStrip(widget.Bar, "Energy Hover", 0f, HoverPad, 0.5f);
+                    widget.SuccessHover = HoverStrip(widget.Bar, "Success Hover", below, 0.5f, HoverPad);
+                }
+                else
+                {
+                    widget.EnergyHover = HoverStrip(widget.Bar, "Energy Hover", 0f, HoverPad, HoverPad);
                 }
             }
             if (widget.Background != null)
@@ -640,6 +650,52 @@ namespace ConcertHype
             image.raycastTarget = false;
             obj.transform.SetSiblingIndex(below > 0f ? from.parent.childCount - 1 : from.GetSiblingIndex());
             return image;
+        }
+
+        /// <summary>
+        /// How far a bar's hover strip reaches past the bar, in pixels.
+        /// </summary>
+        private const float HoverPad = 3f;
+
+        /// <summary>
+        /// An invisible strip over a bar (this far under the energy bar), reaching this far above and below it, that
+        /// shows a tooltip while hovered. It takes the mouse only while it has a tip.
+        /// </summary>
+        private static IconTip HoverStrip(Image bar, string name, float below, float up, float down)
+        {
+            RectTransform from = (RectTransform)bar.transform;
+            GameObject obj = new GameObject(name, typeof(RectTransform));
+            obj.transform.SetParent(from.parent, false);
+            RectTransform rect = (RectTransform)obj.transform;
+            rect.anchorMin = from.anchorMin;
+            rect.anchorMax = from.anchorMax;
+            rect.pivot = from.pivot;
+            rect.sizeDelta = from.sizeDelta + new Vector2(0f, up + down);
+            // The extra height grows around the pivot; the shift puts "up" above the bar and "down" below it
+            rect.anchoredPosition = from.anchoredPosition + new Vector2(0f, up - (1f - from.pivot.y) * (up + down) - below);
+            Image image = obj.AddComponent<Image>();
+            image.color = new Color(1f, 1f, 1f, 0f);
+            image.raycastTarget = false;
+            obj.transform.SetAsLastSibling();
+            return obj.AddComponent<IconTip>();
+        }
+
+        /// <summary>
+        /// The bars' tooltips. While an idol is dragged the strips let the mouse through, so a drop still finds the
+        /// place's button.
+        /// </summary>
+        public void SetBarTips(string energy, string success, bool dragging)
+        {
+            SetHover(EnergyHover, energy, dragging);
+            SetHover(SuccessHover, success, dragging);
+        }
+
+        private static void SetHover(IconTip hover, string text, bool dragging)
+        {
+            if (hover == null)
+                return;
+            hover.Text = text ?? "";
+            hover.GetComponent<Image>().raycastTarget = !dragging && hover.Text.Length > 0;
         }
 
         /// <summary>
@@ -1019,6 +1075,7 @@ namespace ConcertHype
                 widget.SetGirl(girl);
                 Ui.SetEnergyBar(widget.Bar, girl is null ? 0 : session.State.Energy[host.Member]);
                 widget.SetHighlight(host.Highlight);
+                widget.SetBarTips(host.EnergyTip, null, view.Dragging);
                 widget.SetDimmed(host.Dragged);
                 if (CancelOverlays[k] != null)
                     CancelOverlays[k].SetActive(false);
@@ -1047,6 +1104,7 @@ namespace ConcertHype
                 widget.SetHighlight(slot.Highlight);
                 widget.Label.text = "";
                 widget.SetSuccess(slot.Success);
+                widget.SetBarTips(slot.EnergyTip, slot.SuccessTip, view.Dragging);
                 widget.Icon.Set(slot.Icon, slot.Tip);
                 widget.Icon.PlaceAt(27f - IconWidget.Size / 2f, PortraitWidget.IconTop);
             }
@@ -2294,6 +2352,7 @@ namespace ConcertHype
                 widget.Root.transform.localScale = new Vector3(scale, scale, 1f);
                 Ui.SetEnergyBar(widget.Bar, bench.Energy);
                 widget.Icon.Set(bench.Icon, bench.Tip, bench.Count);
+                widget.SetBarTips(bench.EnergyTip, null, view.Dragging);
                 // An idol who can't perform is dimmed and can't be dragged; the icon saying why stays bright
                 widget.SetDimmed(!bench.Available);
             }

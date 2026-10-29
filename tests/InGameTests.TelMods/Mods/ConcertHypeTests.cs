@@ -15,7 +15,7 @@ namespace InGameTests.TelMods
     /// Concert Hype's show in the game's real concert popup. The unit tests cover the rules, the drop rules, the
     /// panel's text, the payout and each patch; this checks what only the engine does: real clicks reaching the
     /// panel's and the bench's buttons on screen, a real drag through the game's input and drag-and-drop manager,
-    /// the icons' pictures and the game's tooltip over one and over the Expected Hype info icon, the readouts as TMP
+    /// the icons' pictures and the game's tooltip over one, over each bar's hover strip and over the Expected Hype info icon, the readouts as TMP
     /// draws them clear of the places, the empty host place showing the game's empty senbatsu place, the game's
     /// profile card placed at the host place, the
     /// game's cancel icon over the hovered host and a real click cancelling her, a
@@ -204,6 +204,16 @@ namespace InGameTests.TelMods
                 mouse.Off();
                 if (shown != tip)
                     ctx.Fail($"Over the second place's icon the tooltip reads '{shown}', not '{tip}'");
+                // The thin strips over the energy and success bars each take the mouse and show their own tip
+                foreach (string bar in new[] { "Energy", "Success" })
+                {
+                    string barTip = Get<string>(Get<IList>(view, "Slots")[1], bar + "Tip");
+                    yield return mouse.Hover(ScreenRect(panel.Find($"Slot 1/{bar} Hover")).center, 0.5f);
+                    shown = AccessTools.Field(typeof(TooltipManager), "TooltipText").GetValue(Game.Main.Data.GetComponent<TooltipManager>()) as string;
+                    mouse.Off();
+                    if (barTip.Length == 0 || shown != barTip)
+                        ctx.Fail($"Over the second place's {bar.ToLower()} bar the tooltip reads '{shown}', not '{barTip}'");
+                }
                 // The game's info icon before Expected Hype shows the range and mood the same way
                 string expectedTip = Get<string>(Get<object>(view, "Expected"), "Tip");
                 yield return mouse.Hover(ScreenRect(panel.Find("Expected/Info")).center, 0.5f);

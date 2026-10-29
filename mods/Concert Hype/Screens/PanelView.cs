@@ -81,6 +81,11 @@ namespace ConcertHype
         /// The icon's meaning, shown when it's hovered.
         /// </summary>
         public string Tip = "";
+
+        /// <summary>
+        /// Shown when her energy bar or her success bar is hovered; empty for an empty place.
+        /// </summary>
+        public string EnergyTip = "", SuccessTip = "";
     }
 
     /// <summary>
@@ -90,6 +95,11 @@ namespace ConcertHype
     {
         public int Member = -1;
         public Highlight Highlight;
+
+        /// <summary>
+        /// Shown when her energy bar is hovered; empty for an empty host place.
+        /// </summary>
+        public string EnergyTip = "";
 
         /// <summary>
         /// The host here is being dragged away.
@@ -109,6 +119,11 @@ namespace ConcertHype
         public IconKind Icon;
 
         public string Tip = "";
+
+        /// <summary>
+        /// Shown when her energy bar is hovered.
+        /// </summary>
+        public string EnergyTip = "";
 
         /// <summary>
         /// Songs she's still out when hurt; empty otherwise.
@@ -209,6 +224,11 @@ namespace ConcertHype
         /// </summary>
         public string StartLabel;
 
+        /// <summary>
+        /// An idol is being dragged: the bars' hover strips let the mouse through to the places under them.
+        /// </summary>
+        public bool Dragging;
+
         public static string Signed(double value)
         {
             double rounded = Math.Round(value);
@@ -235,6 +255,22 @@ namespace ConcertHype
             double[] chances = Outcomes.Chances(config, expected);
             return chances[(int)Outcome.Success] + chances[(int)Outcome.CriticalSuccess];
         }
+
+        /// <summary>
+        /// A place's success bar tip: her chance of a success (critical ones included), of a critical success, and
+        /// of a critical failure.
+        /// </summary>
+        public static string SuccessTipOf(Config config, double expected)
+        {
+            double[] chances = Outcomes.Chances(config, expected);
+            return Texts.Format("CONCERTHYPE__TIP_SUCCESS", Whole(SuccessChance(config, expected)), Whole(chances[(int)Outcome.CriticalSuccess]), Whole(chances[(int)Outcome.CriticalFailure]));
+        }
+
+        /// <summary>
+        /// A place's energy bar tip: her energy, and what the song costs her in this row at an average performance.
+        /// </summary>
+        public static string PlaceEnergyTip(Config config, double energy, int row) =>
+            Texts.Format("CONCERTHYPE__TIP_ENERGY_PLACE", Whole(energy), Whole(Engine.EnergyCost(config, row, config.Par)));
 
         /// <param name="message">The last refused drop's reason, shown in the hint line.</param>
         /// <param name="group">The group the bench shows, by ID; -1 for everyone.</param>
@@ -283,6 +319,10 @@ namespace ConcertHype
                     };
                     slot.Icon = IconOf(slot.Badge);
                     slot.Tip = TipOf(slot.Badge);
+                    if (member >= 0)
+                        slot.EnergyTip = PlaceEnergyTip(state.Config, state.Energy[member], slot.Row);
+                    if (preview.Slots[j] != null)
+                        slot.SuccessTip = SuccessTipOf(state.Config, preview.Slots[j].Expected);
                     view.Slots.Add(slot);
                 }
                 if (tab == FormationTab.Song)
@@ -308,6 +348,7 @@ namespace ConcertHype
                     Member = hosts[k],
                     Highlight = HighlightAt(drag, target, place, over),
                     Dragged = InHand(drag, target, place, hosts[k]),
+                    EnergyTip = hosts[k] < 0 ? "" : Texts.Format("CONCERTHYPE__TIP_ENERGY_HOST", Whole(state.Energy[hosts[k]])),
                 });
             }
             string blocked = DropRules.TalkBlocked(state);
@@ -327,6 +368,7 @@ namespace ConcertHype
 
             view.Last = LastReadout(session);
             view.Hint = hint;
+            view.Dragging = drag != null;
             view.TalkTitle = Texts.Format("CONCERTHYPE__TALK_BREAK", state.McCharges);
             view.TalkOpen = blocked == null;
             view.TalkTip = blocked == null ? "" : Texts.Get(blocked);
@@ -339,7 +381,13 @@ namespace ConcertHype
                     continue;
                 if (group >= 0 && state.Setup.Members[m].Group != group)
                     continue;
-                BenchView bench = new BenchView { Member = m, Energy = state.Energy[m], Available = state.IsAvailable(m) };
+                BenchView bench = new BenchView
+                {
+                    Member = m,
+                    Energy = state.Energy[m],
+                    Available = state.IsAvailable(m),
+                    EnergyTip = Texts.Format("CONCERTHYPE__TIP_ENERGY_BENCH", Whole(state.Energy[m]), Whole(state.Config.BenchRecovery)),
+                };
                 if (state.Absence[m] > 0)
                 {
                     bench.Icon = IconKind.Hurt;

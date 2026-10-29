@@ -56,6 +56,22 @@
 		text: "Exhausted: resting until her energy is back to {0}%."
 	},
 	{
+		id: "CONCERTHYPE__TIP_ENERGY_PLACE",
+		text: "Energy {0}%. This song uses about {1}."
+	},
+	{
+		id: "CONCERTHYPE__TIP_ENERGY_HOST",
+		text: "Energy {0}%. Hosts don't recover."
+	},
+	{
+		id: "CONCERTHYPE__TIP_ENERGY_BENCH",
+		text: "Energy {0}%. Recovers {1} per song sat out."
+	},
+	{
+		id: "CONCERTHYPE__TIP_SUCCESS",
+		text: "Success {0}% (critical {1}%). Critical failure {2}%."
+	},
+	{
 		id: "CONCERTHYPE__CANT_LEAVE",
 		text: "{0} can't just leave: drag an idol from the bench onto her place."
 	},

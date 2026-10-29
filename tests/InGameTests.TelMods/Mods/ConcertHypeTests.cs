@@ -388,12 +388,14 @@ namespace InGameTests.TelMods
 
         /// <summary>
         /// Near the end of a song, every filled place has its copy of the marketing wheel with its four rings
-        /// drawn from the game's sprites, and her roll shows, landed by the stage's own clock. As drawn, the
+        /// drawn from the game's sprites, and her roll shows in the game's heavy font on its own material, landed by
+        /// the stage's own clock. As drawn, the
         /// places are on screen, apart from each other and clear of the song's title and progress bar, and the
         /// bench is faded out.
         /// </summary>
         private static void CheckStage(TestContext ctx, Concert_Popup popup, object pending)
         {
+            string fontName = (string)AccessTools.Field(pending.GetType().Assembly.GetType("ConcertHype.StageRolls", true), "NumberFontName").GetValue(null);
             int filled = ((Array)AccessTools.Field(pending.GetType(), "Slots").GetValue(pending)).Cast<object>()
                 .Count(slot => (int)AccessTools.Field(slot.GetType(), "Member").GetValue(slot) >= 0);
             Transform stage = popup.transform.Find("ConcertHype Stage");
@@ -413,7 +415,15 @@ namespace InGameTests.TelMods
                     ctx.Fail(place.name + "'s wheel doesn't have the game's four rings");
                 TextMeshProUGUI number = place.Find("Label")?.GetComponent<TextMeshProUGUI>();
                 if (number == null || !number.gameObject.activeInHierarchy || number.text.Length == 0)
+                {
                     ctx.Fail(place.name + " shows no roll by the end of the song");
+                    continue;
+                }
+                // The game's heavy font, on the number's own material, so the game's other text keeps its look
+                if (number.font == null || number.font.name != fontName)
+                    ctx.Fail(place.name + "'s roll is drawn in " + (number.font == null ? "no font" : number.font.name) + ", not " + fontName);
+                else if (number.fontSharedMaterial == number.font.material)
+                    ctx.Fail(place.name + "'s roll styles the font's shared material");
             }
 
             // Each place as drawn: her picture and her number

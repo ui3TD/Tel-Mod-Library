@@ -19,6 +19,11 @@ namespace ConcertHype
         public Outcome Outcome;
 
         /// <summary>
+        /// A critical success or failure: her number lands bigger, with a pulse or a shake.
+        /// </summary>
+        public bool Critical => HasRoll && (Outcome == Outcome.CriticalSuccess || Outcome == Outcome.CriticalFailure);
+
+        /// <summary>
         /// The roll, rounded, shown when her wheel lands.
         /// </summary>
         public string Roll = "";
@@ -64,6 +69,15 @@ namespace ConcertHype
     }
 
     /// <summary>
+    /// How a landed number (or a hurt icon) looks some time after it lands: its scale, its sideways shake in
+    /// pixels, its opacity, and how much of a white flash is over its colour.
+    /// </summary>
+    public struct NumberPose
+    {
+        public double Scale, OffsetX, Alpha, Flash;
+    }
+
+    /// <summary>
     /// What the stage shows while a song plays, worked out from the song's result alone (no Unity). The wheels land
     /// one by one, back row first and the center last; a talk break shows no stage.
     /// </summary>
@@ -99,6 +113,47 @@ namespace ConcertHype
         /// formation doesn't fly apart.
         /// </summary>
         public const double MinGap = 12, MaxRowPitch = 130, MaxPlacePitch = 240;
+
+        /// <summary>
+        /// The landed numbers' font sizes, and the hurt icon's size.
+        /// </summary>
+        public const double NumberSize = 30, CriticalNumberSize = 36, HurtIconSize = 26;
+
+        /// <summary>
+        /// The slam: the number starts this large and settles over this long, opaque after the first moment and
+        /// white for a moment; then a critical success pulses and a critical failure shakes for a while.
+        /// </summary>
+        public const double SlamFrom = 2.4, SlamSeconds = 0.35, FadeInSeconds = 0.08, FlashSeconds = 0.1;
+        public const double AfterSeconds = 0.25, PulseScale = 1.15, ShakePixels = 4, ShakeCount = 3, HurtFlashSeconds = 0.4;
+
+        /// <summary>
+        /// A landed number this long after it landed: it slams down from large, dipping to about 0.9 of its size
+        /// once before it settles.
+        /// </summary>
+        public static NumberPose NumberMotion(double since, Outcome outcome)
+        {
+            double t = Math.Min(1, Math.Max(0, since / SlamSeconds));
+            NumberPose pose = new NumberPose
+            {
+                Scale = 1 + (SlamFrom - 1) * Math.Pow(1 - t, 3) * Math.Cos(1.5 * Math.PI * t),
+                Alpha = Math.Min(1, Math.Max(0, since / FadeInSeconds)),
+                Flash = since < FlashSeconds ? 1 - Math.Max(0, since) / FlashSeconds : 0,
+            };
+            double after = (since - SlamSeconds) / AfterSeconds;
+            if (after > 0 && after < 1)
+            {
+                if (outcome == Outcome.CriticalSuccess)
+                    pose.Scale *= 1 + (PulseScale - 1) * Math.Sin(Math.PI * after);
+                else if (outcome == Outcome.CriticalFailure)
+                    pose.OffsetX = ShakePixels * Math.Sin(2 * Math.PI * ShakeCount * after) * (1 - after);
+            }
+            return pose;
+        }
+
+        /// <summary>
+        /// How red a hurt idol's picture is this long after her wheel lands: fully at once, fading out.
+        /// </summary>
+        public static double HurtFlash(double since) => Math.Min(1, Math.Max(0, 1 - since / HurtFlashSeconds));
 
         /// <summary>
         /// The formation spread over the free area: rows evenly apart and centred as a block, each row's places

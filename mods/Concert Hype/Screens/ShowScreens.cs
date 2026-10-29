@@ -1123,7 +1123,18 @@ namespace ConcertHype
     internal static class StageRolls
     {
         private const string Name = "ConcertHype Stage";
-        private const float EnterSeconds = 0.5f, LeaveSeconds = 0.4f, PopSeconds = 0.2f, PunchSeconds = 0.3f, PunchScale = 0.5f, NumberSize = 20f;
+        private const float EnterSeconds = 0.5f, LeaveSeconds = 0.4f, PopSeconds = 0.2f;
+
+        /// <summary>
+        /// The landed numbers' font: the heaviest the game ships. Without it they keep the label's own font,
+        /// thickened.
+        /// </summary>
+        internal const string NumberFontName = "OpenSans-ExtraBold SDF";
+
+        /// <summary>
+        /// A hurt idol's picture stays this grey after its red flash, as the bench dims an idol who can't perform.
+        /// </summary>
+        private static readonly Color HurtGrey = new Color(0.7f, 0.7f, 0.7f, 1f);
 
         /// <summary>
         /// The wheel's and the number's centre, from the portrait's top-left corner.
@@ -1263,6 +1274,7 @@ namespace ConcertHype
 
             GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
             Single_Marketing_Roll template = WheelWidget.Template();
+            TMP_FontAsset font = NumberFont();
             for (int j = 0; j < GameReader.SenbatsuPositions; j++)
             {
                 PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Place " + j, DropPoint.AtPlace(j), iconOnPicture: true);
@@ -1270,23 +1282,61 @@ namespace ConcertHype
                 if (widget.Drag != null)
                     UnityEngine.Object.Destroy(widget.Drag);
                 TextMeshProUGUI number = widget.Label;
-                // In the wheel's place, popping from its middle
+                // In the wheel's place, slamming down from its middle
                 RectTransform numberRect = (RectTransform)number.transform;
-                Ui.Place(number.gameObject, 0f, 0f, 54f, 24f);
+                Ui.Place(number.gameObject, 0f, 0f, 90f, 44f);
                 numberRect.pivot = new Vector2(0.5f, 0.5f);
                 numberRect.anchoredPosition = new Vector2(WheelCentre.x, -WheelCentre.y);
                 number.alignment = TextAlignmentOptions.Center;
-                number.fontSize = NumberSize;
-                number.fontStyle = FontStyles.Bold;
-                // Readable over the stage lights
-                number.outlineWidth = 0.25f;
-                number.outlineColor = new Color32(0, 0, 0, 200);
+                number.enableWordWrapping = false;
+                number.fontSize = (float)StageView.NumberSize;
+                StyleNumber(number, font);
                 number.raycastTarget = true;
                 NumberTips.Add(number.gameObject.AddComponent<IconTip>());
+                // The hurt icon, larger, in the picture's bottom-right corner, slamming from its middle
+                float iconSize = (float)StageView.HurtIconSize, iconAt = 47f - iconSize;
+                Ui.Place(widget.Icon.Root, iconAt, iconAt, iconSize, iconSize);
+                RectTransform iconRect = (RectTransform)widget.Icon.Root.transform;
+                iconRect.pivot = new Vector2(0.5f, 0.5f);
+                iconRect.anchoredPosition = new Vector2(iconAt + iconSize / 2f, -iconAt - iconSize / 2f);
                 Places.Add(widget);
                 if (template != null)
                     Wheels.Add(WheelWidget.Make(template, widget.Root.transform, WheelCentre.x, WheelCentre.y, (float)StageView.WheelSize));
             }
+        }
+
+        private static TMP_FontAsset NumberFont()
+        {
+            TMP_FontAsset font = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().FirstOrDefault(asset => asset != null && asset.name == NumberFontName);
+            if (font == null)
+                Log.WarnOnce("number font", $"couldn't find the game's {NumberFontName}; the rolls show in the label font");
+            return font;
+        }
+
+        /// <summary>
+        /// A heavy number with a thick dark outline and a soft shadow, on its own copy of the font's material so
+        /// the game's other text keeps its look. Without the heavy font, the label's own is thickened.
+        /// </summary>
+        internal static void StyleNumber(TextMeshProUGUI number, TMP_FontAsset font)
+        {
+            if (font != null)
+            {
+                number.font = font;
+                number.fontStyle = FontStyles.Normal;
+            }
+            else
+            {
+                number.fontStyle = FontStyles.Bold;
+            }
+            Material material = number.fontMaterial;
+            material.EnableKeyword(ShaderUtilities.Keyword_Underlay);
+            material.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0f, 0f, 0f, 0.6f));
+            material.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0.8f);
+            material.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.8f);
+            material.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.3f);
+            material.SetFloat(ShaderUtilities.ID_FaceDilate, font != null ? 0f : 0.1f);
+            number.outlineWidth = 0.3f;
+            number.outlineColor = new Color32(0, 0, 0, 205);
         }
 
         private static float Ease(float t) => t < 0.5f ? 2f * t * t : 1f - Mathf.Pow(-2f * t + 2f, 2f) / 2f;
@@ -1354,10 +1404,7 @@ namespace ConcertHype
                     float bar = owner.SongProgressBar != null ? owner.SongProgressBar.transform.localScale.x : 0f;
                     waited += Time.unscaledDeltaTime;
                     if (bar > 0f && bar < 0.5f || waited >= 2f)
-                    {
                         started = true;
-                        mainScript.playAudioClip("spinner");
-                    }
                 }
                 if (started)
                     elapsed += Time.deltaTime;
@@ -1379,8 +1426,21 @@ namespace ConcertHype
                     }
                     float since = elapsed - landedAt[j];
                     wheel?.SetPop(Mathf.Min(pop, 1f - Mathf.Clamp01(since / PopSeconds)));
-                    float punch = 1f + PunchScale * (1f - Mathf.Clamp01(since / PunchSeconds));
-                    Places[j].Label.transform.localScale = new Vector3(punch, punch, 1f);
+                    PortraitWidget widget = Places[j];
+                    NumberPose pose = StageView.NumberMotion(since, slot.Outcome);
+                    TextMeshProUGUI number = widget.Label;
+                    number.transform.localScale = new Vector3((float)pose.Scale, (float)pose.Scale, 1f);
+                    ((RectTransform)number.transform).anchoredPosition = new Vector2(WheelCentre.x + (float)pose.OffsetX, -WheelCentre.y);
+                    Color color = Color.Lerp(ColorOf(slot.Outcome), Color.white, (float)pose.Flash);
+                    color.a = (float)pose.Alpha;
+                    number.color = color;
+                    if (slot.Hurt)
+                    {
+                        float iconScale = (float)StageView.NumberMotion(since, Outcome.Success).Scale;
+                        widget.Icon.Root.transform.localScale = new Vector3(iconScale, iconScale, 1f);
+                        if (widget.Picture != null)
+                            widget.Picture.color = Color.Lerp(HurtGrey, mainScript.red32, (float)StageView.HurtFlash(since));
+                    }
                 }
             }
             catch (Exception ex)
@@ -1396,11 +1456,16 @@ namespace ConcertHype
             PortraitWidget widget = Places[j];
             widget.Label.gameObject.SetActive(true);
             widget.Label.text = slot.Roll;
-            widget.Label.color = ColorOf(slot.Outcome);
+            widget.Label.fontSize = (float)(slot.Critical ? StageView.CriticalNumberSize : StageView.NumberSize);
+            widget.Label.color = new Color(1f, 1f, 1f, 0f);
             NumberTips[j].Text = slot.Tip;
             Ui.SetEnergyBar(widget.Bar, slot.EnergyAfter);
             if (slot.Hurt)
+            {
                 widget.Icon.Set(IconKind.Hurt, slot.HurtTip);
+                widget.Icon.Root.transform.localScale = Vector3.zero;
+                mainScript.playAudioClip("cheers_fail");
+            }
             if (slot.Outcome == Outcome.CriticalSuccess)
                 mainScript.playAudioClip("spinner_win_crit");
             else if (slot.Outcome == Outcome.CriticalFailure)

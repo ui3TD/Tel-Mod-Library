@@ -155,6 +155,76 @@ namespace ConcertHype.Tests
             Assert.Equal((StageView.AreaTop + StageView.AreaBottom) / 2, one[0].CenterY, 6);
         }
 
+        private static double[] Times(double until) => Enumerable.Range(0, (int)(until * 1000) + 1).Select(ms => ms / 1000.0).ToArray();
+
+        [Theory]
+        [InlineData(Outcome.Failure)]
+        [InlineData(Outcome.Success)]
+        [InlineData(Outcome.CriticalSuccess)]
+        [InlineData(Outcome.CriticalFailure)]
+        public void ANumber_SlamsDownFromLarge_DippingOnce_ThenSettles(Outcome outcome)
+        {
+            NumberPose start = StageView.NumberMotion(0, outcome);
+            Assert.Equal(StageView.SlamFrom, start.Scale, 6);
+            Assert.Equal(0, start.Alpha);
+            Assert.Equal(1, start.Flash);
+            Assert.Equal(1, StageView.NumberMotion(StageView.FadeInSeconds, outcome).Alpha);
+            Assert.Equal(0, StageView.NumberMotion(StageView.FlashSeconds, outcome).Flash);
+
+            double[] slam = Times(StageView.SlamSeconds).Select(t => StageView.NumberMotion(t, outcome).Scale).ToArray();
+            Assert.Equal(1, slam.Last(), 6);
+            // Under its size once: one stretch of the slam below 1, not lower than 0.8
+            int dips = slam.Zip(slam.Skip(1), (a, b) => a >= 1 && b < 1).Count(started => started);
+            Assert.Equal(1, dips);
+            Assert.InRange(slam.Min(), 0.8, 1);
+
+            NumberPose settled = StageView.NumberMotion(StageView.SlamSeconds + StageView.AfterSeconds + 0.01, outcome);
+            Assert.Equal(1, settled.Scale, 6);
+            Assert.Equal(0, settled.OffsetX, 6);
+        }
+
+        [Fact]
+        public void ACriticalSuccess_Pulses_ACriticalFailure_Shakes_OthersNeither()
+        {
+            double[] after = Times(StageView.AfterSeconds).Select(t => StageView.SlamSeconds + t).ToArray();
+            double peak = after.Max(t => StageView.NumberMotion(t, Outcome.CriticalSuccess).Scale);
+            Assert.Equal(StageView.PulseScale, peak, 3);
+            Assert.All(after, t => Assert.Equal(0, StageView.NumberMotion(t, Outcome.CriticalSuccess).OffsetX));
+
+            double[] shake = after.Select(t => StageView.NumberMotion(t, Outcome.CriticalFailure).OffsetX).ToArray();
+            Assert.All(shake, x => Assert.InRange(x, -StageView.ShakePixels, StageView.ShakePixels));
+            Assert.True(shake.Max() > 2 && shake.Min() < -2);
+            Assert.All(after, t => Assert.Equal(1, StageView.NumberMotion(t, Outcome.CriticalFailure).Scale, 6));
+
+            foreach (Outcome plain in new[] { Outcome.Success, Outcome.Failure })
+            {
+                Assert.All(after, t =>
+                {
+                    Assert.Equal(1, StageView.NumberMotion(t, plain).Scale, 6);
+                    Assert.Equal(0, StageView.NumberMotion(t, plain).OffsetX);
+                });
+            }
+        }
+
+        [Fact]
+        public void Critical_IsTheTwoCriticalOutcomes_ForAFilledPlace()
+        {
+            Assert.True(new StageSlotView { Member = 0, Outcome = Outcome.CriticalSuccess }.Critical);
+            Assert.True(new StageSlotView { Member = 0, Outcome = Outcome.CriticalFailure }.Critical);
+            Assert.False(new StageSlotView { Member = 0, Outcome = Outcome.Success }.Critical);
+            Assert.False(new StageSlotView { Member = 0, Outcome = Outcome.Failure }.Critical);
+            Assert.False(new StageSlotView { Outcome = Outcome.CriticalFailure }.Critical);
+        }
+
+        [Fact]
+        public void AHurtIdolsPicture_FlashesRed_ThenFades()
+        {
+            Assert.Equal(1, StageView.HurtFlash(0));
+            Assert.Equal(0.5, StageView.HurtFlash(StageView.HurtFlashSeconds / 2), 6);
+            Assert.Equal(0, StageView.HurtFlash(StageView.HurtFlashSeconds));
+            Assert.Equal(0, StageView.HurtFlash(5));
+        }
+
         [Fact]
         public void ATalkBreak_ShowsNoStage()
         {

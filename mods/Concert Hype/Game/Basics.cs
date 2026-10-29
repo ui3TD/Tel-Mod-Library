@@ -55,19 +55,21 @@ namespace ConcertHype
     {
         public const string Title = "Concert Hype";
 
+        private const string InfoFile = "info.json";
+
         /// <summary>
-        /// The folder holding concert_hype.json: the DLL's own folder, or the loaded mod with this title. Null if neither.
+        /// The mod's folder (its info.json beside it): the DLL's own folder, or the loaded mod with this title. Null if neither.
         /// </summary>
         public static string Find()
         {
             try
             {
                 string own = Path.GetDirectoryName(typeof(ModFolder).Assembly.Location);
-                if (!string.IsNullOrEmpty(own) && File.Exists(Path.Combine(own, ConfigFile.FileName)))
+                if (!string.IsNullOrEmpty(own) && File.Exists(Path.Combine(own, InfoFile)))
                     return own;
                 foreach (Mods._mod mod in Mods._Mods)
                 {
-                    if (mod.Title == Title && File.Exists(Path.Combine(mod.GetPath(), ConfigFile.FileName)))
+                    if (mod.Title == Title && File.Exists(Path.Combine(mod.GetPath(), InfoFile)))
                         return mod.GetPath();
                 }
             }

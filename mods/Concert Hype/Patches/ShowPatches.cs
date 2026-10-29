@@ -63,7 +63,7 @@ namespace ConcertHype
                     return;
                 }
                 string folder = ModFolder.Find();
-                Config config = folder == null ? new Config() : ConfigFile.Load(Path.Combine(folder, ConfigFile.FileName), Log.Warn);
+                Config config = new Config();
                 ShowSession.LogPath = folder == null ? null : Path.Combine(folder, "last_show.txt");
                 ShowSession session = ShowSession.Begin(concert, config);
                 try

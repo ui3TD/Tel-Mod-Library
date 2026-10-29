@@ -13,7 +13,7 @@ namespace ConcertHype.Tests
     public class AssetTests
     {
         private static string ModFile(params string[] parts) =>
-            Path.Combine(new[] { ConfigFileTests.RepoRoot(), "mods", "Concert Hype" }.Concat(parts).ToArray());
+            Path.Combine(new[] { ConfigTests.RepoRoot(), "mods", "Concert Hype" }.Concat(parts).ToArray());
 
         private static string SteamDescription() => File.ReadAllText(ModFile("assets", "steam description.txt"));
 

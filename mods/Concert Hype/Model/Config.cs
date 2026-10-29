@@ -1,7 +1,7 @@
 namespace ConcertHype.Model
 {
     /// <summary>
-    /// Every number of the show. The defaults are the spec's; concert_hype.json overrides them by field name in camelCase.
+    /// Every number of the show.
     /// Row lists hold one value per row of the senbatsu triangle (rows of 1, 2, 3, 4 and 5 idols).
     /// </summary>
     public sealed class Config

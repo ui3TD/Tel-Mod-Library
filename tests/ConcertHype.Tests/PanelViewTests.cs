@@ -524,7 +524,7 @@ namespace ConcertHype.Tests
         [Fact]
         public void LanguageFile_HoldsEveryTextInEnglish()
         {
-            string path = Path.Combine(ConfigFileTests.RepoRoot(), "mods", "Concert Hype", "assets", "JSON", "Constants", "constants.json");
+            string path = Path.Combine(ConfigTests.RepoRoot(), "mods", "Concert Hype", "assets", "JSON", "Constants", "constants.json");
             JSONNode constants = mainScript.ProcessInboundData(File.ReadAllText(path));
             Dictionary<string, string> shipped = Enumerable.Range(0, constants.Count).ToDictionary(i => constants[i]["id"].Value, i => constants[i]["text"].Value);
             Assert.Equal(Texts.English.OrderBy(p => p.Key), shipped.OrderBy(p => p.Key));

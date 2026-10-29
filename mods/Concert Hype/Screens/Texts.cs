@@ -34,6 +34,7 @@ namespace ConcertHype
             ["CONCERTHYPE__AFTER_TALK_TITLE"] = "After Talk Break:",
             ["CONCERTHYPE__AFTER_TALK_TIP"] = "The hype expected after the talk break. The song plays after it.",
             ["CONCERTHYPE__CHANGED_TITLE"] = "Changed Lineup:",
+            ["CONCERTHYPE__CHANGED_TIP"] = "The share of places not held by their own idol from the single; the center counts most. The more changed, the more the crowd's mood raises or lowers the hype change.",
             ["CONCERTHYPE__LAST_SONG_TITLE"] = "Last Song:",
             ["CONCERTHYPE__LAST_TALK_TITLE"] = "Last Talk Break:",
             ["CONCERTHYPE__BADGE_ORIGINAL"] = "\u2605",

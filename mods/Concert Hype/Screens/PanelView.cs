@@ -276,7 +276,12 @@ namespace ConcertHype
                     view.Expected = Change("CONCERTHYPE__EXPECTED_TITLE", preview.Change);
                     view.Expected.Tip = Texts.Format("CONCERTHYPE__EXPECTED_TIP", Signed(preview.Low) + "%", Signed(preview.High) + "%", Whole(h), Texts.Get(mood));
                 }
-                view.Changed = new Readout { Title = Texts.Get("CONCERTHYPE__CHANGED_TITLE"), Value = Whole(100 * preview.Novelty) + "%" };
+                view.Changed = new Readout
+                {
+                    Title = Texts.Get("CONCERTHYPE__CHANGED_TITLE"),
+                    Value = Whole(100 * preview.Novelty) + "%",
+                    Tip = Texts.Get("CONCERTHYPE__CHANGED_TIP"),
+                };
                 view.FormationNote = view.Faded ? Texts.Get("CONCERTHYPE__AFTER_TALK") : "";
             }
 

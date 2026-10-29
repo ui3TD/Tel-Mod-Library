@@ -60,7 +60,7 @@ namespace ConcertHype.Tests
             Assert.Equal("Changed Lineup:", view.Changed.Title);
             Assert.Equal(Math.Round(100 * preview.Novelty) + "%", view.Changed.Value);
             Assert.Equal(Tone.Plain, view.Changed.Tone);
-            Assert.Equal("", view.Changed.Tip);
+            Assert.Equal("The share of places not held by their own idol from the single; the center counts most. The more changed, the more the crowd's mood raises or lowers the hype change.", view.Changed.Tip);
             Assert.False(view.Last.Shown);  // nothing played yet
             Assert.Equal("", view.Hint);  // no standing instructions: only why a drop was refused
             Assert.Equal("M can't perform right now.", PanelView.Build(session, message: "M can't perform right now.").Hint);

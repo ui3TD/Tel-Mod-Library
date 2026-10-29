@@ -570,8 +570,14 @@ namespace InGameTests.TelMods
             /// <summary>
             /// A quick click, let go well before the game's drag delay.
             /// </summary>
+            /// <summary>
+            /// A quick click at real speed: the test speeds the game up, which shortens the 0.1 s a press must stay
+            /// short of to be a click (the game's drag delay, in scaled time), so a slow frame could make it a drag.
+            /// </summary>
             public IEnumerator Click(Vector2 at)
             {
+                float timeScale = Time.timeScale;
+                Time.timeScale = 1f;
                 MoveTo(at);
                 yield return null;
                 yield return null;
@@ -580,6 +586,7 @@ namespace InGameTests.TelMods
                 Left(false);
                 for (int i = 0; i < 3; i++)
                     yield return null;
+                Time.timeScale = timeScale;
             }
 
             /// <summary>

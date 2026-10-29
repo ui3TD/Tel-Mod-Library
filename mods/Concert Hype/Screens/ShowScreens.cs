@@ -1501,8 +1501,11 @@ namespace ConcertHype
                 {
                     PortraitWidget widget = Places[j];
                     WheelWidget wheel = j < Wheels.Count ? Wheels[j] : null;
-                    bool used = j < view.Slots.Count;
+                    // A place nobody performs in isn't shown on stage
+                    bool used = j < view.Slots.Count && view.Slots[j].HasRoll;
                     widget.Root.SetActive(used);
+                    if (wheel != null && !used)
+                        wheel.Root.SetActive(false);
                     if (!used)
                         continue;
                     StageSlotView slot = view.Slots[j];

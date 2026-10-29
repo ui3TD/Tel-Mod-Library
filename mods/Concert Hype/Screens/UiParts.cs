@@ -49,9 +49,6 @@ namespace ConcertHype
             new string[0]);
 
         /// <summary>
-        /// The café popup's idol list scrollbar: a slider with a thin track and a round thumb.
-        /// </summary>
-        /// <summary>
         /// The settings popup's Quality dropdown: its box, and the list that opens under it.
         /// </summary>
         public static readonly VanillaShape Dropdown = new VanillaShape(
@@ -89,23 +86,69 @@ namespace ConcertHype
             return copy;
         }
 
-        public static TextMeshProUGUI Label(GameObject template, Transform parent, string name, float x, float y, float width, float height, float fontSize)
+        /// <summary>
+        /// A copy of one of the game's labels, fully shown. Text never takes a press or a hover from the portrait or
+        /// button under it.
+        /// </summary>
+        public static TextMeshProUGUI CopyLabel(GameObject source, Transform parent, string name)
         {
-            GameObject copy = Copy(template, parent, Shapes.Label, "label", name);
+            GameObject copy = Copy(source, parent, Shapes.Label, "label", name);
             CanvasGroup group = copy.GetComponent<CanvasGroup>();
             if (group != null)
                 group.alpha = 1f;
-            Place(copy, x, y, width, height);
             TextMeshProUGUI text = copy.GetComponent<TextMeshProUGUI>();
+            text.raycastTarget = false;
+            return text;
+        }
+
+        public static TextMeshProUGUI Label(GameObject template, Transform parent, string name, float x, float y, float width, float height, float fontSize)
+        {
+            TextMeshProUGUI text = CopyLabel(template, parent, name);
+            Place(text.gameObject, x, y, width, height);
             text.fontSize = fontSize;
             text.enableAutoSizing = false;
             text.enableWordWrapping = true;
             text.overflowMode = TextOverflowModes.Overflow;
             text.alignment = TextAlignmentOptions.TopLeft;
-            // Text never takes a press or a hover from the portrait or button under it
-            text.raycastTarget = false;
             text.text = "";
             return text;
+        }
+
+        /// <summary>
+        /// The next-song screen's Stamina Cost title, which the show's labels are copied from.
+        /// </summary>
+        public static GameObject LabelTemplate(Concert_Popup popup) =>
+            popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
+
+        /// <summary>
+        /// The colour of the game's values that are neither good nor bad.
+        /// </summary>
+        public static Color PlainColor(Concert_Popup popup) =>
+            popup.NextSong_AccidentChance?.GetComponent<TextMeshProUGUI>()?.color ?? Color.white;
+
+        /// <summary>
+        /// A new empty object in the parent.
+        /// </summary>
+        public static RectTransform NewChild(Transform parent, string name)
+        {
+            GameObject obj = new GameObject(name, typeof(RectTransform));
+            obj.transform.SetParent(parent, false);
+            return (RectTransform)obj.transform;
+        }
+
+        /// <summary>
+        /// Runs a UI action; an error ends the show, which carries on as in the original game.
+        /// </summary>
+        public static void Safely(Action action, string what)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                ShowSession.Fail(ex, what);
+            }
         }
 
         public static Button Button(GameObject template, Transform parent, string name, float x, float y, float width, float height, UnityAction onClick)
@@ -147,6 +190,28 @@ namespace ConcertHype
         }
 
         /// <summary>
+        /// Places an object by its centre, in the coordinates of <see cref="Place"/>; it scales from its centre.
+        /// </summary>
+        public static void PlaceCentred(GameObject obj, float x, float y, float width, float height)
+        {
+            RectTransform rect = (RectTransform)obj.transform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(x, -y);
+            rect.sizeDelta = new Vector2(width, height);
+        }
+
+        /// <summary>
+        /// Gives an object the anchors and pivot of another.
+        /// </summary>
+        public static void MatchAnchors(RectTransform rect, RectTransform from)
+        {
+            rect.anchorMin = from.anchorMin;
+            rect.anchorMax = from.anchorMax;
+            rect.pivot = from.pivot;
+        }
+
+        /// <summary>
         /// Where an object is, in the same top-left coordinates as <see cref="Place"/>.
         /// </summary>
         public static Rect Placed(GameObject obj, Transform container)
@@ -175,23 +240,6 @@ namespace ConcertHype
             rect.anchorMax = Vector2.one;
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             rect.localScale = Vector3.one;
-        }
-
-        public static void SetEnergyBar(Image bar, double energy)
-        {
-            if (bar == null)
-                return;
-            bar.color = energy < 30 ? mainScript.red32 : energy >= 70 ? mainScript.green32 : mainScript.blue32;
-            bar.transform.localScale = new Vector3((float)(energy / 100.0), 1f, 1f);
-        }
-
-        /// <summary>
-        /// A success bar this full: its chance of a success or a critical success, in percent.
-        /// </summary>
-        public static void SetSuccessBar(Image bar, double chance)
-        {
-            if (bar != null)
-                bar.transform.localScale = new Vector3((float)(Math.Max(0, Math.Min(100, chance)) / 100.0), 1f, 1f);
         }
     }
 

@@ -1,4 +1,3 @@
-using TMPro;
 using UnityEngine;
 
 namespace ConcertHype
@@ -29,8 +28,7 @@ namespace ConcertHype
                 Rect titleAt = Ui.Placed(title, final), valueAt = Ui.Placed(value, final);
                 // One step below Profit, as Profit is below Revenue
                 float step = revenueTitle != null ? titleAt.yMin - Ui.Placed(revenueTitle, final).yMin : 132f;
-                Color plain = popup.NextSong_AccidentChance?.GetComponent<TextMeshProUGUI>()?.color ?? Color.white;
-                score = ReadoutWidget.Make(final, final, Name, title, value, InfoIcon.From(popup), valueAt.xMin, titleAt.yMin + step, plain);
+                score = ReadoutWidget.Make(final, final, Name, title, value, InfoIcon.From(popup), valueAt.xMin, titleAt.yMin + step, Ui.PlainColor(popup));
             }
             score.Set(readout ?? new Readout());
         }

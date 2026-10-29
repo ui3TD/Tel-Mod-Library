@@ -23,8 +23,7 @@ namespace ConcertHype
 
         public static IconWidget Make(GameObject labelTemplate, Transform parent, string name)
         {
-            GameObject root = new GameObject(name, typeof(RectTransform));
-            root.transform.SetParent(parent, false);
+            GameObject root = Ui.NewChild(parent, name).gameObject;
             IconWidget icon = new IconWidget { Root = root, Image = root.AddComponent<Image>(), Tip = root.AddComponent<IconTip>() };
             icon.Image.preserveAspect = true;
             icon.Text = Ui.Label(labelTemplate, root.transform, "Text", -Size - 10f, -1f, Size + 8f, Size, 12f);
@@ -243,8 +242,7 @@ namespace ConcertHype
         /// <param name="plain">The value's colour when it's neither good nor bad: the game colours its values itself.</param>
         public static ReadoutWidget Make(Transform parent, Transform container, string name, GameObject title, GameObject value, InfoIcon info, float x, float y, Color plain)
         {
-            GameObject root = new GameObject(name, typeof(RectTransform));
-            root.transform.SetParent(parent, false);
+            GameObject root = Ui.NewChild(parent, name).gameObject;
             Ui.Stretch(root);
             Rect titleAt = Ui.Placed(title, container), valueAt = Ui.Placed(value, container);
             float titleX = x + titleAt.xMin - valueAt.xMin + (info != null ? info.Gap : 0f);
@@ -270,14 +268,8 @@ namespace ConcertHype
 
         private static TextMeshProUGUI Copy(GameObject source, Transform parent, Transform container, string name, float x, float y)
         {
-            GameObject copy = Ui.Copy(source, parent, Shapes.Label, "label", name);
-            CanvasGroup group = copy.GetComponent<CanvasGroup>();
-            if (group != null)
-                group.alpha = 1f;
-            Ui.MoveTo(copy, container, x, y);
-            TextMeshProUGUI text = copy.GetComponent<TextMeshProUGUI>();
-            // Text never takes a press or a hover from the portrait or button under it
-            text.raycastTarget = false;
+            TextMeshProUGUI text = Ui.CopyLabel(source, parent, name);
+            Ui.MoveTo(text.gameObject, container, x, y);
             return text;
         }
 
@@ -312,6 +304,11 @@ namespace ConcertHype
     /// </summary>
     internal sealed class PortraitWidget
     {
+        /// <summary>
+        /// A portrait's size, at scale 1, as the game's concert prefab is laid out.
+        /// </summary>
+        public const float Width = 54f, Height = 58f;
+
         /// <summary>
         /// The energy bar's empty part; the success bar's filled part (a green unlike the energy bar's) and its
         /// empty part.
@@ -351,6 +348,7 @@ namespace ConcertHype
         public IconTip SuccessHover;
         public TextMeshProUGUI Label;
         public IconWidget Icon;
+        private GirlProfileOnHover profile;
         private Color backgroundColor;
         private Image.Type pictureType;
         private float pictureUnits = 1f;
@@ -359,8 +357,9 @@ namespace ConcertHype
 
         /// <param name="iconOnPicture">The icon sits on the picture (the bench), else beside the label under it.</param>
         /// <param name="successBar">A place in the lineup: it shows her chance of a success under her energy.</param>
+        /// <param name="draggable">Pressing and holding the picture drags her; not on stage, where she sings.</param>
         public static PortraitWidget Make(GameObject prefab, GameObject labelTemplate, Transform parent, string name, DropPoint from, bool iconOnPicture = false,
-            bool successBar = false)
+            bool successBar = false, bool draggable = true)
         {
             PortraitWidget widget = new PortraitWidget { Root = Ui.Copy(prefab, parent, Shapes.Portrait, "idol portrait", name) };
             widget.Group = widget.Root.AddComponent<CanvasGroup>();
@@ -370,6 +369,7 @@ namespace ConcertHype
             {
                 widget.pictureType = widget.Picture.type;
                 widget.pictureUnits = widget.Picture.pixelsPerUnitMultiplier;
+                widget.profile = widget.Picture.GetComponent<GirlProfileOnHover>();
             }
             widget.Button = center?.GetComponent<Button>();
             widget.Hover = center?.GetComponent<ButtonDefault>();
@@ -418,8 +418,11 @@ namespace ConcertHype
                     shadow.raycastTarget = false;
                     widget.shadows.Add(shadow.gameObject);
                 }
-                widget.Drag = center.gameObject.AddComponent<DragSource>();
-                widget.Drag.From = from;
+                if (draggable)
+                {
+                    widget.Drag = center.gameObject.AddComponent<DragSource>();
+                    widget.Drag.From = from;
+                }
             }
             widget.Label = Ui.Label(labelTemplate, widget.Root.transform, "Label", -20f, 58f, 46f, 18f, 13f);
             widget.Label.alignment = TextAlignmentOptions.TopRight;
@@ -436,12 +439,9 @@ namespace ConcertHype
         private static Image BarLike(Image bar, string name, Color color, float below)
         {
             RectTransform from = (RectTransform)bar.transform;
-            GameObject obj = new GameObject(name, typeof(RectTransform));
-            obj.transform.SetParent(from.parent, false);
-            RectTransform rect = (RectTransform)obj.transform;
-            rect.anchorMin = from.anchorMin;
-            rect.anchorMax = from.anchorMax;
-            rect.pivot = from.pivot;
+            RectTransform rect = Ui.NewChild(from.parent, name);
+            GameObject obj = rect.gameObject;
+            Ui.MatchAnchors(rect, from);
             rect.sizeDelta = from.sizeDelta;
             rect.anchoredPosition = from.anchoredPosition - new Vector2(0f, below);
             Image image = obj.AddComponent<Image>();
@@ -465,12 +465,9 @@ namespace ConcertHype
         private static IconTip HoverStrip(Image bar, string name, float below, float up, float down)
         {
             RectTransform from = (RectTransform)bar.transform;
-            GameObject obj = new GameObject(name, typeof(RectTransform));
-            obj.transform.SetParent(from.parent, false);
-            RectTransform rect = (RectTransform)obj.transform;
-            rect.anchorMin = from.anchorMin;
-            rect.anchorMax = from.anchorMax;
-            rect.pivot = from.pivot;
+            RectTransform rect = Ui.NewChild(from.parent, name);
+            GameObject obj = rect.gameObject;
+            Ui.MatchAnchors(rect, from);
             rect.sizeDelta = from.sizeDelta + new Vector2(0f, up + down);
             // The extra height grows around the pivot; the shift puts "up" above the bar and "down" below it
             rect.anchoredPosition = from.anchoredPosition + new Vector2(0f, up - (1f - from.pivot.y) * (up + down) - below);
@@ -532,10 +529,30 @@ namespace ConcertHype
             if (Success != null)
             {
                 Success.gameObject.SetActive(shown);
-                Ui.SetSuccessBar(Success, chance);
+                Success.transform.localScale = new Vector3((float)(Math.Max(0, Math.Min(100, chance)) / 100.0), 1f, 1f);
             }
             if (SuccessBack != null)
                 SuccessBack.gameObject.SetActive(shown);
+        }
+
+        /// <summary>
+        /// Her energy on the energy bar, coloured as the game colours stamina.
+        /// </summary>
+        public void SetEnergy(double energy)
+        {
+            if (Bar == null)
+                return;
+            Bar.color = energy < 30 ? mainScript.red32 : energy >= 70 ? mainScript.green32 : mainScript.blue32;
+            Bar.transform.localScale = new Vector3((float)(energy / 100.0), 1f, 1f);
+        }
+
+        /// <summary>
+        /// Puts the portrait's top-left corner at x, y in the coordinates of <see cref="Ui.Place"/>, at this scale.
+        /// </summary>
+        public void PlaceAt(Vector2 at, float scale)
+        {
+            Ui.Place(Root, at.x, at.y, Width, Height);
+            Root.transform.localScale = new Vector3(scale, scale, 1f);
         }
 
         /// <summary>
@@ -543,7 +560,6 @@ namespace ConcertHype
         /// </summary>
         public void SetGirl(data_girls.girls girl)
         {
-            GirlProfileOnHover hover = Picture?.GetComponent<GirlProfileOnHover>();
             hasGirl = girl != null;
             foreach (GameObject shadow in shadows)
                 shadow.SetActive(hasGirl);
@@ -551,8 +567,8 @@ namespace ConcertHype
                 BarTrack.gameObject.SetActive(hasGirl);
             if (girl is null)
             {
-                if (hover != null)
-                    hover.enabled = false;
+                if (profile != null)
+                    profile.enabled = false;
                 if (Picture != null)
                 {
                     Image empty = Icons.GameEmptyPlace();
@@ -569,10 +585,10 @@ namespace ConcertHype
                 Picture.pixelsPerUnitMultiplier = pictureUnits;
                 Picture.color = Color.white;
             }
-            if (hover != null)
+            if (profile != null)
             {
-                hover.enabled = true;
-                hover.Set(girl);
+                profile.enabled = true;
+                profile.Set(girl);
             }
         }
 
@@ -647,12 +663,8 @@ namespace ConcertHype
             RectTransform frameRect = (RectTransform)frame.transform;
             Vector2 gameSize = frameRect.rect.size;
             GameObject root = Ui.Copy(frame, parent, Shapes.Wheel, "marketing wheel", "Wheel");
-            RectTransform rect = (RectTransform)root.transform;
-            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = new Vector2(x, -y);
-            rect.sizeDelta = gameSize;
-            rect.localRotation = Quaternion.identity;
+            Ui.PlaceCentred(root, x, y, gameSize.x, gameSize.y);
+            root.transform.localRotation = Quaternion.identity;
             WheelWidget wheel = new WheelWidget { Root = root, scale = size / gameSize.x };
             wheel.SetPop(1f);
 

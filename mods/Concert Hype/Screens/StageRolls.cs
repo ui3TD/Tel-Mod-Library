@@ -109,7 +109,7 @@ namespace ConcertHype
                         continue;
                     StageSlotView slot = view.Slots[j];
                     widget.SetGirl(session.Show.Girls[slot.Member]);
-                    Ui.SetEnergyBar(widget.Bar, slot.EnergyBefore);
+                    widget.SetEnergy(slot.EnergyBefore);
                     widget.Icon.Set(IconKind.None, "");
                     widget.Label.gameObject.SetActive(false);
                     Effects[j].gameObject.SetActive(false);
@@ -170,20 +170,18 @@ namespace ConcertHype
             Effects.Clear();
             EffectTips.Clear();
             Sparkles.Clear();
-            root = new GameObject(Name, typeof(RectTransform));
-            root.transform.SetParent(popup.transform, false);
+            root = Ui.NewChild(popup.transform, Name).gameObject;
             Ui.Stretch(root);
             group = root.AddComponent<CanvasGroup>();
             root.AddComponent<StageDriver>();
 
-            GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
+            GameObject labelTemplate = Ui.LabelTemplate(popup);
             Single_Marketing_Roll template = WheelWidget.Template();
             for (int j = 0; j < GameReader.SenbatsuPositions; j++)
             {
-                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Place " + j, DropPoint.AtPlace(j), iconOnPicture: true);
                 // Nobody is dragged off the stage while she sings
-                if (widget.Drag != null)
-                    UnityEngine.Object.Destroy(widget.Drag);
+                PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Place " + j, DropPoint.AtPlace(j), iconOnPicture: true,
+                    draggable: false);
                 // In the wheel's place, landing from its middle: the sparkles under the effect
                 Image[] sparkles = new Image[StageView.SparkleCount];
                 for (int k = 0; k < sparkles.Length; k++)
@@ -193,11 +191,8 @@ namespace ConcertHype
                 Effects.Add(effect);
                 EffectTips.Add(effect.gameObject.AddComponent<IconTip>());
                 // The hurt icon, larger, in the picture's bottom-right corner, slamming from its middle
-                float iconSize = (float)StageView.HurtIconSize, iconAt = 47f - iconSize;
-                Ui.Place(widget.Icon.Root, iconAt, iconAt, iconSize, iconSize);
-                RectTransform iconRect = (RectTransform)widget.Icon.Root.transform;
-                iconRect.pivot = new Vector2(0.5f, 0.5f);
-                iconRect.anchoredPosition = new Vector2(iconAt + iconSize / 2f, -iconAt - iconSize / 2f);
+                float iconSize = (float)StageView.HurtIconSize, iconMiddle = 47f - iconSize / 2f;
+                Ui.PlaceCentred(widget.Icon.Root, iconMiddle, iconMiddle, iconSize, iconSize);
                 Places.Add(widget);
                 if (template != null)
                     Wheels.Add(WheelWidget.Make(template, widget.Root.transform, WheelCentre.x, WheelCentre.y, (float)StageView.WheelSize));
@@ -213,15 +208,11 @@ namespace ConcertHype
         /// </summary>
         private static Image EffectImage(Transform parent, string name, float size, bool hover)
         {
-            GameObject obj = new GameObject(name, typeof(RectTransform));
-            obj.transform.SetParent(parent, false);
+            GameObject obj = Ui.NewChild(parent, name).gameObject;
             Image image = obj.AddComponent<Image>();
             image.preserveAspect = true;
             image.raycastTarget = hover;
-            RectTransform rect = (RectTransform)obj.transform;
-            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(size, size);
+            Ui.PlaceCentred(obj, WheelCentre.x, WheelCentre.y, size, size);
             Pose(image, new EffectPose { Scale = 1, Alpha = 0 });
             obj.SetActive(false);
             return image;
@@ -250,9 +241,7 @@ namespace ConcertHype
             float scale = Mathf.Lerp(LineupPanel.FormationScale, stageScale, share);
             for (int j = 0; j < view.Slots.Count && j < Places.Count; j++)
             {
-                Vector2 at = Vector2.Lerp(from[j], to[j], share);
-                Ui.Place(Places[j].Root, at.x, at.y, 54f, 58f);
-                Places[j].Root.transform.localScale = new Vector3(scale, scale, 1f);
+                Places[j].PlaceAt(Vector2.Lerp(from[j], to[j], share), scale);
             }
         }
 
@@ -374,7 +363,7 @@ namespace ConcertHype
                     sparkle.gameObject.SetActive(burst != null);
                 }
             }
-            Ui.SetEnergyBar(widget.Bar, slot.EnergyAfter);
+            widget.SetEnergy(slot.EnergyAfter);
             if (slot.Hurt)
             {
                 widget.Icon.Set(IconKind.Hurt, slot.HurtTip);

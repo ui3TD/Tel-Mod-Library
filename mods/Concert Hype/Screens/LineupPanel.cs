@@ -202,30 +202,28 @@ namespace ConcertHype
             CancelOverlays.Clear();
             Hidden.Clear();
             Transform container = popup.NextSong_Container.transform;
-            root = new GameObject(Name, typeof(RectTransform));
-            root.transform.SetParent(container, false);
+            root = Ui.NewChild(container, Name).gameObject;
             Ui.Stretch(root);
             root.AddComponent<PanelDriver>();
 
-            GameObject labelTemplate = container.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
+            GameObject labelTemplate = Ui.LabelTemplate(popup);
             // Titles and values copied from the game's, in its places: the first column where Center is, the
             // second row where the center's portrait would end
             GameObject centerTitle = container.Find("CenterTitle")?.gameObject ?? labelTemplate;
             Rect first = Ui.Placed(centerTitle, container), value = Ui.Placed(popup.NextSong_Stamina, container), title = Ui.Placed(labelTemplate, container);
             float columnX = first.xMin + value.xMin - title.xMin;
-            Color plain = popup.NextSong_AccidentChance?.GetComponent<TextMeshProUGUI>()?.color ?? Color.white;
+            Color plain = Ui.PlainColor(popup);
             InfoIcon info = InfoIcon.From(popup);
             expected = ReadoutWidget.Make(root.transform, container, "Expected", labelTemplate, popup.NextSong_Stamina, info, columnX, first.yMin, plain);
             changed = ReadoutWidget.Make(root.transform, container, "Changed", labelTemplate, popup.NextSong_Stamina, info, SecondColumnX, first.yMin, plain);
             last = ReadoutWidget.Make(root.transform, container, "Last", labelTemplate, popup.NextSong_Stamina, null, SecondColumnX, first.yMin + SecondRow, plain);
             // The talk break's tab: its hosts in a row where the formation's top would be
-            talkBox = new GameObject("TalkBreak", typeof(RectTransform));
-            talkBox.transform.SetParent(root.transform, false);
+            talkBox = Ui.NewChild(root.transform, "TalkBreak").gameObject;
             Ui.Stretch(talkBox);
             for (int k = 0; k < Engine.MaxHosts; k++)
             {
                 PortraitWidget host = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, talkBox.transform, "Host " + k, DropPoint.AtHost(k));
-                Ui.Place(host.Root, TriangleCenterX + (k - (Engine.MaxHosts - 1) / 2f) * CellWidth - 27f, TriangleTop, 54f, 58f);
+                host.PlaceAt(HostCorner(k), frame.Scale);
                 host.Label.text = "";
                 host.Icon.Set(IconKind.None, "");
                 HostPlaces.Add(host);
@@ -304,15 +302,13 @@ namespace ConcertHype
                 HostView host = view.Hosts[k];
                 data_girls.girls girl = host.Member < 0 ? null : session.Show.Girls[host.Member];
                 widget.SetGirl(girl);
-                Ui.SetEnergyBar(widget.Bar, girl is null ? 0 : session.State.Energy[host.Member]);
+                widget.SetEnergy(girl is null ? 0 : session.State.Energy[host.Member]);
                 widget.SetHighlight(host.Highlight);
                 widget.SetBarTips(host.EnergyTip, null, view.Dragging);
                 widget.SetDimmed(host.Dragged);
                 if (CancelOverlays[k] != null)
                     CancelOverlays[k].SetActive(false);
-                Vector2 at = HostCorners(new[] { k })[0];
-                Ui.Place(widget.Root, at.x, at.y, 54f, 58f);
-                widget.Root.transform.localScale = new Vector3(frame.Scale, frame.Scale, 1f);
+                widget.PlaceAt(HostCorner(k), frame.Scale);
             }
             ShowCancel();
 
@@ -327,10 +323,9 @@ namespace ConcertHype
                 }
                 SlotView slot = view.Slots[j];
                 widget.Root.SetActive(true);
-                Ui.Place(widget.Root, places[j].x, places[j].y, 54f, 58f);
-                widget.Root.transform.localScale = new Vector3(frame.Scale, frame.Scale, 1f);
+                widget.PlaceAt(places[j], frame.Scale);
                 widget.SetGirl(slot.Member >= 0 ? session.Show.Girls[slot.Member] : null);
-                Ui.SetEnergyBar(widget.Bar, slot.Member >= 0 ? session.State.Energy[slot.Member] : 0);
+                widget.SetEnergy(slot.Member >= 0 ? session.State.Energy[slot.Member] : 0);
                 widget.SetDimmed(slot.Dragged);
                 widget.SetHighlight(slot.Highlight);
                 widget.Label.text = "";
@@ -342,7 +337,7 @@ namespace ConcertHype
             BenchColumn.Render(view);
         }
 
-        private static void OnTab(FormationTab tab) => Safely(() =>
+        private static void OnTab(FormationTab tab) => Ui.Safely(() =>
         {
             if (drag != null || Tab == tab || ShowSession.Current == null)
                 return;
@@ -354,10 +349,15 @@ namespace ConcertHype
         }, "switching tabs");
 
         /// <summary>
-        /// The top-left corner of each of these host places' portraits on the talk break's tab, as Render places them.
+        /// The top-left corner of a host place's portrait on the talk break's tab, as Render places it.
         /// </summary>
-        public static Vector2[] HostCorners(IList<int> places) =>
-            places.Select(k => new Vector2(frame.CenterX + ((k - (Engine.MaxHosts - 1) / 2f) * CellWidth - 27f) * frame.Scale, TriangleTop)).ToArray();
+        public static Vector2 HostCorner(int place) =>
+            new Vector2(frame.CenterX + ((place - (Engine.MaxHosts - 1) / 2f) * CellWidth - PortraitWidget.Width / 2f) * frame.Scale, TriangleTop);
+
+        /// <summary>
+        /// The top-left corner of each of these host places' portraits.
+        /// </summary>
+        public static Vector2[] HostCorners(IList<int> places) => places.Select(HostCorner).ToArray();
 
         /// <summary>
         /// The top-left corner of each place's portrait in the game's triangle, given each place's row: each row
@@ -373,7 +373,7 @@ namespace ConcertHype
             for (int j = 0; j < rows.Count; j++)
             {
                 int row = rows[j];
-                places[j] = new Vector2(frame.CenterX + ((placed[row]++ - (perRow[row] - 1) / 2f) * CellWidth - 27f) * scale, TriangleTop + row * RowHeight * scale);
+                places[j] = new Vector2(frame.CenterX + ((placed[row]++ - (perRow[row] - 1) / 2f) * CellWidth - PortraitWidget.Width / 2f) * scale, TriangleTop + row * RowHeight * scale);
             }
             return places;
         }
@@ -452,19 +452,7 @@ namespace ConcertHype
             startLabel.text = text;
         }
 
-        private static void Safely(Action action, string what)
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                ShowSession.Fail(ex, what);
-            }
-        }
-
-        private static void OnReset() => Safely(() =>
+        private static void OnReset() => Ui.Safely(() =>
         {
             message = null;
             ShowSession.Current?.ResetLineup();
@@ -499,7 +487,7 @@ namespace ConcertHype
         public static bool BeginDrag(int member, DropPoint from)
         {
             bool started = false;
-            Safely(() =>
+            Ui.Safely(() =>
             {
                 ShowSession session = ShowSession.Current;
                 if (session == null || !Alive || !root.activeInHierarchy || session.Playing || session.State.Finished || member < 0 || drag != null)
@@ -542,7 +530,7 @@ namespace ConcertHype
             if (!Nullable.Equals(over, drag.Over))
             {
                 drag.Over = over;
-                Safely(Render, "showing the drop");
+                Ui.Safely(Render, "showing the drop");
             }
         }
 
@@ -579,7 +567,7 @@ namespace ConcertHype
             ShowSession session = ShowSession.Current;
             DragAndDropManager manager = Manager();
             data_girls.girls girl = session != null && done.Member < session.Show.Girls.Count ? session.Show.Girls[done.Member] : null;
-            Safely(() =>
+            Ui.Safely(() =>
             {
                 if (cancel || session == null || !Alive)
                     return;
@@ -619,13 +607,12 @@ namespace ConcertHype
             Transform center = host.Picture?.transform;
             if (sprite == null || center == null)
                 return null;
-            GameObject overlay = new GameObject("Cancel", typeof(RectTransform));
-            overlay.transform.SetParent(center, false);
+            RectTransform rect = Ui.NewChild(center, "Cancel");
+            GameObject overlay = rect.gameObject;
             Image image = overlay.AddComponent<Image>();
             image.sprite = sprite;
             image.preserveAspect = true;
             image.raycastTarget = false;
-            RectTransform rect = (RectTransform)overlay.transform;
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = Vector2.zero;
             rect.sizeDelta = new Vector2(34f, 34f);
@@ -658,7 +645,7 @@ namespace ConcertHype
         /// A quick click: a bench idol takes the first empty place she can on the tab shown, otherwise the hint says
         /// to drag; a talk break host is taken off.
         /// </summary>
-        public static void OnClick(int member, DropPoint from) => Safely(() =>
+        public static void OnClick(int member, DropPoint from) => Ui.Safely(() =>
         {
             ShowSession session = ShowSession.Current;
             if (session == null || !Alive || drag != null || session.Playing)

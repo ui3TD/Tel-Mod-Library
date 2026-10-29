@@ -15,7 +15,7 @@ namespace ConcertHype
     /// </summary>
     internal static class BenchColumn
     {
-        private const float PortraitWidth = 54f, PortraitHeight = 58f, CellWidth = 62f, CellHeight = 66f;
+        private const float CellWidth = 62f, CellHeight = 66f;
 
         /// <summary>
         /// The bench's width, between the game's column (about 200) and two portraits at full size (124).
@@ -101,7 +101,7 @@ namespace ConcertHype
                 group.alpha = 1f;
                 Frame.Add(group);
             }
-            GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
+            GameObject labelTemplate = Ui.LabelTemplate(popup);
             for (int m = 0; m < session.Show.Girls.Count; m++)
             {
                 // Why she can't perform is an icon on her picture
@@ -177,13 +177,8 @@ namespace ConcertHype
                 Log.WarnOnce("bench title", "couldn't find the game's title label; the bench has no title");
                 return null;
             }
-            GameObject copy = Ui.Copy(source, column, Shapes.Label, "label", "Bench Title");
-            CanvasGroup group = copy.GetComponent<CanvasGroup>();
-            if (group != null)
-                group.alpha = 1f;
-            copy.transform.localScale = Vector3.one;
-            TextMeshProUGUI text = copy.GetComponent<TextMeshProUGUI>();
-            text.raycastTarget = false;
+            TextMeshProUGUI text = Ui.CopyLabel(source, column, "Bench Title");
+            text.transform.localScale = Vector3.one;
             text.alignment = TextAlignmentOptions.BottomLeft;
             text.text = Texts.Get("CONCERTHYPE__BACKSTAGE");
             FitOneLine(text);
@@ -196,8 +191,7 @@ namespace ConcertHype
         /// </summary>
         private static RectTransform MakePanel(Transform column)
         {
-            GameObject box = new GameObject("Bench Panel", typeof(RectTransform));
-            box.transform.SetParent(column, false);
+            GameObject box = Ui.NewChild(column, "Bench Panel").gameObject;
             Image image = box.AddComponent<Image>();
             Image rounded = PopupManager.GetObject(PopupManager._type.cafe)?.GetComponent<Cafe_Popup>()?.SelectGirl_ScrollBar?.transform.Find("Background")?.GetComponent<Image>();
             if (rounded != null && rounded.sprite != null)
@@ -235,14 +229,11 @@ namespace ConcertHype
         /// </summary>
         private static RectTransform MakeScroll(Transform column, out WheelScroll scroll)
         {
-            GameObject view = new GameObject("Bench Scroll", typeof(RectTransform));
-            view.transform.SetParent(column, false);
+            GameObject view = Ui.NewChild(column, "Bench Scroll").gameObject;
             Ui.Stretch(view);
             view.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0f);
             view.AddComponent<RectMask2D>();
-            GameObject inside = new GameObject("Content", typeof(RectTransform));
-            inside.transform.SetParent(view.transform, false);
-            RectTransform rect = (RectTransform)inside.transform;
+            RectTransform rect = Ui.NewChild(view.transform, "Content");
             rect.anchorMin = new Vector2(0f, 1f);
             rect.anchorMax = new Vector2(1f, 1f);
             rect.pivot = new Vector2(0f, 1f);
@@ -333,18 +324,11 @@ namespace ConcertHype
             text.fontSizeMin = size * 0.75f;
         }
 
-        private static void OnGroup(int item)
+        private static void OnGroup(int item) => Ui.Safely(() =>
         {
-            try
-            {
-                Group = PanelView.GroupAt(groups, item);
-                LineupPanel.Render();
-            }
-            catch (Exception ex)
-            {
-                ShowSession.Fail(ex, "filtering the bench");
-            }
-        }
+            Group = PanelView.GroupAt(groups, item);
+            LineupPanel.Render();
+        }, "filtering the bench");
 
         /// <summary>
         /// The bench fades while a song plays, its title, dropdown, panel and scrollbar with it, and takes no clicks
@@ -414,11 +398,10 @@ namespace ConcertHype
                 BenchView bench = view.Bench[i];
                 widget.Root.SetActive(true);
                 // Read left to right, two to a row
-                float x = ((i % 2) * CellWidth + (CellWidth - PortraitWidth) / 2f) * scale;
-                float y = ((i / 2) * CellHeight + (CellHeight - PortraitHeight) / 2f) * scale;
-                Ui.Place(widget.Root, x, y, PortraitWidth, PortraitHeight);
-                widget.Root.transform.localScale = new Vector3(scale, scale, 1f);
-                Ui.SetEnergyBar(widget.Bar, bench.Energy);
+                float x = ((i % 2) * CellWidth + (CellWidth - PortraitWidget.Width) / 2f) * scale;
+                float y = ((i / 2) * CellHeight + (CellHeight - PortraitWidget.Height) / 2f) * scale;
+                widget.PlaceAt(new Vector2(x, y), scale);
+                widget.SetEnergy(bench.Energy);
                 widget.Icon.Set(bench.Icon, bench.Tip, bench.Count);
                 widget.SetBarTips(bench.EnergyTip, null, view.Dragging);
                 // An idol who can't perform is dimmed and can't be dragged; the icon saying why stays bright

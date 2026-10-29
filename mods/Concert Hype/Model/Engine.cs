@@ -110,7 +110,8 @@ namespace ConcertHype.Model
                 Senbatsu = song.Slots[slot].Original == member ? config.KSenbatsu : 0,
                 RowEase = config.RowEaseOf(song.Slots[slot].Row),
             };
-            parts.Expected = Math.Max(0, parts.EnergyFactor * parts.Skill + parts.Senbatsu + parts.RowEase);
+            parts.Raw = parts.EnergyFactor * (config.SkillBase + config.SkillScale * parts.Skill) + parts.Senbatsu + parts.RowEase;
+            parts.Expected = Math.Max(0, parts.Raw);
             return parts;
         }
 
@@ -399,8 +400,7 @@ namespace ConcertHype.Model
                     continue;
                 }
                 slot.Parts = ExpectedRoll(state, j, m);
-                double raw = slot.Parts.EnergyFactor * slot.Parts.Skill + slot.Parts.Senbatsu + slot.Parts.RowEase;
-                slot.Roll = Math.Max(0, raw + state.Rng.Normal(config.RollSigma));
+                slot.Roll = Math.Max(0, slot.Parts.Raw + state.Rng.Normal(config.RollSigma));
                 rolls[j] = slot.Roll;
                 slot.EnergyBefore = state.Energy[m];
                 slot.AccidentChance = AccidentChance(config, slot.Roll, state.Energy[m]);

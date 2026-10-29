@@ -21,6 +21,11 @@ namespace ConcertHype.Model
         public double Senbatsu;
 
         /// <summary>
+        /// The roll without noise: (skillBase + skillScale x skill) x energy factor + senbatsu + row ease.
+        /// </summary>
+        public double Raw;
+
+        /// <summary>
         /// The roll without noise, floored at 0.
         /// </summary>
         public double Expected;

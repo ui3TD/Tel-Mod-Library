@@ -38,12 +38,30 @@ namespace ConcertHype.Tests
             {
                 RollParts parts = Engine.ExpectedRoll(state, j, song.Slots[j].Original);
                 Assert.Equal(config.RowEaseOf(song.Slots[j].Row), parts.RowEase);
-                Assert.Equal(40 + 15 + parts.RowEase, parts.Expected, 9);
+                Assert.Equal(30 + 0.7 * 40 + 15 + parts.RowEase, parts.Expected, 9);
             }
             Assert.Equal(new double[] { 0, 4, 8, 8, 8 }, config.RowEase);
             double front = PanelView.SuccessChance(config, Engine.ExpectedRoll(state, 0, song.Slots[0].Original).Expected);
             double back = PanelView.SuccessChance(config, Engine.ExpectedRoll(state, 5, song.Slots[5].Original).Expected);
             Assert.True(back > front);
+        }
+
+        [Fact]
+        public void LowSkill_CountsCloserToHighSkill()
+        {
+            Config config = new Config { PBase = 0, PRoll = 0, PTired = 0, RowEase = new double[] { 0 } };
+            double Expected(double skill) => Engine.ExpectedRoll(Shows.Start(Shows.Setup(skill: skill), config), 0, 0).Expected;
+
+            Assert.Equal(30 + 0.7 * 18 + 15, Expected(18), 9);
+            Assert.Equal(30 + 0.7 * 99 + 15, Expected(99), 9);
+            // A fresh normal-tier idol in her own place now succeeds often; a strong one still does better
+            Assert.InRange(PanelView.SuccessChance(config, Expected(18)), 35, 45);
+            Assert.True(Expected(87) > Expected(50));
+
+            // Tiredness still scales it down
+            ShowState state = Shows.Start(Shows.Setup(skill: 50), config);
+            state.Energy[0] = 0;
+            Assert.Equal(0.7 * (30 + 0.7 * 50) + 15, Engine.ExpectedRoll(state, 0, 0).Expected, 9);
         }
 
         [Fact]
@@ -56,7 +74,7 @@ namespace ConcertHype.Tests
         [Fact]
         public void ExpectedRoll_IsFlooredAtZero()
         {
-            ShowState state = Shows.Start(Shows.Setup(skill: 0), new Config { RowEase = new double[] { -10 } });
+            ShowState state = Shows.Start(Shows.Setup(skill: 0), new Config { RowEase = new double[] { -10 }, SkillBase = 0 });
             Assert.Equal(0, Engine.ExpectedRoll(state, 0, 5).Expected);
         }
 

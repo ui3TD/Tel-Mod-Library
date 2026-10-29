@@ -7,6 +7,12 @@ namespace ConcertHype.Model
     public sealed class Config
     {
         // Roll
+        /// <summary>
+        /// Skill counts as skillBase + skillScale x skill, so low-stat idols perform closer to the strong ones.
+        /// </summary>
+        public double SkillBase = 30;
+        public double SkillScale = 0.7;
+
         public double KSenbatsu = 15;
         public double RollSigma = 10;
         public double EnergyMinFactor = 0.7;

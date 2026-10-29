@@ -67,7 +67,7 @@ namespace ConcertHype
             try
             {
                 bool ours = ShowSession.LastScore != null && ReferenceEquals(ShowSession.LastScoreConcert, __instance.Concert);
-                ScoreLine.Show(__instance, ours ? PanelView.ScoreLine(ShowSession.LastScore) : null);
+                ScoreLine.Show(__instance, ours ? PanelView.ScoreReadout(ShowSession.LastScore) : null);
             }
             catch (Exception ex)
             {

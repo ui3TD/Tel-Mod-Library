@@ -15,7 +15,9 @@ namespace InGameTests.TelMods
     /// Concert Hype's show in the game's real concert popup. The unit tests cover the rules, the drop rules, the
     /// panel's text, the payout and each patch; this checks what only the engine does: real clicks reaching the
     /// panel's and the bench's buttons on screen, a real drag through the game's input and drag-and-drop manager,
-    /// the icons' pictures and the game's tooltip over one, the game's profile card placed at the host place, the
+    /// the icons' pictures and the game's tooltip over one and over the Expected Hype info icon, the readouts as TMP
+    /// draws them clear of the places, the empty host place showing the game's empty senbatsu place, the game's
+    /// profile card placed at the host place, the
     /// game's cancel icon over the hovered host and a real click cancelling her, a
     /// talk break played by the popup's own coroutine, the transpiled song length, the popup's tweens landing hype
     /// on the show's value, the score line on the real results screen, and no crisis popup.
@@ -182,6 +184,13 @@ namespace InGameTests.TelMods
                 mouse.Off();
                 if (shown != tip)
                     ctx.Fail($"Over the second place's icon the tooltip reads '{shown}', not '{tip}'");
+                // The game's info icon before Expected Hype shows the range and mood the same way
+                string expectedTip = Get<string>(Get<object>(view, "Expected"), "Tip");
+                yield return mouse.Hover(ScreenRect(panel.Find("Expected/Info")).center, 0.5f);
+                shown = AccessTools.Field(typeof(TooltipManager), "TooltipText").GetValue(Game.Main.Data.GetComponent<TooltipManager>()) as string;
+                mouse.Off();
+                if (shown != expectedTip)
+                    ctx.Fail($"Over the Expected Hype info icon the tooltip reads '{shown}', not '{expectedTip}'");
 
                 // Each song: the popup's tween ends exactly on the show's hype, with no crisis popup. Before the
                 // second song, a talk break hosted by a bench idol dragged onto the host place.
@@ -198,14 +207,25 @@ namespace InGameTests.TelMods
                         }
                         // Her profile card shows at her bench portrait first, then comes along to the host place
                         Transform hostPlace = panel.Find("TalkBreak/Host/Center");
-                        // The talk break box sits below the lines above it as TMP actually draws them
-                        TextMeshProUGUI lastLine = panel.Find("Last").GetComponent<TextMeshProUGUI>();
-                        Vector3[] box = new Vector3[4];
-                        ((RectTransform)panel.Find("TalkBreak")).GetWorldCorners(box);
-                        float textBottom = lastLine.transform.TransformPoint(lastLine.textBounds.min).y;
-                        ctx.Record("gap above the talk break box", (textBottom - box[1].y).ToString("F3"));
-                        if (box[1].y > textBottom)
-                            ctx.Fail("The talk break box overlaps the line above it: " + lastLine.text);
+                        // The empty host place is the game's empty senbatsu place, found among the scene's objects
+                        Image emptyPicture = hostPlace.GetComponent<Image>(), gamePlace = Resources.FindObjectsOfTypeAll<SenbatsuReciever>()
+                            .Select(r => r.GetComponent<Image>()).FirstOrDefault(i => i != null && i.sprite != null);
+                        ctx.Record("empty host place", emptyPicture.sprite?.name + " " + emptyPicture.type);
+                        if (gamePlace == null || emptyPicture.sprite != gamePlace.sprite || emptyPicture.type != gamePlace.type)
+                            ctx.Fail("The empty host place doesn't show the game's empty senbatsu place: " + emptyPicture.sprite?.name);
+                        // Every readout, as TMP draws it, stays clear of the places and of the other readouts (a readout's
+                        // own title and value are as close as the game's, whose text boxes touch)
+                        List<Rect> places = panel.Cast<Transform>().Where(t => t.name.StartsWith("Slot ") && t.gameObject.activeSelf).Select(WorldRect)
+                            .Concat(new[] { WorldRect(panel.Find("TalkBreak/Host")) }).ToList();
+                        Dictionary<string, Rect> texts = new[] { "Expected", "Changed", "Last" }.SelectMany(r => new[] { r + "/Title", r + "/Value" })
+                            .Concat(new[] { "TalkBreak/TalkTitle" }).ToDictionary(path => path, path => DrawnRect(panel.Find(path).GetComponent<TextMeshProUGUI>()));
+                        foreach (KeyValuePair<string, Rect> text in texts)
+                        {
+                            List<string> hits = places.Where(p => p.Overlaps(text.Value)).Select(p => "place " + p.ToString("F2"))
+                                .Concat(texts.Where(other => Readout(other.Key) != Readout(text.Key) && other.Value.Overlaps(text.Value)).Select(other => other.Key + " " + other.Value.ToString("F2"))).ToList();
+                            if (hits.Count > 0)
+                                ctx.Fail("The readout text " + text.Key + " " + text.Value.ToString("F2") + " overlaps " + string.Join(", ", hits.ToArray()));
+                        }
                         yield return mouse.Hover(ScreenRect(Bench(host)).center, 1f);
                         yield return mouse.Drag(ScreenRect(Bench(host)).center, ScreenRect(hostPlace).center, null);
                         yield return new WaitForSecondsRealtime(1f);
@@ -428,6 +448,28 @@ namespace InGameTests.TelMods
             Camera cam = t.GetComponentInParent<Canvas>()?.rootCanvas.worldCamera;
             Vector2 a = RectTransformUtility.WorldToScreenPoint(cam, c[0]), b = RectTransformUtility.WorldToScreenPoint(cam, c[2]);
             return Rect.MinMaxRect(a.x, a.y, b.x, b.y);
+        }
+
+        /// <summary>
+        /// The readout a text belongs to: "Expected" for "Expected/Title".
+        /// </summary>
+        private static string Readout(string path) => path.Substring(0, path.IndexOf('/'));
+
+        private static Rect WorldRect(Transform t)
+        {
+            Vector3[] c = new Vector3[4];
+            ((RectTransform)t).GetWorldCorners(c);
+            return Rect.MinMaxRect(c[0].x, c[0].y, c[2].x, c[2].y);
+        }
+
+        /// <summary>
+        /// Where the text's glyphs are, as TMP lays them out, in world space.
+        /// </summary>
+        private static Rect DrawnRect(TextMeshProUGUI text)
+        {
+            text.ForceMeshUpdate();
+            Vector3 a = text.transform.TransformPoint(text.textBounds.min), b = text.transform.TransformPoint(text.textBounds.max);
+            return Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
         }
 
         private static GameObject TopHit(Vector2 point)

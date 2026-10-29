@@ -47,21 +47,38 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void Lines_StateHypeBandExpectationAndHint()
+        public void Readouts_AreTitlesOverValues_WithTheRangeAndMoodInTheTip()
         {
             ShowSession session = ThreeSongs(out _);
             PanelView view = PanelView.Build(session);
-            Assert.StartsWith("Hype 50% · a changed lineup surprises the crowd", view.Hype);
-            Assert.StartsWith("Changed lineup ", view.Expected);
-            Assert.Contains("expected hype ", view.Expected);
-            Assert.Equal("", view.Last);
+            SongPreview preview = session.Preview();
+            Assert.Equal("Expected Hype:", view.Expected.Title);
+            Assert.Equal(PanelView.Signed(preview.Change), view.Expected.Value);
+            Assert.Equal(Math.Round(preview.Change) >= 0 ? Tone.Good : Tone.Bad, view.Expected.Tone);
+            Assert.Equal($"Likely {PanelView.Signed(preview.Low)} to {PanelView.Signed(preview.High)}, depending on how the idols perform. "
+                + "Hype 50%: a changed lineup surprises the crowd.", view.Expected.Tip);
+            Assert.Equal("Changed Lineup:", view.Changed.Title);
+            Assert.Equal(Math.Round(100 * preview.Novelty) + "%", view.Changed.Value);
+            Assert.Equal(Tone.Plain, view.Changed.Tone);
+            Assert.Equal("", view.Changed.Tip);
+            Assert.False(view.Last.Shown);  // nothing played yet
             Assert.Equal("", view.Hint);  // no standing instructions: only why a drop was refused
             Assert.Equal("M can't perform right now.", PanelView.Build(session, message: "M can't perform right now.").Hint);
 
             session.State.Hype = 150;
-            Assert.Equal("Hype 150% · the crowd wants the hits", PanelView.Build(session).Hype);
+            Assert.EndsWith("Hype 150%: the crowd wants the hits.", PanelView.Build(session).Expected.Tip);
             session.State.Hype = 95;
-            Assert.Equal("Hype 95% · the crowd is close to 100%", PanelView.Build(session).Hype);
+            Assert.EndsWith("Hype 95%: the crowd is close to 100%.", PanelView.Build(session).Expected.Tip);
+        }
+
+        [Theory]
+        [InlineData(0.4, "+0")]
+        [InlineData(-0.4, "+0")]
+        [InlineData(-0.6, "-1")]
+        [InlineData(12.5, "+12")]
+        public void Signed_RoundsFirst_SoAlmostNothingIsPlusZero(double change, string shown)
+        {
+            Assert.Equal(shown, PanelView.Signed(change));
         }
 
         [Fact]
@@ -69,7 +86,7 @@ namespace ConcertHype.Tests
         {
             ShowSession session = ThreeSongs(out _concert concert);
             PanelView view = PanelView.Build(session);
-            Assert.Equal("Talk Break (2 left)", view.TalkTitle);
+            Assert.Equal("Talk Break (2 left):", view.TalkTitle);
             Assert.False(view.TalkOpen);
             Assert.False(view.TalkShown);  // no talk break place before the first song
             Assert.Equal(-1, view.Host);
@@ -86,25 +103,35 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void LastLine_ReportsTheSongsChange_AccidentsAndTalkBreaks()
+        public void Last_IsTheLastSongsOrTalkBreaksChange_GreenUnlessALoss()
         {
             ShowSession session = ThreeSongs(out _concert concert);
-            session.State.Config.PBase = 1;
-            session.State.Config.PMax = 1;
-            session.State.Config.AbsenceMin = session.State.Config.AbsenceMax = 2;
             FakeStage stage = new(concert);
             stage.PlaySong(session);
-            string last = PanelView.Build(session).Last;
-            Assert.StartsWith("Last song: " + PanelView.Signed(session.LastResult.Change) + " hype; ", last);
-            Assert.Equal("Last song: " + PanelView.Signed(session.LastResult.Change) + " hype; 3 hurt", last);  // names show on the bench
-            session.LastResult.Exhausted.Add(1);
-            Assert.EndsWith("; 3 hurt, 1 exhausted", PanelView.Build(session).Last);
-            session.LastResult.Exhausted.Clear();
+            Readout last = PanelView.Build(session).Last;
+            Assert.Equal("Last Song:", last.Title);
+            Assert.Equal(PanelView.Signed(session.LastResult.Change), last.Value);
+            Assert.Equal("", last.Tip);  // who got hurt shows on the bench
+            session.LastResult.Change = -0.4;
+            Assert.Equal(("+0", Tone.Good), (PanelView.Build(session).Last.Value, PanelView.Build(session).Last.Tone));
+            session.LastResult.Change = -3;
+            Assert.Equal(("-3", Tone.Bad), (PanelView.Build(session).Last.Value, PanelView.Build(session).Last.Tone));
 
-            session.State.Config.PBase = 0;
             session.Drop(2, DropPoint.AtPlace(0), DropPoint.Host);
             stage.PlaySong(session);
-            Assert.StartsWith("Talk break by Idol3: hype ", PanelView.Build(session).Last);
+            last = PanelView.Build(session).Last;
+            Assert.Equal("Last Talk Break:", last.Title);
+            Assert.Equal(PanelView.Signed(session.LastMc.HypeAfter - session.LastMc.HypeBefore), last.Value);
+        }
+
+        [Fact]
+        public void TheScore_IsATitleOverAValue_WithItsPartsInTheTip()
+        {
+            Readout score = PanelView.ScoreReadout(new Score { Total = 140.88, Average = 142.72, Peak = 190.71, Finale = 87.38 });
+            Assert.Equal("Show Score:", score.Title);
+            Assert.Equal("141%", score.Value);
+            Assert.Equal(Tone.Plain, score.Tone);
+            Assert.Equal("Average 143%, best 191%, finale 87%.", score.Tip);
         }
 
         [Fact]
@@ -163,7 +190,7 @@ namespace ConcertHype.Tests
             PanelView before = PanelView.Build(session);
             Assert.False(before.Faded);
             Assert.Equal("", before.FormationNote);
-            Assert.StartsWith("Changed lineup ", before.Expected);
+            Assert.Equal("Expected Hype:", before.Expected.Title);
 
             // Song 2 is 2, 3, 4: the center hosts, and stays in the lineup for the song
             session.Drop(2, DropPoint.AtPlace(0), DropPoint.Host);
@@ -171,7 +198,10 @@ namespace ConcertHype.Tests
             string pull = Math.Round(Engine.McHype(session.State, 2)).ToString();
             Assert.True(view.Faded);
             Assert.Equal("This lineup plays after the talk break.", view.FormationNote);
-            Assert.Equal($"Talk break first: hype goes to about {pull}%.", view.Expected);
+            Assert.Equal("After Talk Break:", view.Expected.Title);
+            Assert.Equal(pull + "%", view.Expected.Value);
+            Assert.Equal(Tone.Plain, view.Expected.Tone);
+            Assert.Equal("The hype expected after the talk break. The song plays after it.", view.Expected.Tip);
             Assert.True(view.Slots[0].Hosting);
             Assert.Equal(2, view.Slots[0].Member);
             Assert.Equal(IconKind.Hosting, view.Slots[0].Icon);
@@ -218,7 +248,7 @@ namespace ConcertHype.Tests
             Assert.Equal(3, view.Slots[1].Member);
             Assert.Equal(SlotBadge.Substitute, view.Slots[1].Badge);
             Assert.Equal(Highlight.Allowed, view.Slots[1].Highlight);
-            Assert.NotEqual(before.Expected, view.Expected);
+            Assert.NotEqual((before.Expected.Value, before.Expected.Tip, before.Changed.Value), (view.Expected.Value, view.Expected.Tip, view.Changed.Value));
             Assert.Equal(before.Bench.Select(b => b.Member), view.Bench.Select(b => b.Member));
             Assert.Equal(new[] { 0, 1, before.Slots[2].Member }, session.Lineup);  // nothing changed yet
         }
@@ -280,13 +310,6 @@ namespace ConcertHype.Tests
             Assert.Equal(scale, fit, 2);
             int rows = (count + fitColumns - 1) / fitColumns;
             Assert.True(count == 0 || (fitColumns * 62 * fit <= 201.01 && rows * 66 * fit <= 487.01));
-        }
-
-        [Fact]
-        public void ScoreLine_StatesTheBlend()
-        {
-            Assert.Equal("Show score: 132% (average 120%, best 165%, finale 140%)",
-                PanelView.ScoreLine(new Score { Total = 132.4, Average = 120, Peak = 165, Finale = 140 }));
         }
 
         [Fact]

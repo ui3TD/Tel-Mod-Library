@@ -26,6 +26,13 @@ namespace ConcertHype
             new[] { typeof(RectTransform), typeof(CanvasRenderer), typeof(CanvasGroup), typeof(Lang_Button), typeof(TextMeshProUGUI) },
             new string[0]);
 
+        /// <summary>
+        /// The info icon before the Accident Chance title: a font symbol that shows its tooltip while hovered.
+        /// </summary>
+        public static readonly VanillaShape Info = new VanillaShape(
+            new[] { typeof(RectTransform), typeof(CanvasRenderer), typeof(Button), typeof(ButtonDefault), typeof(TextMeshProUGUI), typeof(Lang_Button), typeof(FixScrollWheel) },
+            new string[0]);
+
         public static readonly VanillaShape Portrait = new VanillaShape(
             new[] { typeof(RectTransform), typeof(Concert_Girl) },
             new[] { "BG", "Center", "Center/shadow_corner (1)", "Center/shadow_right (1)", "Center/shadow_bottom (1)", "Stamina" });
@@ -114,6 +121,16 @@ namespace ConcertHype
             return Rect.MinMaxRect(topLeft.x - parent.rect.xMin, parent.rect.yMax - topLeft.y, bottomRight.x - parent.rect.xMin, parent.rect.yMax - bottomRight.y);
         }
 
+        /// <summary>
+        /// Moves an object so its top-left corner is at x, y in the coordinates of <see cref="Place"/>, keeping its
+        /// own anchors and size.
+        /// </summary>
+        public static void MoveTo(GameObject obj, Transform container, float x, float y)
+        {
+            Rect now = Placed(obj, container);
+            ((RectTransform)obj.transform).anchoredPosition += new Vector2(x - now.xMin, now.yMin - y);
+        }
+
         public static void Stretch(GameObject obj)
         {
             RectTransform rect = (RectTransform)obj.transform;
@@ -198,6 +215,114 @@ namespace ConcertHype
         }
 
         public void PlaceAt(float x, float y) => Ui.Place(Root, x, y, Size, Size);
+    }
+
+    /// <summary>
+    /// The game's info icon (the one before Accident Chance) and where it sits from the title after it.
+    /// </summary>
+    internal sealed class InfoIcon
+    {
+        public GameObject Template;
+
+        /// <summary>
+        /// How far right of the icon its title starts, and how far below the title's top the icon is.
+        /// </summary>
+        public float Gap, Drop;
+
+        /// <summary>
+        /// Null when the next-song screen has no info icon (logged once).
+        /// </summary>
+        public static InfoIcon From(Concert_Popup popup)
+        {
+            Transform container = popup.NextSong_Container.transform;
+            GameObject icon = popup.NextSong_AccidentChanceInfo, title = container.Find("AccidentChanceTitle")?.gameObject;
+            if (icon == null || title == null || icon.GetComponent<ButtonDefault>() == null)
+            {
+                Log.WarnOnce("info icon", "couldn't find the game's info icon; tips show when the title is hovered");
+                return null;
+            }
+            Rect at = Ui.Placed(icon, container), titleAt = Ui.Placed(title, container);
+            return new InfoIcon { Template = icon, Gap = titleAt.xMin - at.xMin, Drop = at.yMin - titleAt.yMin };
+        }
+    }
+
+    /// <summary>
+    /// A title over a value, copied from a pair of the game's (Stamina Cost, or Profit on the results screen) so it
+    /// has their font, size, colour and spacing, with the game's info icon before the title when it has a tip.
+    /// </summary>
+    internal sealed class ReadoutWidget
+    {
+        public GameObject Root;
+        public TextMeshProUGUI Title, Value;
+        public GameObject Info;
+        private ButtonDefault infoTip;
+        private IconTip titleTip;
+        private Color plain;
+
+        /// <param name="x">Where the value's left edge goes; the title keeps the game's offset from it.</param>
+        /// <param name="y">Where the title's top goes; the value keeps the game's offset below it.</param>
+        /// <param name="plain">The value's colour when it's neither good nor bad: the game colours its values itself.</param>
+        public static ReadoutWidget Make(Transform parent, Transform container, string name, GameObject title, GameObject value, InfoIcon info, float x, float y, Color plain)
+        {
+            GameObject root = new GameObject(name, typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+            Ui.Stretch(root);
+            Rect titleAt = Ui.Placed(title, container), valueAt = Ui.Placed(value, container);
+            float titleX = x + titleAt.xMin - valueAt.xMin + (info != null ? info.Gap : 0f);
+            ReadoutWidget widget = new ReadoutWidget { Root = root, plain = plain };
+            widget.Title = Copy(title, root.transform, container, "Title", titleX, y);
+            widget.Value = Copy(value, root.transform, container, "Value", x, y + valueAt.yMin - titleAt.yMin);
+            if (info != null)
+            {
+                widget.Info = Ui.Copy(info.Template, root.transform, Shapes.Info, "info icon", "Info");
+                Ui.MoveTo(widget.Info, container, titleX - info.Gap, y + info.Drop);
+                Button button = widget.Info.GetComponent<Button>();
+                if (button != null)
+                    button.onClick = new Button.ButtonClickedEvent();
+                widget.infoTip = widget.Info.GetComponent<ButtonDefault>();
+            }
+            else
+            {
+                // Without the game's icon, the title itself shows the tip
+                widget.titleTip = widget.Title.gameObject.AddComponent<IconTip>();
+            }
+            return widget;
+        }
+
+        private static TextMeshProUGUI Copy(GameObject source, Transform parent, Transform container, string name, float x, float y)
+        {
+            GameObject copy = Ui.Copy(source, parent, Shapes.Label, "label", name);
+            CanvasGroup group = copy.GetComponent<CanvasGroup>();
+            if (group != null)
+                group.alpha = 1f;
+            Ui.MoveTo(copy, container, x, y);
+            TextMeshProUGUI text = copy.GetComponent<TextMeshProUGUI>();
+            // Text never takes a press or a hover from the portrait or button under it
+            text.raycastTarget = false;
+            return text;
+        }
+
+        public void Set(Readout readout)
+        {
+            Root.SetActive(readout.Shown);
+            if (!readout.Shown)
+                return;
+            Title.text = readout.Title;
+            Value.text = readout.Value;
+            Value.color = readout.Tone == Tone.Good ? mainScript.green32 : readout.Tone == Tone.Bad ? mainScript.red32 : plain;
+            bool tip = readout.Tip.Length > 0;
+            if (infoTip != null)
+            {
+                Info.SetActive(tip);
+                if (tip)
+                    infoTip.SetTooltip(readout.Tip);
+            }
+            if (titleTip != null)
+            {
+                titleTip.Text = readout.Tip;
+                Title.raycastTarget = tip;
+            }
+        }
     }
 
     /// <summary>
@@ -396,17 +521,23 @@ namespace ConcertHype
 
     /// <summary>
     /// The lineup panel on the next-song screen, in place of the game's center, stamina and accident readouts: the
-    /// song's formation, the talk break's host place, and the lines saying how the song is expected to go.
+    /// song's formation, the talk break's host place, and readouts like the game's saying how the song is expected to go.
     /// </summary>
     internal static class LineupPanel
     {
         private const string Name = "ConcertHype Lineup";
         private const float TriangleCenterX = 610f, TriangleTop = 135f, RowHeight = 76f, CellWidth = 70f;
-        private const float LastTop = 206f, LinesWidth = 470f, TalkBoxTop = 258f, TalkBoxWidth = 230f, TalkBoxHeight = 96f;
+
+        /// <summary>
+        /// The readouts sit as the game's do (Center, Stamina Cost), in two columns left of the formation: the
+        /// second row a readout's height below the first, the second column where the first's titles end.
+        /// </summary>
+        private const float SecondRow = 131f, SecondColumnX = 290f, HintTop = 470f, HintWidth = 470f;
 
         private static Concert_Popup owner;
         private static GameObject root;
-        private static TextMeshProUGUI hype, expected, last, hint, talkTitle, formationNote;
+        private static ReadoutWidget expected, changed, last;
+        private static TextMeshProUGUI hint, talkTitle, formationNote;
         private static Button resetLineup;
         private static PortraitWidget hostPlace;
         private static GameObject cancelOverlay, talkBox;
@@ -485,23 +616,30 @@ namespace ConcertHype
             root.AddComponent<PanelDriver>();
 
             GameObject labelTemplate = container.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
-            hype = Ui.Label(labelTemplate, root.transform, "Hype", 30f, 148f, 470f, 28f, 18f);
-            expected = Ui.Label(labelTemplate, root.transform, "Expected", 30f, 178f, 470f, 24f, 15f);
-            last = Ui.Label(labelTemplate, root.transform, "Last", 30f, LastTop, LinesWidth, 48f, 15f);
-            // The talk break in its own framed box, apart from the lines above
+            // Titles and values copied from the game's, in its places: the first column where Center is, the
+            // second row where the center's portrait would end
+            GameObject centerTitle = container.Find("CenterTitle")?.gameObject ?? labelTemplate;
+            Rect first = Ui.Placed(centerTitle, container), value = Ui.Placed(popup.NextSong_Stamina, container), title = Ui.Placed(labelTemplate, container);
+            float columnX = first.xMin + value.xMin - title.xMin;
+            Color plain = popup.NextSong_AccidentChance?.GetComponent<TextMeshProUGUI>()?.color ?? Color.white;
+            InfoIcon info = InfoIcon.From(popup);
+            expected = ReadoutWidget.Make(root.transform, container, "Expected", labelTemplate, popup.NextSong_Stamina, info, columnX, first.yMin, plain);
+            changed = ReadoutWidget.Make(root.transform, container, "Changed", labelTemplate, popup.NextSong_Stamina, null, SecondColumnX, first.yMin, plain);
+            last = ReadoutWidget.Make(root.transform, container, "Last", labelTemplate, popup.NextSong_Stamina, null, SecondColumnX, first.yMin + SecondRow, plain);
+            // The talk break as the game shows the center: its title over its place
             talkBox = new GameObject("TalkBreak", typeof(RectTransform));
             talkBox.transform.SetParent(root.transform, false);
-            Ui.Place(talkBox, 30f, TalkBoxTop, TalkBoxWidth, TalkBoxHeight);
-            talkBox.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.4f);
-            Outline frame = talkBox.AddComponent<Outline>();
-            frame.effectColor = new Color(1f, 1f, 1f, 0.35f);
-            frame.effectDistance = new Vector2(1.5f, -1.5f);
+            Ui.Stretch(talkBox);
             talkBoxGroup = talkBox.AddComponent<CanvasGroup>();
-            talkTitle = Ui.Label(labelTemplate, talkBox.transform, "TalkTitle", 10f, 6f, TalkBoxWidth - 20f, 22f, 15f);
+            GameObject talkCopy = Ui.Copy(centerTitle, talkBox.transform, Shapes.Label, "label", "TalkTitle");
+            Ui.MoveTo(talkCopy, container, first.xMin, first.yMin + SecondRow);
+            talkTitle = talkCopy.GetComponent<TextMeshProUGUI>();
+            talkTitle.raycastTarget = false;
+            Rect center = popup.NextSong_Center.Length > 0 && popup.NextSong_Center[0] != null ? Ui.Placed(popup.NextSong_Center[0], container) : new Rect(first.xMin, first.yMin + 60f, 54f, 58f);
             hostPlace = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, talkBox.transform, "Host", DropPoint.Host);
-            Ui.Place(hostPlace.Root, 10f, 32f, 54f, 58f);
+            Ui.Place(hostPlace.Root, center.xMin, center.yMin + SecondRow, 54f, 58f);
             cancelOverlay = MakeCancelOverlay(hostPlace);
-            hint = Ui.Label(labelTemplate, root.transform, "Hint", 30f, 350f, 470f, 64f, 14f);
+            hint = Ui.Label(labelTemplate, root.transform, "Hint", first.xMin, HintTop, HintWidth, 64f, 14f);
             // Level with the game's Start button beside it, whose left edge leaves room for a narrower button
             Rect start = Ui.Placed(popup.NextSong_Button, container);
             bool level = start.height > 1f && start.yMin > 300f && start.yMax < 640f;
@@ -536,19 +674,15 @@ namespace ConcertHype
                 return;
             session.SyncHype();
             PanelView view = PanelView.Build(session, drag, message);
-            hype.text = view.Hype;
-            expected.text = view.Expected;
-            last.text = view.Last;
+            expected.Set(view.Expected);
+            changed.Set(view.Changed);
+            last.Set(view.Last);
             hint.text = view.Hint;
             talkTitle.text = view.TalkTitle;
             SetStartLabel(view.StartLabel);
 
-            // No talk break box before the first song; below the lines above it, however long they run
+            // No talk break before the first song
             talkBox.SetActive(view.TalkShown);
-            float lastBottom = LastTop + Mathf.Max(24f, last.GetPreferredValues(LinesWidth, 0f).y);
-            float boxTop = Mathf.Max(TalkBoxTop, lastBottom + 12f);
-            Ui.Place(talkBox, 30f, boxTop, TalkBoxWidth, TalkBoxHeight);
-            Ui.Place(hint.gameObject, 30f, view.TalkShown ? boxTop + TalkBoxHeight + 8f : Mathf.Max(TalkBoxTop, lastBottom + 8f), LinesWidth, 64f);
             data_girls.girls hostGirl = view.Host < 0 ? null : session.Show.Girls[view.Host];
             hostPlace.SetGirl(hostGirl);
             Ui.SetEnergyBar(hostPlace.Bar, hostGirl is null ? 0 : session.State.Energy[view.Host]);
@@ -938,26 +1072,35 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// The show's score under the profit on the results screen.
+    /// The show's score under the profit on the results screen, as the game shows production cost, revenue and
+    /// profit, with what it's made of on its info icon.
     /// </summary>
     internal static class ScoreLine
     {
         private const string Name = "ConcertHype Score";
 
-        public static void Show(Concert_Popup popup, string text)
+        private static ReadoutWidget score;
+
+        /// <param name="readout">Null for a show the mod didn't run.</param>
+        public static void Show(Concert_Popup popup, Readout readout)
         {
             Transform final = popup.Final_Container.transform;
-            Transform line = final.Find(Name);
-            if (line == null)
+            bool made = score != null && score.Root != null && score.Root.transform.parent == final;
+            if (!made && readout == null)
+                return;
+            if (!made)
             {
-                GameObject template = final.Find("ProfitTitle")?.gameObject;
-                if (template == null)
+                GameObject title = final.Find("ProfitTitle")?.gameObject, value = final.Find("Profit")?.gameObject;
+                GameObject revenueTitle = final.Find("RevenueTitle")?.gameObject;
+                if (title == null || value == null)
                     return;
-                TextMeshProUGUI label = Ui.Label(template, final, Name, 35f, 430f, 900f, 40f, 24f);
-                line = label.transform;
+                Rect titleAt = Ui.Placed(title, final), valueAt = Ui.Placed(value, final);
+                // One step below Profit, as Profit is below Revenue
+                float step = revenueTitle != null ? titleAt.yMin - Ui.Placed(revenueTitle, final).yMin : 132f;
+                Color plain = popup.NextSong_AccidentChance?.GetComponent<TextMeshProUGUI>()?.color ?? Color.white;
+                score = ReadoutWidget.Make(final, final, Name, title, value, InfoIcon.From(popup), valueAt.xMin, titleAt.yMin + step, plain);
             }
-            line.gameObject.SetActive(!string.IsNullOrEmpty(text));
-            line.GetComponent<TextMeshProUGUI>().text = text ?? "";
+            score.Set(readout ?? new Readout());
         }
     }
 }

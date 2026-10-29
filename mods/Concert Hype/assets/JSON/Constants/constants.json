@@ -5,7 +5,7 @@
 	},
 	{
 		id: "CONCERTHYPE__TALK_BREAK",
-		text: "Talk Break ({0} left)"
+		text: "Talk Break ({0} left):"
 	},
 	{
 		id: "CONCERTHYPE__TALK_NOT_YET",
@@ -26,10 +26,6 @@
 	{
 		id: "CONCERTHYPE__RESET_LINEUP",
 		text: "Reset Lineup"
-	},
-	{
-		id: "CONCERTHYPE__EXPECTED_TALK",
-		text: "Talk break first: hype goes to about {0}%."
 	},
 	{
 		id: "CONCERTHYPE__AFTER_TALK",
@@ -72,8 +68,12 @@
 		text: "Drag {0} onto a place, or onto the talk break."
 	},
 	{
-		id: "CONCERTHYPE__HYPE",
-		text: "Hype {0}% · {1}"
+		id: "CONCERTHYPE__EXPECTED_TITLE",
+		text: "Expected Hype:"
+	},
+	{
+		id: "CONCERTHYPE__EXPECTED_TIP",
+		text: "Likely {0} to {1}, depending on how the idols perform. Hype {2}%: {3}."
 	},
 	{
 		id: "CONCERTHYPE__BAND_LOW",
@@ -88,24 +88,24 @@
 		text: "the crowd wants the hits"
 	},
 	{
-		id: "CONCERTHYPE__EXPECTED",
-		text: "Changed lineup {0}% · expected hype {1} ({2} to {3})"
+		id: "CONCERTHYPE__AFTER_TALK_TITLE",
+		text: "After Talk Break:"
 	},
 	{
-		id: "CONCERTHYPE__LAST_SONG",
-		text: "Last song: {0} hype"
+		id: "CONCERTHYPE__AFTER_TALK_TIP",
+		text: "The hype expected after the talk break. The song plays after it."
 	},
 	{
-		id: "CONCERTHYPE__HURT_COUNT",
-		text: "{0} hurt"
+		id: "CONCERTHYPE__CHANGED_TITLE",
+		text: "Changed Lineup:"
 	},
 	{
-		id: "CONCERTHYPE__EXHAUSTED_COUNT",
-		text: "{0} exhausted"
+		id: "CONCERTHYPE__LAST_SONG_TITLE",
+		text: "Last Song:"
 	},
 	{
-		id: "CONCERTHYPE__TALK_RESULT",
-		text: "Talk break by {0}: hype {1}% to {2}%"
+		id: "CONCERTHYPE__LAST_TALK_TITLE",
+		text: "Last Talk Break:"
 	},
 	{
 		id: "CONCERTHYPE__BADGE_ORIGINAL",
@@ -132,7 +132,11 @@
 		text: "1 song"
 	},
 	{
-		id: "CONCERTHYPE__SCORE",
-		text: "Show score: {0}% (average {1}%, best {2}%, finale {3}%)"
+		id: "CONCERTHYPE__SCORE_TITLE",
+		text: "Show Score:"
+	},
+	{
+		id: "CONCERTHYPE__SCORE_TIP",
+		text: "Average {0}%, best {1}%, finale {2}%."
 	}
 ]

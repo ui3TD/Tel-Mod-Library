@@ -90,6 +90,30 @@ namespace ConcertHype
     }
 
     /// <summary>
+    /// A value's colour, as the game colours its values: green for good, red for bad, else its own.
+    /// </summary>
+    public enum Tone
+    {
+        Plain,
+        Good,
+        Bad,
+    }
+
+    /// <summary>
+    /// A title over a value, as the game's next-song and results screens show their numbers, with an optional
+    /// tooltip on its info icon. Hidden while the value is empty.
+    /// </summary>
+    public sealed class Readout
+    {
+        public string Title = "";
+        public string Value = "";
+        public Tone Tone;
+        public string Tip = "";
+
+        public bool Shown => Value.Length > 0;
+    }
+
+    /// <summary>
     /// An idol being dragged, and where she is over now (null: over nothing that takes her).
     /// </summary>
     public sealed class DragView
@@ -113,9 +137,19 @@ namespace ConcertHype
         /// </summary>
         public List<BenchView> Bench = new List<BenchView>();
 
-        public string Hype = "";
-        public string Expected = "";
-        public string Last = "";
+        /// <summary>
+        /// The song's expected hype change, with its range and the crowd's mood in the tip; with a talk break
+        /// first, the hype it's expected to leave.
+        /// </summary>
+        public Readout Expected = new Readout();
+
+        public Readout Changed = new Readout();
+
+        /// <summary>
+        /// The last song's or talk break's hype change; hidden before the first song.
+        /// </summary>
+        public Readout Last = new Readout();
+
         /// <summary>
         /// Why the last drop, or the one hovered now, is refused; empty otherwise.
         /// </summary>
@@ -147,7 +181,21 @@ namespace ConcertHype
         /// </summary>
         public string StartLabel;
 
-        public static string Signed(double value) => (value >= 0 ? "+" : "") + Math.Round(value).ToString(CultureInfo.InvariantCulture);
+        public static string Signed(double value)
+        {
+            double rounded = Math.Round(value);
+            return rounded >= 0 ? "+" + Math.Abs(rounded).ToString(CultureInfo.InvariantCulture) : rounded.ToString(CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// A change shown as a value: signed, green when it's not a loss, red when it is.
+        /// </summary>
+        private static Readout Change(string titleKey, double change) => new Readout
+        {
+            Title = Texts.Get(titleKey),
+            Value = Signed(change),
+            Tone = Math.Round(change) >= 0 ? Tone.Good : Tone.Bad,
+        };
 
         private static string Whole(double value) => Math.Round(value).ToString(CultureInfo.InvariantCulture);
 
@@ -212,16 +260,27 @@ namespace ConcertHype
                 }
                 double h = state.Hype, band = state.Config.NoveltyBlendBand;
                 string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
-                view.Hype = Texts.Format("CONCERTHYPE__HYPE", Whole(h), Texts.Get(mood));
                 // With a talk break first, the song's lineup waits for it
                 view.Faded = host >= 0;
-                view.Expected = view.Faded
-                    ? Texts.Format("CONCERTHYPE__EXPECTED_TALK", Whole(Engine.McHype(state, host)))
-                    : Texts.Format("CONCERTHYPE__EXPECTED", Whole(100 * preview.Novelty), Signed(preview.Change), Signed(preview.Low), Signed(preview.High));
+                if (view.Faded)
+                {
+                    view.Expected = new Readout
+                    {
+                        Title = Texts.Get("CONCERTHYPE__AFTER_TALK_TITLE"),
+                        Value = Whole(Engine.McHype(state, host)) + "%",
+                        Tip = Texts.Get("CONCERTHYPE__AFTER_TALK_TIP"),
+                    };
+                }
+                else
+                {
+                    view.Expected = Change("CONCERTHYPE__EXPECTED_TITLE", preview.Change);
+                    view.Expected.Tip = Texts.Format("CONCERTHYPE__EXPECTED_TIP", Signed(preview.Low), Signed(preview.High), Whole(h), Texts.Get(mood));
+                }
+                view.Changed = new Readout { Title = Texts.Get("CONCERTHYPE__CHANGED_TITLE"), Value = Whole(100 * preview.Novelty) + "%" };
                 view.FormationNote = view.Faded ? Texts.Get("CONCERTHYPE__AFTER_TALK") : "";
             }
 
-            view.Last = LastLine(session);
+            view.Last = LastReadout(session);
             view.Hint = hint;
             view.TalkTitle = Texts.Format("CONCERTHYPE__TALK_BREAK", state.McCharges);
             view.Host = host;
@@ -252,25 +311,14 @@ namespace ConcertHype
             return view;
         }
 
-        private static string LastLine(ShowSession session)
+        /// <summary>
+        /// Who is out after it, and for how long, shows on the bench.
+        /// </summary>
+        private static Readout LastReadout(ShowSession session)
         {
             if (session.LastMc != null)
-            {
-                McResult mc = session.LastMc;
-                return Texts.Format("CONCERTHYPE__TALK_RESULT", session.Name(mc.Host), Whole(mc.HypeBefore), Whole(mc.HypeAfter));
-            }
-            SongResult last = session.LastResult;
-            if (last == null)
-                return "";
-            // Who is out, and for how long, shows on the bench: here only how many
-            List<string> counts = new List<string>();
-            int hurt = last.Slots.Count(s => s.Accident);
-            if (hurt > 0)
-                counts.Add(Texts.Format("CONCERTHYPE__HURT_COUNT", hurt));
-            if (last.Exhausted.Count > 0)
-                counts.Add(Texts.Format("CONCERTHYPE__EXHAUSTED_COUNT", last.Exhausted.Count));
-            string line = Texts.Format("CONCERTHYPE__LAST_SONG", Signed(last.Change));
-            return counts.Count == 0 ? line : line + "; " + string.Join(", ", counts);
+                return Change("CONCERTHYPE__LAST_TALK_TITLE", session.LastMc.HypeAfter - session.LastMc.HypeBefore);
+            return session.LastResult == null ? new Readout() : Change("CONCERTHYPE__LAST_SONG_TITLE", session.LastResult.Change);
         }
 
         private static string SongCount(int songs) => songs == 1 ? Texts.Get("CONCERTHYPE__SONG") : Texts.Format("CONCERTHYPE__SONGS", songs);
@@ -298,8 +346,15 @@ namespace ConcertHype
             : badge == SlotBadge.Empty ? ""
             : Texts.Get("CONCERTHYPE__BADGE_ORIGINAL");
 
-        public static string ScoreLine(Score score) =>
-            Texts.Format("CONCERTHYPE__SCORE", Whole(score.Total), Whole(score.Average), Whole(score.Peak), Whole(score.Finale));
+        /// <summary>
+        /// The show's score on the results screen, with what it's made of in the tip.
+        /// </summary>
+        public static Readout ScoreReadout(Score score) => new Readout
+        {
+            Title = Texts.Get("CONCERTHYPE__SCORE_TITLE"),
+            Value = Whole(score.Total) + "%",
+            Tip = Texts.Format("CONCERTHYPE__SCORE_TIP", Whole(score.Average), Whole(score.Peak), Whole(score.Finale)),
+        };
 
         /// <summary>
         /// The bench column's grid for this many idols in an area this size: the column count that lets the cells

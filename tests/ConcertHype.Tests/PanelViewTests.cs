@@ -44,7 +44,6 @@ namespace ConcertHype.Tests
             Assert.All(view.Slots, s => Assert.Equal(Highlight.None, s.Highlight));
             Assert.Equal("⇄", PanelView.BadgeText(SlotBadge.Substitute));
             Assert.Equal("★", PanelView.BadgeText(SlotBadge.Original));
-            Assert.Equal("✖", PanelView.BadgeText(SlotBadge.Empty));
         }
 
         [Fact]
@@ -150,8 +149,9 @@ namespace ConcertHype.Tests
             Assert.Equal("Substitute: performs in another idol's place, without the senbatsu bonus.", view.Slots[0].Tip);
             Assert.Equal("Original: her own place in the single, where she gets the senbatsu bonus.", view.Slots[1].Tip);
             Assert.Equal(view.Slots[0].Tip, view.Slots[2].Tip);  // standing in for the injured idol is a substitute too
-            Assert.Equal(IconKind.Empty, PanelView.IconOf(SlotBadge.Empty));
-            Assert.Equal("Empty: nobody on the bench can fill this place.", PanelView.TipOf(SlotBadge.Empty));
+            // An empty place shows the game's empty senbatsu place, with no icon
+            Assert.Equal(IconKind.None, PanelView.IconOf(SlotBadge.Empty));
+            Assert.Equal("", PanelView.TipOf(SlotBadge.Empty));
             Assert.Equal("", view.Hint);  // the meanings are in the icons' tooltips, not on screen
         }
 

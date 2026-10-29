@@ -24,7 +24,6 @@ namespace ConcertHype
         None,
         Original,
         Substitute,
-        Empty,
         Hosting,
         Hurt,
         Resting,
@@ -276,11 +275,14 @@ namespace ConcertHype
 
         private static string SongCount(int songs) => songs == 1 ? Texts.Get("CONCERTHYPE__SONG") : Texts.Format("CONCERTHYPE__SONGS", songs);
 
+        /// <summary>
+        /// An empty place has no icon: it shows the game's empty senbatsu place.
+        /// </summary>
         public static IconKind IconOf(SlotBadge badge) =>
-            badge == SlotBadge.Substitute ? IconKind.Substitute : badge == SlotBadge.Empty ? IconKind.Empty : IconKind.Original;
+            badge == SlotBadge.Substitute ? IconKind.Substitute : badge == SlotBadge.Empty ? IconKind.None : IconKind.Original;
 
         public static string TipOf(SlotBadge badge) =>
-            Texts.Get(badge == SlotBadge.Substitute ? "CONCERTHYPE__TIP_SUB" : badge == SlotBadge.Empty ? "CONCERTHYPE__TIP_EMPTY" : "CONCERTHYPE__TIP_ORIGINAL");
+            badge == SlotBadge.Empty ? "" : Texts.Get(badge == SlotBadge.Substitute ? "CONCERTHYPE__TIP_SUB" : "CONCERTHYPE__TIP_ORIGINAL");
 
         /// <summary>
         /// The text symbol shown when an icon's picture can't be loaded.
@@ -289,11 +291,11 @@ namespace ConcertHype
             icon == IconKind.Hurt ? Texts.Format("CONCERTHYPE__OUT", count)
             : icon == IconKind.Resting ? Texts.Get("CONCERTHYPE__RESTING")
             : icon == IconKind.Substitute ? BadgeText(SlotBadge.Substitute)
-            : icon == IconKind.Empty ? BadgeText(SlotBadge.Empty) : icon == IconKind.Original ? BadgeText(SlotBadge.Original) : "";
+            : icon == IconKind.Original ? BadgeText(SlotBadge.Original) : "";
 
         public static string BadgeText(SlotBadge badge) =>
             badge == SlotBadge.Substitute ? Texts.Get("CONCERTHYPE__BADGE_SUB")
-            : badge == SlotBadge.Empty ? Texts.Get("CONCERTHYPE__BADGE_EMPTY")
+            : badge == SlotBadge.Empty ? ""
             : Texts.Get("CONCERTHYPE__BADGE_ORIGINAL");
 
         public static string ScoreLine(Score score) =>

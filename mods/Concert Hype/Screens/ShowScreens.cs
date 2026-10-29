@@ -217,6 +217,10 @@ namespace ConcertHype
         public TextMeshProUGUI Label;
         public IconWidget Icon;
         private Color backgroundColor;
+        private Image.Type pictureType;
+        private float pictureUnits = 1f;
+        private bool hasGirl;
+        private readonly List<GameObject> shadows = new List<GameObject>();
 
         /// <param name="iconOnPicture">The icon sits on the picture (the bench), else beside the label under it.</param>
         public static PortraitWidget Make(GameObject prefab, GameObject labelTemplate, Transform parent, string name, DropPoint from, bool iconOnPicture = false)
@@ -225,6 +229,11 @@ namespace ConcertHype
             widget.Group = widget.Root.AddComponent<CanvasGroup>();
             Transform center = widget.Root.transform.Find("Center");
             widget.Picture = center?.GetComponent<Image>();
+            if (widget.Picture != null)
+            {
+                widget.pictureType = widget.Picture.type;
+                widget.pictureUnits = widget.Picture.pixelsPerUnitMultiplier;
+            }
             widget.Button = center?.GetComponent<Button>();
             widget.Hover = center?.GetComponent<ButtonDefault>();
             widget.Background = widget.Root.transform.Find("BG")?.GetComponent<Image>();
@@ -241,8 +250,10 @@ namespace ConcertHype
                 Ui.Enable(widget.Button, true);
                 foreach (Graphic shadow in center.GetComponentsInChildren<Graphic>(true))
                 {
-                    if (shadow.gameObject != center.gameObject)
-                        shadow.raycastTarget = false;
+                    if (shadow.gameObject == center.gameObject)
+                        continue;
+                    shadow.raycastTarget = false;
+                    widget.shadows.Add(shadow.gameObject);
                 }
                 widget.Drag = center.gameObject.AddComponent<DragSource>();
                 widget.Drag.From = from;
@@ -255,22 +266,35 @@ namespace ConcertHype
             return widget;
         }
 
+        /// <summary>
+        /// An empty place looks like the game's empty senbatsu place: its framed box, with no shadows.
+        /// </summary>
         public void SetGirl(data_girls.girls girl)
         {
             GirlProfileOnHover hover = Picture?.GetComponent<GirlProfileOnHover>();
+            hasGirl = girl != null;
+            foreach (GameObject shadow in shadows)
+                shadow.SetActive(hasGirl);
             if (girl is null)
             {
                 if (hover != null)
                     hover.enabled = false;
                 if (Picture != null)
                 {
-                    Picture.sprite = null;
-                    Picture.color = new Color(1f, 1f, 1f, 0f);
+                    Image empty = Icons.GameEmptyPlace();
+                    Picture.sprite = empty?.sprite;
+                    Picture.type = empty != null ? empty.type : pictureType;
+                    Picture.pixelsPerUnitMultiplier = empty != null ? empty.pixelsPerUnitMultiplier : pictureUnits;
+                    Picture.color = empty != null ? Color.white : new Color(1f, 1f, 1f, 0f);
                 }
                 return;
             }
             if (Picture != null)
+            {
+                Picture.type = pictureType;
+                Picture.pixelsPerUnitMultiplier = pictureUnits;
                 Picture.color = Color.white;
+            }
             if (hover != null)
             {
                 hover.enabled = true;
@@ -280,7 +304,7 @@ namespace ConcertHype
 
         public void SetDimmed(bool dimmed)
         {
-            if (Picture != null && Picture.color.a > 0f)
+            if (Picture != null && hasGirl)
                 Picture.color = dimmed ? new Color(0.45f, 0.45f, 0.45f, 1f) : Color.white;
             if (Bar != null)
             {
@@ -289,11 +313,11 @@ namespace ConcertHype
             }
         }
 
-        public void SetHighlight(Highlight highlight, bool empty)
+        public void SetHighlight(Highlight highlight)
         {
             if (Background != null)
                 Background.color = highlight == Highlight.Allowed ? (Color)mainScript.green32 : highlight == Highlight.Refused ? (Color)mainScript.red32
-                    : empty ? new Color(0.2f, 0.2f, 0.25f, 0.6f) : backgroundColor;
+                    : backgroundColor;
         }
     }
 
@@ -385,7 +409,7 @@ namespace ConcertHype
         private static TextMeshProUGUI hype, expected, last, hint, talkTitle, formationNote;
         private static Button resetLineup;
         private static PortraitWidget hostPlace;
-        private static GameObject cancelOverlay, emptyMark, talkBox;
+        private static GameObject cancelOverlay, talkBox;
         private static CanvasGroup talkBoxGroup;
         private static readonly List<PortraitWidget> Slots = new List<PortraitWidget>();
         private static readonly List<GameObject> Hidden = new List<GameObject>();
@@ -477,7 +501,6 @@ namespace ConcertHype
             hostPlace = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, talkBox.transform, "Host", DropPoint.Host);
             Ui.Place(hostPlace.Root, 10f, 32f, 54f, 58f);
             cancelOverlay = MakeCancelOverlay(hostPlace);
-            emptyMark = MakeEmptyMark(hostPlace);
             hint = Ui.Label(labelTemplate, root.transform, "Hint", 30f, 350f, 470f, 64f, 14f);
             // Level with the game's Start button beside it, whose left edge leaves room for a narrower button
             Rect start = Ui.Placed(popup.NextSong_Button, container);
@@ -529,12 +552,7 @@ namespace ConcertHype
             data_girls.girls hostGirl = view.Host < 0 ? null : session.Show.Girls[view.Host];
             hostPlace.SetGirl(hostGirl);
             Ui.SetEnergyBar(hostPlace.Bar, hostGirl is null ? 0 : session.State.Energy[view.Host]);
-            hostPlace.SetHighlight(view.HostHighlight, hostGirl is null);
-            // An empty host place reads as a place to drop: a light tile with the empty mark
-            if (hostGirl is null && view.HostHighlight == Highlight.None && hostPlace.Background != null)
-                hostPlace.Background.color = new Color(1f, 1f, 1f, 0.15f);
-            if (emptyMark != null)
-                emptyMark.SetActive(hostGirl is null);
+            hostPlace.SetHighlight(view.HostHighlight);
             if (cancelOverlay != null)
                 cancelOverlay.SetActive(false);
             hostPlace.SetDimmed(false);
@@ -567,7 +585,7 @@ namespace ConcertHype
                 widget.SetGirl(shown ? session.Show.Girls[slot.Member] : null);
                 Ui.SetEnergyBar(widget.Bar, shown ? session.State.Energy[slot.Member] : 0);
                 widget.SetDimmed(slot.Dragged);
-                widget.SetHighlight(slot.Highlight, !shown);
+                widget.SetHighlight(slot.Highlight);
                 widget.Label.text = slot.Roll;
                 widget.Icon.Set(slot.Icon, slot.Tip);
                 // The roll, then the icon; the icon alone sits in the middle
@@ -775,28 +793,6 @@ namespace ConcertHype
             rect.sizeDelta = new Vector2(34f, 34f);
             overlay.SetActive(false);
             return overlay;
-        }
-
-        /// <summary>
-        /// The empty icon centred on the host place while nobody is on it. It takes no raycast.
-        /// </summary>
-        private static GameObject MakeEmptyMark(PortraitWidget host)
-        {
-            Sprite sprite = Icons.Get(IconKind.Empty);
-            Transform center = host.Picture?.transform;
-            if (sprite == null || center == null)
-                return null;
-            GameObject mark = new GameObject("EmptyMark", typeof(RectTransform));
-            mark.transform.SetParent(center, false);
-            Image image = mark.AddComponent<Image>();
-            image.sprite = sprite;
-            image.preserveAspect = true;
-            image.raycastTarget = false;
-            RectTransform rect = (RectTransform)mark.transform;
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = new Vector2(26f, 26f);
-            return mark;
         }
 
         /// <summary>

@@ -16,6 +16,8 @@ namespace ConcertHype
 
         private static Sprite cancel;
         private static bool cancelLooked;
+        private static UnityEngine.UI.Image emptyPlace;
+        private static bool emptyPlaceLooked;
 
         public static string FileName(IconKind icon) => icon.ToString().ToLowerInvariant() + ".png";
 
@@ -44,6 +46,25 @@ namespace ConcertHype
                     return cancel = sprite;
             }
             Log.Warn("couldn't find the game's cancel icon; the talk break host shows none on hover");
+            return null;
+        }
+
+        /// <summary>
+        /// The game's empty senbatsu place (a framed white box, drawn sliced), from a senbatsu place of the show or
+        /// single popup, as it draws it; null (logged once) when missing.
+        /// </summary>
+        public static UnityEngine.UI.Image GameEmptyPlace()
+        {
+            if (emptyPlace != null || emptyPlaceLooked)
+                return emptyPlace;
+            emptyPlaceLooked = true;
+            foreach (SenbatsuReciever place in Resources.FindObjectsOfTypeAll<SenbatsuReciever>())
+            {
+                UnityEngine.UI.Image image = place == null ? null : place.GetComponent<UnityEngine.UI.Image>();
+                if (image != null && image.sprite != null)
+                    return emptyPlace = image;
+            }
+            Log.Warn("couldn't find the game's empty senbatsu place; empty places show no picture");
             return null;
         }
 

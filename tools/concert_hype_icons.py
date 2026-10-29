@@ -22,7 +22,6 @@ OUT = Path(__file__).resolve().parents[1] / "mods" / "Concert Hype" / "assets" /
 COLOURS = {
     "original": (58, 166, 92),
     "substitute": (232, 128, 36),
-    "empty": (128, 134, 146),
     "hosting": (142, 91, 214),
     "hurt": (214, 69, 69),
     "resting": (66, 100, 190),
@@ -62,15 +61,6 @@ def swap(draw, colour):
 
 
 
-def empty(draw, colour):
-    # A dashed ring: nobody there
-    centre, radius, width, dashes = 128, 70, 18, 10
-    for i in range(dashes):
-        start = i * 360 / dashes
-        draw.arc((centre - radius, centre - radius, centre + radius, centre + radius), start, start + 360 / dashes * 0.55,
-                 fill=WHITE, width=width)
-
-
 def hosting(draw, colour):
     # A speech bubble with three dots: she talks
     draw.rounded_rectangle((52, 62, 204, 162), radius=34, fill=WHITE)
@@ -99,7 +89,6 @@ def resting(draw, colour):
 SYMBOLS = {
     "original": formation,
     "substitute": swap,
-    "empty": empty,
     "hosting": hosting,
     "hurt": hurt,
     "resting": resting,

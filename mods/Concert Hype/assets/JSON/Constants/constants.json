@@ -44,10 +44,6 @@
 		text: "Substitute: performs in another idol's place, without the senbatsu bonus."
 	},
 	{
-		id: "CONCERTHYPE__TIP_EMPTY",
-		text: "Empty: nobody on the bench can fill this place."
-	},
-	{
 		id: "CONCERTHYPE__TIP_HOSTING",
 		text: "{0} hosts the talk break first and is back here for the song."
 	},
@@ -118,10 +114,6 @@
 	{
 		id: "CONCERTHYPE__BADGE_SUB",
 		text: "⇄"
-	},
-	{
-		id: "CONCERTHYPE__BADGE_EMPTY",
-		text: "✖"
 	},
 	{
 		id: "CONCERTHYPE__OUT",

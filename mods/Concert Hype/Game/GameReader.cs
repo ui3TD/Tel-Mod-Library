@@ -34,12 +34,6 @@ namespace ConcertHype
     {
         public const int SenbatsuPositions = 15;
 
-        private static readonly data_girls._paramType[] Stats =
-        {
-            data_girls._paramType.cute, data_girls._paramType.cool, data_girls._paramType.sexy, data_girls._paramType.pretty,
-            data_girls._paramType.vocal, data_girls._paramType.dance, data_girls._paramType.funny, data_girls._paramType.smart,
-        };
-
         private static readonly resources.fanType[] FanOrder =
         {
             resources.fanType.male, resources.fanType.female, resources.fanType.casual, resources.fanType.hardcore,
@@ -66,7 +60,8 @@ namespace ConcertHype
             ShowSetup setup = new ShowSetup
             {
                 Members = show.Girls.Select((girl, m) => ReadMember(girl, m < setlistCast)).ToList(),
-                Songs = show.Items.Select(item => ReadSong(show, item, config)).ToList(),
+                Songs = show.Items.Select(item => ReadSong(show, item)).ToList(),
+                AverageSongAppeal = AverageReleaseAppeal(),
                 CapacityFilled = Engine.Clamp(concert.ProjectedValues.Actual_Attendance, 0, 1),
                 Production = (concert.GetParam(SEvent_Concerts._concert._progressable._type.production)?.val ?? 0) / 100.0,
                 HypeFloor = concert.SSK != null ? SEvent_SSK.GetConcertMinHype(concert.SSK) : 0,
@@ -115,7 +110,7 @@ namespace ConcertHype
             Name = girl.girlName(),
             Fans = girl.GetFans_Total(),
             Talk = Talk(girl),
-            Appeal = FanOrder.Select(fan => Stats.Sum(stat => (double)girl.GetAppealOfStat(stat, fan))).ToArray(),
+            FanMix = FanMix(girl),
             InSetlist = inSetlist,
             Group = GroupOf(girl),
         };
@@ -131,15 +126,56 @@ namespace ConcertHype
             return talk.GetSkillValue() / 100.0;
         }
 
-        private static Song ReadSong(GameShow show, SEvent_Concerts._concert._song item, Config config)
+        /// <summary>
+        /// Each fan type's share of her fans, from the game's own count; even when she has none.
+        /// </summary>
+        private static double[] FanMix(data_girls.girls girl)
+        {
+            double total = girl.GetFans_Total();
+            return total <= 0 ? FanTypes.EvenMix() : FanOrder.Select(fan => girl.GetFans_Total(fan) / total).ToArray();
+        }
+
+        /// <summary>
+        /// The single's appeal to each fan type as the game saved it at release (the figure its own concerts average);
+        /// all 0, logged once, for a single without it.
+        /// </summary>
+        public static double[] ReleaseAppeal(singles._single single)
+        {
+            List<singles._fanAppeal> saved = single?.ReleaseData?.FanAppeal;
+            if (saved == null || saved.Count == 0)
+            {
+                Log.WarnOnce("release appeal " + single?.title, $"single '{single?.title}' has no saved release appeal; its songs leave the hype as it is");
+                return new double[FanTypes.Count];
+            }
+            return FanOrder.Select(fan => (double)(saved.FirstOrDefault(a => a != null && a.type == fan)?.ratio ?? 0f)).ToArray();
+        }
+
+        /// <summary>
+        /// The agency's released singles' average release appeal to each fan type; all 0 with none.
+        /// </summary>
+        private static double[] AverageReleaseAppeal()
+        {
+            List<singles._single> released = (singles.Singles ?? new List<singles._single>())
+                .Where(s => s != null && s.status == singles._single._status.released && s.ReleaseData?.FanAppeal != null && s.ReleaseData.FanAppeal.Count > 0)
+                .ToList();
+            double[] average = new double[FanTypes.Count];
+            foreach (singles._single single in released)
+            {
+                double[] appeal = ReleaseAppeal(single);
+                for (int i = 0; i < FanTypes.Count; i++)
+                    average[i] += appeal[i] / released.Count;
+            }
+            return average;
+        }
+
+        private static Song ReadSong(GameShow show, SEvent_Concerts._concert._song item)
         {
             singles._single single = item.Single;
             Song song = new Song
             {
                 Title = single?.title ?? "",
                 Genre = single?.genre?.title ?? "",
-                Appeal = FanOrder.Select(fan => OptionAppeal(single?.genre, fan, config) + OptionAppeal(single?.lyrics, fan, config)
-                    + OptionAppeal(single?.choreography, fan, config)).ToArray(),
+                Appeal = ReleaseAppeal(single),
             };
 
             List<data_girls.girls> girls = single?.girls ?? new List<data_girls.girls>();
@@ -156,21 +192,6 @@ namespace ConcertHype
             if (center >= 0 && !girls.Any(g => ReferenceEquals(g, item.Center)))
                 song.PresetSubstitute = center;
             return song;
-        }
-
-        private static double OptionAppeal(singles._param option, resources.fanType fan, Config config)
-        {
-            if (option == null)
-                return 0;
-            try
-            {
-                return option.GetAppealVal(fan, config.OptionLevel, true);
-            }
-            catch (Exception)
-            {
-                Log.WarnOnce("appeal " + option.title, $"single option '{option.title}' has no {fan} appeal; counting it as 0");
-                return 0;
-            }
         }
 
         /// <summary>

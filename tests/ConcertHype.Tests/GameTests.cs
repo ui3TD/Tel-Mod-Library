@@ -119,21 +119,46 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void Appeal_ComesFromStats_AndFromTheSinglesOptionsAtTheConfiguredLevel()
+        public void SongAppeal_IsTheSinglesSavedReleaseAppeal_AndTheAverageIsOverTheAgencysReleasedSingles()
         {
             data_girls.girls a = GameFixture.Idol("A");
-            singles._single single = GameFixture.Single("S", a);
-            single.genre = GameFixture.Option("Rock", 0.1f, 0, 0, 0, 0, 0, 0);
-            single.lyrics = GameFixture.Option("Love", 0, 0.2f);
-            single.choreography = GameFixture.Option("Cute", 0, 0, 0.3f);
-            GameShow show = GameReader.Read(GameFixture.Concert(single), new Config());
+            singles._single first = GameFixture.Released(GameFixture.Single("S1", a), 0.1f, 0.2f, 0.3f, 0, 0, 0, -0.4f);
+            GameFixture.Released(GameFixture.Single("S2", a), 0.3f, 0, 0.1f, 0.2f);
+            // Not released: counted in neither the setlist's reading nor the average
+            singles._single unreleased = GameFixture.Single("S3", a);
+            unreleased.status = singles._single._status.normal;
+            singles.Singles.Add(unreleased);
+            // The options' own appeal no longer counts
+            first.genre = GameFixture.Option("Rock", 5f, 5f);
 
-            Assert.Equal(new[] { 0.1, 0.2, 0.3, 0, 0, 0, 0 }, show.Setup.Songs[0].Appeal.Select(v => Math.Round(v, 5)));
-            Assert.Equal(new[] { 15.1, 15.2, 15.3 }, GameReader.Read(GameFixture.Concert(single), new Config { OptionLevel = 2 }).Setup.Songs[0].Appeal.Take(3).Select(v => Math.Round(v, 5)));
-            resources.fanType[] order = { resources.fanType.male, resources.fanType.female, resources.fanType.casual, resources.fanType.hardcore,
-                resources.fanType.teen, resources.fanType.youngAdult, resources.fanType.adult };
-            Assert.Equal(order.Select(f => Math.Round(GameFixture.Stats.Sum(s => (double)a.GetAppealOfStat(s, f)), 5)),
-                show.Setup.Members[0].Appeal.Select(v => Math.Round(v, 5)));
+            GameShow show = GameReader.Read(GameFixture.Concert(first), new Config());
+
+            Assert.Equal(new[] { 0.1, 0.2, 0.3, 0, 0, 0, -0.4 }, show.Setup.Songs[0].Appeal.Select(v => Math.Round(v, 5)));
+            Assert.Equal(new[] { 0.2, 0.1, 0.2, 0.1, 0, 0, -0.2 }, show.Setup.AverageSongAppeal.Select(v => Math.Round(v, 5)));
+        }
+
+        [Fact]
+        public void SongAppeal_IsZero_ForASingleWithNoSavedReleaseAppeal()
+        {
+            singles._single single = GameFixture.Single("S", GameFixture.Idol("A"));
+            single.ReleaseData.FanAppeal = new List<singles._fanAppeal>();
+            GameShow show = GameReader.Read(GameFixture.Concert(single), new Config());
+            Assert.All(show.Setup.Songs[0].Appeal, v => Assert.Equal(0, v));
+            Assert.All(show.Setup.AverageSongAppeal, v => Assert.Equal(0, v));
+            Assert.Contains(GameFixture.Warnings, w => w.Contains("no saved release appeal"));
+        }
+
+        [Fact]
+        public void FanMix_IsEachTypesShareOfHerFans_EvenWithNone()
+        {
+            data_girls.girls a = GameFixture.Idol("A", fans: 300);  // 300 male casual teen
+            a.Fans.Add(new resources._fan { gender = resources.fanType.female, hardcoreness = resources.fanType.hardcore, age = resources.fanType.adult, people = 100 });
+            data_girls.girls b = GameFixture.Idol("B", fans: 0);
+            b.Fans.Clear();
+            GameShow show = GameReader.Read(GameFixture.Concert(GameFixture.Single("S", a, b)), new Config());
+
+            Assert.Equal(new[] { 0.75, 0.25, 0.75, 0.25, 0.75, 0, 0.25 }, show.Setup.Members[0].FanMix.Select(v => Math.Round(v, 5)));
+            Assert.Equal(FanTypes.EvenMix(), show.Setup.Members[1].FanMix);
         }
 
         [Fact]

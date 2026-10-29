@@ -9,15 +9,15 @@ namespace ConcertHype.Tests
     public static class Shows
     {
         /// <summary>
-        /// A config with no randomness in the rolls and no accidents, so a test sees each rule alone.
+        /// A config with no randomness in the rolls, no accidents and no row easing, so a test sees each rule alone.
         /// </summary>
         public static Config Quiet()
         {
-            return new Config { RollSigma = 0, PBase = 0, PRoll = 0, PTired = 0 };
+            return new Config { RollSigma = 0, PBase = 0, PRoll = 0, PTired = 0, RowEase = new double[] { 0 } };
         }
 
         /// <summary>
-        /// Members with equal fans and flat appeal (alignment 0); each song's slots are positions 0.., held by
+        /// Members with equal fans and even fan mixes, songs with no appeal; each song's slots are positions 0.., held by
         /// members 0.. in order. Every member has the same skill in every song.
         /// </summary>
         public static ShowSetup Setup(int members = 8, int slots = 3, int songs = 3, double skill = 60)

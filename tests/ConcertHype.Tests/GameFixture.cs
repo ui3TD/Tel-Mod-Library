@@ -75,11 +75,19 @@ namespace ConcertHype.Tests
             data_girls._paramType.vocal, data_girls._paramType.dance, data_girls._paramType.funny, data_girls._paramType.smart,
         };
 
+        /// <summary>
+        /// The mod's warnings since the last reset.
+        /// </summary>
+        public static readonly List<string> Warnings = new List<string>();
+
         public static void Reset()
         {
             ShowSession.End();
             ShowSession.LogPath = null;
+            Warnings.Clear();
+            Log.WarnSink = Warnings.Add;
             data_girls.girl = new List<data_girls.girls>();
+            singles.Singles = new List<singles._single>();
             Groups.Groups_ = new List<Groups._group>();
             variables.variable = new List<variables._variable>();
             Awards._Awards = new List<Awards._award>();
@@ -154,7 +162,25 @@ namespace ConcertHype.Tests
                 choreography = Option("Cute"),
                 status = singles._single._status.released,
             };
+            // Released: the game saved its appeal, here none to any fan type
+            single.ReleaseData.FanAppeal = Enum.GetValues(typeof(resources.fanType)).Cast<resources.fanType>()
+                .Select(fan => new singles._fanAppeal { type = fan, ratio = 0 }).ToList();
             single.girls = Enumerable.Range(0, 15).Select(i => i < senbatsu.Length ? senbatsu[i] : null).ToList();
+            return single;
+        }
+
+        /// <summary>
+        /// Saves this release appeal on the single (male, female, casual, hardcore, teen, young adult, adult; the rest
+        /// 0) and adds it to the agency's singles, as a release does.
+        /// </summary>
+        public static singles._single Released(singles._single single, params float[] appeal)
+        {
+            resources.fanType[] order = { resources.fanType.male, resources.fanType.female, resources.fanType.casual, resources.fanType.hardcore,
+                resources.fanType.teen, resources.fanType.youngAdult, resources.fanType.adult };
+            single.status = singles._single._status.released;
+            single.ReleaseData.FanAppeal = order.Select((fan, f) => new singles._fanAppeal { type = fan, ratio = f < appeal.Length ? appeal[f] : 0 }).ToList();
+            if (!singles.Singles.Contains(single))
+                singles.Singles.Add(single);
             return single;
         }
 

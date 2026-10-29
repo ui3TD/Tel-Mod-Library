@@ -24,12 +24,8 @@ namespace ConcertHype.Model
                 Exhausted = new bool[members],
                 McCharges = config.McCharges,
                 Hype = Clamp(setup.StartingHype, setup.HypeFloor, MaxHype),
-                Alignment = new double[members][],
                 FanWeight = new double[members],
             };
-
-            for (int m = 0; m < members; m++)
-                state.Alignment[m] = setup.Songs.Select(song => Alignment(setup.Members[m].Appeal, song.Appeal)).ToArray();
 
             // Weighed against the setlist's idols: the rest of the agency on the bench doesn't change anyone's weight
             List<Member> setlist = setup.Members.Where(member => member.InSetlist).ToList();
@@ -42,37 +38,50 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// The cosine of two appeal leans: within each fan axis, each value minus the axis average. 0 when either lean is flat.
+        /// The lineup's fan mix: each performer's own share of every fan type, averaged with the places' row weights,
+        /// so the front counts most. Fan counts don't weigh in; empty places are left out. Even with nobody on stage.
         /// </summary>
-        public static double Alignment(double[] memberAppeal, double[] songAppeal)
+        public static double[] CrowdMix(ShowState state, Song song, int[] lineup)
         {
-            double[] a = Lean(memberAppeal);
-            double[] b = Lean(songAppeal);
-            double dot = 0, aa = 0, bb = 0;
-            for (int i = 0; i < FanTypes.Count; i++)
+            double[] mix = new double[FanTypes.Count];
+            double weights = 0;
+            for (int j = 0; j < lineup.Length && j < song.Slots.Count; j++)
             {
-                dot += a[i] * b[i];
-                aa += a[i] * a[i];
-                bb += b[i] * b[i];
+                int m = lineup[j];
+                if (m < 0)
+                    continue;
+                double w = state.Config.RowWeight(song.Slots[j].Row);
+                double[] own = state.Setup.Members[m].FanMix ?? FanTypes.EvenMix();
+                for (int i = 0; i < FanTypes.Count; i++)
+                    mix[i] += w * At(own, i);
+                weights += w;
             }
-            if (aa < 1e-12 || bb < 1e-12)
-                return 0;
-            return Clamp(dot / Math.Sqrt(aa * bb), -1, 1);
+            if (weights <= 0)
+                return FanTypes.EvenMix();
+            for (int i = 0; i < FanTypes.Count; i++)
+                mix[i] /= weights;
+            return mix;
         }
 
-        private static double[] Lean(double[] appeal)
+        /// <summary>
+        /// How much more the song appeals to the lineup's fans than the agency's average single does: each fan type's
+        /// share of the lineup's mix times the song's appeal to it over the average's, added up. Positive and
+        /// negative appeal both count.
+        /// </summary>
+        public static double CrowdAppeal(ShowState state, Song song, int[] lineup)
         {
-            double[] lean = new double[FanTypes.Count];
-            if (appeal == null || appeal.Length < FanTypes.Count)
-                return lean;
-            foreach (int[] axis in FanTypes.Axes)
-            {
-                double average = axis.Average(i => appeal[i]);
-                foreach (int i in axis)
-                    lean[i] = appeal[i] - average;
-            }
-            return lean;
+            double[] mix = CrowdMix(state, song, lineup);
+            double[] average = state.Setup.AverageSongAppeal;
+            double crowd = 0;
+            for (int i = 0; i < FanTypes.Count; i++)
+                crowd += mix[i] * (At(song.Appeal, i) - At(average, i));
+            return crowd;
         }
+
+        public static double CrowdMultiplier(Config config, double crowd) =>
+            Clamp(1 + config.KCrowd * crowd, config.CrowdMin, Math.Max(config.CrowdMin, config.CrowdMax));
+
+        private static double At(double[] values, int i) => values != null && i < values.Length ? values[i] : 0;
 
         /// <summary>
         /// A slot must be filled from the bench when its original member can't perform.
@@ -98,10 +107,10 @@ namespace ConcertHype.Model
             {
                 Skill = state.Setup.Skill[member][songIndex],
                 EnergyFactor = config.EnergyMinFactor + (1 - config.EnergyMinFactor) * state.Energy[member] / 100,
-                Appeal = config.KAppeal * state.Alignment[member][songIndex],
                 Senbatsu = song.Slots[slot].Original == member ? config.KSenbatsu : 0,
+                RowEase = config.RowEaseOf(song.Slots[slot].Row),
             };
-            parts.Expected = Math.Max(0, parts.EnergyFactor * parts.Skill + parts.Appeal + parts.Senbatsu);
+            parts.Expected = Math.Max(0, parts.EnergyFactor * parts.Skill + parts.Senbatsu + parts.RowEase);
             return parts;
         }
 
@@ -226,11 +235,14 @@ namespace ConcertHype.Model
         private static double Weight(ShowState state, Song song, int slot, int member) =>
             (member < 0 ? 1 : state.FanWeight[member]) * state.Config.RowWeight(song.Slots[slot].Row);
 
-        private static double Weighted(ShowState state, Song song, int[] lineup, double[] rolls)
+        /// <param name="skipEmpty">Leave empty places out, as if the formation didn't have them.</param>
+        private static double Weighted(ShowState state, Song song, int[] lineup, double[] rolls, bool skipEmpty = false)
         {
             double sum = 0, weights = 0;
             for (int j = 0; j < lineup.Length; j++)
             {
+                if (skipEmpty && lineup[j] < 0)
+                    continue;
                 double w = Weight(state, song, j, lineup[j]);
                 weights += w;
                 sum += w * (lineup[j] < 0 ? 0 : rolls[j]);
@@ -239,10 +251,10 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// The hype steps from a weighted performance: base change, genre flow, show multiplier on gains, then
-        /// novelty amplification by hype band, then clamping. Fills the result's step fields.
+        /// The hype steps from a weighted performance: base change, genre flow, show and crowd multipliers on gains,
+        /// then novelty amplification by hype band, then clamping. Fills the result's step fields.
         /// </summary>
-        private static void HypeSteps(ShowState state, Song song, double novelty, double weighted, SongResult result)
+        private static void HypeSteps(ShowState state, Song song, int[] lineup, double novelty, double weighted, SongResult result)
         {
             Config config = state.Config;
             double h = state.Hype;
@@ -251,10 +263,12 @@ namespace ConcertHype.Model
             result.GenreFlow = state.PreviousGenre != null && song.Genre.Length > 0 && song.Genre == state.PreviousGenre ? config.GenreFlowBonus : 0;
             d += result.GenreFlow;
             result.ShowMultiplier = 1;
+            result.Crowd = CrowdAppeal(state, song, lineup);
+            result.CrowdMultiplier = CrowdMultiplier(config, result.Crowd);
             if (d > 0)
             {
                 result.ShowMultiplier = ShowMultiplier(state.Setup, config);
-                d *= result.ShowMultiplier;
+                d *= result.ShowMultiplier * result.CrowdMultiplier;
             }
 
             double band = config.NoveltyBlendBand;
@@ -296,13 +310,51 @@ namespace ConcertHype.Model
             double spread = weights <= 0 ? 0 : state.Config.RollSigma * Math.Sqrt(squares) / weights;
 
             SongResult steps = new SongResult();
-            HypeSteps(state, song, preview.Novelty, preview.Weighted, steps);
+            HypeSteps(state, song, lineup, preview.Novelty, preview.Weighted, steps);
             preview.Change = steps.Change;
-            HypeSteps(state, song, preview.Novelty, preview.Weighted - spread, steps);
+            preview.Crowd = steps.Crowd;
+            preview.CrowdMultiplier = steps.CrowdMultiplier;
+            HypeSteps(state, song, lineup, preview.Novelty, preview.Weighted - spread, steps);
             preview.Low = steps.Change;
-            HypeSteps(state, song, preview.Novelty, preview.Weighted + spread, steps);
+            HypeSteps(state, song, lineup, preview.Novelty, preview.Weighted + spread, steps);
             preview.High = steps.Change;
             return preview;
+        }
+
+        /// <summary>
+        /// The expected hype each empty place costs this song: the change if empty places didn't count at all,
+        /// minus the change as planned, shared between the empty places by row weight. 0 for a filled place.
+        /// </summary>
+        public static double[] GapCosts(ShowState state, int[] lineup)
+        {
+            Song song = state.CurrentSong;
+            double[] costs = new double[lineup.Length];
+            double emptyWeights = 0;
+            for (int j = 0; j < lineup.Length; j++)
+            {
+                if (lineup[j] < 0)
+                    emptyWeights += state.Config.RowWeight(song.Slots[j].Row);
+            }
+            if (emptyWeights <= 0)
+                return costs;
+
+            double[] rolls = new double[lineup.Length];
+            for (int j = 0; j < lineup.Length; j++)
+            {
+                if (lineup[j] >= 0)
+                    rolls[j] = ExpectedRoll(state, j, lineup[j]).Expected;
+            }
+            double novelty = Novelty(state, song, lineup);
+            SongResult planned = new SongResult(), without = new SongResult();
+            HypeSteps(state, song, lineup, novelty, Weighted(state, song, lineup, rolls), planned);
+            HypeSteps(state, song, lineup, novelty, Weighted(state, song, lineup, rolls, skipEmpty: true), without);
+            double total = Math.Max(0, without.Change - planned.Change);
+            for (int j = 0; j < lineup.Length; j++)
+            {
+                if (lineup[j] < 0)
+                    costs[j] = total * state.Config.RowWeight(song.Slots[j].Row) / emptyWeights;
+            }
+            return costs;
         }
 
         public static double AccidentChance(Config config, double roll, double energy) =>
@@ -347,7 +399,7 @@ namespace ConcertHype.Model
                     continue;
                 }
                 slot.Parts = ExpectedRoll(state, j, m);
-                double raw = slot.Parts.EnergyFactor * slot.Parts.Skill + slot.Parts.Appeal + slot.Parts.Senbatsu;
+                double raw = slot.Parts.EnergyFactor * slot.Parts.Skill + slot.Parts.Senbatsu + slot.Parts.RowEase;
                 slot.Roll = Math.Max(0, raw + state.Rng.Normal(config.RollSigma));
                 rolls[j] = slot.Roll;
                 slot.EnergyBefore = state.Energy[m];
@@ -357,7 +409,7 @@ namespace ConcertHype.Model
                     slot.AbsenceLength = state.Rng.Range(config.AbsenceMin, config.AbsenceMax);
             }
 
-            HypeSteps(state, song, Novelty(state, song, lineup), Weighted(state, song, lineup, rolls), result);
+            HypeSteps(state, song, lineup, Novelty(state, song, lineup), Weighted(state, song, lineup, rolls), result);
             double after = result.HypeAfter;
 
             bool[] performing = new bool[members];

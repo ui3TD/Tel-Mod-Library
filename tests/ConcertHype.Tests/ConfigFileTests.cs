@@ -26,7 +26,9 @@ namespace ConcertHype.Tests
         public void Defaults_AreTheSpecNumbers()
         {
             Config config = new();
-            Assert.Equal(new double[] { 15, 15, 10, 0.7 }, new[] { config.KAppeal, config.KSenbatsu, config.RollSigma, config.EnergyMinFactor });
+            Assert.Equal(new double[] { 15, 10, 0.7 }, new[] { config.KSenbatsu, config.RollSigma, config.EnergyMinFactor });
+            Assert.Equal(new double[] { 0, 4, 8, 8, 8 }, config.RowEase);
+            Assert.Equal(new double[] { 0.3, 0.8, 1.2 }, new[] { config.KCrowd, config.CrowdMin, config.CrowdMax });
             Assert.Equal(new double[] { 50, 0.25, 0.5, 60, 3 }, new[] { config.StartingHype, config.FanWeightFloor, config.KPerf, config.Par, config.GenreFlowBonus });
             Assert.Equal(new double[] { 20, 1.5, 0.5 }, new[] { config.NoveltyBlendBand, config.AmpHigh, config.AmpLow });
             Assert.Equal(new double[] { 1.5, 1.0, 0.6, 0.6, 0.6 }, config.RowWeights);

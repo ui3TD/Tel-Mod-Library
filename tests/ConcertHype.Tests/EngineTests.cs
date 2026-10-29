@@ -9,20 +9,41 @@ namespace ConcertHype.Tests
     public class RollTests
     {
         [Fact]
-        public void ExpectedRoll_IsSkillPlusAppealPlusSenbatsu()
+        public void ExpectedRoll_IsSkillPlusSenbatsuPlusRowEase_AndAppealDoesntChangeIt()
         {
             ShowSetup setup = Shows.Setup();
-            setup.Members[0].Appeal = new double[] { 1, 0, 0, 0, 0, 0, 0 };
-            setup.Songs[0].Appeal = new double[] { 2, 0, 0, 0, 0, 0, 0 };
-            ShowState state = Shows.Start(setup);
+            ShowState plain = Shows.Start(setup);
+            ShowSetup appealing = Shows.Setup();
+            appealing.Members[0].FanMix = new double[] { 1, 0, 1, 0, 1, 0, 0 };
+            appealing.Songs[0].Appeal = new double[] { 2, -1, 2, 0, 1, 0, 0 };
+            ShowState state = Shows.Start(appealing);
 
             RollParts parts = Engine.ExpectedRoll(state, 0, 0);
 
             Assert.Equal(60, parts.Skill);
             Assert.Equal(1, parts.EnergyFactor);
-            Assert.Equal(15, parts.Appeal, 9);
             Assert.Equal(15, parts.Senbatsu);
-            Assert.Equal(90, parts.Expected, 9);
+            Assert.Equal(0, parts.RowEase);  // slot 0 is the front row
+            Assert.Equal(75, parts.Expected, 9);
+            Assert.Equal(Engine.ExpectedRoll(plain, 0, 0).Expected, parts.Expected, 9);
+        }
+
+        [Fact]
+        public void RowEase_RaisesBackRowRolls_AndLeavesTheFrontRowAlone()
+        {
+            ShowState state = Shows.Start(Shows.Setup(slots: 6, skill: 40), new Config { PBase = 0, PRoll = 0, PTired = 0 });
+            Config config = state.Config;
+            Song song = state.CurrentSong;
+            for (int j = 0; j < song.Slots.Count; j++)
+            {
+                RollParts parts = Engine.ExpectedRoll(state, j, song.Slots[j].Original);
+                Assert.Equal(config.RowEaseOf(song.Slots[j].Row), parts.RowEase);
+                Assert.Equal(40 + 15 + parts.RowEase, parts.Expected, 9);
+            }
+            Assert.Equal(new double[] { 0, 4, 8, 8, 8 }, config.RowEase);
+            double front = PanelView.SuccessChance(config, Engine.ExpectedRoll(state, 0, song.Slots[0].Original).Expected);
+            double back = PanelView.SuccessChance(config, Engine.ExpectedRoll(state, 5, song.Slots[5].Original).Expected);
+            Assert.True(back > front);
         }
 
         [Fact]
@@ -35,12 +56,7 @@ namespace ConcertHype.Tests
         [Fact]
         public void ExpectedRoll_IsFlooredAtZero()
         {
-            ShowSetup setup = Shows.Setup(skill: 0);
-            setup.Members[5].Appeal = new double[] { 1, 0, 0, 0, 0, 0, 0 };
-            setup.Songs[0].Appeal = new double[] { 0, 1, 0, 0, 0, 0, 0 };
-            ShowState state = Shows.Start(setup);
-
-            Assert.Equal(-15, Engine.ExpectedRoll(state, 0, 5).Appeal, 9);
+            ShowState state = Shows.Start(Shows.Setup(skill: 0), new Config { RowEase = new double[] { -10 } });
             Assert.Equal(0, Engine.ExpectedRoll(state, 0, 5).Expected);
         }
 
@@ -55,16 +71,7 @@ namespace ConcertHype.Tests
             Assert.Equal(0.7 * 60 + 15, Engine.ExpectedRoll(state, 0, 0).Expected, 9);
         }
 
-        [Fact]
-        public void Alignment_ComparesLeansWithinEachAxis()
-        {
-            // Same lean on every axis, different levels
-            Assert.Equal(1, Engine.Alignment(new double[] { 1, 0, 3, 1, 1, 0, 0 }, new double[] { 3, 2, 5, 3, 2, 1, 1 }), 9);
-            Assert.Equal(-1, Engine.Alignment(new double[] { 1, 0, 0, 0, 0, 0, 0 }, new double[] { 0, 1, 0, 0, 0, 0, 0 }), 9);
-            // A flat lean (the same value within each axis) aligns with nothing
-            Assert.Equal(0, Engine.Alignment(new double[] { 2, 2, 5, 5, 1, 1, 1 }, new double[] { 1, 0, 0, 0, 0, 0, 0 }));
-            Assert.Equal(0, Engine.Alignment(new double[7], new double[7]));
-        }
+
     }
 
     public class HypeTests
@@ -573,6 +580,176 @@ namespace ConcertHype.Tests
         {
             Assert.Equal(PlayGreedyish(7), PlayGreedyish(7));
             Assert.NotEqual(PlayGreedyish(7), PlayGreedyish(8));
+        }
+    }
+
+    public class CrowdTests
+    {
+        private static readonly double[] Teens = { 0.5, 0.5, 0.5, 0.5, 1, 0, 0 }, Adults = { 0.5, 0.5, 0.5, 0.5, 0, 0, 1 };
+
+        /// <summary>
+        /// Three places (rows 0, 1, 1: weights 1.5, 1, 1); member 0 has teen fans, the rest adult fans.
+        /// </summary>
+        private static ShowSetup TeensAndAdults(double skill = 60)
+        {
+            ShowSetup setup = Shows.Setup(slots: 3, skill: skill);
+            foreach (Member member in setup.Members)
+                member.FanMix = Adults;
+            setup.Members[0].FanMix = Teens;
+            return setup;
+        }
+
+        [Fact]
+        public void CrowdMix_IsTheRowWeightedAverageOfEachPerformersOwnShares_NotHerFanCount()
+        {
+            ShowSetup setup = TeensAndAdults();
+            setup.Members[0].Fans = 1;
+            setup.Members[1].Fans = 1_000_000;
+            ShowState state = Shows.Start(setup);
+
+            double[] mix = Engine.CrowdMix(state, state.CurrentSong, new[] { 0, 1, 2 });
+
+            Assert.Equal(1.5 / 3.5, mix[4], 9);
+            Assert.Equal(2 / 3.5, mix[6], 9);
+            Assert.Equal(0.5, mix[0], 9);
+        }
+
+        [Fact]
+        public void CrowdMix_LeavesEmptyPlacesOut_AndIsEvenWithNobody()
+        {
+            ShowState state = Shows.Start(TeensAndAdults());
+            Assert.Equal(1.5 / 2.5, Engine.CrowdMix(state, state.CurrentSong, new[] { 0, 1, -1 })[4], 9);
+            Assert.Equal(FanTypes.EvenMix(), Engine.CrowdMix(state, state.CurrentSong, new[] { -1, -1, -1 }));
+        }
+
+        [Fact]
+        public void TheSameIdol_MovesTheMixMoreInTheFrontRow()
+        {
+            ShowState state = Shows.Start(TeensAndAdults());
+            double front = Engine.CrowdMix(state, state.CurrentSong, new[] { 0, 1, 2 })[4];
+            double back = Engine.CrowdMix(state, state.CurrentSong, new[] { 1, 0, 2 })[4];
+            Assert.True(front > back);
+        }
+
+        [Fact]
+        public void CrowdAppeal_IsEachTypesShareTimesTheSongsAppealOverTheAverage()
+        {
+            ShowSetup setup = TeensAndAdults();
+            setup.Songs[0].Appeal = new[] { 0.2, 0, 0.1, 0.3, 0.8, 0, -0.6 };
+            setup.AverageSongAppeal = new[] { 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 };
+            ShowState state = Shows.Start(setup);
+            int[] lineup = { 0, 1, 2 };
+            double[] mix = Engine.CrowdMix(state, state.CurrentSong, lineup);
+
+            double expected = Enumerable.Range(0, FanTypes.Count).Sum(i => mix[i] * (setup.Songs[0].Appeal[i] - 0.1));
+            Assert.Equal(expected, Engine.CrowdAppeal(state, state.CurrentSong, lineup), 9);
+        }
+
+        [Fact]
+        public void ASongLoved_ByTheLineupsFans_BeatsOneTheyDislike_AndATypicalSongIsNeutral()
+        {
+            ShowSetup setup = TeensAndAdults();
+            setup.Songs[0].Appeal = new[] { 0, 0, 0, 0, 1.0, 0, -1.0 };   // loved by teens, disliked by adults
+            ShowState state = Shows.Start(setup);
+            Song song = state.CurrentSong;
+
+            double teenFront = Engine.CrowdAppeal(state, song, new[] { 0, 1, 2 });
+            for (int m = 0; m < setup.Members.Count; m++)
+                setup.Members[m].FanMix = m == 0 ? Adults : Teens;
+            double teensEverywhereElse = Engine.CrowdAppeal(state, song, new[] { 0, 1, 2 });
+            Assert.True(teensEverywhereElse > teenFront);
+            Assert.True(teenFront < 0);
+
+            setup.AverageSongAppeal = (double[])song.Appeal.Clone();
+            Assert.Equal(0, Engine.CrowdAppeal(state, song, new[] { 0, 1, 2 }), 9);
+            Assert.Equal(1, Engine.CrowdMultiplier(state.Config, 0));
+        }
+
+        [Fact]
+        public void CrowdMultiplier_IsOnePlusKTimesCrowd_KeptWithinItsLimits()
+        {
+            Config config = new Config();
+            Assert.Equal(1 + 0.3 * 0.5, Engine.CrowdMultiplier(config, 0.5), 9);
+            Assert.Equal(1 - 0.3 * 0.5, Engine.CrowdMultiplier(config, -0.5), 9);
+            Assert.Equal(1.2, Engine.CrowdMultiplier(config, 5));
+            Assert.Equal(0.8, Engine.CrowdMultiplier(config, -5));
+        }
+
+        [Theory]
+        [InlineData(55, true)]    // rolls 70: a gain, scaled
+        [InlineData(35, false)]   // rolls 50: a loss, left as it is
+        public void TheCrowdMultiplier_ScalesGainsOnly(double skill, bool scaled)
+        {
+            SongResult Play(double teenAppeal)
+            {
+                ShowSetup setup = TeensAndAdults(skill);
+                foreach (Member member in setup.Members)
+                    member.FanMix = Teens;
+                setup.Songs[0].Appeal = new[] { 0, 0, 0, 0, teenAppeal, 0, 0 };
+                ShowState state = Shows.Start(setup);
+                return Engine.Play(state, Engine.DefaultLineup(state));
+            }
+            SongResult plain = Play(0), loved = Play(0.4);
+
+            Assert.Equal(1 + 0.3 * 0.4, loved.CrowdMultiplier, 9);
+            Assert.Equal(scaled ? plain.Change * loved.CrowdMultiplier : plain.Change, loved.Change, 9);
+        }
+
+        [Fact]
+        public void APreview_ShowsTheCrowdMultiplierOfItsLineup()
+        {
+            ShowSetup setup = TeensAndAdults(55);
+            setup.Songs[0].Appeal = new[] { 0, 0, 0, 0, 0.6, 0, 0 };
+            ShowState state = Shows.Start(setup);
+            int[] lineup = { 0, 1, 2 };
+            SongPreview preview = Engine.Preview(state, lineup);
+            Assert.Equal(Engine.CrowdAppeal(state, state.CurrentSong, lineup), preview.Crowd, 9);
+            Assert.Equal(Engine.CrowdMultiplier(state.Config, preview.Crowd), preview.CrowdMultiplier, 9);
+        }
+    }
+
+    public class GapCostTests
+    {
+        private static double[] Costs(int unavailable)
+        {
+            ShowSetup setup = Shows.Setup(members: 3, slots: 3, skill: 55);
+            setup.Members[unavailable].CanPerform = false;
+            ShowState state = Shows.Start(setup);
+            return Engine.GapCosts(state, Engine.DefaultLineup(state));
+        }
+
+        [Fact]
+        public void NoGaps_CostNothing()
+        {
+            ShowState state = Shows.Start(Shows.Setup(slots: 3, skill: 55));
+            Assert.All(Engine.GapCosts(state, Engine.DefaultLineup(state)), c => Assert.Equal(0, c));
+        }
+
+        [Fact]
+        public void AnEmptyPlace_CostsHype_MoreInTheFrontRowThanFurtherBack()
+        {
+            double[] front = Costs(0), back = Costs(2);
+            Assert.True(front[0] > 0);
+            Assert.True(back[2] > 0);
+            Assert.True(front[0] > back[2]);
+            Assert.Equal(0, front[1]);
+            Assert.Equal(0, back[0]);
+        }
+
+        [Fact]
+        public void TwoGaps_ShareTheirCostByRowWeight()
+        {
+            ShowSetup setup = Shows.Setup(members: 6, slots: 6, skill: 55);
+            setup.Members[0].CanPerform = false;   // row 0, weight 1.5
+            setup.Members[3].CanPerform = false;   // row 2, weight 0.6
+            for (int m = 0; m < 6; m++)
+                setup.Members[m].CanPerform &= m != 0 && m != 3;
+            ShowState state = Shows.Start(setup);
+            int[] lineup = Engine.DefaultLineup(state);
+            Assert.Equal(-1, lineup[0]);
+            Assert.Equal(-1, lineup[3]);
+            double[] costs = Engine.GapCosts(state, lineup);
+            Assert.Equal(1.5 / 0.6, costs[0] / costs[3], 9);
         }
     }
 }

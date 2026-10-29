@@ -10,9 +10,23 @@ namespace ConcertHype.Model
         public const int Count = 7;
 
         /// <summary>
-        /// The axes a lean is taken on: gender, commitment, age.
+        /// The axes every fan belongs to one type of: gender, commitment, age.
         /// </summary>
         public static readonly int[][] Axes = { new[] { 0, 1 }, new[] { 2, 3 }, new[] { 4, 5, 6 } };
+
+        /// <summary>
+        /// Each type's share of a fanbase split evenly: half of each gender and commitment, a third of each age.
+        /// </summary>
+        public static double[] EvenMix()
+        {
+            double[] mix = new double[Count];
+            foreach (int[] axis in Axes)
+            {
+                foreach (int i in axis)
+                    mix[i] = 1.0 / axis.Length;
+            }
+            return mix;
+        }
     }
 
     /// <summary>
@@ -34,9 +48,9 @@ namespace ConcertHype.Model
         public double Talk;
 
         /// <summary>
-        /// Her appeal to each fan type, from her stats.
+        /// Each fan type's share of her fans, 0 to 1; even when she has none.
         /// </summary>
-        public double[] Appeal = new double[FanTypes.Count];
+        public double[] FanMix = FanTypes.EvenMix();
 
         /// <summary>
         /// False for an idol who can't perform at all in this show.
@@ -80,6 +94,10 @@ namespace ConcertHype.Model
     {
         public string Title = "";
         public string Genre = "";
+
+        /// <summary>
+        /// The single's appeal to each fan type, as saved when it was released; 0 where it has none.
+        /// </summary>
         public double[] Appeal = new double[FanTypes.Count];
         public List<Slot> Slots = new List<Slot>();
 
@@ -96,6 +114,12 @@ namespace ConcertHype.Model
     {
         public List<Member> Members = new List<Member>();
         public List<Song> Songs = new List<Song>();
+
+        /// <summary>
+        /// The agency's average released single's appeal to each fan type: a song's crowd appeal is measured
+        /// against it, so a typical single leaves the hype as it is.
+        /// </summary>
+        public double[] AverageSongAppeal = new double[FanTypes.Count];
 
         /// <summary>
         /// Skill[member][song]: her skill for that song, 0 to 100.

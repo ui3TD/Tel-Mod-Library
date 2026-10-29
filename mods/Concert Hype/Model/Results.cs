@@ -11,9 +11,9 @@ namespace ConcertHype.Model
         public double EnergyFactor;
 
         /// <summary>
-        /// Roll points from appeal alignment (kAppeal x alignment).
+        /// Roll points from her row's easier skill check.
         /// </summary>
-        public double Appeal;
+        public double RowEase;
 
         /// <summary>
         /// Roll points for being the slot's original member.
@@ -39,6 +39,12 @@ namespace ConcertHype.Model
         public bool[] Forced;
         public double Novelty;
         public double Weighted;
+
+        /// <summary>
+        /// How the song suits the lineup's fans, and the multiplier that gives its hype gains.
+        /// </summary>
+        public double Crowd;
+        public double CrowdMultiplier = 1;
 
         /// <summary>
         /// The expected hype change, and the change one standard deviation of the lineup's performance either side.
@@ -74,6 +80,12 @@ namespace ConcertHype.Model
         public double BaseChange;
         public double GenreFlow;
         public double ShowMultiplier = 1;
+        public double Crowd;
+
+        /// <summary>
+        /// Applied to gains only, as the show multiplier.
+        /// </summary>
+        public double CrowdMultiplier = 1;
         public double Novelty;
         public double Amplification = 1;
 

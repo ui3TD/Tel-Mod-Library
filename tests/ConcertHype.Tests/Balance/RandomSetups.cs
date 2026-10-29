@@ -12,19 +12,6 @@ namespace ConcertHype.Tests.Balance
     /// </summary>
     public static class RandomSetups
     {
-        // The game's stat appeal (data_girls.GetAppealOfStat): per fan type, coefficient per stat
-        // in the order cute, cool, sexy, pretty, vocal, dance, funny, smart.
-        private static readonly double[][] StatAppeal =
-        {
-            new[] { 0.3, 0, 0.3, 0, 0, 0.3, 0.3, 0 },          // male
-            new[] { 0, 0.3, 0, 0.3, 0.3, 0, 0, 0.3 },          // female
-            new[] { 0, 0, 0, 0, 0.4, 0.4, 0.4, 0.4 },          // casual
-            new[] { 0.4, 0.4, 0.4, 0.4, 0, 0, 0, 0 },          // hardcore
-            new[] { 0, 0.2, 0.2, 0.1, 0, 0.1, 0.2, 0.1 },      // teen
-            new[] { 0.1, 0.1, 0.2, 0.2, 0, 0, 0.2, 0.1 },      // young adult
-            new[] { 0.2, 0, 0.1, 0, 0.1, 0, 0.2, 0 },          // adult
-        };
-
         private static readonly string[] Genres = { "Pop", "Rock", "EDM", "Enka", "Metal", "Hip Hop" };
 
         public static ShowSetup Make(int seed, int members = 12, int songs = 10)
@@ -41,7 +28,7 @@ namespace ConcertHype.Tests.Balance
                     Name = "Idol " + m,
                     Fans = fans,
                     Talk = (stats[6] + stats[7]) / 200,
-                    Appeal = StatAppeal.Select(row => row.Zip(stats, (c, v) => c * v / 100).Sum()).ToArray(),
+                    FanMix = RandomMix(random),
                 });
                 danceVocal.Add(Math.Floor((stats[5] + stats[4]) / 2));
             }
@@ -77,10 +64,28 @@ namespace ConcertHype.Tests.Balance
                 setup.Songs.Add(song);
             }
 
+            // Crowd appeal is measured against the average song, as the game's against the agency's average single
+            setup.AverageSongAppeal = Enumerable.Range(0, FanTypes.Count).Select(i => setup.Songs.Average(song => song.Appeal[i])).ToArray();
+
             // The game's concert skill: dance and vocal averaged; a single's own center counts at least 80
             setup.Skill = Enumerable.Range(0, members).Select(m => setup.Songs
                 .Select(song => song.Slots[0].Original == m ? Math.Max(80, danceVocal[m]) : danceVocal[m]).ToArray()).ToArray();
             return setup;
+        }
+
+        /// <summary>
+        /// A made-up fan mix: on each axis, random shares that add up to 1.
+        /// </summary>
+        private static double[] RandomMix(Random random)
+        {
+            double[] mix = new double[FanTypes.Count];
+            foreach (int[] axis in FanTypes.Axes)
+            {
+                double[] raw = axis.Select(_ => 0.2 + random.NextDouble()).ToArray();
+                for (int k = 0; k < axis.Length; k++)
+                    mix[axis[k]] = raw[k] / raw.Sum();
+            }
+            return mix;
         }
 
         private static double Normal(Random random) =>

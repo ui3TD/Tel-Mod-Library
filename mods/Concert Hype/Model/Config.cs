@@ -7,11 +7,14 @@ namespace ConcertHype.Model
     public sealed class Config
     {
         // Roll
-        public double KAppeal = 15;
         public double KSenbatsu = 15;
         public double RollSigma = 10;
         public double EnergyMinFactor = 0.7;
-        public int OptionLevel = 1;
+
+        /// <summary>
+        /// Roll points added in each row: back rows have an easier skill check.
+        /// </summary>
+        public double[] RowEase = { 0, 4, 8, 8, 8 };
 
         /// <summary>
         /// The lowest roll that is a critical success. Under par is a failure, under accidentRollThreshold a
@@ -32,6 +35,14 @@ namespace ConcertHype.Model
         public double NoveltyBlendBand = 20;
         public double AmpHigh = 1.5;
         public double AmpLow = 0.5;
+
+        /// <summary>
+        /// How a song suits the lineup's fans scales its hype gains: 1 + kCrowd x crowd appeal, kept between
+        /// crowdMin and crowdMax.
+        /// </summary>
+        public double KCrowd = 0.3;
+        public double CrowdMin = 0.8;
+        public double CrowdMax = 1.2;
 
         // Energy
         public double EnergyCostBase = 8;
@@ -77,6 +88,8 @@ namespace ConcertHype.Model
         public double RowWeight(int row) => Pick(RowWeights, row);
 
         public double RowCostOf(int row) => Pick(RowCost, row);
+
+        public double RowEaseOf(int row) => RowEase == null || RowEase.Length == 0 ? 0 : Pick(RowEase, row);
 
         private static double Pick(double[] values, int row)
         {

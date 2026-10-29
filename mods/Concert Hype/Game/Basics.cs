@@ -12,7 +12,12 @@ namespace ConcertHype
 
         public static void Info(string message) => Debug.Log(Prefix + message);
 
-        public static void Warn(string message) => Debug.LogWarning(Prefix + message);
+        public static void Warn(string message) => WarnSink(Prefix + message);
+
+        /// <summary>
+        /// Where warnings go: the game's log; the unit tests, which run without Unity, catch them instead.
+        /// </summary>
+        internal static Action<string> WarnSink = message => Debug.LogWarning(message);
 
         public static void Error(string message) => Debug.LogError(Prefix + message);
 

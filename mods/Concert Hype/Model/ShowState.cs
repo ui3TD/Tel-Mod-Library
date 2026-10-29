@@ -27,11 +27,6 @@ namespace ConcertHype.Model
         public bool[] Exhausted;
 
         /// <summary>
-        /// Alignment[member][song]: how her appeal leans the same way as the song's, -1 to 1.
-        /// </summary>
-        public double[][] Alignment;
-
-        /// <summary>
         /// Fan weight per member: her share of the cast's average fans, never below the floor.
         /// </summary>
         public double[] FanWeight;

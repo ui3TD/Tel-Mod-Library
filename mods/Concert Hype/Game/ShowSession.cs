@@ -395,10 +395,10 @@ namespace ConcertHype
                 }
                 string role = slot.Member == song.Slots[j].Original ? "original" : "substitute";
                 RollParts p = slot.Parts;
-                log.AppendLine($"{place}: {Name(slot.Member)} ({role}) roll {F(slot.Roll)} ({Outcomes.Of(State.Config, slot.Roll)}) = {F(p.EnergyFactor)} x skill {F(p.Skill)} + appeal {F(p.Appeal)} + senbatsu {F(p.Senbatsu)} + noise; " +
+                log.AppendLine($"{place}: {Name(slot.Member)} ({role}) roll {F(slot.Roll)} ({Outcomes.Of(State.Config, slot.Roll)}) = {F(p.EnergyFactor)} x skill {F(p.Skill)} + senbatsu {F(p.Senbatsu)} + row {F(p.RowEase)} + noise; " +
                     $"energy {F(slot.EnergyBefore)} -> {F(slot.EnergyAfter)}" + (slot.Accident ? $"; ACCIDENT (chance {F(slot.AccidentChance)}), out {slot.AbsenceLength}" : ""));
             }
-            log.AppendLine($"  weighted {F(result.Weighted)}, base {F(result.BaseChange)}, genre flow {F(result.GenreFlow)}, show x{F(result.ShowMultiplier)}, " +
+            log.AppendLine($"  weighted {F(result.Weighted)}, base {F(result.BaseChange)}, genre flow {F(result.GenreFlow)}, show x{F(result.ShowMultiplier)}, crowd {F(result.Crowd)} x{F(result.CrowdMultiplier)} on gains, " +
                 $"novelty {F(result.Novelty)}, amplification x{F(result.Amplification)}: hype {F(result.HypeBefore)} -> {F(result.HypeAfter)} ({F(result.Change)})");
             if (result.Exhausted.Count > 0)
                 log.AppendLine("  exhausted: " + string.Join(", ", result.Exhausted.Select(Name)));

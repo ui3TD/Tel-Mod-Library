@@ -1414,8 +1414,8 @@ namespace ConcertHype
     /// The formation on stage while a song plays, spread over the screen: each idol's portrait with a small
     /// marketing wheel above it. The portraits slide from the lineup panel's places to the stage's as the song
     /// starts, and back as it ends, while the bench fades out and in. The wheels spin as the song starts and land
-    /// one by one, back row first and the center last; each then gives way to her roll in its outcome's colour,
-    /// with the outcome and her chances on hover.
+    /// one by one, back row first and the center last; each then gives way to her outcome's effect, which settles
+    /// into a small mark until the song ends, with the outcome on hover.
     /// </summary>
     internal static class StageRolls
     {
@@ -1423,18 +1423,12 @@ namespace ConcertHype
         private const float EnterSeconds = 0.5f, LeaveSeconds = 0.4f, PopSeconds = 0.2f;
 
         /// <summary>
-        /// The landed numbers' font: the heaviest the game ships. Without it they keep the label's own font,
-        /// thickened.
-        /// </summary>
-        internal const string NumberFontName = "OpenSans-ExtraBold SDF";
-
-        /// <summary>
         /// A hurt idol's picture stays this grey after its red flash, as the bench dims an idol who can't perform.
         /// </summary>
         private static readonly Color HurtGrey = new Color(0.7f, 0.7f, 0.7f, 1f);
 
         /// <summary>
-        /// The wheel's and the number's centre, from the portrait's top-left corner.
+        /// The wheel's and the effect's centre, from the portrait's top-left corner.
         /// </summary>
         private static readonly Vector2 WheelCentre = new Vector2(27f, (float)(StageView.WheelSize / 2 - StageView.PortraitTop));
 
@@ -1450,7 +1444,9 @@ namespace ConcertHype
         private static CanvasGroup group;
         private static readonly List<PortraitWidget> Places = new List<PortraitWidget>();
         private static readonly List<WheelWidget> Wheels = new List<WheelWidget>();
-        private static readonly List<IconTip> NumberTips = new List<IconTip>();
+        private static readonly List<Image> Effects = new List<Image>();
+        private static readonly List<IconTip> EffectTips = new List<IconTip>();
+        private static readonly List<Image[]> Sparkles = new List<Image[]>();
 
         private static StageView view;
         private static Phase phase;
@@ -1513,6 +1509,9 @@ namespace ConcertHype
                     Ui.SetEnergyBar(widget.Bar, slot.HasRoll ? slot.EnergyBefore : 0);
                     widget.Icon.Set(IconKind.None, "");
                     widget.Label.gameObject.SetActive(false);
+                    Effects[j].gameObject.SetActive(false);
+                    foreach (Image sparkle in Sparkles[j])
+                        sparkle.gameObject.SetActive(false);
                     if (wheel != null)
                     {
                         wheel.Root.SetActive(slot.HasRoll);
@@ -1565,7 +1564,9 @@ namespace ConcertHype
             owner = popup;
             Places.Clear();
             Wheels.Clear();
-            NumberTips.Clear();
+            Effects.Clear();
+            EffectTips.Clear();
+            Sparkles.Clear();
             root = new GameObject(Name, typeof(RectTransform));
             root.transform.SetParent(popup.transform, false);
             Ui.Stretch(root);
@@ -1574,25 +1575,20 @@ namespace ConcertHype
 
             GameObject labelTemplate = popup.NextSong_Container.transform.Find("StaminaCostTitle")?.gameObject ?? popup.NextSong_Stamina;
             Single_Marketing_Roll template = WheelWidget.Template();
-            TMP_FontAsset font = NumberFont();
             for (int j = 0; j < GameReader.SenbatsuPositions; j++)
             {
                 PortraitWidget widget = PortraitWidget.Make(popup.prefab_concertGirl, labelTemplate, root.transform, "Place " + j, DropPoint.AtPlace(j), iconOnPicture: true);
                 // Nobody is dragged off the stage while she sings
                 if (widget.Drag != null)
                     UnityEngine.Object.Destroy(widget.Drag);
-                TextMeshProUGUI number = widget.Label;
-                // In the wheel's place, slamming down from its middle
-                RectTransform numberRect = (RectTransform)number.transform;
-                Ui.Place(number.gameObject, 0f, 0f, 90f, 44f);
-                numberRect.pivot = new Vector2(0.5f, 0.5f);
-                numberRect.anchoredPosition = new Vector2(WheelCentre.x, -WheelCentre.y);
-                number.alignment = TextAlignmentOptions.Center;
-                number.enableWordWrapping = false;
-                number.fontSize = (float)StageView.NumberSize;
-                StyleNumber(number, font);
-                number.raycastTarget = true;
-                NumberTips.Add(number.gameObject.AddComponent<IconTip>());
+                // In the wheel's place, landing from its middle: the sparkles under the effect
+                Image[] sparkles = new Image[StageView.SparkleCount];
+                for (int k = 0; k < sparkles.Length; k++)
+                    sparkles[k] = EffectImage(widget.Root.transform, "Sparkle " + k, (float)StageView.SparkleSize, false);
+                Sparkles.Add(sparkles);
+                Image effect = EffectImage(widget.Root.transform, "Effect", (float)StageView.MarkSize, true);
+                Effects.Add(effect);
+                EffectTips.Add(effect.gameObject.AddComponent<IconTip>());
                 // The hurt icon, larger, in the picture's bottom-right corner, slamming from its middle
                 float iconSize = (float)StageView.HurtIconSize, iconAt = 47f - iconSize;
                 Ui.Place(widget.Icon.Root, iconAt, iconAt, iconSize, iconSize);
@@ -1605,38 +1601,36 @@ namespace ConcertHype
             }
         }
 
-        private static TMP_FontAsset NumberFont()
+        /// <summary>
+        /// A picture this wide centred on the wheel, hidden until her wheel lands.
+        /// </summary>
+        private static Image EffectImage(Transform parent, string name, float size, bool hover)
         {
-            TMP_FontAsset font = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().FirstOrDefault(asset => asset != null && asset.name == NumberFontName);
-            if (font == null)
-                Log.WarnOnce("number font", $"couldn't find the game's {NumberFontName}; the rolls show in the label font");
-            return font;
+            GameObject obj = new GameObject(name, typeof(RectTransform));
+            obj.transform.SetParent(parent, false);
+            Image image = obj.AddComponent<Image>();
+            image.preserveAspect = true;
+            image.raycastTarget = hover;
+            RectTransform rect = (RectTransform)obj.transform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(size, size);
+            Pose(image, new EffectPose { Scale = 1, Alpha = 0 });
+            obj.SetActive(false);
+            return image;
         }
 
         /// <summary>
-        /// A heavy number with a thick dark outline and a soft shadow, on its own copy of the font's material so
-        /// the game's other text keeps its look. Without the heavy font, the label's own is thickened.
+        /// An effect or a sparkle as it looks now, from the wheel's centre. Without its picture it shows as a
+        /// patch of the outcome's colour.
         /// </summary>
-        internal static void StyleNumber(TextMeshProUGUI number, TMP_FontAsset font)
+        private static void Pose(Image image, EffectPose pose, Color? tint = null)
         {
-            if (font != null)
-            {
-                number.font = font;
-                number.fontStyle = FontStyles.Normal;
-            }
-            else
-            {
-                number.fontStyle = FontStyles.Bold;
-            }
-            Material material = number.fontMaterial;
-            material.EnableKeyword(ShaderUtilities.Keyword_Underlay);
-            material.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0f, 0f, 0f, 0.6f));
-            material.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0.8f);
-            material.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.8f);
-            material.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.3f);
-            material.SetFloat(ShaderUtilities.ID_FaceDilate, font != null ? 0f : 0.1f);
-            number.outlineWidth = 0.3f;
-            number.outlineColor = new Color32(0, 0, 0, 205);
+            image.transform.localScale = new Vector3((float)pose.Scale, (float)pose.Scale, 1f);
+            ((RectTransform)image.transform).anchoredPosition = new Vector2(WheelCentre.x + (float)pose.OffsetX, -WheelCentre.y - (float)pose.OffsetY);
+            Color color = image.sprite != null ? Color.white : tint ?? Color.white;
+            color.a = (float)pose.Alpha;
+            image.color = color;
         }
 
         private static float Ease(float t) => t < 0.5f ? 2f * t * t : 1f - Mathf.Pow(-2f * t + 2f, 2f) / 2f;
@@ -1727,20 +1721,23 @@ namespace ConcertHype
                     float since = elapsed - landedAt[j];
                     wheel?.SetPop(Mathf.Min(pop, 1f - Mathf.Clamp01(since / PopSeconds)));
                     PortraitWidget widget = Places[j];
-                    NumberPose pose = StageView.NumberMotion(since, slot.Outcome);
-                    TextMeshProUGUI number = widget.Label;
-                    number.transform.localScale = new Vector3((float)pose.Scale, (float)pose.Scale, 1f);
-                    ((RectTransform)number.transform).anchoredPosition = new Vector2(WheelCentre.x + (float)pose.OffsetX, -WheelCentre.y);
-                    Color color = Color.Lerp(ColorOf(slot.Outcome), Color.white, (float)pose.Flash);
-                    color.a = (float)pose.Alpha;
-                    number.color = color;
+                    if (since <= StageView.SettledSeconds + 0.1)
+                    {
+                        Pose(Effects[j], StageView.EffectMotion(since, slot.Outcome), ColorOf(slot.Outcome));
+                        if (slot.Outcome == Outcome.CriticalSuccess)
+                        {
+                            for (int k = 0; k < Sparkles[j].Length; k++)
+                                Pose(Sparkles[j][k], StageView.SparkleMotion(since, k), ColorOf(slot.Outcome));
+                        }
+                    }
                     if (slot.Hurt)
                     {
-                        float iconScale = (float)StageView.NumberMotion(since, Outcome.Success).Scale;
+                        float iconScale = (float)StageView.Slam(since);
                         widget.Icon.Root.transform.localScale = new Vector3(iconScale, iconScale, 1f);
-                        if (widget.Picture != null)
-                            widget.Picture.color = Color.Lerp(HurtGrey, mainScript.red32, (float)StageView.HurtFlash(since));
                     }
+                    // A hurt idol stays grey after her red flash; a critical failure only flashes
+                    if (widget.Picture != null && (slot.Hurt || slot.Outcome == Outcome.CriticalFailure))
+                        widget.Picture.color = Color.Lerp(slot.Hurt ? HurtGrey : Color.white, mainScript.red32, (float)StageView.HurtFlash(since));
                 }
             }
             catch (Exception ex)
@@ -1754,11 +1751,21 @@ namespace ConcertHype
         {
             landedAt[j] = elapsed;
             PortraitWidget widget = Places[j];
-            widget.Label.gameObject.SetActive(true);
-            widget.Label.text = slot.Roll;
-            widget.Label.fontSize = (float)(slot.Critical ? StageView.CriticalNumberSize : StageView.NumberSize);
-            widget.Label.color = new Color(1f, 1f, 1f, 0f);
-            NumberTips[j].Text = slot.Tip;
+            Image effect = Effects[j];
+            effect.sprite = Icons.Get(StageView.EffectOf(slot.Outcome));
+            Pose(effect, new EffectPose { Scale = 1, Alpha = 0 });
+            effect.gameObject.SetActive(true);
+            EffectTips[j].Text = slot.Tip;
+            if (slot.Outcome == Outcome.CriticalSuccess)
+            {
+                Sprite burst = Icons.Get(IconKind.Burst);
+                foreach (Image sparkle in Sparkles[j])
+                {
+                    sparkle.sprite = burst;
+                    Pose(sparkle, new EffectPose { Scale = 1, Alpha = 0 });
+                    sparkle.gameObject.SetActive(burst != null);
+                }
+            }
             Ui.SetEnergyBar(widget.Bar, slot.EnergyAfter);
             if (slot.Hurt)
             {

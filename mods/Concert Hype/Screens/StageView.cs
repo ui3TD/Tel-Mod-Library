@@ -1,7 +1,6 @@
 using ConcertHype.Model;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 
 namespace ConcertHype
@@ -19,14 +18,9 @@ namespace ConcertHype
         public Outcome Outcome;
 
         /// <summary>
-        /// A critical success or failure: her number lands bigger, with a pulse or a shake.
+        /// A critical success or failure: her effect lands bigger, with a pulse or a shake.
         /// </summary>
         public bool Critical => HasRoll && (Outcome == Outcome.CriticalSuccess || Outcome == Outcome.CriticalFailure);
-
-        /// <summary>
-        /// The roll, rounded, shown when her wheel lands.
-        /// </summary>
-        public string Roll = "";
 
         /// <summary>
         /// Her chance of each outcome in percent, by <see cref="Model.Outcome"/>: the wheel's arcs.
@@ -54,7 +48,7 @@ namespace ConcertHype
         public string HurtTip = "";
 
         /// <summary>
-        /// The outcome and her chances, shown when her number is hovered.
+        /// The outcome, shown when her effect is hovered.
         /// </summary>
         public string Tip = "";
     }
@@ -69,12 +63,12 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// How a landed number (or a hurt icon) looks some time after it lands: its scale, its sideways shake in
-    /// pixels, its opacity, and how much of a white flash is over its colour.
+    /// How a landed effect (or a hurt icon, or a sparkle) looks some time after it lands: its scale, how far it's
+    /// moved in pixels (sideways, and down), and its opacity.
     /// </summary>
-    public struct NumberPose
+    public struct EffectPose
     {
-        public double Scale, OffsetX, Alpha, Flash;
+        public double Scale, OffsetX, OffsetY, Alpha;
     }
 
     /// <summary>
@@ -115,43 +109,128 @@ namespace ConcertHype
         public const double MinGap = 12, MaxRowPitch = 130, MaxPlacePitch = 240;
 
         /// <summary>
-        /// The landed numbers' font sizes, and the hurt icon's size.
+        /// The size of an effect once it has settled into her mark, the size of a critical success's sparkles, and
+        /// the hurt icon's size.
         /// </summary>
-        public const double NumberSize = 30, CriticalNumberSize = 36, HurtIconSize = 26;
+        public const double MarkSize = 32, SparkleSize = 14, HurtIconSize = 26;
 
         /// <summary>
-        /// The slam: the number starts this large and settles over this long, opaque after the first moment and
-        /// white for a moment; then a critical success pulses and a critical failure shakes for a while.
+        /// The slam of a critical outcome: it starts this large and settles over this long, opaque after the first
+        /// moment; then a critical success pulses and a critical failure shakes for a while.
         /// </summary>
-        public const double SlamFrom = 2.4, SlamSeconds = 0.35, FadeInSeconds = 0.08, FlashSeconds = 0.1;
+        public const double SlamFrom = 2.4, SlamSeconds = 0.35, FadeInSeconds = 0.08;
         public const double AfterSeconds = 0.25, PulseScale = 1.15, ShakePixels = 4, ShakeCount = 3, HurtFlashSeconds = 0.4;
 
         /// <summary>
-        /// A landed number this long after it landed: it slams down from large, dipping to about 0.9 of its size
-        /// once before it settles.
+        /// A success pops in, a little too big before it settles, then bobs up once; a failure fades in, then
+        /// sinks a little and comes back.
         /// </summary>
-        public static NumberPose NumberMotion(double since, Outcome outcome)
+        public const double PopSeconds = 0.25, BobPixels = 6, FailFadeSeconds = 0.25, SinkPixels = 5;
+
+        /// <summary>
+        /// Every effect lands this much larger than her mark (a critical one larger still), holds for a while,
+        /// then shrinks into the mark.
+        /// </summary>
+        public const double MomentScale = 1.25, CriticalMomentScale = 1.5, HoldSeconds = 0.9, ShrinkSeconds = 0.3;
+
+        /// <summary>
+        /// A critical success's sparkles fly out this far (in pixels, along each diagonal) and fade, starting
+        /// partway through the slam.
+        /// </summary>
+        public const int SparkleCount = 4;
+        public const double SparkleDelay = 0.15, SparkleSeconds = 0.6, SparkleDistance = 36;
+
+        /// <summary>
+        /// From this long after it lands, an effect is her mark and no longer moves.
+        /// </summary>
+        public const double SettledSeconds = HoldSeconds + ShrinkSeconds;
+
+        /// <summary>
+        /// A landed effect this long after it landed, in units of her mark: a critical one slams down from large,
+        /// dipping once before it settles, then pulses or shakes; a success pops in and bobs; a failure fades in
+        /// and sinks. Each then shrinks into her mark.
+        /// </summary>
+        public static EffectPose EffectMotion(double since, Outcome outcome)
         {
-            double t = Math.Min(1, Math.Max(0, since / SlamSeconds));
-            NumberPose pose = new NumberPose
+            EffectPose pose = new EffectPose { Scale = 1, Alpha = 1 };
+            double after;
+            switch (outcome)
             {
-                Scale = 1 + (SlamFrom - 1) * Math.Pow(1 - t, 3) * Math.Cos(1.5 * Math.PI * t),
-                Alpha = Math.Min(1, Math.Max(0, since / FadeInSeconds)),
-                Flash = since < FlashSeconds ? 1 - Math.Max(0, since) / FlashSeconds : 0,
-            };
-            double after = (since - SlamSeconds) / AfterSeconds;
-            if (after > 0 && after < 1)
-            {
-                if (outcome == Outcome.CriticalSuccess)
-                    pose.Scale *= 1 + (PulseScale - 1) * Math.Sin(Math.PI * after);
-                else if (outcome == Outcome.CriticalFailure)
-                    pose.OffsetX = ShakePixels * Math.Sin(2 * Math.PI * ShakeCount * after) * (1 - after);
+                case Outcome.Success:
+                {
+                    double u = Math.Min(1, Math.Max(0, since / PopSeconds)) - 1;
+                    pose.Scale = 1 + 2.70158 * u * u * u + 1.70158 * u * u;
+                    after = (since - PopSeconds) / AfterSeconds;
+                    if (after > 0 && after < 1)
+                        pose.OffsetY = -BobPixels * Math.Sin(Math.PI * after);
+                    break;
+                }
+                case Outcome.Failure:
+                    pose.Alpha = Math.Min(1, Math.Max(0, since / FailFadeSeconds));
+                    after = (since - FailFadeSeconds) / (2 * AfterSeconds);
+                    if (after > 0 && after < 1)
+                        pose.OffsetY = SinkPixels * Math.Sin(Math.PI * after);
+                    break;
+                default:
+                {
+                    pose.Scale = Slam(since);
+                    pose.Alpha = Math.Min(1, Math.Max(0, since / FadeInSeconds));
+                    after = (since - SlamSeconds) / AfterSeconds;
+                    if (after > 0 && after < 1)
+                    {
+                        if (outcome == Outcome.CriticalSuccess)
+                            pose.Scale *= 1 + (PulseScale - 1) * Math.Sin(Math.PI * after);
+                        else
+                            pose.OffsetX = ShakePixels * Math.Sin(2 * Math.PI * ShakeCount * after) * (1 - after);
+                    }
+                    break;
+                }
             }
+            pose.Scale *= MomentSize(since, outcome == Outcome.CriticalSuccess || outcome == Outcome.CriticalFailure);
             return pose;
         }
 
         /// <summary>
-        /// How red a hurt idol's picture is this long after her wheel lands: fully at once, fading out.
+        /// A slam's scale this long after it lands: from large down to its size, dipping to about 0.9 once.
+        /// </summary>
+        public static double Slam(double since)
+        {
+            double t = Math.Min(1, Math.Max(0, since / SlamSeconds));
+            return 1 + (SlamFrom - 1) * Math.Pow(1 - t, 3) * Math.Cos(1.5 * Math.PI * t);
+        }
+
+        /// <summary>
+        /// How large an effect is against her mark: its moment's size, then shrinking into the mark.
+        /// </summary>
+        public static double MomentSize(double since, bool critical)
+        {
+            double moment = critical ? CriticalMomentScale : MomentScale;
+            double t = Math.Min(1, Math.Max(0, (since - HoldSeconds) / ShrinkSeconds));
+            return moment + (1 - moment) * (t * t * (3 - 2 * t));
+        }
+
+        /// <summary>
+        /// Sparkle k (0 to 3) of a critical success this long after it landed, in units of its own size: it flies
+        /// out along its diagonal from the star's middle, shrinking and fading.
+        /// </summary>
+        public static EffectPose SparkleMotion(double since, int k)
+        {
+            double u = (since - SparkleDelay) / SparkleSeconds;
+            if (u <= 0 || u >= 1)
+                return new EffectPose { Scale = 1, Alpha = 0 };
+            double away = SparkleDistance * (1 - Math.Pow(1 - u, 3));
+            return new EffectPose
+            {
+                Scale = 1 - 0.4 * u,
+                OffsetX = (k % 2 == 0 ? -1 : 1) * away,
+                OffsetY = (k < 2 ? -1 : 1) * away * 0.8,
+                Alpha = 1 - u,
+            };
+        }
+
+        /// <summary>
+        /// How red a picture is this long after her wheel lands (a hurt idol's, or a critical failure's): fully at
+        /// once, fading out.
         /// </summary>
         public static double HurtFlash(double since) => Math.Min(1, Math.Max(0, 1 - since / HurtFlashSeconds));
 
@@ -213,7 +292,6 @@ namespace ConcertHype
                     continue;
                 double expected = slot.Parts.Expected;
                 place.Outcome = Outcomes.Of(config, slot.Roll);
-                place.Roll = Whole(slot.Roll);
                 place.Chances = Outcomes.Chances(config, expected);
                 place.Angle = 360 * Turns + 3.6 * Outcomes.WheelPercent(config, expected, slot.Roll);
                 place.EnergyBefore = slot.EnergyBefore;
@@ -221,8 +299,7 @@ namespace ConcertHype
                 place.Hurt = slot.Accident;
                 if (slot.Accident)
                     place.HurtTip = Texts.Format("CONCERTHYPE__TIP_HURT", slot.AbsenceLength == 1 ? Texts.Get("CONCERTHYPE__SONG") : Texts.Format("CONCERTHYPE__SONGS", slot.AbsenceLength));
-                place.Tip = Texts.Format("CONCERTHYPE__ROLL_TIP", name(slot.Member), OutcomeName(place.Outcome), place.Roll, Whole(expected),
-                    Whole(place.Chances[0]), Whole(place.Chances[1]), Whole(place.Chances[2]), Whole(place.Chances[3]));
+                place.Tip = Texts.Format("CONCERTHYPE__OUTCOME_TIP", name(slot.Member), OutcomeName(place.Outcome));
             }
 
             // Back row first, left to right; the center last
@@ -240,6 +317,15 @@ namespace ConcertHype
             _ => "CONCERTHYPE__CRIT_SUCCESS",
         });
 
-        private static string Whole(double value) => Math.Round(value).ToString(CultureInfo.InvariantCulture);
+        /// <summary>
+        /// Each outcome's effect.
+        /// </summary>
+        public static IconKind EffectOf(Outcome outcome) => outcome switch
+        {
+            Outcome.CriticalFailure => IconKind.CriticalFailure,
+            Outcome.Failure => IconKind.Failure,
+            Outcome.Success => IconKind.Success,
+            _ => IconKind.CriticalSuccess,
+        };
     }
 }

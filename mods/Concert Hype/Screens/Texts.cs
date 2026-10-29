@@ -51,7 +51,7 @@ namespace ConcertHype
             ["CONCERTHYPE__FAIL"] = "Failure",
             ["CONCERTHYPE__SUCCESS"] = "Success",
             ["CONCERTHYPE__CRIT_SUCCESS"] = "Critical Success",
-            ["CONCERTHYPE__ROLL_TIP"] = "{0}: {1}, with a roll of {2} (expected {3}). Her chances were {4}% critical failure, {5}% failure, {6}% success and {7}% critical success.",
+            ["CONCERTHYPE__OUTCOME_TIP"] = "{0}: {1}",
         };
 
         public static string Get(string key)

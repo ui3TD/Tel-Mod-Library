@@ -25,7 +25,7 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void EachPlace_ShowsItsRoll_OutcomeAndWheel()
+        public void EachPlace_ShowsItsOutcomeAndWheel()
         {
             ShowState state = SixPlaces();
             StageView view = PlayFirstSong(state, out SongResult result);
@@ -37,7 +37,6 @@ namespace ConcertHype.Tests
                 StageSlotView place = view.Slots[j];
                 SlotResult slot = result.Slots[j];
                 Assert.Equal(slot.Member, place.Member);
-                Assert.Equal(System.Math.Round(slot.Roll).ToString(), place.Roll);
                 Assert.Equal(Outcomes.Of(state.Config, slot.Roll), place.Outcome);
                 Assert.Equal(Outcomes.Chances(state.Config, slot.Parts.Expected), place.Chances);
                 Assert.Equal(7200 + 3.6 * Outcomes.WheelPercent(state.Config, slot.Parts.Expected, slot.Roll), place.Angle, 9);
@@ -72,7 +71,7 @@ namespace ConcertHype.Tests
 
             StageSlotView empty = view.Slots[1];
             Assert.False(empty.HasRoll);
-            Assert.Equal("", empty.Roll);
+            Assert.Equal("", empty.Tip);
             Assert.Equal(0, empty.LandAt);
             Assert.Equal(StageView.LastLanding, view.Slots[0].LandAt, 9);
             Assert.True(view.Slots[2].LandAt < view.Slots[0].LandAt);
@@ -91,13 +90,23 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void TheTip_NamesTheOutcomeAndHerChances()
+        public void TheTip_NamesHerAndTheOutcome_WithNoNumbers()
         {
             ShowState state = SixPlaces(new Config { RollSigma = 0, PBase = 0, PRoll = 0, PTired = 0 });
             Shows.SetSkill(state.Setup, 0, 85);
-            StageView view = PlayFirstSong(state, out SongResult result);
-            string roll = System.Math.Round(result.Slots[0].Roll).ToString();
-            Assert.Equal($"M0: Critical Success, with a roll of {roll} (expected {roll}). Her chances were 0% critical failure, 0% failure, 0% success and 100% critical success.", view.Slots[0].Tip);
+            StageView view = PlayFirstSong(state, out _);
+            Assert.Equal("M0: Critical Success", view.Slots[0].Tip);
+        }
+
+        [Fact]
+        public void EachOutcome_HasItsOwnEffect()
+        {
+            Outcome[] outcomes = System.Enum.GetValues(typeof(Outcome)).Cast<Outcome>().ToArray();
+            Assert.Equal(outcomes.Length, outcomes.Select(StageView.EffectOf).Distinct().Count());
+            Assert.Equal(IconKind.CriticalSuccess, StageView.EffectOf(Outcome.CriticalSuccess));
+            Assert.Equal(IconKind.Success, StageView.EffectOf(Outcome.Success));
+            Assert.Equal(IconKind.Failure, StageView.EffectOf(Outcome.Failure));
+            Assert.Equal(IconKind.CriticalFailure, StageView.EffectOf(Outcome.CriticalFailure));
         }
 
         /// <summary>
@@ -157,53 +166,110 @@ namespace ConcertHype.Tests
 
         private static double[] Times(double until) => Enumerable.Range(0, (int)(until * 1000) + 1).Select(ms => ms / 1000.0).ToArray();
 
+        private static bool IsCritical(Outcome outcome) => outcome == Outcome.CriticalSuccess || outcome == Outcome.CriticalFailure;
+
         [Theory]
-        [InlineData(Outcome.Failure)]
-        [InlineData(Outcome.Success)]
         [InlineData(Outcome.CriticalSuccess)]
         [InlineData(Outcome.CriticalFailure)]
-        public void ANumber_SlamsDownFromLarge_DippingOnce_ThenSettles(Outcome outcome)
+        public void ACriticalEffect_SlamsDownFromLarge_DippingOnce_ToItsMomentSize(Outcome outcome)
         {
-            NumberPose start = StageView.NumberMotion(0, outcome);
-            Assert.Equal(StageView.SlamFrom, start.Scale, 6);
+            EffectPose start = StageView.EffectMotion(0, outcome);
+            Assert.Equal(StageView.SlamFrom * StageView.CriticalMomentScale, start.Scale, 6);
             Assert.Equal(0, start.Alpha);
-            Assert.Equal(1, start.Flash);
-            Assert.Equal(1, StageView.NumberMotion(StageView.FadeInSeconds, outcome).Alpha);
-            Assert.Equal(0, StageView.NumberMotion(StageView.FlashSeconds, outcome).Flash);
+            Assert.Equal(1, StageView.EffectMotion(StageView.FadeInSeconds, outcome).Alpha);
 
-            double[] slam = Times(StageView.SlamSeconds).Select(t => StageView.NumberMotion(t, outcome).Scale).ToArray();
+            double[] slam = Times(StageView.SlamSeconds).Select(t => StageView.Slam(t)).ToArray();
             Assert.Equal(1, slam.Last(), 6);
             // Under its size once: one stretch of the slam below 1, not lower than 0.8
             int dips = slam.Zip(slam.Skip(1), (a, b) => a >= 1 && b < 1).Count(started => started);
             Assert.Equal(1, dips);
             Assert.InRange(slam.Min(), 0.8, 1);
+            Assert.Equal(StageView.CriticalMomentScale, StageView.EffectMotion(StageView.SlamSeconds + StageView.AfterSeconds + 0.01, outcome).Scale, 6);
+        }
 
-            NumberPose settled = StageView.NumberMotion(StageView.SlamSeconds + StageView.AfterSeconds + 0.01, outcome);
-            Assert.Equal(1, settled.Scale, 6);
-            Assert.Equal(0, settled.OffsetX, 6);
+        [Fact]
+        public void ASuccess_PopsInALittleTooBig_ThenBobsUpOnce()
+        {
+            Assert.Equal(0, StageView.EffectMotion(0, Outcome.Success).Scale, 6);
+            double[] pop = Times(StageView.PopSeconds).Select(t => StageView.EffectMotion(t, Outcome.Success).Scale / StageView.MomentScale).ToArray();
+            Assert.InRange(pop.Max(), 1.05, 1.15);
+            Assert.Equal(1, pop.Last(), 6);
+            Assert.All(Times(StageView.PopSeconds), t => Assert.Equal(1, StageView.EffectMotion(t, Outcome.Success).Alpha));
+
+            double[] bob = Times(StageView.AfterSeconds).Select(t => StageView.EffectMotion(StageView.PopSeconds + t, Outcome.Success).OffsetY).ToArray();
+            Assert.Equal(-StageView.BobPixels, bob.Min(), 2);
+            Assert.All(bob, y => Assert.True(y <= 1e-9));
+        }
+
+        [Fact]
+        public void AFailure_FadesIn_ThenSinksAndComesBack()
+        {
+            Assert.Equal(0, StageView.EffectMotion(0, Outcome.Failure).Alpha);
+            Assert.Equal(0.5, StageView.EffectMotion(StageView.FailFadeSeconds / 2, Outcome.Failure).Alpha, 6);
+            Assert.Equal(StageView.MomentScale, StageView.EffectMotion(0, Outcome.Failure).Scale, 6);
+
+            double[] sink = Times(2 * StageView.AfterSeconds).Select(t => StageView.EffectMotion(StageView.FailFadeSeconds + t, Outcome.Failure).OffsetY).ToArray();
+            Assert.Equal(StageView.SinkPixels, sink.Max(), 2);
+            Assert.All(sink, y => Assert.True(y >= -1e-9));
+            Assert.Equal(0, sink.Last(), 6);
+        }
+
+        [Theory]
+        [InlineData(Outcome.Failure)]
+        [InlineData(Outcome.Success)]
+        [InlineData(Outcome.CriticalSuccess)]
+        [InlineData(Outcome.CriticalFailure)]
+        public void EveryEffect_HoldsItsMoment_ThenShrinksIntoHerMark_AndStaysThere(Outcome outcome)
+        {
+            double moment = IsCritical(outcome) ? StageView.CriticalMomentScale : StageView.MomentScale;
+            Assert.Equal(moment, StageView.EffectMotion(StageView.HoldSeconds, outcome).Scale, 6);
+            double[] shrink = Times(StageView.ShrinkSeconds).Select(t => StageView.EffectMotion(StageView.HoldSeconds + t, outcome).Scale).ToArray();
+            Assert.All(shrink.Zip(shrink.Skip(1), (a, b) => b <= a + 1e-9), Assert.True);
+
+            foreach (double t in new[] { StageView.SettledSeconds, StageView.SettledSeconds + 2 })
+            {
+                EffectPose mark = StageView.EffectMotion(t, outcome);
+                Assert.Equal(1, mark.Scale, 6);
+                Assert.Equal(1, mark.Alpha);
+                Assert.Equal(0, mark.OffsetX, 6);
+                Assert.Equal(0, mark.OffsetY, 6);
+            }
         }
 
         [Fact]
         public void ACriticalSuccess_Pulses_ACriticalFailure_Shakes_OthersNeither()
         {
             double[] after = Times(StageView.AfterSeconds).Select(t => StageView.SlamSeconds + t).ToArray();
-            double peak = after.Max(t => StageView.NumberMotion(t, Outcome.CriticalSuccess).Scale);
-            Assert.Equal(StageView.PulseScale, peak, 3);
-            Assert.All(after, t => Assert.Equal(0, StageView.NumberMotion(t, Outcome.CriticalSuccess).OffsetX));
+            double peak = after.Max(t => StageView.EffectMotion(t, Outcome.CriticalSuccess).Scale);
+            Assert.Equal(StageView.PulseScale * StageView.CriticalMomentScale, peak, 3);
+            Assert.All(after, t => Assert.Equal(0, StageView.EffectMotion(t, Outcome.CriticalSuccess).OffsetX));
 
-            double[] shake = after.Select(t => StageView.NumberMotion(t, Outcome.CriticalFailure).OffsetX).ToArray();
+            double[] shake = after.Select(t => StageView.EffectMotion(t, Outcome.CriticalFailure).OffsetX).ToArray();
             Assert.All(shake, x => Assert.InRange(x, -StageView.ShakePixels, StageView.ShakePixels));
             Assert.True(shake.Max() > 2 && shake.Min() < -2);
-            Assert.All(after, t => Assert.Equal(1, StageView.NumberMotion(t, Outcome.CriticalFailure).Scale, 6));
+            Assert.All(after, t => Assert.Equal(StageView.CriticalMomentScale, StageView.EffectMotion(t, Outcome.CriticalFailure).Scale, 6));
 
             foreach (Outcome plain in new[] { Outcome.Success, Outcome.Failure })
+                Assert.All(Times(StageView.SettledSeconds), t => Assert.Equal(0, StageView.EffectMotion(t, plain).OffsetX));
+        }
+
+        [Fact]
+        public void ACriticalSuccess_SendsFourSparklesOut_OnePerDiagonal_ThatFadeAway()
+        {
+            Assert.Equal(4, StageView.SparkleCount);
+            for (int k = 0; k < StageView.SparkleCount; k++)
             {
-                Assert.All(after, t =>
-                {
-                    Assert.Equal(1, StageView.NumberMotion(t, plain).Scale, 6);
-                    Assert.Equal(0, StageView.NumberMotion(t, plain).OffsetX);
-                });
+                Assert.Equal(0, StageView.SparkleMotion(0, k).Alpha);
+                Assert.Equal(0, StageView.SparkleMotion(StageView.SparkleDelay + StageView.SparkleSeconds, k).Alpha);
+                EffectPose mid = StageView.SparkleMotion(StageView.SparkleDelay + StageView.SparkleSeconds / 2, k);
+                Assert.InRange(mid.Alpha, 0.4, 0.6);
+                Assert.True(mid.Scale < 1);
+                double[] away = Times(StageView.SparkleSeconds).Select(t => System.Math.Abs(StageView.SparkleMotion(StageView.SparkleDelay + t, k).OffsetX)).ToArray();
+                Assert.All(away.Zip(away.Skip(1), (a, b) => b >= a - 1e-9 || b == 0), Assert.True);
+                Assert.True(away.Max() <= StageView.SparkleDistance + 1e-9);
             }
+            EffectPose[] sparkles = Enumerable.Range(0, StageView.SparkleCount).Select(k => StageView.SparkleMotion(StageView.SparkleDelay + 0.3, k)).ToArray();
+            Assert.Equal(4, sparkles.Select(p => (System.Math.Sign(p.OffsetX), System.Math.Sign(p.OffsetY))).Distinct().Count());
         }
 
         [Fact]

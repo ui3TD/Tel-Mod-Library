@@ -168,7 +168,7 @@
 		text: "Critical Success"
 	},
 	{
-		id: "CONCERTHYPE__ROLL_TIP",
-		text: "{0}: {1}, with a roll of {2} (expected {3}). Her chances were {4}% critical failure, {5}% failure, {6}% success and {7}% critical success."
+		id: "CONCERTHYPE__OUTCOME_TIP",
+		text: "{0}: {1}"
 	}
 ]

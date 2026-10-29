@@ -188,12 +188,12 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// A change shown as a value: signed, green when it's not a loss, red when it is.
+        /// A change of hype shown as a value: in the hype bar's percent, signed, green when it's not a loss, red when it is.
         /// </summary>
         private static Readout Change(string titleKey, double change) => new Readout
         {
             Title = Texts.Get(titleKey),
-            Value = Signed(change),
+            Value = Signed(change) + "%",
             Tone = Math.Round(change) >= 0 ? Tone.Good : Tone.Bad,
         };
 
@@ -274,7 +274,7 @@ namespace ConcertHype
                 else
                 {
                     view.Expected = Change("CONCERTHYPE__EXPECTED_TITLE", preview.Change);
-                    view.Expected.Tip = Texts.Format("CONCERTHYPE__EXPECTED_TIP", Signed(preview.Low), Signed(preview.High), Whole(h), Texts.Get(mood));
+                    view.Expected.Tip = Texts.Format("CONCERTHYPE__EXPECTED_TIP", Signed(preview.Low) + "%", Signed(preview.High) + "%", Whole(h), Texts.Get(mood));
                 }
                 view.Changed = new Readout { Title = Texts.Get("CONCERTHYPE__CHANGED_TITLE"), Value = Whole(100 * preview.Novelty) + "%" };
                 view.FormationNote = view.Faded ? Texts.Get("CONCERTHYPE__AFTER_TALK") : "";

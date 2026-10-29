@@ -53,9 +53,9 @@ namespace ConcertHype.Tests
             PanelView view = PanelView.Build(session);
             SongPreview preview = session.Preview();
             Assert.Equal("Expected Hype:", view.Expected.Title);
-            Assert.Equal(PanelView.Signed(preview.Change), view.Expected.Value);
+            Assert.Equal(PanelView.Signed(preview.Change) + "%", view.Expected.Value);
             Assert.Equal(Math.Round(preview.Change) >= 0 ? Tone.Good : Tone.Bad, view.Expected.Tone);
-            Assert.Equal($"Likely {PanelView.Signed(preview.Low)} to {PanelView.Signed(preview.High)}, depending on how the idols perform. "
+            Assert.Equal($"Likely {PanelView.Signed(preview.Low)}% to {PanelView.Signed(preview.High)}%, depending on how the idols perform. "
                 + "Hype 50%: a changed lineup surprises the crowd.", view.Expected.Tip);
             Assert.Equal("Changed Lineup:", view.Changed.Title);
             Assert.Equal(Math.Round(100 * preview.Novelty) + "%", view.Changed.Value);
@@ -110,18 +110,18 @@ namespace ConcertHype.Tests
             stage.PlaySong(session);
             Readout last = PanelView.Build(session).Last;
             Assert.Equal("Last Song:", last.Title);
-            Assert.Equal(PanelView.Signed(session.LastResult.Change), last.Value);
+            Assert.Equal(PanelView.Signed(session.LastResult.Change) + "%", last.Value);
             Assert.Equal("", last.Tip);  // who got hurt shows on the bench
             session.LastResult.Change = -0.4;
-            Assert.Equal(("+0", Tone.Good), (PanelView.Build(session).Last.Value, PanelView.Build(session).Last.Tone));
+            Assert.Equal(("+0%", Tone.Good), (PanelView.Build(session).Last.Value, PanelView.Build(session).Last.Tone));
             session.LastResult.Change = -3;
-            Assert.Equal(("-3", Tone.Bad), (PanelView.Build(session).Last.Value, PanelView.Build(session).Last.Tone));
+            Assert.Equal(("-3%", Tone.Bad), (PanelView.Build(session).Last.Value, PanelView.Build(session).Last.Tone));
 
             session.Drop(2, DropPoint.AtPlace(0), DropPoint.Host);
             stage.PlaySong(session);
             last = PanelView.Build(session).Last;
             Assert.Equal("Last Talk Break:", last.Title);
-            Assert.Equal(PanelView.Signed(session.LastMc.HypeAfter - session.LastMc.HypeBefore), last.Value);
+            Assert.Equal(PanelView.Signed(session.LastMc.HypeAfter - session.LastMc.HypeBefore) + "%", last.Value);
         }
 
         [Fact]

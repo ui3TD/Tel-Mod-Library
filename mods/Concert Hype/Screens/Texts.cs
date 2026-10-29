@@ -45,6 +45,11 @@ namespace ConcertHype
             ["CONCERTHYPE__SONG"] = "1 song",
             ["CONCERTHYPE__SCORE_TITLE"] = "Show Score:",
             ["CONCERTHYPE__SCORE_TIP"] = "Average {0}%, best {1}%, finale {2}%.",
+            ["CONCERTHYPE__CRIT_FAIL"] = "Critical Failure",
+            ["CONCERTHYPE__FAIL"] = "Failure",
+            ["CONCERTHYPE__SUCCESS"] = "Success",
+            ["CONCERTHYPE__CRIT_SUCCESS"] = "Critical Success",
+            ["CONCERTHYPE__ROLL_TIP"] = "{0}: {1}, with a roll of {2} (expected {3}). Her chances were {4}% critical failure, {5}% failure, {6}% success and {7}% critical success.",
         };
 
         public static string Get(string key)

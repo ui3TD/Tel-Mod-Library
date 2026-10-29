@@ -302,6 +302,7 @@ namespace ConcertHype.Tests
             string text = File.ReadAllText(path);
             File.Delete(path);
             Assert.Contains("Song 3: S3", text);
+            Assert.Matches(@"\) roll [\d.]+ \((CriticalFailure|Failure|Success|CriticalSuccess)\) = [\d.]+ x skill", text);
             Assert.Contains("Score ", text);
         }
 

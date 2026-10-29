@@ -20,7 +20,8 @@ namespace InGameTests.TelMods
     /// profile card placed at the host place, the
     /// game's cancel icon over the hovered host and a real click cancelling her, a
     /// talk break played by the popup's own coroutine, the transpiled song length, the popup's tweens landing hype
-    /// on the show's value, the score line on the real results screen, and no crisis popup.
+    /// on the show's value, the stage's copies of the marketing wheel and the rolls they land on during a song,
+    /// the score line on the real results screen, and no crisis popup.
     /// </summary>
     [ModUnderTest(HarmonyId)]
     internal static class ConcertHypeTests
@@ -91,6 +92,10 @@ namespace InGameTests.TelMods
                 VanillaShapes.AssertCovers(ctx, shapes, "Button", popup.NextSong_Button, "Start Next Song button");
                 VanillaShapes.AssertCovers(ctx, shapes, "Label", popup.NextSong_Container.transform.Find("StaminaCostTitle").gameObject, "Stamina Cost title");
                 VanillaShapes.AssertCovers(ctx, shapes, "Portrait", popup.prefab_concertGirl, "concert idol portrait");
+                Single_Marketing_Roll wheel = PopupManager.GetObject(PopupManager._type.single_release).GetComponent<Single_Release>()
+                    .Marketing_Roll_Container.GetComponentInChildren<Single_Marketing_Roll>(true);
+                VanillaShapes.AssertCovers(ctx, shapes, "Wheel", wheel.Spinner_Container, "marketing wheel");
+                VanillaShapes.AssertCovers(ctx, shapes, "Pointer", wheel.Spinner_Icon, "marketing wheel pointer");
 
                 // No card draw: the opening goes straight to the first song, and the deck never shows
                 float start = Time.realtimeSinceStartup, deckShown = 0f;
@@ -284,7 +289,15 @@ namespace InGameTests.TelMods
                     Click(TopHit(ScreenRect(popup.NextSong_Button.transform).center));
                     float songLength = -1f;
                     bool crisis = false;
-                    yield return PlayOut(popup, song == songs - 1, length => songLength = length, () => crisis = true);
+                    bool stageChecked = false;
+                    Action<float> stageCheck = song != 0 ? null : progress =>
+                    {
+                        if (stageChecked || progress < 0.95f)
+                            return;
+                        stageChecked = true;
+                        CheckStage(ctx, popup, Get<object>(session, "Pending"));
+                    };
+                    yield return PlayOut(popup, song == songs - 1, length => songLength = length, () => crisis = true, stageCheck);
                     if (crisis)
                     {
                         ctx.Fail("A crisis popup opened during song " + (song + 1));
@@ -297,6 +310,11 @@ namespace InGameTests.TelMods
                     }
                     if (song == 0)
                     {
+                        if (!stageChecked)
+                            ctx.Fail("Song 1 ended before the stage was checked");
+                        Transform stageAfter = popup.transform.Find("ConcertHype Stage");
+                        if (stageAfter != null && stageAfter.gameObject.activeInHierarchy)
+                            ctx.Fail("The stage still shows after song 1");
                         ctx.Record("song seconds", songLength);
                         if (Math.Abs(songLength - songSeconds) > 0.5)
                             ctx.Fail($"Song 1 played {songLength} s, not about {songSeconds}");
@@ -335,7 +353,8 @@ namespace InGameTests.TelMods
         /// Waits while the popup plays its item, until the next item's screen (or the results) is up, and gives the
         /// game seconds its progress bar ran for.
         /// </summary>
-        private static IEnumerator PlayOut(Concert_Popup popup, bool last, Action<float> length, Action crisis = null)
+        /// <param name="playing">Called each frame of the item with its progress bar's fill.</param>
+        private static IEnumerator PlayOut(Concert_Popup popup, bool last, Action<float> length, Action crisis = null, Action<float> playing = null)
         {
             // Start sets the bar to 0 before this runs; it fills over the item's length, and the next screen fades in after
             float start = Time.realtimeSinceStartup, barStart = -1f, barEnd = -1f;
@@ -351,9 +370,40 @@ namespace InGameTests.TelMods
                     crisis?.Invoke();
                     yield break;
                 }
+                if (barStart >= 0 && barEnd < 0)
+                    playing?.Invoke(x);
                 yield return null;
             }
             length(barStart >= 0 && barEnd >= 0 ? barEnd - barStart : -1f);
+        }
+
+        /// <summary>
+        /// Near the end of a song, every filled place has its copy of the marketing wheel with its four rings
+        /// drawn from the game's sprites, and her roll shows, landed by the stage's own clock.
+        /// </summary>
+        private static void CheckStage(TestContext ctx, Concert_Popup popup, object pending)
+        {
+            int filled = ((Array)AccessTools.Field(pending.GetType(), "Slots").GetValue(pending)).Cast<object>()
+                .Count(slot => (int)AccessTools.Field(slot.GetType(), "Member").GetValue(slot) >= 0);
+            Transform stage = popup.transform.Find("ConcertHype Stage");
+            if (stage == null || !stage.gameObject.activeInHierarchy)
+            {
+                ctx.Fail("Song 1 plays without the stage");
+                return;
+            }
+            List<Transform> places = stage.Cast<Transform>().Where(place => place.gameObject.activeSelf && place.Find("Wheel") is Transform wheel && wheel.gameObject.activeSelf).ToList();
+            ctx.Record("wheels on stage", places.Count);
+            if (places.Count != filled)
+                ctx.Fail($"{places.Count} wheels on stage for {filled} idols");
+            foreach (Transform place in places)
+            {
+                Image[] rings = place.Find("Wheel/Spin").GetComponentsInChildren<Image>();
+                if (rings.Length != 4 || rings.Any(ring => ring.sprite == null))
+                    ctx.Fail(place.name + "'s wheel doesn't have the game's four rings");
+                TextMeshProUGUI number = place.Find("Label")?.GetComponent<TextMeshProUGUI>();
+                if (number == null || !number.gameObject.activeInHierarchy || number.text.Length == 0)
+                    ctx.Fail(place.name + " shows no roll by the end of the song");
+            }
         }
 
         /// <summary>

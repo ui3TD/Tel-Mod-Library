@@ -6,6 +6,7 @@ A new concert minigame: manage each song's lineup to build and hold the crowd's 
 [h3]Details[/h3]
 - Each song is performed by its single's senbatsu, in the single's triangle formation.
 - Before each song you drag idols from the bench, which holds every idol in your agency who isn't on stage, onto the formation to swap them in, as many as you like, and drag two idols on stage onto each other to swap their places. Idols who can't perform are replaced by the best idol on the bench. A changed lineup surprises the crowd: it pays off most while the crowd is below 100% hype.
+- While a song plays, each idol on stage spins a wheel like a single's marketing roll: its arcs are her chances of a critical failure, failure, success or critical success, and it lands on how she performed.
 - Idols tire as they perform and recover on the bench. A crowd at 100% hype or more carries them instead. Tired idols perform worse and are more likely to have an accident, which keeps them off stage for a few songs.
 - Drag an idol onto the talk break place to have her host a talk break before the next song (twice per show). It pulls the crowd's hype toward 100%.
 - Songs and talk breaks play in 5 seconds instead of 10.

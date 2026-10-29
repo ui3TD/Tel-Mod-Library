@@ -52,6 +52,7 @@ namespace ConcertHype.Tests
             Assert.Contains("swap them in, as many as you like", description);
             Assert.Contains("replaced by the best idol on the bench", description);
             Assert.Contains("twice per show", description);
+            Assert.Contains("chances of a critical failure, failure, success or critical success", description);
             Assert.Contains("play in 5 seconds instead of 10", description);
             Assert.Contains("it pays what 200% hype paid before", description);
             Assert.Contains("Action cards, the accident wheel and talk breaks in the setlist are off", description);

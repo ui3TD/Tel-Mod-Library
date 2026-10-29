@@ -1,0 +1,116 @@
+using ConcertHype.Model;
+using System.Linq;
+using Xunit;
+
+namespace ConcertHype.Tests
+{
+    public class StageViewTests
+    {
+        private static string Name(int member) => "M" + member;
+
+        /// <summary>
+        /// Six places (rows of 1, 2 and 3) with the spread on and no accidents.
+        /// </summary>
+        private static ShowState SixPlaces(Config config = null, int members = 8)
+        {
+            config ??= new Config { PBase = 0, PRoll = 0, PTired = 0 };
+            ShowSetup setup = Shows.Setup(members: members, slots: 6, skill: 55);
+            return Shows.Start(setup, config, seed: 4);
+        }
+
+        private static StageView PlayFirstSong(ShowState state, out SongResult result)
+        {
+            result = Engine.Play(state, Engine.DefaultLineup(state));
+            return StageView.Build(state, result, Name);
+        }
+
+        [Fact]
+        public void EachPlace_ShowsItsRoll_OutcomeAndWheel()
+        {
+            ShowState state = SixPlaces();
+            StageView view = PlayFirstSong(state, out SongResult result);
+
+            Assert.True(view.Shown);
+            Assert.Equal(new[] { 0, 1, 1, 2, 2, 2 }, view.Slots.Select(s => s.Row));
+            for (int j = 0; j < view.Slots.Count; j++)
+            {
+                StageSlotView place = view.Slots[j];
+                SlotResult slot = result.Slots[j];
+                Assert.Equal(slot.Member, place.Member);
+                Assert.Equal(System.Math.Round(slot.Roll).ToString(), place.Roll);
+                Assert.Equal(Outcomes.Of(state.Config, slot.Roll), place.Outcome);
+                Assert.Equal(Outcomes.Chances(state.Config, slot.Parts.Expected), place.Chances);
+                Assert.Equal(7200 + 3.6 * Outcomes.WheelPercent(state.Config, slot.Parts.Expected, slot.Roll), place.Angle, 9);
+                Assert.Equal(slot.EnergyBefore, place.EnergyBefore);
+                Assert.Equal(slot.EnergyAfter, place.EnergyAfter);
+                Assert.False(place.Hurt);
+            }
+        }
+
+        [Fact]
+        public void TheWheels_LandBackRowFirst_TheCenterLast_BeforeTheSongEnds()
+        {
+            StageView view = PlayFirstSong(SixPlaces(), out _);
+            double[] landings = view.Slots.Select(s => s.LandAt).ToArray();
+
+            // Places 3-5 are the back row, left to right; place 0 is the center
+            Assert.Equal(StageView.FirstLanding, landings[3], 9);
+            Assert.True(landings[3] < landings[4] && landings[4] < landings[5]);
+            Assert.True(landings[5] < landings[1] && landings[1] < landings[2]);
+            Assert.True(landings[2] < landings[0]);
+            Assert.Equal(StageView.LastLanding, landings[0], 9);
+            Assert.True(StageView.LastLanding < 1);
+        }
+
+        [Fact]
+        public void AnEmptyPlace_HasNoRollOrWheel_AndTheOthersStillLandInOrder()
+        {
+            // Three idols for six places: with M1 hurt, nobody can fill hers, and the bench is empty
+            ShowState state = SixPlaces(members: 6);
+            state.Absence[1] = 3;
+            StageView view = PlayFirstSong(state, out _);
+
+            StageSlotView empty = view.Slots[1];
+            Assert.False(empty.HasRoll);
+            Assert.Equal("", empty.Roll);
+            Assert.Equal(0, empty.LandAt);
+            Assert.Equal(StageView.LastLanding, view.Slots[0].LandAt, 9);
+            Assert.True(view.Slots[2].LandAt < view.Slots[0].LandAt);
+        }
+
+        [Fact]
+        public void AHurtIdol_ShowsTheHurtIconWithHowLongSheIsOut()
+        {
+            Config config = new Config { PBase = 1, PMax = 1, AbsenceMin = 2, AbsenceMax = 2 };
+            StageView view = PlayFirstSong(SixPlaces(config), out _);
+            Assert.All(view.Slots, place =>
+            {
+                Assert.True(place.Hurt);
+                Assert.Equal("Hurt: out for 2 songs. A talk break counts as one song.", place.HurtTip);
+            });
+        }
+
+        [Fact]
+        public void TheTip_NamesTheOutcomeAndHerChances()
+        {
+            ShowState state = SixPlaces(new Config { RollSigma = 0, PBase = 0, PRoll = 0, PTired = 0 });
+            Shows.SetSkill(state.Setup, 0, 85);
+            StageView view = PlayFirstSong(state, out SongResult result);
+            string roll = System.Math.Round(result.Slots[0].Roll).ToString();
+            Assert.Equal($"M0: Critical Success, with a roll of {roll} (expected {roll}). Her chances were 0% critical failure, 0% failure, 0% success and 100% critical success.", view.Slots[0].Tip);
+        }
+
+        [Fact]
+        public void ATalkBreak_ShowsNoStage()
+        {
+            Assert.False(StageView.Build(SixPlaces(), null, Name).Shown);
+        }
+
+        [Fact]
+        public void EveryOutcome_HasAName()
+        {
+            Assert.Equal(new[] { "Critical Failure", "Failure", "Success", "Critical Success" },
+                System.Enum.GetValues(typeof(Outcome)).Cast<Outcome>().Select(StageView.OutcomeName));
+        }
+    }
+}

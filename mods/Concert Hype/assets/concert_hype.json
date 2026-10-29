@@ -4,6 +4,7 @@
 	"rollSigma": 10,
 	"energyMinFactor": 0.7,
 	"optionLevel": 1,
+	"criticalSuccessRoll": 80,
 	"startingHype": 50,
 	"fanWeightFloor": 0.25,
 	"rowWeights": [1.5, 1, 0.6, 0.6, 0.6],

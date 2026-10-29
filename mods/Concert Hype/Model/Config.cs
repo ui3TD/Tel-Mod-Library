@@ -13,6 +13,12 @@ namespace ConcertHype.Model
         public double EnergyMinFactor = 0.7;
         public int OptionLevel = 1;
 
+        /// <summary>
+        /// The lowest roll that is a critical success. Under par is a failure, under accidentRollThreshold a
+        /// critical failure.
+        /// </summary>
+        public double CriticalSuccessRoll = 80;
+
         // Hype
         public double StartingHype = 50;
         public double FanWeightFloor = 0.25;

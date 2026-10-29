@@ -177,6 +177,11 @@ namespace ConcertHype
             {
                 ShowSession.Fail(ex, talk ? "starting the talk break" : "playing the song");
             }
+            // The rolls just made, on stage while the song plays
+            if (ReferenceEquals(ShowSession.Current, session))
+                StageRolls.Show(__instance, session);
+            else
+                StageRolls.Hide();
         }
     }
 

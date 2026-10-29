@@ -34,6 +34,17 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
+        /// The chance a standard normal draw is at most z (Abramowitz and Stegun 7.1.26, within 1e-7).
+        /// </summary>
+        public static double NormalCdf(double z)
+        {
+            double x = Math.Abs(z) / Math.Sqrt(2.0);
+            double t = 1.0 / (1.0 + 0.3275911 * x);
+            double erf = 1.0 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.Exp(-x * x);
+            return z >= 0 ? 0.5 * (1.0 + erf) : 0.5 * (1.0 - erf);
+        }
+
+        /// <summary>
         /// A whole number from min to max, both included.
         /// </summary>
         public int Range(int min, int max) => max <= min ? min : random.Next(min, max + 1);

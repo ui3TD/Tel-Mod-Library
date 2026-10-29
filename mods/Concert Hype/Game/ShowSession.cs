@@ -379,7 +379,7 @@ namespace ConcertHype
                 }
                 string role = slot.Member == song.Slots[j].Original ? "original" : "substitute";
                 RollParts p = slot.Parts;
-                log.AppendLine($"{place}: {Name(slot.Member)} ({role}) roll {F(slot.Roll)} = {F(p.EnergyFactor)} x skill {F(p.Skill)} + appeal {F(p.Appeal)} + senbatsu {F(p.Senbatsu)} + noise; " +
+                log.AppendLine($"{place}: {Name(slot.Member)} ({role}) roll {F(slot.Roll)} ({Outcomes.Of(State.Config, slot.Roll)}) = {F(p.EnergyFactor)} x skill {F(p.Skill)} + appeal {F(p.Appeal)} + senbatsu {F(p.Senbatsu)} + noise; " +
                     $"energy {F(slot.EnergyBefore)} -> {F(slot.EnergyAfter)}" + (slot.Accident ? $"; ACCIDENT (chance {F(slot.AccidentChance)}), out {slot.AbsenceLength}" : ""));
             }
             log.AppendLine($"  weighted {F(result.Weighted)}, base {F(result.BaseChange)}, genre flow {F(result.GenreFlow)}, show x{F(result.ShowMultiplier)}, " +

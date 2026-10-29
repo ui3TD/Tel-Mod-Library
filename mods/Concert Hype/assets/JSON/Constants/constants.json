@@ -142,5 +142,25 @@
 	{
 		id: "CONCERTHYPE__SCORE_TIP",
 		text: "Average {0}%, best {1}%, finale {2}%."
+	},
+	{
+		id: "CONCERTHYPE__CRIT_FAIL",
+		text: "Critical Failure"
+	},
+	{
+		id: "CONCERTHYPE__FAIL",
+		text: "Failure"
+	},
+	{
+		id: "CONCERTHYPE__SUCCESS",
+		text: "Success"
+	},
+	{
+		id: "CONCERTHYPE__CRIT_SUCCESS",
+		text: "Critical Success"
+	},
+	{
+		id: "CONCERTHYPE__ROLL_TIP",
+		text: "{0}: {1}, with a roll of {2} (expected {3}). Her chances were {4}% critical failure, {5}% failure, {6}% success and {7}% critical success."
 	}
 ]

@@ -41,7 +41,15 @@ namespace ConcertHype.Model
         /// </summary>
         public double FlowBonus = 1;
 
-        public double CapacityFloor = 0.5;
+        /// <summary>
+        /// Hype points every song gets from the venue, gain or loss: venueSoldOutBonus when it's sold out, nothing from
+        /// venueNeutralShare of the seats filled up to the last unsold seat, and below that a penalty growing in a
+        /// straight line to venueEmptyPenalty when it's empty.
+        /// </summary>
+        public double VenueSoldOutBonus = 10;
+        public double VenueNeutralShare = 0.9;
+        public double VenueEmptyPenalty = 15;
+
         public double ProductionFloor = 0.75;
         public double ProductionRange = 0.5;
         public double NoveltyBlendBand = 20;

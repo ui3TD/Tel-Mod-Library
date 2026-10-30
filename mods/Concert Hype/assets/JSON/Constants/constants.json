@@ -164,8 +164,16 @@
 		text: "The venue is {0}% full."
 	},
 	{
-		id: "CONCERTHYPE__VENUE_LOSS",
-		text: "Adds nothing to a song that loses hype."
+		id: "CONCERTHYPE__VENUE_SOLD_OUT",
+		text: "Sold out: every song gains {0} hype."
+	},
+	{
+		id: "CONCERTHYPE__VENUE_ALMOST",
+		text: "Sell the last seats for +{0} hype every song."
+	},
+	{
+		id: "CONCERTHYPE__VENUE_EMPTY",
+		text: "Empty seats cost every song {0} hype."
 	},
 	{
 		id: "CONCERTHYPE__PERF_CENTER",

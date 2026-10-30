@@ -230,10 +230,26 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// A venue short of full makes gains smaller.
+        /// The share of seats filled from which a venue counts as sold out: a hair under all of them, so rounding by the
+        /// game or a mod doesn't cost a full house its bonus.
         /// </summary>
-        public static double VenueMultiplier(ShowSetup setup, Config config) =>
-            config.CapacityFloor + (1 - config.CapacityFloor) * Clamp(setup.CapacityFilled, 0, 1);
+        public const double SoldOutShare = 0.9995;
+
+        public static bool SoldOut(ShowSetup setup) => setup.CapacityFilled >= SoldOutShare;
+
+        /// <summary>
+        /// The hype every song gets from the venue, whatever the performance: a bonus when it's sold out, nothing when
+        /// it's nearly full, and a penalty that grows with the empty seats.
+        /// </summary>
+        public static double VenueHype(ShowSetup setup, Config config)
+        {
+            double filled = Clamp(setup.CapacityFilled, 0, 1), neutral = config.VenueNeutralShare;
+            if (filled >= SoldOutShare)
+                return config.VenueSoldOutBonus;
+            if (filled >= neutral || neutral <= 0)
+                return 0;
+            return -config.VenueEmptyPenalty * (neutral - filled) / neutral;
+        }
 
         public static double QualityMultiplier(ShowSetup setup, Config config) =>
             config.ProductionFloor + config.ProductionRange * Clamp(setup.Production, 0, 1);
@@ -280,9 +296,9 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// The hype steps from a weighted performance: base change, flow from the song before, venue, quality and
-        /// crowd multipliers on gains, then novelty amplification by hype band, then clamping. Fills the result's step
-        /// fields.
+        /// The hype steps from a weighted performance: base change, flow from the song before, quality and crowd
+        /// multipliers on gains, novelty amplification by hype band, the venue's hype, then clamping. Fills the result's
+        /// step fields.
         /// </summary>
         private static void HypeSteps(ShowState state, Song song, int[] lineup, double novelty, double weighted, SongResult result)
         {
@@ -293,16 +309,14 @@ namespace ConcertHype.Model
             result.Matches = Matches(state.Setup, state.SongIndex);
             result.Flow = config.FlowBonus * Count(result.Matches);
             d += result.Flow;
-            result.VenueMultiplier = 1;
             result.QualityMultiplier = 1;
             result.Crowd = CrowdAppeal(state, song, lineup);
             result.CrowdMultiplier = CrowdMultiplier(config, result.Crowd);
             result.Gain = d > 0;
             if (result.Gain)
             {
-                result.VenueMultiplier = VenueMultiplier(state.Setup, config);
                 result.QualityMultiplier = QualityMultiplier(state.Setup, config);
-                d *= result.VenueMultiplier * result.QualityMultiplier * result.CrowdMultiplier;
+                d *= result.QualityMultiplier * result.CrowdMultiplier;
             }
 
             double band = config.NoveltyBlendBand;
@@ -312,6 +326,9 @@ namespace ConcertHype.Model
             result.Novelty = novelty;
             result.Amplification = 1 + novelty * (d >= 0 ? gainAmp : lossAmp);
             d *= result.Amplification;
+            // The same for a good song or a bad one, and nothing multiplies it
+            result.Venue = VenueHype(state.Setup, config);
+            d += result.Venue;
 
             result.HypeBefore = h;
             result.Weighted = weighted;
@@ -357,31 +374,30 @@ namespace ConcertHype.Model
 
         /// <summary>
         /// The song's change split by what made it, taking the hype steps in their order: the performance against par,
-        /// the flow, what the venue, quality and crowd multipliers add to a gain, what novelty adds, then the floor and
-        /// cap, which shrink every part alike.
+        /// the flow, what the quality and crowd multipliers add to a gain, what novelty adds, the venue's hype, then the
+        /// floor and cap, which shrink every part alike.
         /// </summary>
         public static HypeParts Parts(SongResult steps)
         {
             double performance = steps.BaseChange;
             double flowed = performance + steps.Flow;
-            double venue = flowed * steps.VenueMultiplier;
-            double quality = venue * steps.QualityMultiplier;
+            double quality = flowed * steps.QualityMultiplier;
             double appeal = steps.Gain ? quality * steps.CrowdMultiplier : quality;
             double amplified = appeal * steps.Amplification;
-            HypeParts parts = new HypeParts();
-            if (amplified == 0)
+            double unclamped = amplified + steps.Venue;
+            double share = unclamped == 0 ? 1 : steps.Change / unclamped;
+            HypeParts parts = new HypeParts
             {
-                // Nothing to share out: whatever the floor or cap made of it counts as the performance's
-                parts.Performance = steps.Change;
-                return parts;
-            }
-            double share = steps.Change / amplified;
-            parts.Performance = share * performance;
-            parts.Flow = share * (flowed - performance);
-            parts.Venue = share * (venue - flowed);
-            parts.Quality = share * (quality - venue);
-            parts.Appeal = share * (appeal - quality);
-            parts.Novelty = share * (amplified - appeal);
+                Performance = share * performance,
+                Flow = share * (flowed - performance),
+                Quality = share * (quality - flowed),
+                Appeal = share * (appeal - quality),
+                Novelty = share * (amplified - appeal),
+                Venue = share * steps.Venue,
+            };
+            // Parts that cancel out: whatever the floor or cap made of nothing counts as the performance's
+            if (unclamped == 0)
+                parts.Performance += steps.Change;
             parts.Production = parts.Flow + parts.Quality + parts.Appeal + parts.Novelty;
             return parts;
         }

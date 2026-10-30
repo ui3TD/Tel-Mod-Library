@@ -27,7 +27,7 @@ namespace ConcertHype.Model
         public double Performance;
 
         /// <summary>
-        /// What a venue short of full takes off a gain; 0 or less.
+        /// The venue's hype: a bonus when sold out, a penalty for empty seats, the same on a gain or a loss.
         /// </summary>
         public double Venue;
 
@@ -142,9 +142,13 @@ namespace ConcertHype.Model
         /// <summary>
         /// As applied: 1 when the change isn't a gain.
         /// </summary>
-        public double VenueMultiplier = 1;
-
         public double QualityMultiplier = 1;
+
+        /// <summary>
+        /// The hype the venue gives this song, gain or loss, added after everything but the floor and cap.
+        /// </summary>
+        public double Venue;
+
         public double Crowd;
 
         /// <summary>

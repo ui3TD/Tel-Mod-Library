@@ -386,7 +386,7 @@ namespace ConcertHype
             ShowState state = session.State;
             HypeParts parts = preview.Parts;
             double[] shown = RoundedParts(0, parts.Venue, parts.Performance, parts.Production);
-            view.Venue = Row("CONCERTHYPE__VENUE_TITLE", parts.Venue, shown[0], VenueTip(state.Setup, preview.Steps.Gain));
+            view.Venue = Row("CONCERTHYPE__VENUE_TITLE", parts.Venue, shown[0], VenueTip(state.Setup, state.Config));
             view.Performance = Row("CONCERTHYPE__PERFORMANCE_TITLE", parts.Performance, shown[1], PerformanceTip(state, lineup, preview));
             view.Production = Row("CONCERTHYPE__PRODUCTION_TITLE", parts.Production, shown[2], ProductionTip(state, preview, shown[2]));
             double total = shown.Sum();
@@ -397,14 +397,22 @@ namespace ConcertHype
             view.Total.Caption = Texts.Format("CONCERTHYPE__LIKELY", low, high);
         }
 
-        public static string VenueTip(ShowSetup setup, bool gain)
+        /// <summary>
+        /// The seats filled, then what the venue does to every song: its bonus when sold out, what selling the last
+        /// seats would bring when it's nearly full, or what the empty seats cost.
+        /// </summary>
+        public static string VenueTip(ShowSetup setup, Config config)
         {
-            double filled = Engine.Clamp(setup.CapacityFilled, 0, 1);
+            double filled = Engine.Clamp(setup.CapacityFilled, 0, 1), venue = Engine.VenueHype(setup, config);
             string seats = setup.Seats > 0
                 ? Texts.Format("CONCERTHYPE__VENUE_TIP", Math.Round(setup.Seats * filled).ToString("N0", CultureInfo.InvariantCulture),
                     setup.Seats.ToString("N0", CultureInfo.InvariantCulture), Whole(100 * filled))
                 : Texts.Format("CONCERTHYPE__VENUE_TIP_SHARE", Whole(100 * filled));
-            return Lines(seats, gain ? "" : Texts.Get("CONCERTHYPE__VENUE_LOSS"));
+            string bonus = config.VenueSoldOutBonus.ToString("0.#", CultureInfo.InvariantCulture);
+            string effect = Engine.SoldOut(setup) ? Texts.Format("CONCERTHYPE__VENUE_SOLD_OUT", bonus)
+                : venue < 0 ? Texts.Format("CONCERTHYPE__VENUE_EMPTY", (-venue).ToString("0.#", CultureInfo.InvariantCulture))
+                : Texts.Format("CONCERTHYPE__VENUE_ALMOST", bonus);
+            return Lines(seats, effect);
         }
 
         /// <summary>

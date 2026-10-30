@@ -82,6 +82,46 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
+        public void NoBarIsCutOff_TheScaleHoldsEveryAmount_AndTheHypeBarPreviewStaysOnTheBar()
+        {
+            foreach (double hype in new double[] { 5, 60, 100, 150, 198 })
+            {
+                foreach (double filled in new[] { 1, 0.95, 0.5, 0 })
+                {
+                    for (int seed = 1; seed <= 8; seed++)
+                    {
+                        ShowSetup setup = Balance.RandomSetups.Make(seed);
+                        setup.CapacityFilled = filled;
+                        ShowState state = Engine.Start(setup, new Config(), seed);
+                        while (!state.Finished)
+                        {
+                            state.Hype = hype;
+                            SongPreview preview = Engine.Preview(state, Engine.DefaultLineup(state));
+                            HypeParts parts = preview.Parts;
+                            double[] amounts = { parts.Venue, parts.Performance, parts.Production, preview.Change, preview.Low, preview.High };
+                            double scale = PanelView.BarScale(double.NaN, amounts);
+                            foreach (double amount in amounts)
+                            {
+                                Assert.True(Math.Abs(amount) <= scale + 1e-6, $"{amount} on a scale of {scale}");
+                                PanelView.Stretch bar = PanelView.BarSpan(0, amount, scale);
+                                Assert.InRange(bar.From, 0f, 1f);
+                                Assert.InRange(bar.To, 0f, 1f);
+                                Assert.True(Math.Abs(Math.Abs(amount) / (2 * scale) - (bar.To - bar.From)) < 1e-5, $"{amount} clipped");   // drawn whole
+                            }
+                            PanelView.Stretch range = PanelView.BarSpan(preview.Low, preview.High, scale);
+                            Assert.True(Math.Abs((preview.High - preview.Low) / (2 * scale) - (range.To - range.From)) < 1e-5, "range clipped");
+                            PanelView.Stretch onBar = PanelView.PreviewSpan(PanelView.HypeShare(state.Hype), preview.Change);
+                            Assert.True(Math.Abs(Math.Abs(preview.Change) / Engine.MaxHype - (onBar.To - onBar.From)) < 1e-5, "hype bar preview clipped");
+                            Assert.InRange(onBar.From, 0f, 1f);
+                            Assert.InRange(onBar.To, 0f, 1f);
+                            Engine.Play(state, Engine.DefaultLineup(state));
+                        }
+                    }
+                }
+            }
+        }
+
+        [Fact]
         public void ThePreviewOnTheHypeBar_StartsAtTheFillsEndAsDrawn_SoItRidesAlongWhileTheBarGrows()
         {
             void Span(float fill, double change, float from, float to)
@@ -119,7 +159,7 @@ namespace ConcertHype.Tests
             Assert.Equal((preview.Low, preview.High), (view.Total.Low, view.Total.High));
             Assert.Equal($"likely {low} to {high}", view.Total.Caption);
             Assert.Equal($"Likely {low} to {high}, depending on how the idols perform.", view.Total.Tip);  // nothing played yet
-            Assert.Equal("0%", view.Venue.Value.TrimStart('+'));  // the fixture's venue is full
+            Assert.Equal(("+10%", Tone.Good), (view.Venue.Value, view.Venue.Tone));  // the fixture's venue is sold out
         }
 
         [Fact]
@@ -137,17 +177,21 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void VenueTip_NamesTheSeatsFilled_AndWhenItAddsNothing()
+        public void VenueTip_NamesTheSeatsFilled_AndWhatTheVenueDoesToEverySong()
         {
-            ShowSetup setup = new() { Seats = 10000, CapacityFilled = 0.92 };
-            Assert.Equal("9,200 of 10,000 seats filled (92%).", PanelView.VenueTip(setup, gain: true));
-            Assert.Equal("9,200 of 10,000 seats filled (92%).\nAdds nothing to a song that loses hype.", PanelView.VenueTip(setup, gain: false));
+            Config config = new();
+            ShowSetup setup = new() { Seats = 10000, CapacityFilled = 1 };
+            Assert.Equal("10,000 of 10,000 seats filled (100%).\nSold out: every song gains 10 hype.", PanelView.VenueTip(setup, config));
+            setup.CapacityFilled = 0.92;
+            Assert.Equal("9,200 of 10,000 seats filled (92%).\nSell the last seats for +10 hype every song.", PanelView.VenueTip(setup, config));
+            setup.CapacityFilled = 0.5;
+            Assert.Equal("5,000 of 10,000 seats filled (50%).\nEmpty seats cost every song 6.7 hype.", PanelView.VenueTip(setup, config));
             setup.Seats = 0;
-            Assert.Equal("The venue is 92% full.", PanelView.VenueTip(setup, gain: true));
+            Assert.Equal("The venue is 50% full.\nEmpty seats cost every song 6.7 hype.", PanelView.VenueTip(setup, config));
 
             ShowSession session = ThreeSongs(out _);
             Assert.Equal(1500, session.State.Setup.Seats);  // the fixture's concert hall
-            Assert.StartsWith("1,500 of 1,500 seats filled (100%).", PanelView.Build(session).Venue.Tip);
+            Assert.Equal("1,500 of 1,500 seats filled (100%).\nSold out: every song gains 10 hype.", PanelView.Build(session).Venue.Tip);
         }
 
         [Fact]
@@ -194,16 +238,18 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void OnALoss_TheVenueAndProductionTipsSaySo()
+        public void OnALoss_TheProductionTipSaysSo_AndTheVenueStillCounts()
         {
             ShowSession session = ThreeSongs(out _);
-            session.State.Config.Par = 99;   // nobody reaches it
+            session.State.Config.Par = 200;   // nobody reaches it
             SongPreview preview = session.Preview();
             Assert.False(preview.Steps.Gain);
             PanelView view = PanelView.Build(session);
-            Assert.EndsWith("\nAdds nothing to a song that loses hype.", view.Venue.Tip);
             Assert.EndsWith("\nQuality and appeal only add to songs that raise the hype.", view.Production.Tip);
-            Assert.Equal(0, view.Venue.Amount);
+            // The sold-out bonus holds on a bad song as well (shrunk with the rest where the hype hits its floor)
+            Assert.Equal(preview.Parts.Venue, view.Venue.Amount, 9);
+            Assert.True(view.Venue.Amount > 0);
+            Assert.EndsWith("\nSold out: every song gains 10 hype.", view.Venue.Tip);
             Assert.True(view.Performance.Amount < 0);
             Assert.Equal(Tone.Bad, view.Total.Tone);
         }

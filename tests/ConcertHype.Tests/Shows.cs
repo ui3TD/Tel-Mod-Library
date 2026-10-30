@@ -9,12 +9,16 @@ namespace ConcertHype.Tests
     public static class Shows
     {
         /// <summary>
-        /// A config with no randomness in the rolls, no accidents, no row easing, skill counted as it is and no flow
-        /// between songs, so a test sees each rule alone.
+        /// A config with no randomness in the rolls, no accidents, no row easing, skill counted as it is, no flow
+        /// between songs and no hype from the venue, so a test sees each rule alone.
         /// </summary>
         public static Config Quiet()
         {
-            return new Config { RollSigma = 0, PBase = 0, PRoll = 0, PTired = 0, RowEase = new double[] { 0 }, SkillBase = 0, SkillScale = 1, FlowBonus = 0 };
+            return new Config
+            {
+                RollSigma = 0, PBase = 0, PRoll = 0, PTired = 0, RowEase = new double[] { 0 }, SkillBase = 0, SkillScale = 1, FlowBonus = 0,
+                VenueSoldOutBonus = 0, VenueEmptyPenalty = 0,
+            };
         }
 
         /// <summary>

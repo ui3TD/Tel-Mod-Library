@@ -101,10 +101,11 @@ namespace ConcertHype
         private const float HintTop = 470f, HintWidth = 470f, HintGap = 10f;
 
         /// <summary>
-        /// The left block: as wide as the game's two readout columns were, its rows' pitch between these, a title line
-        /// at most this tall, and the space before the total.
+        /// The left block: as wide as the game's two readout columns were, a title line this tall, the space before the
+        /// total, and the gap after each row, from this least to this most. In a short window the lines, bars and gaps
+        /// shrink together, down to this share.
         /// </summary>
-        private const float BlockWidth = 410f, MinRowHeight = 40f, MaxRowHeight = 64f, TitleLine = 28f, SeparatorGap = 10f;
+        private const float BlockWidth = 410f, TitleLine = 28f, SeparatorGap = 10f, MinRowGap = 8f, MaxRowGap = 22f, MinBlockScale = 0.6f;
 
         /// <summary>
         /// The value's font is at most this share of the title line's height, so its digits stay clear of the bar.
@@ -125,7 +126,7 @@ namespace ConcertHype
 
         private static Concert_Popup owner;
         private static GameObject root;
-        private static BarRowWidget venue, performance, production, total;
+        private static BarRowWidget venue, performance, production, novelty, total;
 
         /// <summary>
         /// In the order of <see cref="PanelView.Rows"/>.
@@ -260,8 +261,9 @@ namespace ConcertHype
             venue = Row("Venue");
             performance = Row("Performance");
             production = Row("Production");
+            novelty = Row("Novelty");
             total = Row("Total");
-            rows = new[] { venue, performance, production, total };
+            rows = new[] { venue, performance, production, novelty, total };
             lostLabel = Ui.Label(labelTemplate, root.transform, "Lost", 0f, 0f, EndLabelWidth, BarRowWidget.CaptionHeight, 13f);
             lostLabel.enableWordWrapping = false;
             lostLabel.text = Texts.Get("CONCERTHYPE__BARS_LOST");
@@ -453,7 +455,9 @@ namespace ConcertHype
             Ui.Place(hint.gameObject, hintLeft, Math.Max(start.yMax, reset.yMax) + HintGap, Math.Max(start.xMax - hintLeft, 128f), hintAt.height);
 
             Vector2 tab = ((RectTransform)songTab.Button.transform).rect.size;
-            float blockBottom = LayOutBlock(view, TabWidget.Top + tab.y + Gap, buttonsTop - Gap);
+            // The block starts about level with the tabs, which sit over the formation, right of it, a little under the
+            // song's title
+            float blockBottom = LayOutBlock(view, TabWidget.Top + TitleGap / 2f, buttonsTop - Gap);
 
             List<int> widths = PanelView.RowSizes(view.Slots.Select(slot => slot.Row).ToList()).ToList();
             // The talk break's row sits where the front row is
@@ -470,7 +474,7 @@ namespace ConcertHype
                 Top = TriangleTop,
                 Bottom = height - Gap,
                 Margin = hintLeft,
-                TabsLeft = hintLeft,
+                TabsLeft = blockLeft + BlockWidth + Gap,
                 TabsHalf = TabWidget.Width,
             });
 
@@ -480,41 +484,61 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// Lays the left block out from top down, at most to bottom: the rows shown, their pitch as large as fits, the
-        /// song's total after a separator; under the last bar the total's caption, with "lost" and "added" at the
-        /// bars' two ends. Returns where the block ends.
+        /// Lays the left block out from top down, at most to bottom: the rows shown, a gap after each (a factor row is
+        /// only its title line), the song's total after a separator, and under the last bar the total's caption with
+        /// "lost" and "added" at the bars' two ends. Spare height widens the gaps; too little shrinks the lines, bars and
+        /// gaps alike. Returns where the block ends.
         /// </summary>
         private static float LayOutBlock(PanelView view, float top, float bottom)
         {
             bool songRows = view.Venue.Shown;
-            float rowsSpace = bottom - top - SeparatorGap - BarRowWidget.CaptionHeight;
-            float content = TitleLine + BarRowWidget.BarGap + BarRowWidget.BarHeight;
-            // Three steps between the four rows: the last one ends at its bar
-            float pitch = Math.Min(MaxRowHeight, Math.Max(MinRowHeight, (rowsSpace - content) / (rows.Length - 1)));
-            float line = Math.Min(TitleLine, pitch - BarRowWidget.BarGap - BarRowWidget.BarHeight - 2f);
+            BarRow[] shown = view.Rows;
+            int count = 0, bars = 0;
+            for (int i = 0; i < rows.Length && i < shown.Length; i++)
+            {
+                if (!shown[i].Shown)
+                    continue;
+                count++;
+                if (!shown[i].Factor)
+                    bars++;
+            }
+            float barRow = TitleLine + BarRowWidget.BarGap + BarRowWidget.BarHeight;
+            float gaps = Math.Max(0, count - 1);
+            // The block's height at full size with the least gaps, the caption aside; the caption keeps its size
+            float full = bars * barRow + (count - bars) * TitleLine + (songRows ? SeparatorGap : 0f) + gaps * MinRowGap;
+            float space = bottom - top - BarRowWidget.CaptionHeight;
+            float scale = full <= 0 ? 1f : Math.Max(MinBlockScale, Math.Min(1f, space / full));
+            float gap = gaps <= 0 ? 0f : Math.Min(MaxRowGap, MinRowGap * scale + Math.Max(0f, space - full * scale) / gaps);
+            float line = TitleLine * scale, barGap = BarRowWidget.BarGap * scale, barHeight = BarRowWidget.BarHeight * scale;
             float valueSize = Math.Min(total.ValueSize, line * ValueShare);
             float right = blockLeft + BlockWidth;
 
-            bool any = view.Rows.Any(row => row.Shown);
+            bool any = count > 0;
             lostLabel.gameObject.SetActive(any);
             addedLabel.gameObject.SetActive(any);
             separator.gameObject.SetActive(songRows);
 
             float y = top, barBottom = top;
             BarRowWidget last = null;
-            BarRow[] shown = view.Rows;
             for (int i = 0; i < rows.Length && i < shown.Length; i++)
             {
                 if (!shown[i].Shown)
                     continue;
                 if (rows[i] == total && songRows)
                 {
-                    Ui.Place(separator.gameObject, blockLeft + total.TitleIndent, y - 2f + SeparatorGap / 2f, right - blockLeft - total.TitleIndent, 1f);
-                    y += SeparatorGap;
+                    float separatorGap = SeparatorGap * scale;
+                    Ui.Place(separator.gameObject, blockLeft + total.TitleIndent, y - gap / 2f + separatorGap / 2f - 0.5f, right - blockLeft - total.TitleIndent, 1f);
+                    y += separatorGap;
                 }
-                barBottom = rows[i].Layout(blockLeft, y, line, valueSize, right);
+                float rowBottom = rows[i].Layout(blockLeft, y, line, valueSize, right, barGap, barHeight);
+                if (shown[i].Factor)
+                {
+                    y += line + gap;
+                    continue;
+                }
+                barBottom = rowBottom;
                 last = rows[i];
-                y += pitch;
+                y = rowBottom + gap;
             }
             if (last != null)
             {

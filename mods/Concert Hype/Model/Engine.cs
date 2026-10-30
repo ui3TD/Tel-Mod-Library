@@ -330,20 +330,20 @@ namespace ConcertHype.Model
             result.Flow = config.FlowPoints * Count(result.Matches);
             result.Crowd = CrowdAppeal(state, song, lineup);
             result.Appeal = AppealPoints(config, result.Crowd);
+            result.Quality = QualityPoints(state.Setup, config);
+            // The same for a good song or a bad one
+            result.Venue = VenueHype(state.Setup, config);
+            double sum = result.BaseChange + result.Appeal + result.Flow + result.Quality + result.Venue;
 
-            // A changed lineup amplifies how the song lands: below 100% hype a surprise lifts a well-liked song most,
-            // above it a disliked one sinks most
+            // A changed lineup amplifies the whole song: below 100% hype a surprise lifts a good song most, above it a
+            // bad one sinks most
             double band = config.NoveltyBlendBand;
             double t = band <= 0 ? (h >= 100 ? 1 : 0) : Clamp((h - 100 + band) / (2 * band), 0, 1);
             double gainAmp = Lerp(config.AmpHigh, config.AmpLow, t);
             double lossAmp = Lerp(config.AmpLow, config.AmpHigh, t);
-            double points = result.Appeal + result.Flow;
             result.Novelty = novelty;
-            result.Amplification = 1 + novelty * (points >= 0 ? gainAmp : lossAmp);
-            result.Quality = QualityPoints(state.Setup, config);
-            // The same for a good song or a bad one
-            result.Venue = VenueHype(state.Setup, config);
-            double d = result.BaseChange + points * result.Amplification + result.Quality + result.Venue;
+            result.Amplification = 1 + novelty * (sum >= 0 ? gainAmp : lossAmp);
+            double d = sum * result.Amplification;
 
             result.HypeBefore = h;
             result.Weighted = weighted;
@@ -388,13 +388,15 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// The song's change split by what made it: the performance, the production's appeal, flow, what a changed
-        /// lineup adds to those two and quality, and the venue. The floor and cap shrink every part alike.
+        /// The song's change split by what made it: the venue, the performance and the production (appeal, flow and
+        /// quality), in hype points before the changed lineup's factor, which multiplies their sum. The floor and cap
+        /// shrink every part alike, so the parts times the factor make the change.
         /// </summary>
         public static HypeParts Parts(SongResult steps)
         {
-            double novelty = (steps.Appeal + steps.Flow) * (steps.Amplification - 1);
-            double unclamped = steps.BaseChange + steps.Appeal + steps.Flow + novelty + steps.Quality + steps.Venue;
+            double factor = steps.Amplification <= 0 ? 1 : steps.Amplification;
+            double sum = steps.BaseChange + steps.Appeal + steps.Flow + steps.Quality + steps.Venue;
+            double unclamped = sum * factor;
             double share = unclamped == 0 ? 1 : steps.Change / unclamped;
             HypeParts parts = new HypeParts
             {
@@ -402,13 +404,13 @@ namespace ConcertHype.Model
                 Flow = share * steps.Flow,
                 Quality = share * steps.Quality,
                 Appeal = share * steps.Appeal,
-                Novelty = share * novelty,
                 Venue = share * steps.Venue,
+                Factor = factor,
             };
             // Parts that cancel out: whatever the floor or cap made of nothing counts as the performance's
             if (unclamped == 0)
-                parts.Performance += steps.Change;
-            parts.Production = parts.Flow + parts.Quality + parts.Appeal + parts.Novelty;
+                parts.Performance += steps.Change / factor;
+            parts.Production = parts.Flow + parts.Quality + parts.Appeal;
             return parts;
         }
 

@@ -105,15 +105,15 @@
 	},
 	{
 		id: "CONCERTHYPE__BAND_LOW",
-		text: "a changed lineup surprises the crowd"
+		text: "good songs gain most"
 	},
 	{
 		id: "CONCERTHYPE__BAND_MID",
-		text: "the crowd is close to 100%"
+		text: "gains and losses grow alike"
 	},
 	{
 		id: "CONCERTHYPE__BAND_HIGH",
-		text: "the crowd wants the hits"
+		text: "bad songs lose most"
 	},
 	{
 		id: "CONCERTHYPE__AFTER_TALK_TITLE",
@@ -204,8 +204,12 @@
 		text: "Song's appeal to these idols' fans: {0}"
 	},
 	{
-		id: "CONCERTHYPE__PROD_CHANGED",
-		text: "Changed lineup {0}%: {1}"
+		id: "CONCERTHYPE__NOVELTY_TITLE",
+		text: "Lineup Novelty ({0}%):"
+	},
+	{
+		id: "CONCERTHYPE__NOVELTY_TIP",
+		text: "{0}% of the places changed; the center counts most."
 	},
 	{
 		id: "CONCERTHYPE__PROD_MOOD",

@@ -47,18 +47,18 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void TheHint_IsOnlyWhyADropWasRefused_AndTheProductionTipNamesTheCrowdsMood()
+        public void TheHint_IsOnlyWhyADropWasRefused_AndTheNoveltyTipSaysWhatAChangeDoesAtThisHype()
         {
             ShowSession session = ThreeSongs(out _);
             PanelView view = PanelView.Build(session);
             Assert.Equal("", view.Hint);  // no standing instructions: only why a drop was refused
             Assert.Equal("M can't perform right now.", PanelView.Build(session, message: "M can't perform right now.").Hint);
-            Assert.Contains("Hype 50%: a changed lineup surprises the crowd.", view.Production.Tip);
+            Assert.Equal($"{Math.Round(100 * session.Preview().Novelty)}% of the places changed; the center counts most.\nHype 50%: good songs gain most.", view.Novelty.Tip);
 
             session.State.Hype = 150;
-            Assert.Contains("Hype 150%: the crowd wants the hits.", PanelView.Build(session).Production.Tip);
+            Assert.EndsWith("\nHype 150%: bad songs lose most.", PanelView.Build(session).Novelty.Tip);
             session.State.Hype = 95;
-            Assert.Contains("Hype 95%: the crowd is close to 100%.", PanelView.Build(session).Production.Tip);
+            Assert.EndsWith("\nHype 95%: gains and losses grow alike.", PanelView.Build(session).Novelty.Tip);
         }
 
         [Theory]

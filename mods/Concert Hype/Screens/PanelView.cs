@@ -188,6 +188,11 @@ namespace ConcertHype
         /// </summary>
         public string Caption = "";
 
+        /// <summary>
+        /// A factor on the rows above it rather than hype points: shown as its value alone, without a bar.
+        /// </summary>
+        public bool Factor;
+
         public bool Shown => Title.Length > 0;
 
         public bool HasRange => !double.IsNaN(Low) && !double.IsNaN(High);
@@ -249,9 +254,9 @@ namespace ConcertHype
         /// The left block's rows: on the song's tab the hype each consideration adds and their total; on the talk
         /// break's only the total, the talk break's, while someone hosts.
         /// </summary>
-        public BarRow Venue = new BarRow(), Performance = new BarRow(), Production = new BarRow(), Total = new BarRow();
+        public BarRow Venue = new BarRow(), Performance = new BarRow(), Production = new BarRow(), Novelty = new BarRow(), Total = new BarRow();
 
-        public BarRow[] Rows => new[] { Venue, Performance, Production, Total };
+        public BarRow[] Rows => new[] { Venue, Performance, Production, Novelty, Total };
 
         public HypeBarView Bar = new HypeBarView();
 
@@ -389,9 +394,9 @@ namespace ConcertHype
             view.Venue = Row("CONCERTHYPE__VENUE_TITLE", parts.Venue, shown[0], VenueTip(state.Setup, state.Config));
             view.Performance = Row("CONCERTHYPE__PERFORMANCE_TITLE", parts.Performance, shown[1], PerformanceTip(state, lineup, preview));
             view.Production = Row("CONCERTHYPE__PRODUCTION_TITLE", parts.Production, shown[2], ProductionTip(state, preview, shown[2]));
-            double total = shown.Sum();
+            view.Novelty = NoveltyRow(state, preview);
             string low = Percent(Math.Round(preview.Low)), high = Percent(Math.Round(preview.High));
-            view.Total = Row("CONCERTHYPE__EXPECTED_TITLE", preview.Change, total, Lines(Texts.Format("CONCERTHYPE__TOTAL_TIP", low, high), LastLine(session)));
+            view.Total = Row("CONCERTHYPE__EXPECTED_TITLE", preview.Change, Math.Round(preview.Change), Lines(Texts.Format("CONCERTHYPE__TOTAL_TIP", low, high), LastLine(session)));
             view.Total.Low = preview.Low;
             view.Total.High = preview.High;
             view.Total.Caption = Texts.Format("CONCERTHYPE__LIKELY", low, high);
@@ -401,6 +406,37 @@ namespace ConcertHype
         /// The seats filled, then what the venue does to every song: its bonus when sold out, what selling the last
         /// seats would bring when it's nearly full, or what the empty seats cost.
         /// </summary>
+        /// <summary>
+        /// The changed lineup's factor on the rows above: green when it enlarges a gain, red when it enlarges a loss,
+        /// plain with nothing changed.
+        /// </summary>
+        public static BarRow NoveltyRow(ShowState state, SongPreview preview)
+        {
+            double factor = preview.Parts.Factor;
+            HypeParts parts = preview.Parts;
+            bool loss = parts.Venue + parts.Performance + parts.Production < 0;
+            string shownFactor = factor.ToString("0.##", CultureInfo.InvariantCulture);
+            return new BarRow
+            {
+                Title = Texts.Format("CONCERTHYPE__NOVELTY_TITLE", Whole(100 * preview.Novelty)),
+                Value = "\u00D7" + shownFactor,
+                Tone = shownFactor == "1" ? Tone.Plain : loss ? Tone.Bad : Tone.Good,
+                Amount = double.NaN,
+                Factor = true,
+                Tip = NoveltyTip(state, preview),
+            };
+        }
+
+        /// <summary>
+        /// How much of the lineup changed, and what a change does at the crowd's hype now.
+        /// </summary>
+        public static string NoveltyTip(ShowState state, SongPreview preview)
+        {
+            double h = state.Hype, band = state.Config.NoveltyBlendBand;
+            string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
+            return Lines(Texts.Format("CONCERTHYPE__NOVELTY_TIP", Whole(100 * preview.Novelty)), Texts.Format("CONCERTHYPE__PROD_MOOD", Whole(h), Texts.Get(mood)));
+        }
+
         public static string VenueTip(ShowSetup setup, Config config)
         {
             double filled = Engine.Clamp(setup.CapacityFilled, 0, 1), venue = Engine.VenueHype(setup, config);
@@ -441,22 +477,19 @@ namespace ConcertHype
 
         /// <summary>
         /// The production's parts, each the hype it adds, rounded so they add up to the Production row's value: the
-        /// song's appeal to the lineup's fans, its flow from the song before (from the second song on), what the changed
-        /// lineup adds to those two with the crowd's mood after it, and production quality against what the venue needs.
+        /// song's appeal to the lineup's fans, its flow from the song before (from the second song on), and production
+        /// quality against what the venue needs.
         /// </summary>
         /// <param name="shown">The Production row's value.</param>
         public static string ProductionTip(ShowState state, SongPreview preview, double shown)
         {
             HypeParts parts = preview.Parts;
             bool flow = state.SongIndex > 0;
-            double[] amounts = flow ? new[] { parts.Appeal, parts.Flow, parts.Novelty, parts.Quality } : new[] { parts.Appeal, parts.Novelty, parts.Quality };
+            double[] amounts = flow ? new[] { parts.Appeal, parts.Flow, parts.Quality } : new[] { parts.Appeal, parts.Quality };
             double[] rounded = RoundedParts(parts.Venue + parts.Performance, amounts);
             // The last line takes what rounding left, so the lines always add up to the row
             rounded[rounded.Length - 1] += shown - rounded.Sum();
             int i = 0;
-
-            double h = state.Hype, band = state.Config.NoveltyBlendBand;
-            string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
             List<string> lines = new List<string> { Texts.Format("CONCERTHYPE__PROD_APPEAL", Percent(rounded[i++])) };
             if (flow)
             {
@@ -465,8 +498,6 @@ namespace ConcertHype
                     ? Texts.Format("CONCERTHYPE__PROD_NO_FLOW", Percent(rounded[i++]))
                     : Texts.Format("CONCERTHYPE__PROD_FLOW", MatchList(matches), Percent(rounded[i++])));
             }
-            lines.Add(Texts.Format("CONCERTHYPE__PROD_CHANGED", Whole(100 * preview.Novelty), Percent(rounded[i++])));
-            lines.Add(Texts.Format("CONCERTHYPE__PROD_MOOD", Whole(h), Texts.Get(mood)));
             lines.Add(Texts.Format("CONCERTHYPE__PROD_QUALITY", Whole(100 * Engine.Clamp(state.Setup.Production, 0, 1)),
                 Whole(100 * Engine.QualityNeeded(state.Setup, state.Config)), Percent(rounded[i])));
             return Lines(lines.ToArray());

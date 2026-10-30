@@ -139,17 +139,24 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void TheSongsRows_AreTheHypeEachConsiderationAdds_AndAddUpToTheTotal()
+        public void TheSongsRows_AreTheHypeEachConsiderationAdds_TimesTheNoveltyFactor()
         {
             ShowSession session = ThreeSongs(out _);
             PanelView view = PanelView.Build(session);
             SongPreview preview = session.Preview();
 
-            Assert.Equal(new[] { "Venue:", "Performance:", "Production:", "Expected Hype:" }, view.Rows.Select(r => r.Title));
-            Assert.Equal(new[] { preview.Parts.Venue, preview.Parts.Performance, preview.Parts.Production, preview.Change }, view.Rows.Select(r => r.Amount));
-            Assert.Equal(Number(view.Total.Value), view.Rows.Take(3).Sum(r => Number(r.Value)));
+            HypeParts parts = preview.Parts;
+            string novelty = Math.Round(100 * preview.Novelty).ToString(CultureInfo.InvariantCulture);
+            Assert.Equal(new[] { "Venue:", "Performance:", "Production:", $"Lineup Novelty ({novelty}%):", "Expected Hype:" }, view.Rows.Select(r => r.Title));
+            Assert.Equal(new[] { parts.Venue, parts.Performance, parts.Production, double.NaN, preview.Change }, view.Rows.Select(r => r.Amount));
+            BarRow[] bars = { view.Venue, view.Performance, view.Production };
+            // The three bars add up to their own sum; the novelty factor multiplies it into the total
+            Assert.Equal(Math.Round(parts.Venue + parts.Performance + parts.Production), bars.Sum(r => Number(r.Value)));
             Assert.Equal(Math.Round(preview.Change), Number(view.Total.Value));
-            foreach (BarRow row in view.Rows)
+            Assert.Equal(preview.Change, (parts.Venue + parts.Performance + parts.Production) * parts.Factor, 9);
+            Assert.Equal("\u00D7" + parts.Factor.ToString("0.##", CultureInfo.InvariantCulture), view.Novelty.Value);
+            Assert.True(view.Novelty.Factor);
+            foreach (BarRow row in bars.Concat(new[] { view.Total }))
             {
                 double shown = Number(row.Value);
                 Assert.Equal(shown > 0 ? Tone.Good : shown < 0 ? Tone.Bad : Tone.Plain, row.Tone);
@@ -160,6 +167,28 @@ namespace ConcertHype.Tests
             Assert.Equal($"likely {low} to {high}", view.Total.Caption);
             Assert.Equal($"Likely {low} to {high}, depending on how the idols perform.", view.Total.Tip);  // nothing played yet
             Assert.Equal(("+10%", Tone.Good), (view.Venue.Value, view.Venue.Tone));  // the fixture's venue is sold out
+        }
+
+        [Fact]
+        public void TheNoveltyFactor_IsGreenOnAGain_RedOnALoss_AndPlainWithNothingChanged()
+        {
+            ShowSession session = ThreeSongs(out _concert concert);
+            Assert.True(session.Preview().Novelty > 0);   // Idol2 is injured: her place has a substitute
+            BarRow gain = PanelView.Build(session).Novelty;
+            Assert.True(session.Preview().Change > 0);
+            Assert.Equal(Tone.Good, gain.Tone);
+            Assert.False(gain.HasRange);
+
+            session.State.Config.Par = 200;   // nobody reaches it
+            Assert.Equal(Tone.Bad, PanelView.Build(session).Novelty.Tone);
+            session.State.Config.Par = 60;
+
+            // Song 2's own senbatsu all perform: nothing changed
+            new FakeStage(concert).PlaySong(session);
+            Assert.Equal(0, session.Preview().Novelty);
+            BarRow none = PanelView.Build(session).Novelty;
+            Assert.Equal(("\u00D71", Tone.Plain), (none.Value, none.Tone));
+            Assert.Equal("Lineup Novelty (0%):", none.Title);
         }
 
         [Fact]
@@ -218,13 +247,10 @@ namespace ConcertHype.Tests
             ShowSession session = ThreeSongs(out _concert concert);
             PanelView first = PanelView.Build(session);
             string[] lines = first.Production.Tip.Split('\n');
-            Assert.Equal(4, lines.Length);   // no flow for the first song
+            Assert.Equal(2, lines.Length);   // no flow for the first song
             Assert.StartsWith("Song's appeal to these idols' fans: ", lines[0]);
-            Assert.StartsWith($"Changed lineup {Math.Round(100 * session.Preview().Novelty)}%: ", lines[1]);
-            Assert.Equal("Hype 50%: a changed lineup surprises the crowd.", lines[2]);
-            Assert.StartsWith("Production quality 50% (this venue needs 39%): ", lines[3]);   // the fixture's 1,500 seats
-            Assert.Equal(Number(first.Production.Value),
-                lines.Where(line => !line.StartsWith("Hype ")).Sum(line => Number(line.Substring(line.LastIndexOf(' ') + 1))));
+            Assert.StartsWith("Production quality 50% (this venue needs 39%): ", lines[1]);   // the fixture's 1,500 seats
+            Assert.Equal(Number(first.Production.Value), lines.Sum(line => Number(line.Substring(line.LastIndexOf(' ') + 1))));
 
             new FakeStage(concert).PlaySong(session);
             PanelView second = PanelView.Build(session);
@@ -233,8 +259,8 @@ namespace ConcertHype.Tests
             Assert.Equal(SongMatch.Genre | SongMatch.Lyrics | SongMatch.Choreography, preview.Steps.Matches);
             string flow = lines.Single(line => line.StartsWith("Same "));
             Assert.Equal("Same genre, lyrics and choreography as the last song: " + PanelView.Signed(Number(flow.Substring(flow.LastIndexOf(' ') + 1))) + "%", flow);
-            Assert.Equal(Number(second.Production.Value),
-                lines.Where(line => line.EndsWith("%") && !line.StartsWith("Hype ")).Sum(line => Number(line.Substring(line.LastIndexOf(' ') + 1))));
+            Assert.Equal(3, lines.Length);
+            Assert.Equal(Number(second.Production.Value), lines.Sum(line => Number(line.Substring(line.LastIndexOf(' ') + 1))));
         }
 
         [Fact]

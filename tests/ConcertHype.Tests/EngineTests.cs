@@ -226,8 +226,8 @@ namespace ConcertHype.Tests
         }
 
         /// <summary>
-        /// The hype rules written out in one go, without the flow: the performance against par, the appeal points
-        /// amplified by novelty by hype band, quality, the venue's hype, then the floor and cap.
+        /// The hype rules written out in one go, without the flow: the performance against par, the appeal points,
+        /// quality and the venue's hype, all amplified by novelty by hype band, then the floor and cap.
         /// </summary>
         private static double Formula(Config c, ShowSetup s, double h, double weighted, double crowd, double novelty)
         {
@@ -236,12 +236,13 @@ namespace ConcertHype.Tests
             double band = c.NoveltyBlendBand;
             double t = band <= 0 ? (h >= 100 ? 1 : 0) : Engine.Clamp((h - 100 + band) / (2 * band), 0, 1);
             double gainAmp = c.AmpHigh + (c.AmpLow - c.AmpHigh) * t, lossAmp = c.AmpLow + (c.AmpHigh - c.AmpLow) * t;
-            d += appeal * (1 + novelty * (appeal >= 0 ? gainAmp : lossAmp));
+            d += appeal;
             double needed = s.Seats <= 0 ? c.QualityNeededHigh
                 : c.QualityNeededLow + (c.QualityNeededHigh - c.QualityNeededLow) * Engine.Clamp(Math.Log10(s.Seats / c.QualitySeatsLow) / Math.Log10(c.QualitySeatsHigh / c.QualitySeatsLow), 0, 1);
             d += c.QualityBonus * Math.Min(1, Engine.Clamp(s.Production, 0, 1) / needed);
             double filled = Engine.Clamp(s.CapacityFilled, 0, 1);
             d += filled >= 0.9995 ? c.VenueSoldOutBonus : filled >= c.VenueNeutralShare ? 0 : -c.VenueEmptyPenalty * (c.VenueNeutralShare - filled) / c.VenueNeutralShare;
+            d *= 1 + novelty * (d >= 0 ? gainAmp : lossAmp);
             return Engine.Clamp(h + d, s.HypeFloor, Engine.MaxHype) - h;
         }
 
@@ -353,7 +354,7 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void NeitherThePerformanceNorTheVenue_IsAmplifiedByAChangedLineup_AndTheFloorAndCapHold()
+        public void AChangedLineup_AmplifiesThePerformanceAndTheVenueToo_AndTheFloorAndCapHold()
         {
             ShowSetup setup = Shows.Setup(members: 6, slots: 3);
             for (int m = 0; m < 3; m++)
@@ -362,10 +363,10 @@ namespace ConcertHype.Tests
                 Shows.SetSkill(setup, m, 65);
             ShowState state = Shows.Start(setup, WithVenue());
             state.Hype = 70;
-            // An all-new lineup below 100% hype: rolls 65 for +2.5, and the sold-out bonus, each as it is
+            // An all-new lineup below 100% hype: rolls 65 for +2.5, plus the sold-out bonus, the whole grown 2.5 times
             SongResult result = Engine.Play(state, Engine.DefaultLineup(state));
             Assert.Equal(1, result.Novelty);
-            Assert.Equal(2.5 + 10, result.Change, 9);
+            Assert.Equal((2.5 + 10) * 2.5, result.Change, 9);
 
             setup = Shows.Setup(skill: 45);   // rolls par
             state = Shows.Start(setup, WithVenue());
@@ -951,7 +952,7 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void ProductionsParts_AreAppealFlowWhatTheChangedLineupAdds_AndQuality()
+        public void ProductionIsAppealFlowAndQuality_AndTheChangedLineupMultipliesTheWholeSong()
         {
             ShowSetup setup = Shows.Setup(members: 6, slots: 3, skill: 25);   // every original rolls 40: -10
             for (int m = 0; m < 3; m++)
@@ -967,13 +968,14 @@ namespace ConcertHype.Tests
             ShowState state = Shows.Start(setup, config);
             state.Hype = 70;
             HypeParts parts = Expected(state);
-            // A losing performance, but the production still adds: appeal 3, x2.5 for an all-new lineup below 100% hype
+            // A losing performance, partly made up by the production: -7.5 + 3 + 2 = -2.5, and an all-new lineup below
+            // 100% hype grows a loss by half
             Assert.Equal(-7.5, parts.Performance, 9);
             Assert.Equal(3, parts.Appeal, 9);
-            Assert.Equal(4.5, parts.Novelty, 9);
             Assert.Equal(2, parts.Quality, 9);
-            Assert.Equal(9.5, parts.Production, 9);
-            Assert.Equal(2, parts.Total, 9);
+            Assert.Equal(5, parts.Production, 9);
+            Assert.Equal(1.5, parts.Factor, 9);
+            Assert.Equal(-3.75, parts.Total, 9);
         }
 
         [Fact]
@@ -1015,7 +1017,8 @@ namespace ConcertHype.Tests
                             SongPreview preview = Engine.Preview(state, tried);
                             HypeParts parts = preview.Parts;
                             Assert.Equal(preview.Change, parts.Total, 9);
-                            Assert.Equal(parts.Flow + parts.Quality + parts.Appeal + parts.Novelty, parts.Production, 9);
+                            Assert.Equal(parts.Flow + parts.Quality + parts.Appeal, parts.Production, 9);
+                            Assert.Equal(preview.Steps.Amplification, parts.Factor, 9);
                             // Each part as the rules give it, as long as the floor or cap doesn't cut the change
                             if (preview.Steps.HypeAfter > setup.HypeFloor && preview.Steps.HypeAfter < Engine.MaxHype)
                             {

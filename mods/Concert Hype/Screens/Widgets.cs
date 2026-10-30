@@ -333,9 +333,9 @@ namespace ConcertHype
         private float titleSize;
 
         /// <summary>
-        /// Where the bar is, in the popup's top-left coordinates, as the last layout put it.
+        /// Where the bar is, in the popup's top-left coordinates, and how tall, as the last layout put it.
         /// </summary>
-        private float barLeft, barWidth, barTop;
+        private float barLeft, barWidth, barTop, barHeight = BarHeight;
 
         /// <param name="bar">The game's energy bar, whose sprite the bar's parts are drawn with.</param>
         public static BarRowWidget Make(Transform parent, Transform container, string name, GameObject title, GameObject value, GameObject labelTemplate,
@@ -397,10 +397,10 @@ namespace ConcertHype
 
         /// <summary>
         /// Lays the row out in the popup's top-left coordinates, from x to right: the icon, the title and the value
-        /// on a line this tall from y, the bar under it from under the title to right, and the caption under the bar.
-        /// Returns where the bar ends.
+        /// on a line this tall from y, the bar (this far under it, this tall) from under the title to right, and the
+        /// caption under the bar. Returns where the bar ends.
         /// </summary>
-        public float Layout(float x, float y, float line, float valueSize, float right)
+        public float Layout(float x, float y, float line, float valueSize, float right, float gap = BarGap, float height = BarHeight)
         {
             float middle = y + line / 2f;
             Title.enableAutoSizing = true;
@@ -416,12 +416,13 @@ namespace ConcertHype
 
             barLeft = x + TitleIndent;
             barWidth = Math.Max(1f, right - barLeft);
-            barTop = y + line + BarGap;
-            Ui.Place(Track.gameObject, barLeft, barTop, barWidth, BarHeight);
-            Ui.Place(Zero.gameObject, barLeft + barWidth / 2f - 1f, barTop - ZeroReach, 2f, BarHeight + 2f * ZeroReach);
-            Ui.Place(Hover.gameObject, x, y, right - x, barTop + BarHeight - y);
-            Ui.Place(Caption.gameObject, barLeft, barTop + BarHeight + 1f, barWidth, CaptionHeight);
-            return barTop + BarHeight;
+            barTop = y + line + gap;
+            barHeight = height;
+            Ui.Place(Track.gameObject, barLeft, barTop, barWidth, barHeight);
+            Ui.Place(Zero.gameObject, barLeft + barWidth / 2f - 1f, barTop - ZeroReach, 2f, barHeight + 2f * ZeroReach);
+            Ui.Place(Hover.gameObject, x, y, right - x, barTop + barHeight - y);
+            Ui.Place(Caption.gameObject, barLeft, barTop + barHeight + 1f, barWidth, CaptionHeight);
+            return barTop + barHeight;
         }
 
         /// <summary>
@@ -444,13 +445,22 @@ namespace ConcertHype
             Value.color = row.Tone == Tone.Good ? mainScript.green32 : row.Tone == Tone.Bad ? mainScript.red32 : plain;
             Caption.text = row.Caption;
 
-            Fill.color = row.Amount < 0 ? (Color)mainScript.red32 : mainScript.green32;
-            PanelView.Stretch fill = PanelView.BarSpan(0, row.Amount, scale);
-            Fill.gameObject.SetActive(fill.To - fill.From > 1e-4f);
-            PlaceSpan(Fill, fill);
-            Range.gameObject.SetActive(row.HasRange);
-            if (row.HasRange)
-                PlaceSpan(Range, PanelView.BarSpan(row.Low, row.High, scale));
+            // A factor row is its value alone
+            Track.gameObject.SetActive(!row.Factor);
+            Zero.gameObject.SetActive(!row.Factor);
+            Caption.gameObject.SetActive(!row.Factor);
+            Fill.gameObject.SetActive(false);
+            Range.gameObject.SetActive(false);
+            if (!row.Factor)
+            {
+                Fill.color = row.Amount < 0 ? (Color)mainScript.red32 : mainScript.green32;
+                PanelView.Stretch fill = PanelView.BarSpan(0, row.Amount, scale);
+                Fill.gameObject.SetActive(fill.To - fill.From > 1e-4f);
+                PlaceSpan(Fill, fill);
+                Range.gameObject.SetActive(row.HasRange);
+                if (row.HasRange)
+                    PlaceSpan(Range, PanelView.BarSpan(row.Low, row.High, scale));
+            }
 
             bool tip = row.Tip.Length > 0;
             if (infoTip != null)
@@ -464,7 +474,7 @@ namespace ConcertHype
         }
 
         private void PlaceSpan(Image image, PanelView.Stretch span) =>
-            Ui.Place(image.gameObject, barLeft + span.From * barWidth, barTop, (span.To - span.From) * barWidth, BarHeight);
+            Ui.Place(image.gameObject, barLeft + span.From * barWidth, barTop, (span.To - span.From) * barWidth, barHeight);
     }
 
     /// <summary>

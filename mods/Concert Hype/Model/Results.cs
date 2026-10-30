@@ -32,16 +32,20 @@ namespace ConcertHype.Model
         public double Venue;
 
         /// <summary>
-        /// Appeal, flow, what a changed lineup adds to those two, and quality together.
+        /// Appeal, flow and quality together.
         /// </summary>
         public double Production;
 
         public double Flow;
         public double Quality;
         public double Appeal;
-        public double Novelty;
 
-        public double Total => Performance + Venue + Production;
+        /// <summary>
+        /// What the changed lineup multiplies the venue, performance and production by.
+        /// </summary>
+        public double Factor = 1;
+
+        public double Total => (Performance + Venue + Production) * Factor;
     }
 
     /// <summary>
@@ -153,7 +157,7 @@ namespace ConcertHype.Model
         public double Novelty;
 
         /// <summary>
-        /// What a changed lineup multiplies the appeal and flow points by.
+        /// What a changed lineup multiplies the whole song by.
         /// </summary>
         public double Amplification = 1;
 

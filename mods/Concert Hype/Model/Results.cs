@@ -32,7 +32,7 @@ namespace ConcertHype.Model
         public double Venue;
 
         /// <summary>
-        /// Flow, quality, appeal and novelty together.
+        /// Appeal, flow, what a changed lineup adds to those two, and quality together.
         /// </summary>
         public double Production;
 
@@ -128,34 +128,33 @@ namespace ConcertHype.Model
         public double BaseChange;
 
         /// <summary>
-        /// What the song shares with the song before it, and the hype points that adds before the multipliers.
+        /// What the song shares with the song before it, and the hype points that's worth.
         /// </summary>
         public SongMatch Matches;
 
         public double Flow;
 
         /// <summary>
-        /// The change before the multipliers is a gain: the venue, quality and crowd multipliers apply.
+        /// The hype points production quality gives this song.
         /// </summary>
-        public bool Gain;
-
-        /// <summary>
-        /// As applied: 1 when the change isn't a gain.
-        /// </summary>
-        public double QualityMultiplier = 1;
+        public double Quality;
 
         /// <summary>
         /// The hype the venue gives this song, gain or loss, added after everything but the floor and cap.
         /// </summary>
         public double Venue;
 
+        /// <summary>
+        /// How the song suits the lineup's fans, and the hype points that's worth.
+        /// </summary>
         public double Crowd;
 
-        /// <summary>
-        /// How the song suits the lineup's fans; applied to gains only.
-        /// </summary>
-        public double CrowdMultiplier = 1;
+        public double Appeal;
         public double Novelty;
+
+        /// <summary>
+        /// What a changed lineup multiplies the appeal and flow points by.
+        /// </summary>
         public double Amplification = 1;
 
         /// <summary>

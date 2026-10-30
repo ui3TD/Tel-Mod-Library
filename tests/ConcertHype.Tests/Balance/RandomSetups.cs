@@ -21,7 +21,7 @@ namespace ConcertHype.Tests.Balance
             Random random = new(seed);
             // Its own draws, so the rest of a setup stays as it was before songs had lyrics and choreography
             Random sides = new(seed + 7919);
-            ShowSetup setup = new() { CapacityFilled = 1, Production = 0.5, StartingHype = 50 };
+            ShowSetup setup = new() { CapacityFilled = 1, Production = 0.5, StartingHype = 50, Seats = 1500 };
             List<double> danceVocal = new();
             for (int m = 0; m < members; m++)
             {

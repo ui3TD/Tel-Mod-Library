@@ -440,37 +440,35 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// The production's parts, each the hype it adds, rounded so they add up to the Production row's value; the
-        /// crowd's mood after the changed lineup's line; the flow from the song before, from the second song on.
+        /// The production's parts, each the hype it adds, rounded so they add up to the Production row's value: the
+        /// song's appeal to the lineup's fans, its flow from the song before (from the second song on), what the changed
+        /// lineup adds to those two with the crowd's mood after it, and production quality against what the venue needs.
         /// </summary>
         /// <param name="shown">The Production row's value.</param>
         public static string ProductionTip(ShowState state, SongPreview preview, double shown)
         {
             HypeParts parts = preview.Parts;
             bool flow = state.SongIndex > 0;
-            double[] amounts = flow ? new[] { parts.Quality, parts.Appeal, parts.Novelty, parts.Flow } : new[] { parts.Quality, parts.Appeal, parts.Novelty };
+            double[] amounts = flow ? new[] { parts.Appeal, parts.Flow, parts.Novelty, parts.Quality } : new[] { parts.Appeal, parts.Novelty, parts.Quality };
             double[] rounded = RoundedParts(parts.Venue + parts.Performance, amounts);
             // The last line takes what rounding left, so the lines always add up to the row
             rounded[rounded.Length - 1] += shown - rounded.Sum();
+            int i = 0;
 
             double h = state.Hype, band = state.Config.NoveltyBlendBand;
             string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
-            List<string> lines = new List<string>
-            {
-                Texts.Format("CONCERTHYPE__PROD_QUALITY", Whole(100 * Engine.Clamp(state.Setup.Production, 0, 1)), Percent(rounded[0])),
-                Texts.Format("CONCERTHYPE__PROD_APPEAL", Percent(rounded[1])),
-                Texts.Format("CONCERTHYPE__PROD_CHANGED", Whole(100 * preview.Novelty), Percent(rounded[2])),
-                Texts.Format("CONCERTHYPE__PROD_MOOD", Whole(h), Texts.Get(mood)),
-            };
+            List<string> lines = new List<string> { Texts.Format("CONCERTHYPE__PROD_APPEAL", Percent(rounded[i++])) };
             if (flow)
             {
                 SongMatch matches = preview.Steps.Matches;
                 lines.Add(matches == SongMatch.None
-                    ? Texts.Format("CONCERTHYPE__PROD_NO_FLOW", Percent(rounded[3]))
-                    : Texts.Format("CONCERTHYPE__PROD_FLOW", MatchList(matches), Percent(rounded[3])));
+                    ? Texts.Format("CONCERTHYPE__PROD_NO_FLOW", Percent(rounded[i++]))
+                    : Texts.Format("CONCERTHYPE__PROD_FLOW", MatchList(matches), Percent(rounded[i++])));
             }
-            if (!preview.Steps.Gain)
-                lines.Add(Texts.Get("CONCERTHYPE__PROD_LOSS"));
+            lines.Add(Texts.Format("CONCERTHYPE__PROD_CHANGED", Whole(100 * preview.Novelty), Percent(rounded[i++])));
+            lines.Add(Texts.Format("CONCERTHYPE__PROD_MOOD", Whole(h), Texts.Get(mood)));
+            lines.Add(Texts.Format("CONCERTHYPE__PROD_QUALITY", Whole(100 * Engine.Clamp(state.Setup.Production, 0, 1)),
+                Whole(100 * Engine.QualityNeeded(state.Setup, state.Config)), Percent(rounded[i])));
             return Lines(lines.ToArray());
         }
 

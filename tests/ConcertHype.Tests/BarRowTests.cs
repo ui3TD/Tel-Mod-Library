@@ -219,11 +219,12 @@ namespace ConcertHype.Tests
             PanelView first = PanelView.Build(session);
             string[] lines = first.Production.Tip.Split('\n');
             Assert.Equal(4, lines.Length);   // no flow for the first song
-            Assert.StartsWith("Production quality 50%: ", lines[0]);
-            Assert.StartsWith("Song's appeal to these idols' fans: ", lines[1]);
-            Assert.StartsWith($"Changed lineup {Math.Round(100 * session.Preview().Novelty)}%: ", lines[2]);
-            Assert.Equal("Hype 50%: a changed lineup surprises the crowd.", lines[3]);
-            Assert.Equal(Number(first.Production.Value), lines.Take(3).Sum(line => Number(line.Substring(line.LastIndexOf(' ') + 1))));
+            Assert.StartsWith("Song's appeal to these idols' fans: ", lines[0]);
+            Assert.StartsWith($"Changed lineup {Math.Round(100 * session.Preview().Novelty)}%: ", lines[1]);
+            Assert.Equal("Hype 50%: a changed lineup surprises the crowd.", lines[2]);
+            Assert.StartsWith("Production quality 50% (this venue needs 39%): ", lines[3]);   // the fixture's 1,500 seats
+            Assert.Equal(Number(first.Production.Value),
+                lines.Where(line => !line.StartsWith("Hype ")).Sum(line => Number(line.Substring(line.LastIndexOf(' ') + 1))));
 
             new FakeStage(concert).PlaySong(session);
             PanelView second = PanelView.Build(session);
@@ -234,18 +235,18 @@ namespace ConcertHype.Tests
             Assert.Equal("Same genre, lyrics and choreography as the last song: " + PanelView.Signed(Number(flow.Substring(flow.LastIndexOf(' ') + 1))) + "%", flow);
             Assert.Equal(Number(second.Production.Value),
                 lines.Where(line => line.EndsWith("%") && !line.StartsWith("Hype ")).Sum(line => Number(line.Substring(line.LastIndexOf(' ') + 1))));
-            Assert.Equal(preview.Steps.Gain, !second.Production.Tip.Contains("Quality and appeal only add to songs that raise the hype."));
         }
 
         [Fact]
-        public void OnALoss_TheProductionTipSaysSo_AndTheVenueStillCounts()
+        public void OnASongThatLosesHype_TheVenueAndProductionStillCount()
         {
             ShowSession session = ThreeSongs(out _);
             session.State.Config.Par = 200;   // nobody reaches it
             SongPreview preview = session.Preview();
-            Assert.False(preview.Steps.Gain);
+            Assert.True(preview.Steps.BaseChange < 0);
             PanelView view = PanelView.Build(session);
-            Assert.EndsWith("\nQuality and appeal only add to songs that raise the hype.", view.Production.Tip);
+            Assert.Equal(preview.Parts.Production, view.Production.Amount, 9);
+            Assert.True(preview.Steps.Quality > 0);
             // The sold-out bonus holds on a bad song as well (shrunk with the rest where the hype hits its floor)
             Assert.Equal(preview.Parts.Venue, view.Venue.Amount, 9);
             Assert.True(view.Venue.Amount > 0);

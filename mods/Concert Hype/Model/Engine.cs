@@ -78,8 +78,11 @@ namespace ConcertHype.Model
             return crowd;
         }
 
-        public static double CrowdMultiplier(Config config, double crowd) =>
-            Clamp(1 + config.KCrowd * crowd, config.CrowdMin, Math.Max(config.CrowdMin, config.CrowdMax));
+        /// <summary>
+        /// The hype points a song's crowd appeal is worth: appealPoints per unit, kept within plus or minus appealMax.
+        /// </summary>
+        public static double AppealPoints(Config config, double crowd) =>
+            Clamp(config.AppealPoints * crowd, -Math.Abs(config.AppealMax), Math.Abs(config.AppealMax));
 
         private static double At(double[] values, int i) => values != null && i < values.Length ? values[i] : 0;
 
@@ -251,8 +254,26 @@ namespace ConcertHype.Model
             return -config.VenueEmptyPenalty * (neutral - filled) / neutral;
         }
 
-        public static double QualityMultiplier(ShowSetup setup, Config config) =>
-            config.ProductionFloor + config.ProductionRange * Clamp(setup.Production, 0, 1);
+        /// <summary>
+        /// The production quality the venue's size needs for the full quality bonus, 0 to 1: more seats need more, on a
+        /// log scale. Unknown seats need the most.
+        /// </summary>
+        public static double QualityNeeded(ShowSetup setup, Config config)
+        {
+            if (setup.Seats <= 0 || config.QualitySeatsLow <= 0 || config.QualitySeatsHigh <= config.QualitySeatsLow)
+                return config.QualityNeededHigh;
+            double t = Clamp(Math.Log(setup.Seats / config.QualitySeatsLow) / Math.Log(config.QualitySeatsHigh / config.QualitySeatsLow), 0, 1);
+            return Lerp(config.QualityNeededLow, config.QualityNeededHigh, t);
+        }
+
+        /// <summary>
+        /// The hype points production quality is worth every song: the full bonus once it reaches what the venue needs.
+        /// </summary>
+        public static double QualityPoints(ShowSetup setup, Config config)
+        {
+            double needed = QualityNeeded(setup, config), quality = Clamp(setup.Production, 0, 1);
+            return config.QualityBonus * (needed <= 0 ? 1 : Math.Min(1, quality / needed));
+        }
 
         /// <summary>
         /// What a song of the setlist shares with the song before it; nothing for the first song. Empty titles never match.
@@ -296,39 +317,33 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// The hype steps from a weighted performance: base change, flow from the song before, quality and crowd
-        /// multipliers on gains, novelty amplification by hype band, the venue's hype, then clamping. Fills the result's
-        /// step fields.
+        /// The hype steps, each in hype points: the performance against par; the production (the song's appeal to the
+        /// lineup's fans and its flow from the song before, amplified by a changed lineup by hype band, plus production
+        /// quality); the venue; then clamping. Fills the result's step fields.
         /// </summary>
         private static void HypeSteps(ShowState state, Song song, int[] lineup, double novelty, double weighted, SongResult result)
         {
             Config config = state.Config;
             double h = state.Hype;
-            double d = config.KPerf * (weighted - config.Par);
-            result.BaseChange = d;
+            result.BaseChange = config.KPerf * (weighted - config.Par);
             result.Matches = Matches(state.Setup, state.SongIndex);
-            result.Flow = config.FlowBonus * Count(result.Matches);
-            d += result.Flow;
-            result.QualityMultiplier = 1;
+            result.Flow = config.FlowPoints * Count(result.Matches);
             result.Crowd = CrowdAppeal(state, song, lineup);
-            result.CrowdMultiplier = CrowdMultiplier(config, result.Crowd);
-            result.Gain = d > 0;
-            if (result.Gain)
-            {
-                result.QualityMultiplier = QualityMultiplier(state.Setup, config);
-                d *= result.QualityMultiplier * result.CrowdMultiplier;
-            }
+            result.Appeal = AppealPoints(config, result.Crowd);
 
+            // A changed lineup amplifies how the song lands: below 100% hype a surprise lifts a well-liked song most,
+            // above it a disliked one sinks most
             double band = config.NoveltyBlendBand;
             double t = band <= 0 ? (h >= 100 ? 1 : 0) : Clamp((h - 100 + band) / (2 * band), 0, 1);
             double gainAmp = Lerp(config.AmpHigh, config.AmpLow, t);
             double lossAmp = Lerp(config.AmpLow, config.AmpHigh, t);
+            double points = result.Appeal + result.Flow;
             result.Novelty = novelty;
-            result.Amplification = 1 + novelty * (d >= 0 ? gainAmp : lossAmp);
-            d *= result.Amplification;
-            // The same for a good song or a bad one, and nothing multiplies it
+            result.Amplification = 1 + novelty * (points >= 0 ? gainAmp : lossAmp);
+            result.Quality = QualityPoints(state.Setup, config);
+            // The same for a good song or a bad one
             result.Venue = VenueHype(state.Setup, config);
-            d += result.Venue;
+            double d = result.BaseChange + points * result.Amplification + result.Quality + result.Venue;
 
             result.HypeBefore = h;
             result.Weighted = weighted;
@@ -373,26 +388,21 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// The song's change split by what made it, taking the hype steps in their order: the performance against par,
-        /// the flow, what the quality and crowd multipliers add to a gain, what novelty adds, the venue's hype, then the
-        /// floor and cap, which shrink every part alike.
+        /// The song's change split by what made it: the performance, the production's appeal, flow, what a changed
+        /// lineup adds to those two and quality, and the venue. The floor and cap shrink every part alike.
         /// </summary>
         public static HypeParts Parts(SongResult steps)
         {
-            double performance = steps.BaseChange;
-            double flowed = performance + steps.Flow;
-            double quality = flowed * steps.QualityMultiplier;
-            double appeal = steps.Gain ? quality * steps.CrowdMultiplier : quality;
-            double amplified = appeal * steps.Amplification;
-            double unclamped = amplified + steps.Venue;
+            double novelty = (steps.Appeal + steps.Flow) * (steps.Amplification - 1);
+            double unclamped = steps.BaseChange + steps.Appeal + steps.Flow + novelty + steps.Quality + steps.Venue;
             double share = unclamped == 0 ? 1 : steps.Change / unclamped;
             HypeParts parts = new HypeParts
             {
-                Performance = share * performance,
-                Flow = share * (flowed - performance),
-                Quality = share * (quality - flowed),
-                Appeal = share * (appeal - quality),
-                Novelty = share * (amplified - appeal),
+                Performance = share * steps.BaseChange,
+                Flow = share * steps.Flow,
+                Quality = share * steps.Quality,
+                Appeal = share * steps.Appeal,
+                Novelty = share * novelty,
                 Venue = share * steps.Venue,
             };
             // Parts that cancel out: whatever the floor or cap made of nothing counts as the performance's

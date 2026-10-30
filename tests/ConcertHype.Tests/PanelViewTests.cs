@@ -241,9 +241,9 @@ namespace ConcertHype.Tests
             // Holding Idol3 (female fans) over the center lowers the appeal
             DragView drag = new() { Member = 2, From = DropPoint.Bench, Over = DropPoint.AtPlace(0) };
             int[] hovered = DropRules.Drop(session.State, session.Lineup, session.Hosts, 2, DropPoint.Bench, DropPoint.AtPlace(0)).Lineup;
-            HypeParts held = Engine.Preview(session.State, hovered).Parts;
-            Assert.True(held.Appeal < session.Preview().Parts.Appeal);
-            Assert.Equal(held.Production, PanelView.Build(session, drag).Production.Amount, 9);
+            SongResult held = Engine.Preview(session.State, hovered).Steps;
+            Assert.True(held.Crowd < session.Preview().Steps.Crowd);
+            Assert.Equal(Engine.Preview(session.State, hovered).Parts.Production, PanelView.Build(session, drag).Production.Amount, 9);
         }
 
         [Fact]

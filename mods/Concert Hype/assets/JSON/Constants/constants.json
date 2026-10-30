@@ -197,7 +197,7 @@
 	},
 	{
 		id: "CONCERTHYPE__PROD_QUALITY",
-		text: "Production quality {0}%: {1}"
+		text: "Production quality {0}% (this venue needs {1}%): {2}"
 	},
 	{
 		id: "CONCERTHYPE__PROD_APPEAL",
@@ -234,10 +234,6 @@
 	{
 		id: "CONCERTHYPE__AND",
 		text: "and"
-	},
-	{
-		id: "CONCERTHYPE__PROD_LOSS",
-		text: "Quality and appeal only add to songs that raise the hype."
 	},
 	{
 		id: "CONCERTHYPE__TALK_TOTAL_TIP",

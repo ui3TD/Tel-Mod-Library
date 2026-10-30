@@ -36,10 +36,20 @@ namespace ConcertHype.Model
         public double Par = 60;
 
         /// <summary>
-        /// Hype points a song gains for each of genre, lyrics and choreography it shares with the song before it, added
-        /// before the multipliers.
+        /// Production: hype points for how the song suits the lineup's fans (appealPoints x crowd appeal, kept within
+        /// plus or minus appealMax) and for each of genre, lyrics and choreography it shares with the song before it
+        /// (flowPoints each); a changed lineup amplifies those two. Then up to qualityBonus for production quality:
+        /// the full bonus once the production reaches what the venue's size needs, from qualityNeededLow at
+        /// qualitySeatsLow seats or fewer to qualityNeededHigh at qualitySeatsHigh or more, on a log scale between.
         /// </summary>
-        public double FlowBonus = 1;
+        public double AppealPoints = 15;
+        public double AppealMax = 6;
+        public double FlowPoints = 2;
+        public double QualityBonus = 4;
+        public double QualitySeatsLow = 500;
+        public double QualitySeatsHigh = 50000;
+        public double QualityNeededLow = 0.2;
+        public double QualityNeededHigh = 1;
 
         /// <summary>
         /// Hype points every song gets from the venue, gain or loss: venueSoldOutBonus when it's sold out, nothing from
@@ -50,19 +60,9 @@ namespace ConcertHype.Model
         public double VenueNeutralShare = 0.9;
         public double VenueEmptyPenalty = 15;
 
-        public double ProductionFloor = 0.75;
-        public double ProductionRange = 0.5;
         public double NoveltyBlendBand = 20;
         public double AmpHigh = 1.5;
         public double AmpLow = 0.5;
-
-        /// <summary>
-        /// How a song suits the lineup's fans scales its hype gains: 1 + kCrowd x crowd appeal, kept between
-        /// crowdMin and crowdMax.
-        /// </summary>
-        public double KCrowd = 0.3;
-        public double CrowdMin = 0.8;
-        public double CrowdMax = 1.2;
 
         // Energy
         public double EnergyCostBase = 8;

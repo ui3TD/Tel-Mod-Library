@@ -354,6 +354,18 @@ namespace ConcertHype
         /// </summary>
         public static float HypeShare(double hype) => (float)Engine.Clamp(hype / Engine.MaxHype, 0, 1);
 
+        /// <summary>
+        /// Where the preview of a hype change lies on the game's hype bar, as shares of it: from the end of the fill as
+        /// the game draws it now (it grows to a new hype over a few seconds), as long as the change, kept on the bar. A
+        /// gain runs on past the fill's end, a loss back over it.
+        /// </summary>
+        /// <param name="fillShare">How far the game's fill reaches now.</param>
+        public static Stretch PreviewSpan(float fillShare, double change)
+        {
+            float end = (float)Engine.Clamp(fillShare, 0, 1), other = (float)Engine.Clamp(end + change / Engine.MaxHype, 0, 1);
+            return new Stretch { From = Math.Min(end, other), To = Math.Max(end, other) };
+        }
+
         private static BarRow Row(string titleKey, double amount, double shown, string tip) => new BarRow
         {
             Title = Texts.Get(titleKey),

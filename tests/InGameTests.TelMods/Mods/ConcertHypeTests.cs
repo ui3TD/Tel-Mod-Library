@@ -234,8 +234,8 @@ namespace InGameTests.TelMods
                 if (shown != productionTip)
                     ctx.Fail($"Over the Production info icon the tooltip reads '{shown}', not '{productionTip}'");
 
-                // The preview on the game's hype bar lies where the game's own fill would reach between the hype now and
-                // this song's expected hype, on the bar as the game's prefab lays it out
+                // The preview on the game's hype bar starts at the end of the game's own fill and is as long as the fill
+                // would grow for this song's expected change, on the bar as the game's prefab lays it out
                 object barView = Get<object>(view, "Bar");
                 double hypeNow = Get<double>(barView, "Hype"), hypeAfter = Get<double>(barView, "Target");
                 Transform fill = popup.Hype.GetComponent<Concert_HypeBar>().BarValue.transform;
@@ -251,15 +251,11 @@ namespace InGameTests.TelMods
                 else
                 {
                     Rect fillAt = WorldRect(fill), at = WorldRect(segment);
-                    float full = fillAt.width / fill.localScale.x, tolerance = full * 0.003f;
-                    float from = fillAt.xMin + (float)(Math.Min(hypeNow, hypeAfter) / 200) * full, to = fillAt.xMin + (float)(Math.Max(hypeNow, hypeAfter) / 200) * full;
-                    ctx.Record("hype bar preview", $"{hypeNow:F1}% -> {hypeAfter:F1}%: {at.xMin:F3} to {at.xMax:F3}, expected {from:F3} to {to:F3}; fill ends {fillAt.xMax:F3}");
+                    float full = fillAt.width / fill.localScale.x, tolerance = full * 0.003f, length = (float)(Math.Abs(hypeAfter - hypeNow) / 200) * full;
+                    float from = hypeAfter > hypeNow ? fillAt.xMax : fillAt.xMax - length, to = hypeAfter > hypeNow ? fillAt.xMax + length : fillAt.xMax;
+                    ctx.Record("hype bar preview", $"{hypeNow:F1}% -> {hypeAfter:F1}%: {at.xMin:F3} to {at.xMax:F3}, expected {from:F3} to {to:F3}; fill at {fill.localScale.x * 200:F1}%");
                     if (Math.Abs(at.xMin - from) > tolerance || Math.Abs(at.xMax - to) > tolerance)
                         ctx.Fail($"The hype bar's preview runs from {at.xMin:F3} to {at.xMax:F3}, not {from:F3} to {to:F3}");
-                    // Once the game's bar has caught up, the preview starts or ends at its fill's end
-                    float fillEnd = hypeAfter > hypeNow ? at.xMin : at.xMax;
-                    if (Math.Abs(fill.localScale.x - hypeNow / 200) < 0.002 && Math.Abs(fillEnd - fillAt.xMax) > tolerance)
-                        ctx.Fail($"The hype bar's preview doesn't meet the game's fill: {fillEnd:F3} against {fillAt.xMax:F3}");
                 }
                 // Over the hype bar the game's tooltip says where the song should take the hype
                 string hypeBarTip = Get<string>(barView, "Tip");

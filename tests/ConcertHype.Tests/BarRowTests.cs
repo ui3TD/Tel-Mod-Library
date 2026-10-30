@@ -82,6 +82,23 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
+        public void ThePreviewOnTheHypeBar_StartsAtTheFillsEndAsDrawn_SoItRidesAlongWhileTheBarGrows()
+        {
+            void Span(float fill, double change, float from, float to)
+            {
+                PanelView.Stretch stretch = PanelView.PreviewSpan(fill, change);
+                Assert.Equal(from, stretch.From, 4);
+                Assert.Equal(to, stretch.To, 4);
+            }
+            Span(0.4f, 19, 0.4f, 0.495f);    // the bar at 80%: a gain of 19 runs on to 99%
+            Span(0.1f, 19, 0.1f, 0.195f);    // the bar still growing from 0: the gain rides on its end
+            Span(0.4f, -10, 0.35f, 0.4f);    // a loss covers the fill's end
+            Span(0.98f, 10, 0.98f, 1f);      // kept on the bar
+            Span(0.02f, -10, 0f, 0.02f);
+            Span(0.4f, 0, 0.4f, 0.4f);
+        }
+
+        [Fact]
         public void TheSongsRows_AreTheHypeEachConsiderationAdds_AndAddUpToTheTotal()
         {
             ShowSession session = ThreeSongs(out _);

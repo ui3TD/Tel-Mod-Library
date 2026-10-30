@@ -14,10 +14,11 @@ namespace ConcertHype
     }
 
     /// <summary>
-    /// Drawn on the game's hype bar while the next-song screen is up: a light segment past the fill to where the
-    /// shown tab's next song or talk break should take the hype, or a dark one over the fill's end for a loss, and a
-    /// thin marker where the hype was before the last song or talk break. Hovering the bar shows the numbers. The
-    /// bar's own value, colour, text and animation stay the game's: this only adds objects of its own.
+    /// Drawn on the game's hype bar while the next-song screen is up: a light segment past the fill as long as the
+    /// shown tab's next song or talk break should add, or a dark one over the fill's end for a loss, and a thin marker
+    /// where the hype was before the last song or talk break. The segment starts wherever the game draws the fill's
+    /// end, so it rides along while the game's bar grows to a new hype. Hovering the bar shows the numbers. The bar's
+    /// own value, colour, text and animation stay the game's: this only adds objects of its own.
     /// </summary>
     internal static class HypePreview
     {
@@ -28,9 +29,15 @@ namespace ConcertHype
         private static readonly Color MarkerColor = new Color(1f, 1f, 1f, 0.9f);
 
         private static Concert_HypeBar bar;
+        private static RectTransform fill;
         private static GameObject back, front;
         private static Image gain, loss, marker, hoverImage;
         private static IconTip hover;
+
+        /// <summary>
+        /// The hype the shown tab's next song or talk break should add; 0 with nothing to preview.
+        /// </summary>
+        private static double change;
 
         private static bool Alive => bar != null && back != null && front != null && hover != null;
 
@@ -44,9 +51,7 @@ namespace ConcertHype
             {
                 if (!Ensure(popup))
                     return;
-                float now = PanelView.HypeShare(view.Hype), to = view.HasTarget ? PanelView.HypeShare(view.Target) : now;
-                Span(gain, now, to);
-                Span(loss, to, now);
+                change = view.HasTarget ? view.Target - view.Hype : 0;
                 marker.gameObject.SetActive(view.HasBefore);
                 if (view.HasBefore)
                 {
@@ -68,7 +73,8 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// Shown only while the next-song screen is up; the hover goes quiet with it.
+        /// Shown only while the next-song screen is up, with the segment at the fill's end as the game draws it this
+        /// frame; the hover goes quiet with it.
         /// </summary>
         public static void Follow(bool show)
         {
@@ -79,6 +85,11 @@ namespace ConcertHype
             if (front.activeSelf != show)
                 front.SetActive(show);
             hoverImage.raycastTarget = show && hover.Text.Length > 0;
+            if (!show)
+                return;
+            PanelView.Stretch span = PanelView.PreviewSpan(fill.localScale.x, change);
+            Span(gain, change > 0 ? span.From : 0f, change > 0 ? span.To : 0f);
+            Span(loss, change < 0 ? span.From : 0f, change < 0 ? span.To : 0f);
         }
 
         public static void Hide()
@@ -90,18 +101,24 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// A stretch of the bar from one share of it to a later one; hidden when it's empty.
+        /// A stretch of the bar from one share of it to a later one; hidden when it's empty. Runs every frame, so it
+        /// only touches the layout when something moved.
         /// </summary>
         private static void Span(Image image, float from, float to)
         {
             bool shown = to - from > 1e-4f;
-            image.gameObject.SetActive(shown);
+            if (image.gameObject.activeSelf != shown)
+                image.gameObject.SetActive(shown);
             if (!shown)
                 return;
             RectTransform rect = image.rectTransform;
-            rect.anchorMin = new Vector2(from, 0f);
-            rect.anchorMax = new Vector2(to, 1f);
-            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            Vector2 min = new Vector2(from, 0f), max = new Vector2(to, 1f);
+            if (rect.anchorMin != min || rect.anchorMax != max)
+            {
+                rect.anchorMin = min;
+                rect.anchorMax = max;
+                rect.offsetMin = rect.offsetMax = Vector2.zero;
+            }
         }
 
         private static bool Ensure(Concert_Popup popup)
@@ -110,7 +127,7 @@ namespace ConcertHype
             if (Alive && ReferenceEquals(hypeBar, bar))
                 return true;
             bar = null;
-            RectTransform fill = hypeBar != null && hypeBar.BarValue != null ? hypeBar.BarValue.transform as RectTransform : null;
+            fill = hypeBar != null && hypeBar.BarValue != null ? hypeBar.BarValue.transform as RectTransform : null;
             if (fill == null || fill.parent == null)
             {
                 Log.WarnOnce("hype bar", "couldn't find the game's hype bar; the preview on it is left out");

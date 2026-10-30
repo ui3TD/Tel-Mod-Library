@@ -265,6 +265,27 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
+        public void TheSecondLanding_AllowsTheBiggerLastStepOfABigSwing()
+        {
+            _concert concert = ThreeSongs();
+            concert.Hype = 50;
+            ShowSession session = GameFixture.Begin(concert);
+            session.State.Config.Par = 0;   // a huge gain
+            FakeStage stage = new(concert);
+            session.BeforeSong(stage);
+            double change = session.Pending.Change;
+            Assert.True(change > 40, "change " + change);
+            session.AfterSong(stage);
+            // The game's animation ends a frame late with a step of 3% of the change, more than 1 point
+            stage.AddHype((float)(-0.03 * change), false);
+            stage.EndFrame();
+            Assert.Equal((float)session.State.History[0], concert.Hype, 4);
+
+            Assert.Equal(ShowSession.MaxDrift, ShowSession.DriftAllowance(3));
+            Assert.Equal(5f, ShowSession.DriftAllowance(-100), 4);
+        }
+
+        [Fact]
         public void TheSecondLanding_LeavesBigChangesAndTheLastSongAlone()
         {
             _concert concert = ThreeSongs();

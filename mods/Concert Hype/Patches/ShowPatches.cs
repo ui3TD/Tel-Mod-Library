@@ -400,7 +400,8 @@ namespace ConcertHype
     }
 
     // Closing the results: the last song's hype animation may have ended a frame after the score was set, so the
-    // concert's hype lands on the score again. A bigger difference is another mod's doing and stays.
+    // concert's hype lands on the score again. A difference bigger than that animation's last step can be is another
+    // mod's doing and stays.
     [HarmonyPatch(typeof(Concert_Popup), nameof(Concert_Popup.FinishConcert))]
     public class Concert_Popup_FinishConcert
     {
@@ -412,7 +413,7 @@ namespace ConcertHype
                 if (score == null || !ReferenceEquals(ShowSession.LastScoreConcert, __instance.Concert))
                     return;
                 float drift = (float)score.Total - __instance.Concert.Hype;
-                if (drift != 0f && Mathf.Abs(drift) < ShowSession.MaxDrift)
+                if (drift != 0f && Mathf.Abs(drift) < ShowSession.LastScoreDrift)
                     __instance.AddHype(drift);
             }
             catch (Exception ex)

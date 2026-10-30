@@ -50,9 +50,28 @@ namespace ConcertHype
         public static event Action Changed;
 
         /// <summary>
-        /// The most the concert's hype may differ from the show's before a correction leaves it alone.
+        /// The most the concert's hype may differ from the show's before a correction leaves it alone, at least.
         /// </summary>
         public const float MaxDrift = 1f;
+
+        /// <summary>
+        /// The game animates a song's hype with an ease that's fastest at the end, so the step it may still take a frame
+        /// after the song grows with the song's change (about 2% of it at 4 times the speed); past this share of the
+        /// change, a difference is another mod's doing.
+        /// </summary>
+        public const float DriftShare = 0.05f;
+
+        /// <summary>
+        /// The most the concert's hype may differ from the show's after a song or talk break that changed it this much,
+        /// for the difference to count as the game's animation finishing late.
+        /// </summary>
+        public static float DriftAllowance(double change) => Math.Max(MaxDrift, DriftShare * (float)Math.Abs(change));
+
+        /// <summary>
+        /// How far the concert's hype may be off the last show's score when the results close: the last song's
+        /// animation may finish after the score was set.
+        /// </summary>
+        public static float LastScoreDrift { get; private set; } = MaxDrift;
 
         public readonly SEvent_Concerts._concert Concert;
         public readonly GameShow Show;
@@ -112,6 +131,7 @@ namespace ConcertHype
             Current = new ShowSession(concert, show, state);
             LastScore = null;
             LastScoreConcert = null;
+            LastScoreDrift = MaxDrift;
             Current.log.AppendLine($"Concert Hype show: {concert.Title} ({concert.Venue}), seed {seed}");
             Current.log.AppendLine($"Setlist idols: {string.Join(", ", show.Setup.Members.Where(m => m.InSetlist).Select(m => m.Name))}");
             Current.log.AppendLine($"Others on the bench: {show.Setup.Members.Count(m => !m.InSetlist)}");
@@ -288,7 +308,7 @@ namespace ConcertHype
             if (PendingTalk != null)
             {
                 McResult talk = PendingTalk;
-                Land(stage, talk.HypeAfter, true, () => ReferenceEquals(LastMc, talk));
+                Land(stage, talk.HypeAfter, talk.HypeAfter - talk.HypeBefore, true, () => ReferenceEquals(LastMc, talk));
                 LastMc = talk;
                 PendingTalk = null;
                 PendingTalkItem = null;
@@ -302,7 +322,7 @@ namespace ConcertHype
                 return;
             SongResult song = Pending;
             // After the last song the score takes over
-            Land(stage, song.HypeAfter, !State.Finished, () => ReferenceEquals(LastResult, song));
+            Land(stage, song.HypeAfter, song.Change, !State.Finished, () => ReferenceEquals(LastResult, song));
             LastResult = song;
             LastMc = null;
             Pending = null;
@@ -331,18 +351,20 @@ namespace ConcertHype
 
         /// <summary>
         /// Sets the concert's hype to the model's. The game's hype animation can take its last step after the song
-        /// ends, so it lands again a frame later while nothing else has played; a bigger difference is another
-        /// mod's doing and stays.
+        /// ends, so it lands again a frame later while nothing else has played; a difference bigger than that step can
+        /// be (<see cref="DriftAllowance"/>) is another mod's doing and stays.
         /// </summary>
-        private void Land(IConcertStage stage, double hype, bool again, Func<bool> stillLast)
+        /// <param name="change">How much the song or talk break changed the hype.</param>
+        private void Land(IConcertStage stage, double hype, double change, bool again, Func<bool> stillLast)
         {
             stage.AddHype((float)(hype - stage.Concert.Hype), false);
             if (!again)
                 return;
+            float allowance = DriftAllowance(change);
             stage.NextFrame(() =>
             {
                 float drift = (float)hype - stage.Concert.Hype;
-                if (ReferenceEquals(Current, this) && !Playing && stillLast() && drift != 0f && Math.Abs(drift) < MaxDrift)
+                if (ReferenceEquals(Current, this) && !Playing && stillLast() && drift != 0f && Math.Abs(drift) < allowance)
                     stage.AddHype(drift, false);
             });
         }
@@ -356,6 +378,7 @@ namespace ConcertHype
             stage.AddHype((float)(score.Total - stage.Concert.Hype), true);
             LastScore = score;
             LastScoreConcert = Concert;
+            LastScoreDrift = DriftAllowance(LastResult?.Change ?? 0);
             log.AppendLine($"Score {F(score.Total)} = 0.5 x average {F(score.Average)} + 0.25 x peak {F(score.Peak)} + 0.25 x finale {F(score.Finale)}");
             log.AppendLine($"Accidents: {State.Accidents}; forced fills that found nobody: {State.EmptyFills}");
             Log.Info($"show over: score {F(score.Total)} (average {F(score.Average)}, peak {F(score.Peak)}, finale {F(score.Finale)})");

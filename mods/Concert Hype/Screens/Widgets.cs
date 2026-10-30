@@ -297,6 +297,177 @@ namespace ConcertHype
     }
 
     /// <summary>
+    /// A row of the next-song screen's left block: on its first line the game's info icon, a title copied from its
+    /// readouts and the value copied from the game's at the right end; under them a bar across the row over a grey
+    /// track, growing from the middle (right and green for hype added, left and red for hype lost), with a faint band
+    /// behind it for a likely range and a small caption under it. Hovering the icon or the row shows its tip.
+    /// </summary>
+    internal sealed class BarRowWidget
+    {
+        public const float BarHeight = 12f;
+
+        /// <summary>
+        /// The space between the title line and the bar, and the caption's line under the bar.
+        /// </summary>
+        public const float BarGap = 4f, CaptionHeight = 16f;
+
+        private const float ZeroReach = 3f;
+        private static readonly Color RangeColor = new Color(1f, 1f, 1f, 0.22f);
+        private static readonly Color ZeroColor = new Color(1f, 1f, 1f, 0.7f);
+
+        public GameObject Root;
+        public TextMeshProUGUI Title, Value, Caption;
+        public GameObject Info;
+        public Image Track, Range, Fill, Zero;
+        public IconTip Hover;
+        private ButtonDefault infoTip;
+        private InfoIcon info;
+        private Transform container;
+        private Color plain;
+
+        /// <summary>
+        /// The value's font size as the game's; a short row draws it smaller.
+        /// </summary>
+        public float ValueSize { get; private set; }
+
+        private float titleSize;
+
+        /// <summary>
+        /// Where the bar is, in the popup's top-left coordinates, as the last layout put it.
+        /// </summary>
+        private float barLeft, barWidth, barTop;
+
+        /// <param name="bar">The game's energy bar, whose sprite the bar's parts are drawn with.</param>
+        public static BarRowWidget Make(Transform parent, Transform container, string name, GameObject title, GameObject value, GameObject labelTemplate,
+            InfoIcon info, Image bar, Color plain)
+        {
+            GameObject root = Ui.NewChild(parent, name).gameObject;
+            Ui.Stretch(root);
+            BarRowWidget row = new BarRowWidget { Root = root, info = info, container = container, plain = plain };
+            row.Track = Part(root.transform, "Track", bar, PortraitWidget.EnergyTrack);
+            row.Range = Part(root.transform, "Range", bar, RangeColor);
+            row.Fill = Part(root.transform, "Fill", bar, mainScript.green32);
+            row.Zero = Part(root.transform, "Zero", null, ZeroColor);
+            // Over the bar and its value; it takes the mouse only while it has a tip
+            row.Hover = Part(root.transform, "Hover", null, new Color(1f, 1f, 1f, 0f)).gameObject.AddComponent<IconTip>();
+
+            row.Title = Ui.CopyLabel(title, root.transform, "Title");
+            row.titleSize = row.Title.fontSize;
+            row.Title.enableWordWrapping = false;
+            row.Title.overflowMode = TextOverflowModes.Overflow;
+            row.Title.alignment = TextAlignmentOptions.Left;
+            row.Value = Ui.CopyLabel(value, root.transform, "Value");
+            row.ValueSize = row.Value.fontSize;
+            row.Value.enableAutoSizing = false;
+            row.Value.enableWordWrapping = false;
+            row.Value.overflowMode = TextOverflowModes.Overflow;
+            row.Value.alignment = TextAlignmentOptions.Right;
+            row.Caption = Ui.Label(labelTemplate, root.transform, "Caption", 0f, 0f, 10f, CaptionHeight, 13f);
+            row.Caption.alignment = TextAlignmentOptions.Top;
+            row.Caption.enableWordWrapping = false;
+
+            if (info != null)
+            {
+                row.Info = Ui.Copy(info.Template, root.transform, Shapes.Info, "info icon", "Info");
+                Button button = row.Info.GetComponent<Button>();
+                if (button != null)
+                    button.onClick = new Button.ButtonClickedEvent();
+                row.infoTip = row.Info.GetComponent<ButtonDefault>();
+            }
+            return row;
+        }
+
+        private static Image Part(Transform parent, string name, Image bar, Color color)
+        {
+            Image image = Ui.NewChild(parent, name).gameObject.AddComponent<Image>();
+            if (bar != null)
+            {
+                image.sprite = bar.sprite;
+                image.type = bar.type;
+            }
+            image.color = color;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>
+        /// How far right of the row's left edge its title starts: after the info icon, as the game's.
+        /// </summary>
+        public float TitleIndent => info != null ? info.Gap : 0f;
+
+        /// <summary>
+        /// Lays the row out in the popup's top-left coordinates, from x to right: the icon, the title and the value
+        /// on a line this tall from y, the bar under it from under the title to right, and the caption under the bar.
+        /// Returns where the bar ends.
+        /// </summary>
+        public float Layout(float x, float y, float line, float valueSize, float right)
+        {
+            float middle = y + line / 2f;
+            Title.enableAutoSizing = true;
+            Title.fontSizeMax = titleSize;
+            Title.fontSizeMin = titleSize * 0.6f;
+            Ui.Place(Title.gameObject, x + TitleIndent, y, Math.Max(1f, right - x - TitleIndent), line);
+            if (Info != null)
+                Ui.MoveTo(Info, container, x, middle - Ui.Placed(Info, container).height / 2f);
+            Value.fontSize = valueSize;
+            // As tall as its font needs, centred on the title's line
+            float valueHeight = Math.Max(line, valueSize * 1.3f);
+            Ui.Place(Value.gameObject, x, middle - valueHeight / 2f, right - x, valueHeight);
+
+            barLeft = x + TitleIndent;
+            barWidth = Math.Max(1f, right - barLeft);
+            barTop = y + line + BarGap;
+            Ui.Place(Track.gameObject, barLeft, barTop, barWidth, BarHeight);
+            Ui.Place(Zero.gameObject, barLeft + barWidth / 2f - 1f, barTop - ZeroReach, 2f, BarHeight + 2f * ZeroReach);
+            Ui.Place(Hover.gameObject, x, y, right - x, barTop + BarHeight - y);
+            Ui.Place(Caption.gameObject, barLeft, barTop + BarHeight + 1f, barWidth, CaptionHeight);
+            return barTop + BarHeight;
+        }
+
+        /// <summary>
+        /// Where the bar starts and ends, in the popup's top-left coordinates, as the last layout put it.
+        /// </summary>
+        public float BarLeft => barLeft;
+
+        public float BarRight => barLeft + barWidth;
+
+        /// <summary>
+        /// The row's bar on this scale (the hype points half the bar stands for), its value, caption and tip.
+        /// </summary>
+        public void Set(BarRow row, double scale, bool dragging)
+        {
+            Root.SetActive(row.Shown);
+            if (!row.Shown)
+                return;
+            Title.text = row.Title;
+            Value.text = row.Value;
+            Value.color = row.Tone == Tone.Good ? mainScript.green32 : row.Tone == Tone.Bad ? mainScript.red32 : plain;
+            Caption.text = row.Caption;
+
+            Fill.color = row.Amount < 0 ? (Color)mainScript.red32 : mainScript.green32;
+            PanelView.Stretch fill = PanelView.BarSpan(0, row.Amount, scale);
+            Fill.gameObject.SetActive(fill.To - fill.From > 1e-4f);
+            PlaceSpan(Fill, fill);
+            Range.gameObject.SetActive(row.HasRange);
+            if (row.HasRange)
+                PlaceSpan(Range, PanelView.BarSpan(row.Low, row.High, scale));
+
+            bool tip = row.Tip.Length > 0;
+            if (infoTip != null)
+            {
+                Info.SetActive(tip);
+                if (tip)
+                    infoTip.SetTooltip(row.Tip);
+            }
+            Hover.Text = row.Tip;
+            Hover.GetComponent<Image>().raycastTarget = tip && !dragging;
+        }
+
+        private void PlaceSpan(Image image, PanelView.Stretch span) =>
+            Ui.Place(image.gameObject, barLeft + span.From * barWidth, barTop, (span.To - span.From) * barWidth, BarHeight);
+    }
+
+    /// <summary>
     /// A copy of the concert's idol portrait (the picture is a game button, with its hover profile) whose energy
     /// bar shows the show's energy over a grey track, with a short label and an icon. A place in the lineup also
     /// has a success bar under the energy bar: her chance of a success, green over red. Pressing and holding the
@@ -313,7 +484,7 @@ namespace ConcertHype
         /// The energy bar's empty part; the success bar's filled part (a green unlike the energy bar's) and its
         /// empty part.
         /// </summary>
-        private static readonly Color EnergyTrack = new Color(0.67f, 0.67f, 0.66f, 0.55f);
+        internal static readonly Color EnergyTrack = new Color(0.67f, 0.67f, 0.66f, 0.55f);
         private static readonly Color SuccessFill = new Color32(96, 196, 176, 255);
         private static readonly Color SuccessTrack = mainScript.red32;
 

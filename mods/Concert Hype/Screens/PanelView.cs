@@ -246,23 +246,6 @@ namespace ConcertHype
         public List<BenchView> Bench = new List<BenchView>();
 
         /// <summary>
-        /// On the song's tab, the song's expected hype change, with its range and the crowd's mood in the tip; on
-        /// the talk break's, the hype the talk break is expected to leave, hidden with nobody hosting.
-        /// </summary>
-        public Readout Expected = new Readout();
-
-        /// <summary>
-        /// Shown on the song's tab only.
-        /// </summary>
-
-        public Readout Changed = new Readout();
-
-        /// <summary>
-        /// The last song's or talk break's hype change; hidden before the first song.
-        /// </summary>
-        public Readout Last = new Readout();
-
-        /// <summary>
         /// The left block's rows: on the song's tab the hype each consideration adds and their total; on the talk
         /// break's only the total, the talk break's, while someone hosts.
         /// </summary>
@@ -307,16 +290,6 @@ namespace ConcertHype
             double rounded = Math.Round(value);
             return rounded >= 0 ? "+" + Math.Abs(rounded).ToString(CultureInfo.InvariantCulture) : rounded.ToString(CultureInfo.InvariantCulture);
         }
-
-        /// <summary>
-        /// A change of hype shown as a value: in the hype bar's percent, signed, green when it's not a loss, red when it is.
-        /// </summary>
-        private static Readout Change(string titleKey, double change) => new Readout
-        {
-            Title = Texts.Get(titleKey),
-            Value = Signed(change) + "%",
-            Tone = Math.Round(change) >= 0 ? Tone.Good : Tone.Bad,
-        };
 
         private static string Whole(double value) => Math.Round(value).ToString(CultureInfo.InvariantCulture);
 
@@ -607,17 +580,6 @@ namespace ConcertHype
                 }
                 if (tab == FormationTab.Song)
                 {
-                    double h = state.Hype, band = state.Config.NoveltyBlendBand;
-                    string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
-                    view.Expected = Change("CONCERTHYPE__EXPECTED_TITLE", preview.Change);
-                    view.Expected.Tip = Texts.Format("CONCERTHYPE__EXPECTED_TIP", Signed(preview.Low) + "%", Signed(preview.High) + "%", Whole(h), Texts.Get(mood))
-                        + " " + Texts.Format("CONCERTHYPE__CROWD_TIP", preview.Steps.CrowdMultiplier.ToString("0.##", CultureInfo.InvariantCulture));
-                    view.Changed = new Readout
-                    {
-                        Title = Texts.Get("CONCERTHYPE__CHANGED_TITLE"),
-                        Value = Whole(100 * preview.Novelty) + "%",
-                        Tip = Texts.Get("CONCERTHYPE__CHANGED_TIP"),
-                    };
                     SongRows(view, session, lineup, preview);
                     view.Bar.Target = Engine.Clamp(state.Hype + preview.Change, 0, Engine.MaxHype);
                     view.Bar.Tip = Texts.Format("CONCERTHYPE__BAR_SONG", Whole(state.Hype), Whole(view.Bar.Target));
@@ -641,12 +603,6 @@ namespace ConcertHype
                 int[] talking = hosts.Where(h => h >= 0).ToArray();
                 if (talking.Length > 0 && blocked == null)
                 {
-                    view.Expected = new Readout
-                    {
-                        Title = Texts.Get("CONCERTHYPE__AFTER_TALK_TITLE"),
-                        Value = Whole(Engine.McHype(state, talking)) + "%",
-                        Tip = Texts.Get("CONCERTHYPE__AFTER_TALK_TIP"),
-                    };
                     double after = Engine.McHype(state, talking), change = after - state.Hype;
                     view.Total = Row("CONCERTHYPE__AFTER_TALK_TITLE", change, Math.Round(change), Lines(
                         Texts.Format("CONCERTHYPE__TALK_TOTAL_TIP", Whole(100 * Engine.Talk(state, talking)), Whole(after)), LastLine(session)));
@@ -655,7 +611,6 @@ namespace ConcertHype
                 }
             }
 
-            view.Last = LastReadout(session);
             view.Bar.Hype = state.Hype;
             view.Bar.Before = HypeBeforeLast(session);
             view.Bar.Tip = Lines(view.Bar.HasTarget ? view.Bar.Tip : Texts.Format("CONCERTHYPE__BAR_NOW", Whole(state.Hype)), LastLine(session));
@@ -708,16 +663,6 @@ namespace ConcertHype
         private static bool InHand(DragView drag, DropPoint target, DropPoint place, int member) =>
             drag != null && drag.From.Equals(place) && !target.Equals(place) && member == drag.Member;
 
-        /// <summary>
-        /// Who is out after it, and for how long, shows on the bench.
-        /// </summary>
-        private static Readout LastReadout(ShowSession session)
-        {
-            if (session.LastMc != null)
-                return Change("CONCERTHYPE__LAST_TALK_TITLE", session.LastMc.HypeAfter - session.LastMc.HypeBefore);
-            return session.LastResult == null ? new Readout() : Change("CONCERTHYPE__LAST_SONG_TITLE", session.LastResult.Change);
-        }
-
         private static string SongCount(int songs) => songs == 1 ? Texts.Get("CONCERTHYPE__SONG") : Texts.Format("CONCERTHYPE__SONGS", songs);
 
         /// <summary>
@@ -764,17 +709,18 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// The free space the formation fits in. A row beside the readouts stays right of them, one beside the
-        /// buttons stays right of those, and every row stays left of the bench and above the bottom.
+        /// The free space the formation fits in. A row beside the left block (the readouts) stays right of it, one
+        /// beside the buttons stays right of those, and every row stays left of the bench and above the bottom.
         /// </summary>
         public struct FormationSpace
         {
             public float ReadoutsRight, ReadoutsBottom, ButtonsRight, ButtonsTop, BenchLeft, Top, Bottom, Margin;
 
             /// <summary>
-            /// The tabs' half width: they're centred over the formation, right of the readouts.
+            /// The tabs' half width, and the leftmost they may start: they're centred over the formation, above the
+            /// left block, and the song's title ends before them.
             /// </summary>
-            public float TabsHalf;
+            public float TabsHalf, TabsLeft;
         }
 
         /// <summary>
@@ -792,7 +738,7 @@ namespace ConcertHype
             float middle = (space.ReadoutsRight + space.BenchLeft) / 2f;
             for (float scale = MaxScale; scale >= MinScale - 1e-4f; scale -= 0.05f)
             {
-                float lowest = space.ReadoutsRight + space.TabsHalf, highest = space.BenchLeft - space.TabsHalf;
+                float lowest = space.TabsLeft + space.TabsHalf, highest = space.BenchLeft - space.TabsHalf;
                 bool fits = true;
                 for (int row = 0; row < rowWidths.Count && fits; row++)
                 {

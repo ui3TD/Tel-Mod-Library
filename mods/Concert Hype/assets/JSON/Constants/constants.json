@@ -96,14 +96,6 @@
 		text: "Expected Hype:"
 	},
 	{
-		id: "CONCERTHYPE__EXPECTED_TIP",
-		text: "Likely {0} to {1}, depending on how the idols perform. Hype {2}%: {3}."
-	},
-	{
-		id: "CONCERTHYPE__CROWD_TIP",
-		text: "Song appeal to this lineup's fans: ×{0}."
-	},
-	{
 		id: "CONCERTHYPE__GAP",
 		text: "-{0}%"
 	},
@@ -126,26 +118,6 @@
 	{
 		id: "CONCERTHYPE__AFTER_TALK_TITLE",
 		text: "After Talk Break:"
-	},
-	{
-		id: "CONCERTHYPE__AFTER_TALK_TIP",
-		text: "The hype expected after the talk break. The song plays after it."
-	},
-	{
-		id: "CONCERTHYPE__CHANGED_TITLE",
-		text: "Changed Lineup:"
-	},
-	{
-		id: "CONCERTHYPE__CHANGED_TIP",
-		text: "The share of places not held by their own idol from the single; the center counts most. The more changed, the more the crowd's mood raises or lowers the hype change."
-	},
-	{
-		id: "CONCERTHYPE__LAST_SONG_TITLE",
-		text: "Last Song:"
-	},
-	{
-		id: "CONCERTHYPE__LAST_TALK_TITLE",
-		text: "Last Talk Break:"
 	},
 	{
 		id: "CONCERTHYPE__VENUE_TITLE",

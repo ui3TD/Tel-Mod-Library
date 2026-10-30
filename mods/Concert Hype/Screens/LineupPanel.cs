@@ -85,8 +85,8 @@ namespace ConcertHype
 
     /// <summary>
     /// The lineup panel on the next-song screen, in place of the game's center, stamina and accident readouts: two
-    /// tabs, one with the song's formation and one with the talk break's row of hosts, and readouts like the game's
-    /// saying how the song or talk break is expected to go.
+    /// tabs, one with the song's formation and one with the talk break's row of hosts, and on the left a block of bars
+    /// saying how much hype the venue, the lineup's performance and the production add to the song, and their total.
     /// </summary>
     internal static class LineupPanel
     {
@@ -98,11 +98,25 @@ namespace ConcertHype
         /// </summary>
         private const float Gap = 16f;
 
+        private const float HintTop = 470f, HintWidth = 470f, HintGap = 10f;
+
         /// <summary>
-        /// The readouts sit as the game's do (Center, Stamina Cost), in two columns left of the formation: the
-        /// second row a readout's height below the first, the second column where the first's titles end.
+        /// The left block: as wide as the game's two readout columns were, its rows' pitch between these, a title line
+        /// at most this tall, and the space before the total.
         /// </summary>
-        private const float SecondRow = 131f, SecondColumnX = 290f, HintTop = 470f, HintWidth = 470f, HintGap = 10f;
+        private const float BlockWidth = 410f, MinRowHeight = 40f, MaxRowHeight = 64f, TitleLine = 28f, SeparatorGap = 10f;
+
+        /// <summary>
+        /// The value's font is at most this share of the title line's height.
+        /// </summary>
+        private const float ValueShare = 1.15f;
+
+        /// <summary>
+        /// How wide the "lost" and "added" labels at the bars' ends are.
+        /// </summary>
+        private const float EndLabelWidth = 70f;
+
+        private static readonly Color SeparatorColor = new Color(1f, 1f, 1f, 0.25f);
 
         /// <summary>
         /// The song's title ends this far left of the tabs.
@@ -111,7 +125,22 @@ namespace ConcertHype
 
         private static Concert_Popup owner;
         private static GameObject root;
-        private static ReadoutWidget expected, changed, last;
+        private static BarRowWidget venue, performance, production, total;
+
+        /// <summary>
+        /// In the order of <see cref="PanelView.Rows"/>.
+        /// </summary>
+        private static BarRowWidget[] rows = new BarRowWidget[0];
+
+        private static TextMeshProUGUI lostLabel, addedLabel;
+        private static Image separator;
+        private static float blockLeft;
+
+        /// <summary>
+        /// The hype points half a bar stands for on this screen: it only grows while the lineup changes, so the bars
+        /// don't jump, and starts afresh on each new next-song screen.
+        /// </summary>
+        private static double barScale = double.NaN;
         private static TextMeshProUGUI hint;
         private static Button resetLineup;
         private static TabWidget songTab, talkTab;
@@ -130,11 +159,6 @@ namespace ConcertHype
         /// </summary>
         private static bool handling;
 
-        /// <summary>
-        /// The second readout column's widest title, measured once per panel.
-        /// </summary>
-        private static float? titlesWidth;
-
         private static DragView drag;
         private static string message;
 
@@ -152,12 +176,18 @@ namespace ConcertHype
 
         private static bool Alive => root != null && owner != null;
 
+        /// <summary>
+        /// The panel is up, between songs of a show the mod runs.
+        /// </summary>
+        public static bool Showing => Alive && root.activeInHierarchy && ShowSession.Current != null && !ShowSession.Current.Playing && !ShowSession.Current.State.Finished;
+
         public static void Show(Concert_Popup popup, ShowSession session)
         {
             Ensure(popup);
             drag = null;
             message = null;
             Tab = FormationTab.Song;
+            barScale = double.NaN;
             HideVanilla(popup);
             root.SetActive(true);
             Render();
@@ -173,6 +203,7 @@ namespace ConcertHype
                 root.SetActive(false);
                 SetStartLabel(null);
             }
+            HypePreview.Hide();
             SongTitle.Restore();
             foreach (GameObject obj in Hidden)
             {
@@ -208,7 +239,6 @@ namespace ConcertHype
             if (Alive && ReferenceEquals(owner, popup))
                 return;
             owner = popup;
-            titlesWidth = null;
             Slots.Clear();
             HostPlaces.Clear();
             CancelOverlays.Clear();
@@ -219,16 +249,29 @@ namespace ConcertHype
             root.AddComponent<PanelDriver>();
 
             GameObject labelTemplate = Ui.LabelTemplate(popup);
-            // Titles and values copied from the game's, in its places: the first column where Center is, the
-            // second row where the center's portrait would end
+            // The block starts where the game's Center title does; its titles and values are copies of the game's
             GameObject centerTitle = container.Find("CenterTitle")?.gameObject ?? labelTemplate;
-            Rect first = Ui.Placed(centerTitle, container), value = Ui.Placed(popup.NextSong_Stamina, container), title = Ui.Placed(labelTemplate, container);
-            float columnX = first.xMin + value.xMin - title.xMin;
+            blockLeft = Ui.Placed(centerTitle, container).xMin;
             Color plain = Ui.PlainColor(popup);
             InfoIcon info = InfoIcon.From(popup);
-            expected = ReadoutWidget.Make(root.transform, container, "Expected", labelTemplate, popup.NextSong_Stamina, info, columnX, first.yMin, plain);
-            changed = ReadoutWidget.Make(root.transform, container, "Changed", labelTemplate, popup.NextSong_Stamina, info, SecondColumnX, first.yMin, plain);
-            last = ReadoutWidget.Make(root.transform, container, "Last", labelTemplate, popup.NextSong_Stamina, null, SecondColumnX, first.yMin + SecondRow, plain);
+            Transform stamina = popup.prefab_concertGirl != null ? popup.prefab_concertGirl.transform.Find("Stamina") : null;
+            Image bar = stamina != null ? stamina.GetComponent<Image>() : null;
+            BarRowWidget Row(string name) => BarRowWidget.Make(root.transform, container, name, labelTemplate, popup.NextSong_Stamina, labelTemplate, info, bar, plain);
+            venue = Row("Venue");
+            performance = Row("Performance");
+            production = Row("Production");
+            total = Row("Total");
+            rows = new[] { venue, performance, production, total };
+            lostLabel = Ui.Label(labelTemplate, root.transform, "Lost", 0f, 0f, EndLabelWidth, BarRowWidget.CaptionHeight, 13f);
+            lostLabel.enableWordWrapping = false;
+            lostLabel.text = Texts.Get("CONCERTHYPE__BARS_LOST");
+            addedLabel = Ui.Label(labelTemplate, root.transform, "Added", 0f, 0f, EndLabelWidth, BarRowWidget.CaptionHeight, 13f);
+            addedLabel.enableWordWrapping = false;
+            addedLabel.alignment = TextAlignmentOptions.TopRight;
+            addedLabel.text = Texts.Get("CONCERTHYPE__BARS_ADDED");
+            separator = Ui.NewChild(root.transform, "Separator").gameObject.AddComponent<Image>();
+            separator.color = SeparatorColor;
+            separator.raycastTarget = false;
             // The talk break's tab: its hosts in a row where the formation's top would be
             talkBox = Ui.NewChild(root.transform, "TalkBreak").gameObject;
             Ui.Stretch(talkBox);
@@ -241,7 +284,7 @@ namespace ConcertHype
                 HostPlaces.Add(host);
                 CancelOverlays.Add(MakeCancelOverlay(host));
             }
-            hint = Ui.Label(labelTemplate, root.transform, "Hint", first.xMin, HintTop, HintWidth, 64f, 14f);
+            hint = Ui.Label(labelTemplate, root.transform, "Hint", blockLeft, HintTop, HintWidth, 64f, 14f);
             resetLineup = Ui.Button(popup.NextSong_Button, root.transform, "ResetLineup", 30f, 420f, 128f, 39f, OnReset);
             Ui.SetButtonText(resetLineup, Texts.Get("CONCERTHYPE__RESET_LINEUP"));
             LevelReset();
@@ -297,11 +340,12 @@ namespace ConcertHype
                 Tab = FormationTab.Song;
             PanelView view = PanelView.Build(session, drag, message, Tab, BenchColumn.Group);
             LevelReset();
-            // Before the readouts get their text: the first layout measures the titles, which leaves text on the label
             Layout(view);
-            expected.Set(view.Expected);
-            changed.Set(view.Changed);
-            last.Set(view.Last);
+            barScale = PanelView.BarScale(barScale, view.Rows.Where(row => row.Shown).SelectMany(row => new[] { row.Amount, row.Low, row.High }));
+            BarRow[] shown = view.Rows;
+            for (int i = 0; i < rows.Length && i < shown.Length; i++)
+                rows[i].Set(shown[i], barScale, view.Dragging);
+            HypePreview.Set(owner, view.Bar);
             hint.text = view.Hint;
             SetStartLabel(view.StartLabel);
             bool song = Tab == FormationTab.Song;
@@ -392,9 +436,10 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// Lays the panel out for the window's shape, which moves the game's Start button: the Last readout stays a
-        /// gap above the buttons, the hint goes under them, and the tabs and formation are centred in the space
-        /// between the readouts and the bench, as large as fits. The song's title ends before the tabs.
+        /// Lays the panel out for the window's shape, which moves the game's Start button: the left block fills the
+        /// space from under the tabs to a gap above the buttons, the hint goes under the buttons, and the tabs and
+        /// formation are centred in the space between the block and the bench, as large as fits. The song's title ends
+        /// before the tabs.
         /// </summary>
         private static void Layout(PanelView view)
         {
@@ -403,19 +448,13 @@ namespace ConcertHype
             Rect start = Ui.Placed(owner.NextSong_Button, container), reset = Ui.Placed(resetLineup.gameObject, container);
             float buttonsTop = Math.Min(start.yMin, reset.yMin);
 
-            RectTransform lastRect = (RectTransform)last.Root.transform;
-            lastRect.anchoredPosition = Vector2.zero;
-            float lastBottom = Ui.Placed(last.Value.gameObject, container).yMax;
-            float lift = Math.Max(0f, lastBottom + Gap - buttonsTop);
-            lastRect.anchoredPosition = new Vector2(0f, lift);
-
             Rect hintAt = Ui.Placed(hint.gameObject, container);
             float hintLeft = hintAt.xMin;
             Ui.Place(hint.gameObject, hintLeft, Math.Max(start.yMax, reset.yMax) + HintGap, Math.Max(start.xMax - hintLeft, 128f), hintAt.height);
 
-            // The second column's widest title, as the readouts draw it
-            float titles = titlesWidth ??= new[] { "CONCERTHYPE__CHANGED_TITLE", "CONCERTHYPE__LAST_SONG_TITLE", "CONCERTHYPE__LAST_TALK_TITLE" }
-                .Max(key => changed.Title.GetPreferredValues(Texts.Get(key)).x);
+            Vector2 tab = ((RectTransform)songTab.Button.transform).rect.size;
+            float blockBottom = LayOutBlock(view, TabWidget.Top + tab.y + Gap, buttonsTop - Gap);
+
             List<int> widths = PanelView.RowSizes(view.Slots.Select(slot => slot.Row).ToList()).ToList();
             // The talk break's row sits where the front row is
             if (widths.Count == 0)
@@ -423,21 +462,66 @@ namespace ConcertHype
             widths[0] = Math.Max(widths[0], Engine.MaxHosts);
             frame = PanelView.FitFormation(widths, new PanelView.FormationSpace
             {
-                ReadoutsRight = Ui.Placed(changed.Title.gameObject, container).xMin + titles + Gap,
-                ReadoutsBottom = lastBottom - lift + Gap,
+                ReadoutsRight = blockLeft + BlockWidth + Gap,
+                ReadoutsBottom = blockBottom + Gap,
                 ButtonsRight = Math.Max(start.xMax, reset.xMax) + Gap,
                 ButtonsTop = buttonsTop - Gap,
                 BenchLeft = BenchColumn.LeftEdge(owner, container) - Gap,
                 Top = TriangleTop,
                 Bottom = height - Gap,
                 Margin = hintLeft,
+                TabsLeft = hintLeft,
                 TabsHalf = TabWidget.Width,
             });
 
-            Vector2 tab = ((RectTransform)songTab.Button.transform).rect.size;
             Ui.Place(songTab.Button.gameObject, frame.CenterX - TabWidget.Width, TabWidget.Top, TabWidget.Width, tab.y);
             Ui.Place(talkTab.Button.gameObject, frame.CenterX, TabWidget.Top, TabWidget.Width, tab.y);
             SongTitle.Fit(owner.NextSong_Title, container, frame.CenterX - TabWidget.Width - TitleGap);
+        }
+
+        /// <summary>
+        /// Lays the left block out from top down, at most to bottom: the rows shown, their pitch as large as fits, the
+        /// song's total after a separator; under the last bar the total's caption, with "lost" and "added" at the
+        /// bars' two ends. Returns where the block ends.
+        /// </summary>
+        private static float LayOutBlock(PanelView view, float top, float bottom)
+        {
+            bool songRows = view.Venue.Shown;
+            float rowsSpace = bottom - top - SeparatorGap - BarRowWidget.CaptionHeight;
+            float content = TitleLine + BarRowWidget.BarGap + BarRowWidget.BarHeight;
+            // Three steps between the four rows: the last one ends at its bar
+            float pitch = Math.Min(MaxRowHeight, Math.Max(MinRowHeight, (rowsSpace - content) / (rows.Length - 1)));
+            float line = Math.Min(TitleLine, pitch - BarRowWidget.BarGap - BarRowWidget.BarHeight - 2f);
+            float valueSize = Math.Min(total.ValueSize, line * ValueShare);
+            float right = blockLeft + BlockWidth;
+
+            bool any = view.Rows.Any(row => row.Shown);
+            lostLabel.gameObject.SetActive(any);
+            addedLabel.gameObject.SetActive(any);
+            separator.gameObject.SetActive(songRows);
+
+            float y = top, barBottom = top;
+            BarRowWidget last = null;
+            BarRow[] shown = view.Rows;
+            for (int i = 0; i < rows.Length && i < shown.Length; i++)
+            {
+                if (!shown[i].Shown)
+                    continue;
+                if (rows[i] == total && songRows)
+                {
+                    Ui.Place(separator.gameObject, blockLeft + total.TitleIndent, y - 2f + SeparatorGap / 2f, right - blockLeft - total.TitleIndent, 1f);
+                    y += SeparatorGap;
+                }
+                barBottom = rows[i].Layout(blockLeft, y, line, valueSize, right);
+                last = rows[i];
+                y += pitch;
+            }
+            if (last != null)
+            {
+                Ui.Place(lostLabel.gameObject, last.BarLeft, barBottom + 1f, EndLabelWidth, BarRowWidget.CaptionHeight);
+                Ui.Place(addedLabel.gameObject, last.BarRight - EndLabelWidth, barBottom + 1f, EndLabelWidth, BarRowWidget.CaptionHeight);
+            }
+            return barBottom + 1f + BarRowWidget.CaptionHeight;
         }
 
         /// <summary>

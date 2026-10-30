@@ -47,28 +47,18 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void Readouts_AreTitlesOverValues_WithTheRangeAndMoodInTheTip()
+        public void TheHint_IsOnlyWhyADropWasRefused_AndTheProductionTipNamesTheCrowdsMood()
         {
             ShowSession session = ThreeSongs(out _);
             PanelView view = PanelView.Build(session);
-            SongPreview preview = session.Preview();
-            Assert.Equal("Expected Hype:", view.Expected.Title);
-            Assert.Equal(PanelView.Signed(preview.Change) + "%", view.Expected.Value);
-            Assert.Equal(Math.Round(preview.Change) >= 0 ? Tone.Good : Tone.Bad, view.Expected.Tone);
-            Assert.Equal($"Likely {PanelView.Signed(preview.Low)}% to {PanelView.Signed(preview.High)}%, depending on how the idols perform. "
-                + "Hype 50%: a changed lineup surprises the crowd. Song appeal to this lineup's fans: ×1.", view.Expected.Tip);
-            Assert.Equal("Changed Lineup:", view.Changed.Title);
-            Assert.Equal(Math.Round(100 * preview.Novelty) + "%", view.Changed.Value);
-            Assert.Equal(Tone.Plain, view.Changed.Tone);
-            Assert.Equal("The share of places not held by their own idol from the single; the center counts most. The more changed, the more the crowd's mood raises or lowers the hype change.", view.Changed.Tip);
-            Assert.False(view.Last.Shown);  // nothing played yet
             Assert.Equal("", view.Hint);  // no standing instructions: only why a drop was refused
             Assert.Equal("M can't perform right now.", PanelView.Build(session, message: "M can't perform right now.").Hint);
+            Assert.Contains("Hype 50%: a changed lineup surprises the crowd.", view.Production.Tip);
 
             session.State.Hype = 150;
-            Assert.Contains("Hype 150%: the crowd wants the hits.", PanelView.Build(session).Expected.Tip);
+            Assert.Contains("Hype 150%: the crowd wants the hits.", PanelView.Build(session).Production.Tip);
             session.State.Hype = 95;
-            Assert.Contains("Hype 95%: the crowd is close to 100%.", PanelView.Build(session).Expected.Tip);
+            Assert.Contains("Hype 95%: the crowd is close to 100%.", PanelView.Build(session).Production.Tip);
         }
 
         [Theory]
@@ -112,25 +102,20 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void Last_IsTheLastSongsOrTalkBreaksChange_GreenUnlessALoss()
+        public void TheLastSongsOrTalkBreaksChange_EndsTheTotalsTip_Rounded()
         {
             ShowSession session = ThreeSongs(out _concert concert);
             FakeStage stage = new(concert);
             stage.PlaySong(session);
-            Readout last = PanelView.Build(session).Last;
-            Assert.Equal("Last Song:", last.Title);
-            Assert.Equal(PanelView.Signed(session.LastResult.Change) + "%", last.Value);
-            Assert.Equal("", last.Tip);  // who got hurt shows on the bench
+            Assert.EndsWith($"\nLast song: {PanelView.Signed(session.LastResult.Change)}%.", PanelView.Build(session).Total.Tip);
             session.LastResult.Change = -0.4;
-            Assert.Equal(("+0%", Tone.Good), (PanelView.Build(session).Last.Value, PanelView.Build(session).Last.Tone));
+            Assert.EndsWith("\nLast song: +0%.", PanelView.Build(session).Total.Tip);
             session.LastResult.Change = -3;
-            Assert.Equal(("-3%", Tone.Bad), (PanelView.Build(session).Last.Value, PanelView.Build(session).Last.Tone));
+            Assert.EndsWith("\nLast song: -3%.", PanelView.Build(session).Total.Tip);
 
             session.Drop(2, DropPoint.Bench, DropPoint.AtHost(0));
             stage.PlaySong(session);
-            last = PanelView.Build(session).Last;
-            Assert.Equal("Last Talk Break:", last.Title);
-            Assert.Equal(PanelView.Signed(session.LastMc.HypeAfter - session.LastMc.HypeBefore) + "%", last.Value);
+            Assert.EndsWith($"\nLast talk break: {PanelView.Signed(session.LastMc.HypeAfter - session.LastMc.HypeBefore)}%.", PanelView.Build(session).Total.Tip);
         }
 
         [Fact]
@@ -243,22 +228,22 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
-        public void TheExpectedHypeTip_ShowsTheCrowdMultiplier_AndFollowsADragPreview()
+        public void TheAppealOfTheSong_ToTheLineupsFans_FollowsADragPreview()
         {
             ShowSession session = ThreeSongs(out _concert concert);
             // Song 1 appeals to male fans only; Idol0 and Idol1 have male fans (the fixture's), Idol3 female fans
             session.State.Setup.Songs[0].Appeal = new double[] { 1, 0, 0, 0, 0, 0, 0 };
             session.State.Setup.Members[2].FanMix = new double[] { 0, 1, 0.5, 0.5, 1, 0, 0 };
-            string Tip(PanelView v) => v.Expected.Tip.Substring(v.Expected.Tip.IndexOf("Song appeal", StringComparison.Ordinal));
 
             PanelView view = PanelView.Build(session);
-            string expected = Engine.CrowdMultiplier(session.State.Config, Engine.CrowdAppeal(session.State, session.State.CurrentSong, session.Lineup))
-                .ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-            Assert.Equal($"Song appeal to this lineup's fans: ×{expected}.", Tip(view));
+            Assert.Equal(session.Preview().Parts.Production, view.Production.Amount, 9);
 
-            // Holding Idol3 (female fans) over the center lowers it
-            PanelView dragged = PanelView.Build(session, new DragView { Member = 2, From = DropPoint.Bench, Over = DropPoint.AtPlace(0) });
-            Assert.NotEqual(Tip(view), Tip(dragged));
+            // Holding Idol3 (female fans) over the center lowers the appeal
+            DragView drag = new() { Member = 2, From = DropPoint.Bench, Over = DropPoint.AtPlace(0) };
+            int[] hovered = DropRules.Drop(session.State, session.Lineup, session.Hosts, 2, DropPoint.Bench, DropPoint.AtPlace(0)).Lineup;
+            HypeParts held = Engine.Preview(session.State, hovered).Parts;
+            Assert.True(held.Appeal < session.Preview().Parts.Appeal);
+            Assert.Equal(held.Production, PanelView.Build(session, drag).Production.Amount, 9);
         }
 
         [Fact]
@@ -288,23 +273,20 @@ namespace ConcertHype.Tests
             ShowSession session = ThreeSongs(out _concert concert);
             new FakeStage(concert).PlaySong(session);
             PanelView talk = PanelView.Build(session, tab: FormationTab.Talk);
-            Assert.False(talk.Expected.Shown);  // nobody hosts yet
-            Assert.False(talk.Changed.Shown);
+            Assert.All(talk.Rows, row => Assert.False(row.Shown));  // nobody hosts yet
 
             // Song 2 is 2, 3, 4: the center hosts with a bench idol, and stays in the lineup for the song
             PanelView before = PanelView.Build(session);
             session.Drop(2, DropPoint.Bench, DropPoint.AtHost(0));
             session.Drop(0, DropPoint.Bench, DropPoint.AtHost(1));
             talk = PanelView.Build(session, tab: FormationTab.Talk);
-            string pull = Math.Round(Engine.McHype(session.State, 2, 0)).ToString();
-            Assert.Equal("After Talk Break:", talk.Expected.Title);
-            Assert.Equal(pull + "%", talk.Expected.Value);
-            Assert.Equal(Tone.Plain, talk.Expected.Tone);
-            Assert.Equal("The hype expected after the talk break. The song plays after it.", talk.Expected.Tip);
-            Assert.False(talk.Changed.Shown);
+            double pull = Engine.McHype(session.State, 2, 0) - session.State.Hype;
+            Assert.Equal("After Talk Break:", talk.Total.Title);
+            Assert.Equal(PanelView.Signed(pull) + "%", talk.Total.Value);
+            Assert.False(talk.Venue.Shown);
 
             PanelView song = PanelView.Build(session);
-            Assert.Equal((before.Expected.Title, before.Expected.Value, before.Changed.Value), (song.Expected.Title, song.Expected.Value, song.Changed.Value));
+            Assert.Equal(before.Rows.Select(row => (row.Title, row.Value)), song.Rows.Select(row => (row.Title, row.Value)));
             Assert.Equal(2, song.Slots[0].Member);
             Assert.Equal(before.Slots[0].Success, song.Slots[0].Success);
             Assert.Equal((before.Slots[0].Icon, before.Slots[0].Tip), (song.Slots[0].Icon, song.Slots[0].Tip));
@@ -346,7 +328,7 @@ namespace ConcertHype.Tests
             Assert.Equal(3, view.Slots[1].Member);
             Assert.Equal(SlotBadge.Substitute, view.Slots[1].Badge);
             Assert.Equal(Highlight.Allowed, view.Slots[1].Highlight);
-            Assert.NotEqual((before.Expected.Value, before.Expected.Tip, before.Changed.Value), (view.Expected.Value, view.Expected.Tip, view.Changed.Value));
+            Assert.NotEqual(before.Rows.Select(row => row.Amount), view.Rows.Select(row => row.Amount));
             Assert.Equal(before.Bench.Select(b => b.Member), view.Bench.Select(b => b.Member));
             Assert.Equal(new[] { 0, 1, before.Slots[2].Member }, session.Lineup);  // nothing changed yet
         }
@@ -482,7 +464,7 @@ namespace ConcertHype.Tests
         private static readonly PanelView.FormationSpace Space = new()
         {
             ReadoutsRight = 520, ReadoutsBottom = 380, ButtonsRight = 380, ButtonsTop = 400, BenchLeft = 815,
-            Top = 160, Bottom = 624, Margin = 35, TabsHalf = 105,
+            Top = 160, Bottom = 624, Margin = 35, TabsHalf = 105, TabsLeft = 35,
         };
 
         [Fact]
@@ -501,7 +483,7 @@ namespace ConcertHype.Tests
         {
             static bool Fits(int[] widths, float scale, float center, PanelView.FormationSpace space)
             {
-                if (center - space.TabsHalf < space.ReadoutsRight - 1e-3 || center + space.TabsHalf > space.BenchLeft + 1e-3)
+                if (center - space.TabsHalf < space.TabsLeft - 1e-3 || center + space.TabsHalf > space.BenchLeft + 1e-3)
                     return false;
                 for (int row = 0; row < widths.Length; row++)
                 {

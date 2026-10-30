@@ -231,7 +231,7 @@ namespace ConcertHype.Tests
         /// </summary>
         private static double Formula(Config c, ShowSetup s, double h, double weighted, double crowd, double novelty)
         {
-            double d = c.KPerf * (weighted - c.Par);
+            double d = c.KPerf * (weighted - c.HypePar);
             double appeal = Math.Max(-c.AppealMax, Math.Min(c.AppealMax, c.AppealPoints * crowd));
             double band = c.NoveltyBlendBand;
             double t = band <= 0 ? (h >= 100 ? 1 : 0) : Engine.Clamp((h - 100 + band) / (2 * band), 0, 1);
@@ -241,7 +241,7 @@ namespace ConcertHype.Tests
                 : c.QualityNeededLow + (c.QualityNeededHigh - c.QualityNeededLow) * Engine.Clamp(Math.Log10(s.Seats / c.QualitySeatsLow) / Math.Log10(c.QualitySeatsHigh / c.QualitySeatsLow), 0, 1);
             d += c.QualityBonus * Math.Min(1, Engine.Clamp(s.Production, 0, 1) / needed);
             double filled = Engine.Clamp(s.CapacityFilled, 0, 1);
-            d += filled >= 0.9995 ? c.VenueSoldOutBonus : filled >= c.VenueNeutralShare ? 0 : -c.VenueEmptyPenalty * (c.VenueNeutralShare - filled) / c.VenueNeutralShare;
+            d += filled >= 0.9995 ? (s.SoldOutBefore ? c.VenueSoldOutBonus : c.VenueFirstSellOutBonus) : filled >= c.VenueNeutralShare ? 0 : -c.VenueEmptyPenalty * (c.VenueNeutralShare - filled) / c.VenueNeutralShare;
             d *= 1 + novelty * (d >= 0 ? gainAmp : lossAmp);
             return Engine.Clamp(h + d, s.HypeFloor, Engine.MaxHype) - h;
         }
@@ -316,6 +316,7 @@ namespace ConcertHype.Tests
             Config config = Shows.Quiet();
             Config defaults = new Config();
             config.VenueSoldOutBonus = defaults.VenueSoldOutBonus;
+            config.VenueFirstSellOutBonus = defaults.VenueFirstSellOutBonus;
             config.VenueEmptyPenalty = defaults.VenueEmptyPenalty;
             return config;
         }
@@ -335,6 +336,8 @@ namespace ConcertHype.Tests
         {
             Assert.Equal(hype, Engine.VenueHype(new ShowSetup { CapacityFilled = filled }, new Config()), 9);
             Assert.Equal(filled >= 0.9995, Engine.SoldOut(new ShowSetup { CapacityFilled = filled }));
+            // After a sell-out at a venue of this type, a sell-out is worth the standard bonus; the rest is the same
+            Assert.Equal(filled >= 0.9995 ? 3 : hype, Engine.VenueHype(new ShowSetup { CapacityFilled = filled, SoldOutBefore = true }, new Config()), 9);
         }
 
         [Theory]
@@ -926,7 +929,8 @@ namespace ConcertHype.Tests
         private static Config WithVenue()
         {
             Config config = Shows.Quiet();
-            config.VenueSoldOutBonus = 10;
+            config.VenueSoldOutBonus = 3;
+            config.VenueFirstSellOutBonus = 10;
             config.VenueEmptyPenalty = 15;
             return config;
         }

@@ -241,6 +241,12 @@ namespace ConcertHype.Model
         public static bool SoldOut(ShowSetup setup) => setup.CapacityFilled >= SoldOutShare;
 
         /// <summary>
+        /// What a sell-out is worth every song: more the first time a venue of this type sells out.
+        /// </summary>
+        public static double SellOutBonus(ShowSetup setup, Config config) =>
+            setup.SoldOutBefore ? config.VenueSoldOutBonus : config.VenueFirstSellOutBonus;
+
+        /// <summary>
         /// The hype every song gets from the venue, whatever the performance: a bonus when it's sold out, nothing when
         /// it's nearly full, and a penalty that grows with the empty seats.
         /// </summary>
@@ -248,7 +254,7 @@ namespace ConcertHype.Model
         {
             double filled = Clamp(setup.CapacityFilled, 0, 1), neutral = config.VenueNeutralShare;
             if (filled >= SoldOutShare)
-                return config.VenueSoldOutBonus;
+                return SellOutBonus(setup, config);
             if (filled >= neutral || neutral <= 0)
                 return 0;
             return -config.VenueEmptyPenalty * (neutral - filled) / neutral;
@@ -325,7 +331,7 @@ namespace ConcertHype.Model
         {
             Config config = state.Config;
             double h = state.Hype;
-            result.BaseChange = config.KPerf * (weighted - config.Par);
+            result.BaseChange = config.KPerf * (weighted - config.HypePar);
             result.Matches = Matches(state.Setup, state.SongIndex);
             result.Flow = config.FlowPoints * Count(result.Matches);
             result.Crowd = CrowdAppeal(state, song, lineup);

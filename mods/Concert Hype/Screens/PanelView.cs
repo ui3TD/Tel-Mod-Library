@@ -403,8 +403,9 @@ namespace ConcertHype
         }
 
         /// <summary>
-        /// The seats filled, then what the venue does to every song: its bonus when sold out, what selling the last
-        /// seats would bring when it's nearly full, or what the empty seats cost.
+        /// The seats filled, then what the venue does to every song: its bonus when sold out (more the first time at
+        /// this type of venue), what selling the last seats would bring when it's nearly full, or what the empty seats
+        /// cost.
         /// </summary>
         /// <summary>
         /// The changed lineup's factor on the rows above: green when it enlarges a gain, red when it enlarges a loss,
@@ -444,10 +445,10 @@ namespace ConcertHype
                 ? Texts.Format("CONCERTHYPE__VENUE_TIP", Math.Round(setup.Seats * filled).ToString("N0", CultureInfo.InvariantCulture),
                     setup.Seats.ToString("N0", CultureInfo.InvariantCulture), Whole(100 * filled))
                 : Texts.Format("CONCERTHYPE__VENUE_TIP_SHARE", Whole(100 * filled));
-            string bonus = config.VenueSoldOutBonus.ToString("0.#", CultureInfo.InvariantCulture);
-            string effect = Engine.SoldOut(setup) ? Texts.Format("CONCERTHYPE__VENUE_SOLD_OUT", bonus)
+            string bonus = Engine.SellOutBonus(setup, config).ToString("0.#", CultureInfo.InvariantCulture);
+            string effect = Engine.SoldOut(setup) ? Texts.Format(setup.SoldOutBefore ? "CONCERTHYPE__VENUE_SOLD_OUT" : "CONCERTHYPE__VENUE_FIRST_SOLD_OUT", bonus)
                 : venue < 0 ? Texts.Format("CONCERTHYPE__VENUE_EMPTY", (-venue).ToString("0.#", CultureInfo.InvariantCulture))
-                : Texts.Format("CONCERTHYPE__VENUE_ALMOST", bonus);
+                : Texts.Format(setup.SoldOutBefore ? "CONCERTHYPE__VENUE_ALMOST" : "CONCERTHYPE__VENUE_ALMOST_FIRST", bonus);
             return Lines(seats, effect);
         }
 

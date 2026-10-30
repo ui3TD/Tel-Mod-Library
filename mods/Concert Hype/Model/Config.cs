@@ -33,7 +33,16 @@ namespace ConcertHype.Model
         public double FanWeightFloor = 0.25;
         public double[] RowWeights = { 1.5, 1.0, 0.6, 0.6, 0.6 };
         public double KPerf = 0.5;
+        /// <summary>
+        /// The roll a success needs, and the one a song's energy cost is measured from.
+        /// </summary>
         public double Par = 60;
+
+        /// <summary>
+        /// The lineup's weighted roll that leaves the hype as it is: above it the performance adds hype, below it takes
+        /// some away.
+        /// </summary>
+        public double HypePar = 90;
 
         /// <summary>
         /// Production: hype points for how the song suits the lineup's fans (appealPoints x crowd appeal, kept within
@@ -52,11 +61,13 @@ namespace ConcertHype.Model
         public double QualityNeededHigh = 1;
 
         /// <summary>
-        /// Hype points every song gets from the venue, gain or loss: venueSoldOutBonus when it's sold out, nothing from
-        /// venueNeutralShare of the seats filled up to the last unsold seat, and below that a penalty growing in a
-        /// straight line to venueEmptyPenalty when it's empty.
+        /// Hype points every song gets from the venue, gain or loss: when it's sold out, venueFirstSellOutBonus the
+        /// first time a venue of its type sells out and venueSoldOutBonus after that; nothing from venueNeutralShare of
+        /// the seats filled up to the last unsold seat; below that a penalty growing in a straight line to
+        /// venueEmptyPenalty when it's empty.
         /// </summary>
-        public double VenueSoldOutBonus = 10;
+        public double VenueSoldOutBonus = 3;
+        public double VenueFirstSellOutBonus = 10;
         public double VenueNeutralShare = 0.9;
         public double VenueEmptyPenalty = 15;
 

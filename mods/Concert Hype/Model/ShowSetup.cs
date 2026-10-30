@@ -141,6 +141,11 @@ namespace ConcertHype.Model
         public int Seats;
 
         /// <summary>
+        /// An earlier concert at a venue of this type sold out, so a sell-out now isn't the first.
+        /// </summary>
+        public bool SoldOutBefore;
+
+        /// <summary>
         /// Production quality, 0 to 1.
         /// </summary>
         public double Production = 0.5;

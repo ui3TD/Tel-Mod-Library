@@ -17,7 +17,9 @@ namespace ConcertHype.Tests
             return new Config
             {
                 RollSigma = 0, PBase = 0, PRoll = 0, PTired = 0, RowEase = new double[] { 0 }, SkillBase = 0, SkillScale = 1,
-                AppealPoints = 0, FlowPoints = 0, QualityBonus = 0,
+                AppealPoints = 0, FlowPoints = 0, QualityBonus = 0, VenueFirstSellOutBonus = 0,
+                // The rule tests' hand-worked numbers count from this hype par
+                HypePar = 60,
                 VenueSoldOutBonus = 0, VenueEmptyPenalty = 0,
             };
         }

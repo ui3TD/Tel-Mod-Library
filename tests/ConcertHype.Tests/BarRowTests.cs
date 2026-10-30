@@ -178,9 +178,9 @@ namespace ConcertHype.Tests
             Assert.Equal(Tone.Good, gain.Tone);
             Assert.False(gain.HasRange);
 
-            session.State.Config.Par = 200;   // nobody reaches it
+            session.State.Config.HypePar = 200;   // nobody reaches it
             Assert.Equal(Tone.Bad, PanelView.Build(session).Novelty.Tone);
-            session.State.Config.Par = 60;
+            session.State.Config.HypePar = 90;
 
             // Song 2's own senbatsu all perform: nothing changed
             new FakeStage(concert).PlaySong(session);
@@ -209,9 +209,13 @@ namespace ConcertHype.Tests
         {
             Config config = new();
             ShowSetup setup = new() { Seats = 10000, CapacityFilled = 1 };
-            Assert.Equal("10,000 of 10,000 seats filled (100%).\nSold out: every song gains 10 hype.", PanelView.VenueTip(setup, config));
+            Assert.Equal("10,000 of 10,000 seats filled (100%).\nFirst sell-out at this venue: every song gains 10 hype.", PanelView.VenueTip(setup, config));
+            setup.SoldOutBefore = true;
+            Assert.Equal("10,000 of 10,000 seats filled (100%).\nSold out: every song gains 3 hype.", PanelView.VenueTip(setup, config));
             setup.CapacityFilled = 0.92;
-            Assert.Equal("9,200 of 10,000 seats filled (92%).\nSell the last seats for +10 hype every song.", PanelView.VenueTip(setup, config));
+            Assert.Equal("9,200 of 10,000 seats filled (92%).\nSell the last seats for +3 hype every song.", PanelView.VenueTip(setup, config));
+            setup.SoldOutBefore = false;
+            Assert.Equal("9,200 of 10,000 seats filled (92%).\nSell the last seats for +10 hype every song: the first sell-out at this venue.", PanelView.VenueTip(setup, config));
             setup.CapacityFilled = 0.5;
             Assert.Equal("5,000 of 10,000 seats filled (50%).\nEmpty seats cost every song 6.7 hype.", PanelView.VenueTip(setup, config));
             setup.Seats = 0;
@@ -219,7 +223,7 @@ namespace ConcertHype.Tests
 
             ShowSession session = ThreeSongs(out _);
             Assert.Equal(1500, session.State.Setup.Seats);  // the fixture's concert hall
-            Assert.Equal("1,500 of 1,500 seats filled (100%).\nSold out: every song gains 10 hype.", PanelView.Build(session).Venue.Tip);
+            Assert.Equal("1,500 of 1,500 seats filled (100%).\nFirst sell-out at this venue: every song gains 10 hype.", PanelView.Build(session).Venue.Tip);
         }
 
         [Fact]
@@ -266,7 +270,7 @@ namespace ConcertHype.Tests
         public void OnASongThatLosesHype_TheVenueAndProductionStillCount()
         {
             ShowSession session = ThreeSongs(out _);
-            session.State.Config.Par = 200;   // nobody reaches it
+            session.State.Config.HypePar = 200;   // nobody reaches it
             SongPreview preview = session.Preview();
             Assert.True(preview.Steps.BaseChange < 0);
             PanelView view = PanelView.Build(session);
@@ -275,7 +279,7 @@ namespace ConcertHype.Tests
             // The sold-out bonus holds on a bad song as well (shrunk with the rest where the hype hits its floor)
             Assert.Equal(preview.Parts.Venue, view.Venue.Amount, 9);
             Assert.True(view.Venue.Amount > 0);
-            Assert.EndsWith("\nSold out: every song gains 10 hype.", view.Venue.Tip);
+            Assert.EndsWith("\nFirst sell-out at this venue: every song gains 10 hype.", view.Venue.Tip);
             Assert.True(view.Performance.Amount < 0);
             Assert.Equal(Tone.Bad, view.Total.Tone);
         }

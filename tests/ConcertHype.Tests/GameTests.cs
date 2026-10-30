@@ -211,6 +211,39 @@ namespace ConcertHype.Tests
         }
 
         [Fact]
+        public void ASellOut_IsTheFirst_UnlessAnEarlierFinishedConcertAtThisVenueTypeSoldOut()
+        {
+            _concert concert = GameFixture.Concert(GameFixture.Single("S", GameFixture.Idol("A")));
+            _concert Earlier(SEvent_Concerts._venue venue, float attendance, SEvent_Tour.tour._status status)
+            {
+                _concert earlier = GameFixture.Concert(GameFixture.Single("E", GameFixture.Idol("B")));
+                earlier.Venue = venue;
+                earlier.ProjectedValues.Actual_Attendance = attendance;
+                earlier.Status = status;
+                return earlier;
+            }
+            List<_concert> saved = SEvent_Concerts.Concerts.ToList();
+            try
+            {
+                SEvent_Concerts.Concerts.Clear();
+                SEvent_Concerts.Concerts.Add(concert);
+                Assert.False(GameReader.Read(concert, new Config()).Setup.SoldOutBefore);
+                // Not this venue type, not sold out, or not finished: still the first
+                SEvent_Concerts.Concerts.Add(Earlier(SEvent_Concerts._venue.club, 1f, SEvent_Tour.tour._status.finished));
+                SEvent_Concerts.Concerts.Add(Earlier(SEvent_Concerts._venue.concertHall, 0.97f, SEvent_Tour.tour._status.finished));
+                SEvent_Concerts.Concerts.Add(Earlier(SEvent_Concerts._venue.concertHall, 1f, SEvent_Tour.tour._status.working));
+                Assert.False(GameReader.Read(concert, new Config()).Setup.SoldOutBefore);
+                SEvent_Concerts.Concerts.Add(Earlier(SEvent_Concerts._venue.concertHall, 1f, SEvent_Tour.tour._status.finished));
+                Assert.True(GameReader.Read(concert, new Config()).Setup.SoldOutBefore);
+            }
+            finally
+            {
+                SEvent_Concerts.Concerts.Clear();
+                SEvent_Concerts.Concerts.AddRange(saved);
+            }
+        }
+
+        [Fact]
         public void AConcertQualifies_WhenTheSwitchIsOnAndEveryItemIsASong()
         {
             _concert concert = GameFixture.Concert(GameFixture.Single("S", GameFixture.Idol("A")));
@@ -270,7 +303,7 @@ namespace ConcertHype.Tests
             _concert concert = ThreeSongs();
             concert.Hype = 50;
             ShowSession session = GameFixture.Begin(concert);
-            session.State.Config.Par = 0;   // a huge gain
+            session.State.Config.HypePar = 0;   // a huge gain
             FakeStage stage = new(concert);
             session.BeforeSong(stage);
             double change = session.Pending.Change;

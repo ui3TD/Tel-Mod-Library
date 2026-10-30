@@ -52,6 +52,8 @@ namespace ConcertHype
             ["CONCERTHYPE__VENUE_TIP_SHARE"] = "The venue is {0}% full.",
             ["CONCERTHYPE__VENUE_SOLD_OUT"] = "Sold out: every song gains {0} hype.",
             ["CONCERTHYPE__VENUE_ALMOST"] = "Sell the last seats for +{0} hype every song.",
+            ["CONCERTHYPE__VENUE_FIRST_SOLD_OUT"] = "First sell-out at this venue: every song gains {0} hype.",
+            ["CONCERTHYPE__VENUE_ALMOST_FIRST"] = "Sell the last seats for +{0} hype every song: the first sell-out at this venue.",
             ["CONCERTHYPE__VENUE_EMPTY"] = "Empty seats cost every song {0} hype.",
             ["CONCERTHYPE__PERF_CENTER"] = "Center: {0}% success",
             ["CONCERTHYPE__PERF_ROW"] = "Row {0}: {1}% success",

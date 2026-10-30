@@ -64,6 +64,7 @@ namespace ConcertHype
                 AverageSongAppeal = AverageReleaseAppeal(),
                 CapacityFilled = Engine.Clamp(concert.ProjectedValues.Actual_Attendance, 0, 1),
                 Seats = Seats(concert),
+                SoldOutBefore = SoldOutBefore(concert),
                 Production = (concert.GetParam(SEvent_Concerts._concert._progressable._type.production)?.val ?? 0) / 100.0,
                 HypeFloor = concert.SSK != null ? SEvent_SSK.GetConcertMinHype(concert.SSK) : 0,
                 StartingHype = config.StartingHype,
@@ -87,6 +88,26 @@ namespace ConcertHype
             {
                 Log.WarnOnce("seats", "couldn't read the venue's capacity; the Venue tip leaves out the seats: " + ex.Message);
                 return 0;
+            }
+        }
+
+        /// <summary>
+        /// An earlier finished concert at a venue of this type sold out; false, logged once, when the concerts can't be
+        /// read.
+        /// </summary>
+        private static bool SoldOutBefore(SEvent_Concerts._concert concert)
+        {
+            try
+            {
+                return (SEvent_Concerts.Concerts ?? new List<SEvent_Concerts._concert>()).Any(earlier =>
+                    earlier != null && !ReferenceEquals(earlier, concert) && earlier.Status == SEvent_Tour.tour._status.finished
+                    && earlier.Venue == concert.Venue && earlier.ProjectedValues != null
+                    && earlier.ProjectedValues.Actual_Attendance >= Engine.SoldOutShare);
+            }
+            catch (Exception ex)
+            {
+                Log.WarnOnce("sold out before", "couldn't read the earlier concerts; a sell-out counts as the first: " + ex.Message);
+                return false;
             }
         }
 

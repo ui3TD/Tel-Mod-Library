@@ -107,9 +107,9 @@ namespace ConcertHype
         private const float BlockWidth = 410f, MinRowHeight = 40f, MaxRowHeight = 64f, TitleLine = 28f, SeparatorGap = 10f;
 
         /// <summary>
-        /// The value's font is at most this share of the title line's height.
+        /// The value's font is at most this share of the title line's height, so its digits stay clear of the bar.
         /// </summary>
-        private const float ValueShare = 1.15f;
+        private const float ValueShare = 1f;
 
         /// <summary>
         /// How wide the "lost" and "added" labels at the bars' ends are.

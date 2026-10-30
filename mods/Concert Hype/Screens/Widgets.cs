@@ -309,7 +309,7 @@ namespace ConcertHype
         /// <summary>
         /// The space between the title line and the bar, and the caption's line under the bar.
         /// </summary>
-        public const float BarGap = 4f, CaptionHeight = 16f;
+        public const float BarGap = 6f, CaptionHeight = 16f;
 
         private const float ZeroReach = 3f;
         private static readonly Color RangeColor = new Color(1f, 1f, 1f, 0.22f);

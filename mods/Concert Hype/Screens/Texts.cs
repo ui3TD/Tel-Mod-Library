@@ -60,7 +60,7 @@ namespace ConcertHype
             ["CONCERTHYPE__PERF_WEIGHTS"] = "Front rows and idols with more fans count most.",
             ["CONCERTHYPE__PROD_QUALITY"] = "Production quality {0}% (this venue needs {1}%): {2}",
             ["CONCERTHYPE__PROD_APPEAL"] = "Song's appeal to these idols' fans: {0}",
-            ["CONCERTHYPE__NOVELTY_TITLE"] = "Lineup Novelty ({0}%):",
+            ["CONCERTHYPE__NOVELTY_TITLE"] = "Lineup Novelty:",
             ["CONCERTHYPE__NOVELTY_TIP"] = "{0}% of the places changed; the center counts most.",
             ["CONCERTHYPE__PROD_MOOD"] = "Hype {0}%: {1}.",
             ["CONCERTHYPE__PROD_FLOW"] = "Same {0} as the last song: {1}",

@@ -146,8 +146,7 @@ namespace ConcertHype.Tests
             SongPreview preview = session.Preview();
 
             HypeParts parts = preview.Parts;
-            string novelty = Math.Round(100 * preview.Novelty).ToString(CultureInfo.InvariantCulture);
-            Assert.Equal(new[] { "Venue:", "Performance:", "Production:", $"Lineup Novelty ({novelty}%):", "Expected Hype:" }, view.Rows.Select(r => r.Title));
+            Assert.Equal(new[] { "Venue:", "Performance:", "Production:", "Lineup Novelty:", "Expected Hype:" }, view.Rows.Select(r => r.Title));
             Assert.Equal(new[] { parts.Venue, parts.Performance, parts.Production, double.NaN, preview.Change }, view.Rows.Select(r => r.Amount));
             BarRow[] bars = { view.Venue, view.Performance, view.Production };
             // The three bars add up to their own sum; the novelty factor multiplies it into the total
@@ -188,7 +187,7 @@ namespace ConcertHype.Tests
             Assert.Equal(0, session.Preview().Novelty);
             BarRow none = PanelView.Build(session).Novelty;
             Assert.Equal(("\u00D71", Tone.Plain), (none.Value, none.Tone));
-            Assert.Equal("Lineup Novelty (0%):", none.Title);
+            Assert.Equal("Lineup Novelty:", none.Title);
         }
 
         [Fact]

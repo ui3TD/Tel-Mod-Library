@@ -205,7 +205,7 @@
 	},
 	{
 		id: "CONCERTHYPE__NOVELTY_TITLE",
-		text: "Lineup Novelty ({0}%):"
+		text: "Lineup Novelty:"
 	},
 	{
 		id: "CONCERTHYPE__NOVELTY_TIP",

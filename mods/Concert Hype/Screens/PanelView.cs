@@ -418,7 +418,7 @@ namespace ConcertHype
             string shownFactor = factor.ToString("0.##", CultureInfo.InvariantCulture);
             return new BarRow
             {
-                Title = Texts.Format("CONCERTHYPE__NOVELTY_TITLE", Whole(100 * preview.Novelty)),
+                Title = Texts.Get("CONCERTHYPE__NOVELTY_TITLE"),
                 Value = "\u00D7" + shownFactor,
                 Tone = shownFactor == "1" ? Tone.Plain : loss ? Tone.Bad : Tone.Good,
                 Amount = double.NaN,

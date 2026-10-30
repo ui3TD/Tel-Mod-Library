@@ -24,7 +24,7 @@ namespace ConcertHype.Tests
             Assert.Equal(new double[] { 30, 0.7, 15, 10, 0.7 }, new[] { config.SkillBase, config.SkillScale, config.KSenbatsu, config.RollSigma, config.EnergyMinFactor });
             Assert.Equal(new double[] { 0, 4, 8, 12, 16 }, config.RowEase);
             Assert.Equal(new double[] { 0.3, 0.8, 1.2 }, new[] { config.KCrowd, config.CrowdMin, config.CrowdMax });
-            Assert.Equal(new double[] { 50, 0.25, 0.5, 60 }, new[] { config.StartingHype, config.FanWeightFloor, config.KPerf, config.Par });
+            Assert.Equal(new double[] { 50, 0.25, 0.5, 60, 1 }, new[] { config.StartingHype, config.FanWeightFloor, config.KPerf, config.Par, config.FlowBonus });
             Assert.Equal(new double[] { 20, 1.5, 0.5 }, new[] { config.NoveltyBlendBand, config.AmpHigh, config.AmpLow });
             Assert.Equal(new double[] { 1.5, 1.0, 0.6, 0.6, 0.6 }, config.RowWeights);
             Assert.Equal(new double[] { 8, 1, 10, 30 }, new[] { config.EnergyCostBase, config.KRollCost, config.BenchRecovery, config.ReturnThreshold });

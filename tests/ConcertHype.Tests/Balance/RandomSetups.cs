@@ -13,10 +13,14 @@ namespace ConcertHype.Tests.Balance
     public static class RandomSetups
     {
         private static readonly string[] Genres = { "Pop", "Rock", "EDM", "Enka", "Metal", "Hip Hop" };
+        private static readonly string[] Lyrics = { "Love", "Friendship", "Heartbreak", "Dreams" };
+        private static readonly string[] Choreographies = { "Cute", "Cool", "Sexy", "Energetic" };
 
         public static ShowSetup Make(int seed, int members = 12, int songs = 10)
         {
             Random random = new(seed);
+            // Its own draws, so the rest of a setup stays as it was before songs had lyrics and choreography
+            Random sides = new(seed + 7919);
             ShowSetup setup = new() { CapacityFilled = 1, Production = 0.5, StartingHype = 50 };
             List<double> danceVocal = new();
             for (int m = 0; m < members; m++)
@@ -41,6 +45,8 @@ namespace ConcertHype.Tests.Balance
                 {
                     Title = "Song " + s,
                     Genre = Genres[random.Next(Genres.Length)],
+                    Lyrics = Lyrics[sides.Next(Lyrics.Length)],
+                    Choreography = Choreographies[sides.Next(Choreographies.Length)],
                     Appeal = Enumerable.Range(0, FanTypes.Count).Select(_ => 0.6 * (random.NextDouble() - 0.5) * 3).ToArray(),
                 };
                 for (int position = 0; position < size; position++)

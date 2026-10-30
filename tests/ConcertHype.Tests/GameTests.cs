@@ -197,7 +197,10 @@ namespace ConcertHype.Tests
             concert.ProjectedValues.Actual_Attendance = 1.3f;
             ShowSetup setup = GameReader.Read(concert, new Config { StartingHype = 40 }).Setup;
             Assert.Equal(1, setup.CapacityFilled);
+            Assert.Equal(SEvent_Concerts.GetVenueCapacity(SEvent_Concerts._venue.concertHall), setup.Seats);
+            Assert.True(setup.Seats > 0);
             Assert.Equal(0.5, setup.Production);
+            Assert.Equal(("Pop", "Love", "Cute"), (setup.Songs[0].Genre, setup.Songs[0].Lyrics, setup.Songs[0].Choreography));
             Assert.Equal(0, setup.HypeFloor);
             Assert.Equal(40, setup.StartingHype);
             Assert.Equal(300, setup.Members[0].Fans);

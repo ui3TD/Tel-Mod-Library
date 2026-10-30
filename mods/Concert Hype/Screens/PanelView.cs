@@ -350,7 +350,7 @@ namespace ConcertHype
                     string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
                     view.Expected = Change("CONCERTHYPE__EXPECTED_TITLE", preview.Change);
                     view.Expected.Tip = Texts.Format("CONCERTHYPE__EXPECTED_TIP", Signed(preview.Low) + "%", Signed(preview.High) + "%", Whole(h), Texts.Get(mood))
-                        + " " + Texts.Format("CONCERTHYPE__CROWD_TIP", preview.CrowdMultiplier.ToString("0.##", CultureInfo.InvariantCulture));
+                        + " " + Texts.Format("CONCERTHYPE__CROWD_TIP", preview.Steps.CrowdMultiplier.ToString("0.##", CultureInfo.InvariantCulture));
                     view.Changed = new Readout
                     {
                         Title = Texts.Get("CONCERTHYPE__CHANGED_TITLE"),

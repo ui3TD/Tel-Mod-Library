@@ -229,9 +229,37 @@ namespace ConcertHype.Model
             return total <= 0 ? 0 : changed / total;
         }
 
-        public static double ShowMultiplier(ShowSetup setup, Config config) =>
-            (config.CapacityFloor + (1 - config.CapacityFloor) * Clamp(setup.CapacityFilled, 0, 1))
-            * (config.ProductionFloor + config.ProductionRange * Clamp(setup.Production, 0, 1));
+        /// <summary>
+        /// A venue short of full makes gains smaller.
+        /// </summary>
+        public static double VenueMultiplier(ShowSetup setup, Config config) =>
+            config.CapacityFloor + (1 - config.CapacityFloor) * Clamp(setup.CapacityFilled, 0, 1);
+
+        public static double QualityMultiplier(ShowSetup setup, Config config) =>
+            config.ProductionFloor + config.ProductionRange * Clamp(setup.Production, 0, 1);
+
+        /// <summary>
+        /// What a song of the setlist shares with the song before it; nothing for the first song. Empty titles never match.
+        /// </summary>
+        public static SongMatch Matches(ShowSetup setup, int songIndex)
+        {
+            if (songIndex <= 0 || songIndex >= setup.Songs.Count)
+                return SongMatch.None;
+            Song song = setup.Songs[songIndex], before = setup.Songs[songIndex - 1];
+            SongMatch matches = SongMatch.None;
+            if (Same(song.Genre, before.Genre))
+                matches |= SongMatch.Genre;
+            if (Same(song.Lyrics, before.Lyrics))
+                matches |= SongMatch.Lyrics;
+            if (Same(song.Choreography, before.Choreography))
+                matches |= SongMatch.Choreography;
+            return matches;
+        }
+
+        private static bool Same(string a, string b) => !string.IsNullOrEmpty(a) && a == b;
+
+        public static int Count(SongMatch matches) =>
+            ((matches & SongMatch.Genre) != 0 ? 1 : 0) + ((matches & SongMatch.Lyrics) != 0 ? 1 : 0) + ((matches & SongMatch.Choreography) != 0 ? 1 : 0);
 
         private static double Weight(ShowState state, Song song, int slot, int member) =>
             (member < 0 ? 1 : state.FanWeight[member]) * state.Config.RowWeight(song.Slots[slot].Row);
@@ -252,8 +280,9 @@ namespace ConcertHype.Model
         }
 
         /// <summary>
-        /// The hype steps from a weighted performance: base change, show and crowd multipliers on gains,
-        /// then novelty amplification by hype band, then clamping. Fills the result's step fields.
+        /// The hype steps from a weighted performance: base change, flow from the song before, venue, quality and
+        /// crowd multipliers on gains, then novelty amplification by hype band, then clamping. Fills the result's step
+        /// fields.
         /// </summary>
         private static void HypeSteps(ShowState state, Song song, int[] lineup, double novelty, double weighted, SongResult result)
         {
@@ -261,13 +290,19 @@ namespace ConcertHype.Model
             double h = state.Hype;
             double d = config.KPerf * (weighted - config.Par);
             result.BaseChange = d;
-            result.ShowMultiplier = 1;
+            result.Matches = Matches(state.Setup, state.SongIndex);
+            result.Flow = config.FlowBonus * Count(result.Matches);
+            d += result.Flow;
+            result.VenueMultiplier = 1;
+            result.QualityMultiplier = 1;
             result.Crowd = CrowdAppeal(state, song, lineup);
             result.CrowdMultiplier = CrowdMultiplier(config, result.Crowd);
-            if (d > 0)
+            result.Gain = d > 0;
+            if (result.Gain)
             {
-                result.ShowMultiplier = ShowMultiplier(state.Setup, config);
-                d *= result.ShowMultiplier * result.CrowdMultiplier;
+                result.VenueMultiplier = VenueMultiplier(state.Setup, config);
+                result.QualityMultiplier = QualityMultiplier(state.Setup, config);
+                d *= result.VenueMultiplier * result.QualityMultiplier * result.CrowdMultiplier;
             }
 
             double band = config.NoveltyBlendBand;
@@ -308,16 +343,47 @@ namespace ConcertHype.Model
             preview.Weighted = Weighted(state, song, lineup, rolls);
             double spread = weights <= 0 ? 0 : state.Config.RollSigma * Math.Sqrt(squares) / weights;
 
+            preview.Steps = new SongResult { SongIndex = state.SongIndex, Title = song.Title };
+            HypeSteps(state, song, lineup, preview.Novelty, preview.Weighted, preview.Steps);
+            preview.Change = preview.Steps.Change;
+            preview.Parts = Parts(preview.Steps);
             SongResult steps = new SongResult();
-            HypeSteps(state, song, lineup, preview.Novelty, preview.Weighted, steps);
-            preview.Change = steps.Change;
-            preview.Crowd = steps.Crowd;
-            preview.CrowdMultiplier = steps.CrowdMultiplier;
             HypeSteps(state, song, lineup, preview.Novelty, preview.Weighted - spread, steps);
             preview.Low = steps.Change;
             HypeSteps(state, song, lineup, preview.Novelty, preview.Weighted + spread, steps);
             preview.High = steps.Change;
             return preview;
+        }
+
+        /// <summary>
+        /// The song's change split by what made it, taking the hype steps in their order: the performance against par,
+        /// the flow, what the venue, quality and crowd multipliers add to a gain, what novelty adds, then the floor and
+        /// cap, which shrink every part alike.
+        /// </summary>
+        public static HypeParts Parts(SongResult steps)
+        {
+            double performance = steps.BaseChange;
+            double flowed = performance + steps.Flow;
+            double venue = flowed * steps.VenueMultiplier;
+            double quality = venue * steps.QualityMultiplier;
+            double appeal = steps.Gain ? quality * steps.CrowdMultiplier : quality;
+            double amplified = appeal * steps.Amplification;
+            HypeParts parts = new HypeParts();
+            if (amplified == 0)
+            {
+                // Nothing to share out: whatever the floor or cap made of it counts as the performance's
+                parts.Performance = steps.Change;
+                return parts;
+            }
+            double share = steps.Change / amplified;
+            parts.Performance = share * performance;
+            parts.Flow = share * (flowed - performance);
+            parts.Venue = share * (venue - flowed);
+            parts.Quality = share * (quality - venue);
+            parts.Appeal = share * (appeal - quality);
+            parts.Novelty = share * (amplified - appeal);
+            parts.Production = parts.Flow + parts.Quality + parts.Appeal + parts.Novelty;
+            return parts;
         }
 
         /// <summary>

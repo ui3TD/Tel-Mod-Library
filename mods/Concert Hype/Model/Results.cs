@@ -1,7 +1,49 @@
+using System;
 using System.Collections.Generic;
 
 namespace ConcertHype.Model
 {
+    /// <summary>
+    /// What a song shares with the song before it.
+    /// </summary>
+    [Flags]
+    public enum SongMatch
+    {
+        None = 0,
+        Genre = 1,
+        Lyrics = 2,
+        Choreography = 4,
+    }
+
+    /// <summary>
+    /// A song's hype change split by what made it, step by step through the hype rules, so the parts add up to the
+    /// change. When the hype's floor or cap cuts the change, every part shrinks alike.
+    /// </summary>
+    public sealed class HypeParts
+    {
+        /// <summary>
+        /// The lineup's performance against par.
+        /// </summary>
+        public double Performance;
+
+        /// <summary>
+        /// What a venue short of full takes off a gain; 0 or less.
+        /// </summary>
+        public double Venue;
+
+        /// <summary>
+        /// Flow, quality, appeal and novelty together.
+        /// </summary>
+        public double Production;
+
+        public double Flow;
+        public double Quality;
+        public double Appeal;
+        public double Novelty;
+
+        public double Total => Performance + Venue + Production;
+    }
+
     /// <summary>
     /// The parts of one idol's roll in one slot, without the random part.
     /// </summary>
@@ -46,10 +88,11 @@ namespace ConcertHype.Model
         public double Weighted;
 
         /// <summary>
-        /// How the song suits the lineup's fans, and the multiplier that gives its hype gains.
+        /// The hype steps at the expected performance, and the change they make split by what made it.
         /// </summary>
-        public double Crowd;
-        public double CrowdMultiplier = 1;
+        public SongResult Steps;
+
+        public HypeParts Parts;
 
         /// <summary>
         /// The expected hype change, and the change one standard deviation of the lineup's performance either side.
@@ -83,11 +126,29 @@ namespace ConcertHype.Model
         public double HypeBefore;
         public double Weighted;
         public double BaseChange;
-        public double ShowMultiplier = 1;
+
+        /// <summary>
+        /// What the song shares with the song before it, and the hype points that adds before the multipliers.
+        /// </summary>
+        public SongMatch Matches;
+
+        public double Flow;
+
+        /// <summary>
+        /// The change before the multipliers is a gain: the venue, quality and crowd multipliers apply.
+        /// </summary>
+        public bool Gain;
+
+        /// <summary>
+        /// As applied: 1 when the change isn't a gain.
+        /// </summary>
+        public double VenueMultiplier = 1;
+
+        public double QualityMultiplier = 1;
         public double Crowd;
 
         /// <summary>
-        /// Applied to gains only, as the show multiplier.
+        /// How the song suits the lineup's fans; applied to gains only.
         /// </summary>
         public double CrowdMultiplier = 1;
         public double Novelty;

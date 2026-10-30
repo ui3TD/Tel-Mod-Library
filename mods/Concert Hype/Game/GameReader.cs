@@ -63,6 +63,7 @@ namespace ConcertHype
                 Songs = show.Items.Select(item => ReadSong(show, item)).ToList(),
                 AverageSongAppeal = AverageReleaseAppeal(),
                 CapacityFilled = Engine.Clamp(concert.ProjectedValues.Actual_Attendance, 0, 1),
+                Seats = Seats(concert),
                 Production = (concert.GetParam(SEvent_Concerts._concert._progressable._type.production)?.val ?? 0) / 100.0,
                 HypeFloor = concert.SSK != null ? SEvent_SSK.GetConcertMinHype(concert.SSK) : 0,
                 StartingHype = config.StartingHype,
@@ -71,6 +72,22 @@ namespace ConcertHype
             show.Setup = setup;
             show.Groups = ReadGroups(setup);
             return show;
+        }
+
+        /// <summary>
+        /// The venue's capacity as the game gives it; 0, logged once, when it can't.
+        /// </summary>
+        private static int Seats(SEvent_Concerts._concert concert)
+        {
+            try
+            {
+                return Math.Max(0, concert.GetCapacity());
+            }
+            catch (Exception ex)
+            {
+                Log.WarnOnce("seats", "couldn't read the venue's capacity; the Venue tip leaves out the seats: " + ex.Message);
+                return 0;
+            }
         }
 
         private static List<GroupChoice> ReadGroups(ShowSetup setup)
@@ -175,6 +192,8 @@ namespace ConcertHype
             {
                 Title = single?.title ?? "",
                 Genre = single?.genre?.title ?? "",
+                Lyrics = single?.lyrics?.title ?? "",
+                Choreography = single?.choreography?.title ?? "",
                 Appeal = ReleaseAppeal(single),
             };
 

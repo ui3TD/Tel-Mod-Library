@@ -160,18 +160,104 @@ namespace ConcertHype.Tests
             Assert.Equal(1, state.EmptyFills);
         }
 
+        private static Config Flowing()
+        {
+            Config config = Shows.Quiet();
+            config.FlowBonus = 1;
+            return config;
+        }
+
         [Fact]
-        public void ARepeatedGenre_AddsNoHype()
+        public void EachPartShared_WithTheSongBefore_AddsTheFlowBonus_BeforeTheMultipliers()
         {
             ShowSetup setup = Shows.Setup(skill: 45);
             setup.Songs[0].Genre = setup.Songs[1].Genre = "Pop";
-            ShowState state = Shows.Start(setup);
-            PlayOriginals(state);
+            setup.Songs[0].Lyrics = setup.Songs[1].Lyrics = "Love";
+            setup.Songs[0].Choreography = "Cute";
+            setup.Songs[1].Choreography = "Cool";
+            setup.CapacityFilled = 0.5;
+            ShowState state = Shows.Start(setup, Flowing());
+
+            SongResult first = PlayOriginals(state);
+            Assert.Equal(SongMatch.None, first.Matches);
+            Assert.Equal(0, first.Change, 9);
             // Fresh again, so the second song rolls par as well
             for (int m = 0; m < state.Energy.Length; m++)
                 state.Energy[m] = 100;
+            SongResult second = PlayOriginals(state);
+            Assert.Equal(SongMatch.Genre | SongMatch.Lyrics, second.Matches);
+            Assert.Equal(2, second.Flow);
+            Assert.True(second.Gain);
+            // A gain: the half-full venue (x0.75) scales the flow as well
+            Assert.Equal(2 * 0.75, second.Change, 9);
+        }
+
+        [Fact]
+        public void Matches_NeedTheSameTitle_NotAnEmptyOne_AndTheFirstSongHasNone()
+        {
+            ShowSetup setup = Shows.Setup(songs: 3);
+            setup.Songs[1].Genre = setup.Songs[0].Genre;
+            setup.Songs[1].Choreography = setup.Songs[2].Choreography = "Cool";
+            Assert.Equal("", setup.Songs[1].Lyrics);
+
+            Assert.Equal(SongMatch.None, Engine.Matches(setup, 0));
+            Assert.Equal(SongMatch.Genre, Engine.Matches(setup, 1));
+            Assert.Equal(SongMatch.Choreography, Engine.Matches(setup, 2));
+            Assert.Equal(SongMatch.None, Engine.Matches(setup, 3));
+            Assert.Equal(3, Engine.Count(SongMatch.Genre | SongMatch.Lyrics | SongMatch.Choreography));
+            Assert.Equal(0, Engine.Count(SongMatch.None));
+        }
+
+        [Fact]
+        public void ATalkBreak_BetweenTwoSongs_KeepsTheirFlow()
+        {
+            ShowSetup setup = Shows.Setup(skill: 45);
+            setup.Songs[0].Genre = setup.Songs[1].Genre = "Pop";
+            ShowState state = Shows.Start(setup, Flowing());
             PlayOriginals(state);
-            Assert.Equal(50, state.Hype, 9);
+            Engine.CallMc(state, 5);
+            Assert.Equal(1, Engine.Preview(state, Engine.DefaultLineup(state)).Steps.Flow);
+        }
+
+        /// <summary>
+        /// The hype rules before the flow came back and the show multiplier was split in two.
+        /// </summary>
+        private static double OldChange(Config c, ShowSetup s, double h, double weighted, double crowd, double novelty)
+        {
+            double d = c.KPerf * (weighted - c.Par);
+            if (d > 0)
+            {
+                double show = (c.CapacityFloor + (1 - c.CapacityFloor) * Engine.Clamp(s.CapacityFilled, 0, 1))
+                    * (c.ProductionFloor + c.ProductionRange * Engine.Clamp(s.Production, 0, 1));
+                d *= show * Engine.CrowdMultiplier(c, crowd);
+            }
+            double band = c.NoveltyBlendBand;
+            double t = band <= 0 ? (h >= 100 ? 1 : 0) : Engine.Clamp((h - 100 + band) / (2 * band), 0, 1);
+            double gainAmp = c.AmpHigh + (c.AmpLow - c.AmpHigh) * t, lossAmp = c.AmpLow + (c.AmpHigh - c.AmpLow) * t;
+            d *= 1 + novelty * (d >= 0 ? gainAmp : lossAmp);
+            return Engine.Clamp(h + d, s.HypeFloor, Engine.MaxHype) - h;
+        }
+
+        [Fact]
+        public void WithoutFlow_EveryPreviewAndSong_ChangesTheHypeAsBefore()
+        {
+            for (int seed = 1; seed <= 20; seed++)
+            {
+                ShowSetup setup = Balance.RandomSetups.Make(seed);
+                setup.CapacityFilled = 0.3 + 0.07 * (seed % 10);
+                setup.Production = 0.05 * seed;
+                Config config = new Config { FlowBonus = 0 };
+                ShowState state = Engine.Start(setup, config, seed);
+                while (!state.Finished)
+                {
+                    int[] lineup = Engine.DefaultLineup(state);
+                    SongPreview preview = Engine.Preview(state, lineup);
+                    Assert.Equal(OldChange(config, setup, state.Hype, preview.Weighted, preview.Steps.Crowd, preview.Novelty), preview.Change, 12);
+                    double hype = state.Hype;
+                    SongResult result = Engine.Play(state, lineup);
+                    Assert.Equal(OldChange(config, setup, hype, result.Weighted, result.Crowd, result.Novelty), result.Change, 12);
+                }
+            }
         }
 
         [Fact]
@@ -181,14 +267,16 @@ namespace ConcertHype.Tests
             setup.CapacityFilled = 0;
             setup.Production = 0;
             SongResult gain = PlayOriginals(Shows.Start(setup));
-            Assert.Equal(0.375, gain.ShowMultiplier, 9);
+            Assert.Equal(0.5, gain.VenueMultiplier, 9);
+            Assert.Equal(0.75, gain.QualityMultiplier, 9);
             Assert.Equal(3.75, gain.Change, 9);
 
             setup = Shows.Setup(skill: 25);
             setup.CapacityFilled = 0;
             setup.Production = 0;
             SongResult loss = PlayOriginals(Shows.Start(setup));
-            Assert.Equal(1, loss.ShowMultiplier);
+            Assert.False(loss.Gain);
+            Assert.Equal((1.0, 1.0), (loss.VenueMultiplier, loss.QualityMultiplier));
             Assert.Equal(-10, loss.Change, 9);
         }
 
@@ -719,8 +807,113 @@ namespace ConcertHype.Tests
             ShowState state = Shows.Start(setup);
             int[] lineup = { 0, 1, 2 };
             SongPreview preview = Engine.Preview(state, lineup);
-            Assert.Equal(Engine.CrowdAppeal(state, state.CurrentSong, lineup), preview.Crowd, 9);
-            Assert.Equal(Engine.CrowdMultiplier(state.Config, preview.Crowd), preview.CrowdMultiplier, 9);
+            Assert.Equal(Engine.CrowdAppeal(state, state.CurrentSong, lineup), preview.Steps.Crowd, 9);
+            Assert.Equal(Engine.CrowdMultiplier(state.Config, preview.Steps.Crowd), preview.Steps.CrowdMultiplier, 9);
+        }
+    }
+
+    public class HypePartsTests
+    {
+        private static HypeParts Expected(ShowState state) => Engine.Preview(state, Engine.DefaultLineup(state)).Parts;
+
+        [Fact]
+        public void AHalfFullVenue_TakesAQuarterOfAGain_AndAFullOneNothing()
+        {
+            ShowSetup setup = Shows.Setup(skill: 65);   // rolls 80: +10 before the multipliers
+            setup.CapacityFilled = 0.5;
+            HypeParts parts = Expected(Shows.Start(setup));
+            Assert.Equal(10, parts.Performance, 9);
+            Assert.Equal(-2.5, parts.Venue, 9);
+            Assert.Equal(0, parts.Production, 9);   // quality 0.5 scales by 1
+            Assert.Equal(7.5, parts.Total, 9);
+
+            setup.CapacityFilled = 1;
+            Assert.Equal(0, Expected(Shows.Start(setup)).Venue, 9);
+        }
+
+        [Fact]
+        public void Quality_AndAppeal_AddTheirShareOfAGain_InTurn()
+        {
+            ShowSetup setup = Shows.Setup(skill: 65);
+            setup.Production = 1;                                    // x1.25
+            setup.Songs[0].Appeal = new[] { 0, 0, 0, 0, 0.6, 0, 0 };    // an even mix is a third teen: crowd appeal 0.2
+            ShowState state = Shows.Start(setup);
+            HypeParts parts = Expected(state);
+            double crowd = Engine.CrowdMultiplier(state.Config, 0.2);
+            Assert.Equal(10, parts.Performance, 9);
+            Assert.Equal(2.5, parts.Quality, 9);
+            Assert.Equal(12.5 * (crowd - 1), parts.Appeal, 9);
+            Assert.Equal(parts.Quality + parts.Appeal, parts.Production, 9);
+        }
+
+        [Fact]
+        public void OnALoss_OnlyNoveltyAddsToTheProduction()
+        {
+            ShowSetup setup = Shows.Setup(members: 6, slots: 3);
+            for (int m = 0; m < 3; m++)
+                setup.Members[m].CanPerform = false;
+            for (int m = 3; m < 6; m++)
+                Shows.SetSkill(setup, m, 45);
+            setup.CapacityFilled = 0.2;
+            setup.Production = 0;
+            ShowState state = Shows.Start(setup);
+            state.Hype = 70;
+            HypeParts parts = Expected(state);
+            // Rolls 45: -7.5, and an all-new lineup below 100% hype grows a loss by half
+            Assert.Equal(-7.5, parts.Performance, 9);
+            Assert.Equal((0.0, 0.0, 0.0), (parts.Venue, parts.Quality, parts.Appeal));
+            Assert.Equal(-3.75, parts.Novelty, 9);
+            Assert.Equal(-11.25, parts.Total, 9);
+        }
+
+        [Fact]
+        public void AtTheCap_EveryPartShrinksAlike()
+        {
+            ShowSetup setup = Shows.Setup(skill: 65);
+            setup.CapacityFilled = 0.5;
+            ShowState state = Shows.Start(setup);
+            state.Hype = 195;
+            HypeParts parts = Expected(state);
+            // 7.5 before the cap, 5 after it
+            Assert.Equal(10 * 5 / 7.5, parts.Performance, 9);
+            Assert.Equal(-2.5 * 5 / 7.5, parts.Venue, 9);
+            Assert.Equal(5, parts.Total, 9);
+        }
+
+        [Fact]
+        public void TheParts_AddUpToTheChange_InEveryShowAndAtAnyHype()
+        {
+            foreach (double hype in new double[] { 10, 60, 95, 130, 195 })
+            {
+                for (int seed = 1; seed <= 15; seed++)
+                {
+                    ShowSetup setup = Balance.RandomSetups.Make(seed);
+                    setup.CapacityFilled = 0.4 + 0.04 * seed;
+                    setup.Production = 0.06 * seed;
+                    setup.HypeFloor = seed % 3 == 0 ? 30 : 0;
+                    ShowState state = Engine.Start(setup, new Config(), seed);
+                    while (!state.Finished)
+                    {
+                        state.Hype = Math.Max(setup.HypeFloor, hype);
+                        int[] lineup = Engine.DefaultLineup(state);
+                        // A substitute in the center as well, so novelty counts
+                        int bench = Enumerable.Range(0, setup.Members.Count).FirstOrDefault(m => !lineup.Contains(m) && state.IsAvailable(m));
+                        int[] changed = (int[])lineup.Clone();
+                        changed[0] = bench;
+                        foreach (int[] tried in new[] { lineup, changed })
+                        {
+                            SongPreview preview = Engine.Preview(state, tried);
+                            HypeParts parts = preview.Parts;
+                            Assert.Equal(preview.Change, parts.Total, 9);
+                            Assert.Equal(parts.Flow + parts.Quality + parts.Appeal + parts.Novelty, parts.Production, 9);
+                            Assert.True(parts.Venue <= 1e-12, $"venue {parts.Venue}");
+                            if (!preview.Steps.Gain)
+                                Assert.Equal((0.0, 0.0, 0.0), (parts.Venue, parts.Quality, parts.Appeal));
+                        }
+                        Engine.Play(state, lineup);
+                    }
+                }
+            }
         }
     }
 

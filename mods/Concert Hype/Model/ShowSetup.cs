@@ -93,7 +93,11 @@ namespace ConcertHype.Model
     public sealed class Song
     {
         public string Title = "";
-        public string Genre = "";
+
+        /// <summary>
+        /// The single's genre, lyrics and choreography titles; empty when it has none.
+        /// </summary>
+        public string Genre = "", Lyrics = "", Choreography = "";
 
         /// <summary>
         /// The single's appeal to each fan type, as saved when it was released; 0 where it has none.
@@ -130,6 +134,11 @@ namespace ConcertHype.Model
         /// Tickets sold divided by the venue's capacity, 0 to 1.
         /// </summary>
         public double CapacityFilled = 1;
+
+        /// <summary>
+        /// The venue's capacity in seats; 0 when unknown.
+        /// </summary>
+        public int Seats;
 
         /// <summary>
         /// Production quality, 0 to 1.

@@ -162,6 +162,63 @@ namespace ConcertHype
     }
 
     /// <summary>
+    /// A row of the next-song screen's left block: a title, a bar from the rows' shared zero line (right for hype
+    /// added, left for hype lost) and its value, with its parts in the tip. Hidden while the title is empty.
+    /// </summary>
+    public sealed class BarRow
+    {
+        public string Title = "";
+        public string Value = "";
+        public Tone Tone;
+
+        /// <summary>
+        /// The hype points the bar stands for, signed.
+        /// </summary>
+        public double Amount;
+
+        /// <summary>
+        /// The likely range, drawn faintly behind the bar; NaN for none.
+        /// </summary>
+        public double Low = double.NaN, High = double.NaN;
+
+        public string Tip = "";
+
+        /// <summary>
+        /// A small line under the bar; empty for none.
+        /// </summary>
+        public string Caption = "";
+
+        public bool Shown => Title.Length > 0;
+
+        public bool HasRange => !double.IsNaN(Low) && !double.IsNaN(High);
+    }
+
+    /// <summary>
+    /// What the mod draws on the game's hype bar: where the tab's next song or talk break should take the hype, and
+    /// where the hype was before the last one.
+    /// </summary>
+    public sealed class HypeBarView
+    {
+        public double Hype;
+
+        /// <summary>
+        /// NaN with nothing to preview.
+        /// </summary>
+        public double Target = double.NaN;
+
+        /// <summary>
+        /// NaN before the first song.
+        /// </summary>
+        public double Before = double.NaN;
+
+        public string Tip = "";
+
+        public bool HasTarget => !double.IsNaN(Target);
+
+        public bool HasBefore => !double.IsNaN(Before);
+    }
+
+    /// <summary>
     /// An idol being dragged, and where she is over now (null: over nothing that takes her).
     /// </summary>
     public sealed class DragView
@@ -204,6 +261,16 @@ namespace ConcertHype
         /// The last song's or talk break's hype change; hidden before the first song.
         /// </summary>
         public Readout Last = new Readout();
+
+        /// <summary>
+        /// The left block's rows: on the song's tab the hype each consideration adds and their total; on the talk
+        /// break's only the total, the talk break's, while someone hosts.
+        /// </summary>
+        public BarRow Venue = new BarRow(), Performance = new BarRow(), Production = new BarRow(), Total = new BarRow();
+
+        public BarRow[] Rows => new[] { Venue, Performance, Production, Total };
+
+        public HypeBarView Bar = new HypeBarView();
 
         /// <summary>
         /// Why the last drop, or the one hovered now, is refused; empty otherwise.
@@ -252,6 +319,200 @@ namespace ConcertHype
         };
 
         private static string Whole(double value) => Math.Round(value).ToString(CultureInfo.InvariantCulture);
+
+        private static string Percent(double whole) => Signed(whole) + "%";
+
+        private static Tone ToneOf(double whole) => whole > 0 ? Tone.Good : whole < 0 ? Tone.Bad : Tone.Plain;
+
+        /// <summary>
+        /// Whole numbers for parts shown one after another, after a sum already shown, so that the parts shown add up
+        /// to the rounded total: each is the rounded running sum minus the one before it.
+        /// </summary>
+        public static double[] RoundedParts(double start, params double[] parts)
+        {
+            double[] rounded = new double[parts.Length];
+            double sum = start, shown = Math.Round(start);
+            for (int i = 0; i < parts.Length; i++)
+            {
+                sum += parts[i];
+                double next = Math.Round(sum);
+                rounded[i] = next - shown;
+                shown = next;
+            }
+            return rounded;
+        }
+
+        private static readonly double[] ScaleSteps = { 5, 10, 15, 20, 30, 40, 50, 75, 100, 150, 200 };
+
+        /// <summary>
+        /// The hype points half a bar stands for: the smallest step that holds every amount, and never less than the
+        /// scale before it on the same screen, so the bars don't jump while the lineup changes.
+        /// </summary>
+        /// <param name="previous">The screen's scale so far; NaN on a new screen.</param>
+        public static double BarScale(double previous, IEnumerable<double> amounts)
+        {
+            double need = amounts.Where(a => !double.IsNaN(a)).Select(Math.Abs).DefaultIfEmpty(0).Max();
+            double step = ScaleSteps.FirstOrDefault(s => s >= need - 1e-9);
+            if (step == 0)
+                step = ScaleSteps[ScaleSteps.Length - 1];
+            return double.IsNaN(previous) ? step : Math.Max(previous, step);
+        }
+
+        /// <summary>
+        /// Where a stretch of hype points lies on a row's bar, as shares of its width from the left: 0 hype is the
+        /// middle, gains run right and losses left, cut off at the ends.
+        /// </summary>
+        public static Stretch BarSpan(double from, double to, double scale)
+        {
+            float At(double amount) => (float)Engine.Clamp(0.5 + amount / (2 * scale), 0, 1);
+            return new Stretch { From = At(Math.Min(from, to)), To = At(Math.Max(from, to)) };
+        }
+
+        /// <summary>
+        /// A stretch of a bar, as shares of its width from the left.
+        /// </summary>
+        public struct Stretch
+        {
+            public float From, To;
+        }
+
+        /// <summary>
+        /// A hype as a share of the game's hype bar, which runs to 200%.
+        /// </summary>
+        public static float HypeShare(double hype) => (float)Engine.Clamp(hype / Engine.MaxHype, 0, 1);
+
+        private static BarRow Row(string titleKey, double amount, double shown, string tip) => new BarRow
+        {
+            Title = Texts.Get(titleKey),
+            Value = Percent(shown),
+            Tone = ToneOf(shown),
+            Amount = amount,
+            Tip = tip,
+        };
+
+        private static string Lines(params string[] lines) => string.Join("\n", lines.Where(line => !string.IsNullOrEmpty(line)));
+
+        /// <summary>
+        /// The left block's rows for the song: the hype the venue, the lineup's performance and the production add,
+        /// rounded so they add up to the total under them.
+        /// </summary>
+        private static void SongRows(PanelView view, ShowSession session, int[] lineup, SongPreview preview)
+        {
+            ShowState state = session.State;
+            HypeParts parts = preview.Parts;
+            double[] shown = RoundedParts(0, parts.Venue, parts.Performance, parts.Production);
+            view.Venue = Row("CONCERTHYPE__VENUE_TITLE", parts.Venue, shown[0], VenueTip(state.Setup, preview.Steps.Gain));
+            view.Performance = Row("CONCERTHYPE__PERFORMANCE_TITLE", parts.Performance, shown[1], PerformanceTip(state, lineup, preview));
+            view.Production = Row("CONCERTHYPE__PRODUCTION_TITLE", parts.Production, shown[2], ProductionTip(state, preview, shown[2]));
+            double total = shown.Sum();
+            string low = Percent(Math.Round(preview.Low)), high = Percent(Math.Round(preview.High));
+            view.Total = Row("CONCERTHYPE__EXPECTED_TITLE", preview.Change, total, Lines(Texts.Format("CONCERTHYPE__TOTAL_TIP", low, high), LastLine(session)));
+            view.Total.Low = preview.Low;
+            view.Total.High = preview.High;
+            view.Total.Caption = Texts.Format("CONCERTHYPE__LIKELY", low, high);
+        }
+
+        public static string VenueTip(ShowSetup setup, bool gain)
+        {
+            double filled = Engine.Clamp(setup.CapacityFilled, 0, 1);
+            string seats = setup.Seats > 0
+                ? Texts.Format("CONCERTHYPE__VENUE_TIP", Math.Round(setup.Seats * filled).ToString("N0", CultureInfo.InvariantCulture),
+                    setup.Seats.ToString("N0", CultureInfo.InvariantCulture), Whole(100 * filled))
+                : Texts.Format("CONCERTHYPE__VENUE_TIP_SHARE", Whole(100 * filled));
+            return Lines(seats, gain ? "" : Texts.Get("CONCERTHYPE__VENUE_LOSS"));
+        }
+
+        /// <summary>
+        /// Each row's average chance of a success, front row first, then the empty places and what counts most.
+        /// </summary>
+        public static string PerformanceTip(ShowState state, int[] lineup, SongPreview preview)
+        {
+            Song song = state.CurrentSong;
+            List<string> lines = new List<string>();
+            int empty = 0;
+            for (int row = 0; row <= song.Slots.Max(slot => slot.Row); row++)
+            {
+                List<int> places = Enumerable.Range(0, song.Slots.Count).Where(j => song.Slots[j].Row == row).ToList();
+                List<int> filled = places.Where(j => j < lineup.Length && lineup[j] >= 0 && preview.Slots[j] != null).ToList();
+                empty += places.Count - filled.Count;
+                if (filled.Count == 0)
+                    continue;
+                string success = Whole(filled.Average(j => SuccessChance(state.Config, preview.Slots[j].Expected)));
+                lines.Add(row == 0 ? Texts.Format("CONCERTHYPE__PERF_CENTER", success) : Texts.Format("CONCERTHYPE__PERF_ROW", row + 1, success));
+            }
+            if (empty > 0)
+                lines.Add(empty == 1 ? Texts.Get("CONCERTHYPE__PERF_EMPTY_ONE") : Texts.Format("CONCERTHYPE__PERF_EMPTY", empty));
+            lines.Add(Texts.Get("CONCERTHYPE__PERF_WEIGHTS"));
+            return Lines(lines.ToArray());
+        }
+
+        /// <summary>
+        /// The production's parts, each the hype it adds, rounded so they add up to the Production row's value; the
+        /// crowd's mood after the changed lineup's line; the flow from the song before, from the second song on.
+        /// </summary>
+        /// <param name="shown">The Production row's value.</param>
+        public static string ProductionTip(ShowState state, SongPreview preview, double shown)
+        {
+            HypeParts parts = preview.Parts;
+            bool flow = state.SongIndex > 0;
+            double[] amounts = flow ? new[] { parts.Quality, parts.Appeal, parts.Novelty, parts.Flow } : new[] { parts.Quality, parts.Appeal, parts.Novelty };
+            double[] rounded = RoundedParts(parts.Venue + parts.Performance, amounts);
+            // The last line takes what rounding left, so the lines always add up to the row
+            rounded[rounded.Length - 1] += shown - rounded.Sum();
+
+            double h = state.Hype, band = state.Config.NoveltyBlendBand;
+            string mood = h < 100 - band ? "CONCERTHYPE__BAND_LOW" : h > 100 + band ? "CONCERTHYPE__BAND_HIGH" : "CONCERTHYPE__BAND_MID";
+            List<string> lines = new List<string>
+            {
+                Texts.Format("CONCERTHYPE__PROD_QUALITY", Whole(100 * Engine.Clamp(state.Setup.Production, 0, 1)), Percent(rounded[0])),
+                Texts.Format("CONCERTHYPE__PROD_APPEAL", Percent(rounded[1])),
+                Texts.Format("CONCERTHYPE__PROD_CHANGED", Whole(100 * preview.Novelty), Percent(rounded[2])),
+                Texts.Format("CONCERTHYPE__PROD_MOOD", Whole(h), Texts.Get(mood)),
+            };
+            if (flow)
+            {
+                SongMatch matches = preview.Steps.Matches;
+                lines.Add(matches == SongMatch.None
+                    ? Texts.Format("CONCERTHYPE__PROD_NO_FLOW", Percent(rounded[3]))
+                    : Texts.Format("CONCERTHYPE__PROD_FLOW", MatchList(matches), Percent(rounded[3])));
+            }
+            if (!preview.Steps.Gain)
+                lines.Add(Texts.Get("CONCERTHYPE__PROD_LOSS"));
+            return Lines(lines.ToArray());
+        }
+
+        /// <summary>
+        /// "genre", "genre and lyrics", "genre, lyrics and choreography".
+        /// </summary>
+        public static string MatchList(SongMatch matches)
+        {
+            List<string> words = new List<string>();
+            if ((matches & SongMatch.Genre) != 0)
+                words.Add(Texts.Get("CONCERTHYPE__FLOW_GENRE"));
+            if ((matches & SongMatch.Lyrics) != 0)
+                words.Add(Texts.Get("CONCERTHYPE__FLOW_LYRICS"));
+            if ((matches & SongMatch.Choreography) != 0)
+                words.Add(Texts.Get("CONCERTHYPE__FLOW_CHOREO"));
+            if (words.Count <= 1)
+                return words.FirstOrDefault() ?? "";
+            return string.Join(", ", words.Take(words.Count - 1)) + " " + Texts.Get("CONCERTHYPE__AND") + " " + words[words.Count - 1];
+        }
+
+        /// <summary>
+        /// The last song's or talk break's change, as a tip line; empty before the first song.
+        /// </summary>
+        private static string LastLine(ShowSession session)
+        {
+            if (session.LastMc != null)
+                return Texts.Format("CONCERTHYPE__LAST_TALK_TIP", Percent(Math.Round(session.LastMc.HypeAfter - session.LastMc.HypeBefore)));
+            return session.LastResult == null ? "" : Texts.Format("CONCERTHYPE__LAST_SONG_TIP", Percent(Math.Round(session.LastResult.Change)));
+        }
+
+        /// <summary>
+        /// Where the hype was before the last song or talk break; NaN before the first song.
+        /// </summary>
+        private static double HypeBeforeLast(ShowSession session) =>
+            session.LastMc != null ? session.LastMc.HypeBefore : session.LastResult != null ? session.LastResult.HypeBefore : double.NaN;
 
         /// <summary>
         /// A gap's hype cost in whole percent, or to one decimal under 1, so a small cost doesn't read as none.
@@ -357,6 +618,9 @@ namespace ConcertHype
                         Value = Whole(100 * preview.Novelty) + "%",
                         Tip = Texts.Get("CONCERTHYPE__CHANGED_TIP"),
                     };
+                    SongRows(view, session, lineup, preview);
+                    view.Bar.Target = Engine.Clamp(state.Hype + preview.Change, 0, Engine.MaxHype);
+                    view.Bar.Tip = Texts.Format("CONCERTHYPE__BAR_SONG", Whole(state.Hype), Whole(view.Bar.Target));
                 }
             }
 
@@ -383,10 +647,18 @@ namespace ConcertHype
                         Value = Whole(Engine.McHype(state, talking)) + "%",
                         Tip = Texts.Get("CONCERTHYPE__AFTER_TALK_TIP"),
                     };
+                    double after = Engine.McHype(state, talking), change = after - state.Hype;
+                    view.Total = Row("CONCERTHYPE__AFTER_TALK_TITLE", change, Math.Round(change), Lines(
+                        Texts.Format("CONCERTHYPE__TALK_TOTAL_TIP", Whole(100 * Engine.Talk(state, talking)), Whole(after)), LastLine(session)));
+                    view.Bar.Target = after;
+                    view.Bar.Tip = Texts.Format("CONCERTHYPE__BAR_TALK", Whole(state.Hype), Whole(after));
                 }
             }
 
             view.Last = LastReadout(session);
+            view.Bar.Hype = state.Hype;
+            view.Bar.Before = HypeBeforeLast(session);
+            view.Bar.Tip = Lines(view.Bar.HasTarget ? view.Bar.Tip : Texts.Format("CONCERTHYPE__BAR_NOW", Whole(state.Hype)), LastLine(session));
             view.Hint = hint;
             view.Dragging = drag != null;
             view.TalkTitle = Texts.Format("CONCERTHYPE__TALK_BREAK", state.McCharges);

@@ -148,6 +148,134 @@
 		text: "Last Talk Break:"
 	},
 	{
+		id: "CONCERTHYPE__VENUE_TITLE",
+		text: "Venue:"
+	},
+	{
+		id: "CONCERTHYPE__PERFORMANCE_TITLE",
+		text: "Performance:"
+	},
+	{
+		id: "CONCERTHYPE__PRODUCTION_TITLE",
+		text: "Production:"
+	},
+	{
+		id: "CONCERTHYPE__BARS_LOST",
+		text: "lost"
+	},
+	{
+		id: "CONCERTHYPE__BARS_ADDED",
+		text: "added"
+	},
+	{
+		id: "CONCERTHYPE__LIKELY",
+		text: "likely {0} to {1}"
+	},
+	{
+		id: "CONCERTHYPE__TOTAL_TIP",
+		text: "Likely {0} to {1}, depending on how the idols perform."
+	},
+	{
+		id: "CONCERTHYPE__LAST_SONG_TIP",
+		text: "Last song: {0}."
+	},
+	{
+		id: "CONCERTHYPE__LAST_TALK_TIP",
+		text: "Last talk break: {0}."
+	},
+	{
+		id: "CONCERTHYPE__VENUE_TIP",
+		text: "{0} of {1} seats filled ({2}%)."
+	},
+	{
+		id: "CONCERTHYPE__VENUE_TIP_SHARE",
+		text: "The venue is {0}% full."
+	},
+	{
+		id: "CONCERTHYPE__VENUE_LOSS",
+		text: "Adds nothing to a song that loses hype."
+	},
+	{
+		id: "CONCERTHYPE__PERF_CENTER",
+		text: "Center: {0}% success"
+	},
+	{
+		id: "CONCERTHYPE__PERF_ROW",
+		text: "Row {0}: {1}% success"
+	},
+	{
+		id: "CONCERTHYPE__PERF_EMPTY_ONE",
+		text: "1 empty place"
+	},
+	{
+		id: "CONCERTHYPE__PERF_EMPTY",
+		text: "{0} empty places"
+	},
+	{
+		id: "CONCERTHYPE__PERF_WEIGHTS",
+		text: "Front rows and idols with more fans count most."
+	},
+	{
+		id: "CONCERTHYPE__PROD_QUALITY",
+		text: "Production quality {0}%: {1}"
+	},
+	{
+		id: "CONCERTHYPE__PROD_APPEAL",
+		text: "Song's appeal to these idols' fans: {0}"
+	},
+	{
+		id: "CONCERTHYPE__PROD_CHANGED",
+		text: "Changed lineup {0}%: {1}"
+	},
+	{
+		id: "CONCERTHYPE__PROD_MOOD",
+		text: "Hype {0}%: {1}."
+	},
+	{
+		id: "CONCERTHYPE__PROD_FLOW",
+		text: "Same {0} as the last song: {1}"
+	},
+	{
+		id: "CONCERTHYPE__PROD_NO_FLOW",
+		text: "Nothing in common with the last song: {0}"
+	},
+	{
+		id: "CONCERTHYPE__FLOW_GENRE",
+		text: "genre"
+	},
+	{
+		id: "CONCERTHYPE__FLOW_LYRICS",
+		text: "lyrics"
+	},
+	{
+		id: "CONCERTHYPE__FLOW_CHOREO",
+		text: "choreography"
+	},
+	{
+		id: "CONCERTHYPE__AND",
+		text: "and"
+	},
+	{
+		id: "CONCERTHYPE__PROD_LOSS",
+		text: "Quality and appeal only add to songs that raise the hype."
+	},
+	{
+		id: "CONCERTHYPE__TALK_TOTAL_TIP",
+		text: "Hosts' talk {0}%: about {1}% hype after."
+	},
+	{
+		id: "CONCERTHYPE__BAR_SONG",
+		text: "Hype {0}%. After this song: about {1}%."
+	},
+	{
+		id: "CONCERTHYPE__BAR_TALK",
+		text: "Hype {0}%. After the talk break: about {1}%."
+	},
+	{
+		id: "CONCERTHYPE__BAR_NOW",
+		text: "Hype {0}%."
+	},
+	{
 		id: "CONCERTHYPE__BADGE_ORIGINAL",
 		text: "★"
 	},

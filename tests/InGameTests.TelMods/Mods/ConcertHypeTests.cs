@@ -341,7 +341,7 @@ namespace InGameTests.TelMods
                         List<Rect> places = panel.Cast<Transform>().Where(t => t.name.StartsWith("Slot ") && t.gameObject.activeSelf)
                             .Concat(new[] { panel.Find("SongTab"), panel.Find("TalkTab"), panel.Find("ResetLineup"), popup.NextSong_Button.transform })
                             .Concat(panel.Find("TalkBreak").Cast<Transform>().Where(t => t.name.StartsWith("Host "))).Select(WorldRect).ToList();
-                        string[] blockRows = { "Venue", "Performance", "Production", "Total" };
+                        string[] blockRows = { "Venue", "Performance", "Production", "Novelty", "Total" };
                         Dictionary<string, Rect> texts = blockRows.SelectMany(r => new[] { r + "/Title", r + "/Value", r + "/Caption" }).Concat(new[] { "Lost", "Added" })
                             .Where(path => panel.Find(path).gameObject.activeInHierarchy && panel.Find(path).GetComponent<TextMeshProUGUI>().text.Length > 0)
                             .ToDictionary(path => path, path => DrawnRect(panel.Find(path).GetComponent<TextMeshProUGUI>()));

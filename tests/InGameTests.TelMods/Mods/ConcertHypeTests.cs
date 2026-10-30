@@ -15,8 +15,9 @@ namespace InGameTests.TelMods
     /// Concert Hype's show in the game's real concert popup. The unit tests cover the rules, the drop rules, the
     /// panel's text, the payout and each patch; this checks what only the engine does: real clicks reaching the
     /// panel's and the bench's buttons on screen, a real drag through the game's input and drag-and-drop manager,
-    /// the icons' pictures and the game's tooltip over one, over each bar's hover strip (closing the profile card) and over the Expected Hype info icon, the readouts as TMP
-    /// draws them clear of the places, the empty host place showing the game's empty senbatsu place, the game's
+    /// the icons' pictures and the game's tooltip over one, over each bar's hover strip (closing the profile card) and over the Production info icon, the left
+    /// block's texts as TMP draws them and its bars clear of the places, the buttons and each other, the preview on the game's hype bar where the game's own
+    /// fill would reach and its tooltip, the empty host place showing the game's empty senbatsu place, the game's
     /// profile card placed at the host place, the
     /// game's cancel icon over the hovered host and a real click cancelling her, a
     /// talk break played by the popup's own coroutine with its host on stage and the bench faded, the transpiled song length, the popup's tweens landing hype
@@ -225,13 +226,48 @@ namespace InGameTests.TelMods
                     if (barTip.Length == 0 || shown != barTip)
                         ctx.Fail($"Over the second place's {bar.ToLower()} bar the tooltip reads '{shown}', not '{barTip}'");
                 }
-                // The game's info icon before Expected Hype shows the range and mood the same way
-                string expectedTip = Get<string>(Get<object>(view, "Expected"), "Tip");
-                yield return mouse.Hover(ScreenRect(panel.Find("Expected/Info")).center, 0.5f);
+                // The game's info icon before Production shows its parts the same way
+                string productionTip = Get<string>(Get<object>(view, "Production"), "Tip");
+                yield return mouse.Hover(ScreenRect(panel.Find("Production/Info")).center, 0.5f);
                 shown = AccessTools.Field(typeof(TooltipManager), "TooltipText").GetValue(Game.Main.Data.GetComponent<TooltipManager>()) as string;
                 mouse.Off();
-                if (shown != expectedTip)
-                    ctx.Fail($"Over the Expected Hype info icon the tooltip reads '{shown}', not '{expectedTip}'");
+                if (shown != productionTip)
+                    ctx.Fail($"Over the Production info icon the tooltip reads '{shown}', not '{productionTip}'");
+
+                // The preview on the game's hype bar lies where the game's own fill would reach between the hype now and
+                // this song's expected hype, on the bar as the game's prefab lays it out
+                object barView = Get<object>(view, "Bar");
+                double hypeNow = Get<double>(barView, "Hype"), hypeAfter = Get<double>(barView, "Target");
+                Transform fill = popup.Hype.GetComponent<Concert_HypeBar>().BarValue.transform;
+                Transform segment = fill.parent.Find(hypeAfter > hypeNow ? "ConcertHype Preview Back/Gain" : "ConcertHype Preview Front/Loss");
+                if (!double.IsNaN(hypeAfter) && Math.Abs(hypeAfter - hypeNow) < 0.5)
+                {
+                    ctx.Record("hype bar preview", $"{hypeNow:F1}% -> {hypeAfter:F1}%: too short to measure");
+                }
+                else if (double.IsNaN(hypeAfter) || segment == null || !segment.gameObject.activeInHierarchy)
+                {
+                    ctx.Fail($"No preview on the game's hype bar for a song from {hypeNow:F1}% to {hypeAfter:F1}%");
+                }
+                else
+                {
+                    Rect fillAt = WorldRect(fill), at = WorldRect(segment);
+                    float full = fillAt.width / fill.localScale.x, tolerance = full * 0.003f;
+                    float from = fillAt.xMin + (float)(Math.Min(hypeNow, hypeAfter) / 200) * full, to = fillAt.xMin + (float)(Math.Max(hypeNow, hypeAfter) / 200) * full;
+                    ctx.Record("hype bar preview", $"{hypeNow:F1}% -> {hypeAfter:F1}%: {at.xMin:F3} to {at.xMax:F3}, expected {from:F3} to {to:F3}; fill ends {fillAt.xMax:F3}");
+                    if (Math.Abs(at.xMin - from) > tolerance || Math.Abs(at.xMax - to) > tolerance)
+                        ctx.Fail($"The hype bar's preview runs from {at.xMin:F3} to {at.xMax:F3}, not {from:F3} to {to:F3}");
+                    // Once the game's bar has caught up, the preview starts or ends at its fill's end
+                    float fillEnd = hypeAfter > hypeNow ? at.xMin : at.xMax;
+                    if (Math.Abs(fill.localScale.x - hypeNow / 200) < 0.002 && Math.Abs(fillEnd - fillAt.xMax) > tolerance)
+                        ctx.Fail($"The hype bar's preview doesn't meet the game's fill: {fillEnd:F3} against {fillAt.xMax:F3}");
+                }
+                // Over the hype bar the game's tooltip says where the song should take the hype
+                string hypeBarTip = Get<string>(barView, "Tip");
+                yield return mouse.Hover(ScreenRect(popup.Hype.transform.Find("ConcertHype Preview Hover")).center, 0.5f);
+                shown = AccessTools.Field(typeof(TooltipManager), "TooltipText").GetValue(Game.Main.Data.GetComponent<TooltipManager>()) as string;
+                mouse.Off();
+                if (shown != hypeBarTip)
+                    ctx.Fail($"Over the hype bar the tooltip reads '{shown}', not '{hypeBarTip}'");
 
                 // The group dropdown, with real clicks: the fixture's sister group leaves only its idols on the bench,
                 // and All Groups brings everyone back
@@ -303,20 +339,32 @@ namespace InGameTests.TelMods
                         ctx.Record("empty host place", emptyPicture.sprite?.name + " " + emptyPicture.type);
                         if (gamePlace == null || emptyPicture.sprite != gamePlace.sprite || emptyPicture.type != gamePlace.type)
                             ctx.Fail("The empty host place doesn't show the game's empty senbatsu place: " + emptyPicture.sprite?.name);
-                        // Every readout, as TMP draws it, stays clear of the places, the tabs and the talk break's row
-                        // (hidden on this tab), and of the other readouts (a readout's own title and value are as close
-                        // as the game's, whose text boxes touch)
+                        // Every text of the left block, as TMP draws it, and every bar stays clear of the places, the tabs,
+                        // the talk break's row (hidden on this tab) and the buttons; no two texts overlap, and no text
+                        // covers a bar
                         List<Rect> places = panel.Cast<Transform>().Where(t => t.name.StartsWith("Slot ") && t.gameObject.activeSelf)
-                            .Concat(new[] { panel.Find("SongTab"), panel.Find("TalkTab") })
+                            .Concat(new[] { panel.Find("SongTab"), panel.Find("TalkTab"), panel.Find("ResetLineup"), popup.NextSong_Button.transform })
                             .Concat(panel.Find("TalkBreak").Cast<Transform>().Where(t => t.name.StartsWith("Host "))).Select(WorldRect).ToList();
-                        Dictionary<string, Rect> texts = new[] { "Expected", "Changed", "Last" }.SelectMany(r => new[] { r + "/Title", r + "/Value" })
+                        string[] blockRows = { "Venue", "Performance", "Production", "Total" };
+                        Dictionary<string, Rect> texts = blockRows.SelectMany(r => new[] { r + "/Title", r + "/Value", r + "/Caption" }).Concat(new[] { "Lost", "Added" })
+                            .Where(path => panel.Find(path).gameObject.activeInHierarchy && panel.Find(path).GetComponent<TextMeshProUGUI>().text.Length > 0)
                             .ToDictionary(path => path, path => DrawnRect(panel.Find(path).GetComponent<TextMeshProUGUI>()));
+                        Dictionary<string, Rect> bars = blockRows.Select(r => r + "/Track").Where(path => panel.Find(path).gameObject.activeInHierarchy)
+                            .ToDictionary(path => path, path => WorldRect(panel.Find(path)));
+                        ctx.Record("left block", texts.Count + " texts, " + bars.Count + " bars");
                         foreach (KeyValuePair<string, Rect> text in texts)
                         {
                             List<string> hits = places.Where(p => p.Overlaps(text.Value)).Select(p => "place " + p.ToString("F2"))
-                                .Concat(texts.Where(other => Readout(other.Key) != Readout(text.Key) && other.Value.Overlaps(text.Value)).Select(other => other.Key + " " + other.Value.ToString("F2"))).ToList();
+                                .Concat(texts.Where(other => other.Key != text.Key && other.Value.Overlaps(text.Value)).Select(other => other.Key + " " + other.Value.ToString("F2")))
+                                .Concat(bars.Where(bar => bar.Value.Overlaps(text.Value)).Select(bar => bar.Key + " " + bar.Value.ToString("F2"))).ToList();
                             if (hits.Count > 0)
-                                ctx.Fail("The readout text " + text.Key + " " + text.Value.ToString("F2") + " overlaps " + string.Join(", ", hits.ToArray()));
+                                ctx.Fail("The left block's text " + text.Key + " " + text.Value.ToString("F2") + " overlaps " + string.Join(", ", hits.ToArray()));
+                        }
+                        foreach (KeyValuePair<string, Rect> bar in bars)
+                        {
+                            List<string> hits = places.Where(p => p.Overlaps(bar.Value)).Select(p => "place " + p.ToString("F2")).ToList();
+                            if (hits.Count > 0)
+                                ctx.Fail("The left block's bar " + bar.Key + " " + bar.Value.ToString("F2") + " overlaps " + string.Join(", ", hits.ToArray()));
                         }
                         // A real click on the talk break's tab shows its row
                         yield return mouse.Click(ScreenRect(panel.Find("TalkTab")).center);
@@ -676,11 +724,6 @@ namespace InGameTests.TelMods
             Vector2 a = RectTransformUtility.WorldToScreenPoint(cam, c[0]), b = RectTransformUtility.WorldToScreenPoint(cam, c[2]);
             return Rect.MinMaxRect(a.x, a.y, b.x, b.y);
         }
-
-        /// <summary>
-        /// The readout a text belongs to: "Expected" for "Expected/Title".
-        /// </summary>
-        private static string Readout(string path) => path.Substring(0, path.IndexOf('/'));
 
         private static Rect WorldRect(Transform t)
         {

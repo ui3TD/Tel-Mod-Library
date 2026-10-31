@@ -110,6 +110,12 @@ def git(*args):
                           capture_output=True, text=True).stdout.strip()
 
 
+def check_committed(paths=()):
+    """Exits unless paths (default: the whole repo) are committed."""
+    if git("status", "--porcelain", "--", *paths):
+        sys.exit("Uncommitted changes in {}; commit them first.".format(", ".join(paths) or "the repo"))
+
+
 def check_pushed(paths=()):
     """Exits unless paths (default: the whole repo) are committed and HEAD is on origin. Returns HEAD."""
     if git("status", "--porcelain", "--", *paths):

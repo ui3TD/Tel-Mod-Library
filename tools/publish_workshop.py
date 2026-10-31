@@ -15,7 +15,7 @@ built, and the content, preview and change note on Steam stay as they are (the
 item's version and last-updated time don't change).
 
 Publishing is refused unless the mod's files (and the shared build files) are
-committed and HEAD is pushed, so the Workshop always matches GitHub.
+committed, so the Workshop always matches a commit.
 
 The Workshop item is the csproj's <WorkshopID>. Tags and visibility are left as
 they are on Steam: SteamCMD can't set tags, so tools/workshop_tags.py sets them
@@ -45,7 +45,7 @@ import sys
 import tempfile
 import time
 
-from _common import MODS, REPO, build, check_built, check_pushed, clean_dir, fetch_details, read_csproj
+from _common import MODS, REPO, build, check_built, check_committed, clean_dir, fetch_details, read_csproj
 from workshop_tags import DIFFERS, compare, steam_tags
 
 APP_ID = "821880"
@@ -217,7 +217,7 @@ def main():
 
     # Check before building so a build isn't wasted; a dry run only warns.
     try:
-        check_pushed([os.path.relpath(mod_dir, REPO)] + SHARED_PATHS)
+        check_committed([os.path.relpath(mod_dir, REPO)] + SHARED_PATHS)
     except SystemExit as e:
         if not args.dry_run:
             raise
@@ -262,7 +262,7 @@ def main():
             write_workshop_id(csproj, workshop_id)
             props["WorkshopID"] = workshop_id
             print("Created https://steamcommunity.com/sharedfiles/filedetails/?id={} (unlisted); "
-                  "wrote <WorkshopID> into {}. Commit and push it, then set its tags with: {}".format(
+                  "wrote <WorkshopID> into {}. Commit it, then set its tags with: {}".format(
                       workshop_id, csproj, apply_command(args.mod)))
     finally:
         os.remove(vdf_path)

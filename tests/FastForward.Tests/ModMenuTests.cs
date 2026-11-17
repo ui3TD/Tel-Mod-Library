@@ -1,6 +1,6 @@
+using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace FastForward.Tests
@@ -11,9 +11,12 @@ namespace FastForward.Tests
     /// </summary>
     public class ModMenuTests
     {
-        private static SimpleJSON.JSONNode Setting(string varID, [CallerFilePath] string testFile = "")
+        /// <summary>
+        /// A row of the mod's modmenu.json, which the test project copies next to the tests.
+        /// </summary>
+        private static SimpleJSON.JSONNode Setting(string varID)
         {
-            string menu = Path.Combine(Path.GetDirectoryName(testFile), "..", "..", "mods", "FastForward", "assets", "JSON", "Mod Menu", "modmenu.json");
+            string menu = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "modmenu.json");
             SimpleJSON.JSONArray items = SimpleJSON.JSON.Parse(File.ReadAllText(menu)).AsArray;
             return Enumerable.Range(0, items.Count).Select(i => items[i]).Single(i => i["varID"].Value == varID);
         }

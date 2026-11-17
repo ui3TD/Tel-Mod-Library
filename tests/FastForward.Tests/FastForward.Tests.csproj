@@ -2,6 +2,8 @@
 	<ItemGroup>
 		<!--Compile the mod's source in directly, so building tests never deploys the mod-->
 		<Compile Include="..\..\mods\FastForward\**\*.cs" Exclude="..\..\mods\FastForward\obj\**;..\..\mods\FastForward\bin\**" LinkBase="Mod" />
+		<!--The mod's menu, read by ModMenuTests-->
+		<None Include="..\..\mods\FastForward\assets\JSON\Mod Menu\modmenu.json" Link="modmenu.json" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -6,8 +6,8 @@ using UnityEngine;
 namespace FastForward
 {
     /// <summary>
-    /// The player's keys from ModMenus' key rows, found by name, so the mod also runs without ModMenus (or with a
-    /// ModMenus too old to have key rows): then each key is its default. Menu Hotkeys has the same helper.
+    /// The player's keys from ModMenus' key rows, found by name at runtime. Without ModMenus, or with a ModMenus
+    /// too old to have key rows, each key is its default. Menu Hotkeys has the same helper.
     /// </summary>
     public static class ModMenusKeys
     {
@@ -28,8 +28,7 @@ namespace FastForward
         }
 
         /// <summary>
-        /// Finds ModMenus. Mods load one by one, so until it's found it's looked for again whenever another
-        /// assembly loads.
+        /// Finds ModMenus. Until it's found, it's looked for again whenever another assembly loads.
         /// </summary>
         public static void Find()
         {

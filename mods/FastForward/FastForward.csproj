@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+	<!--Everything else (game DLLs, deploying, info.json) comes from Directory.Build.props at the repo root.-->
 	<PropertyGroup>
 		<!--Define the mod's info.json-->
 		<ModName>FastForward</ModName>

@@ -89,10 +89,10 @@ namespace FastForward.Tests
     }
 
     /// <summary>
-    /// The time control patches reach Unity's native code (Camera.main, Input, GetComponent, text colours),
-    /// which can't run outside the game. Harmony can't patch them in place either, because it compiles the
-    /// originals first and Camera.main can't be compiled. So tests call copies of the patches, the mod's
-    /// helpers and vanilla's Time_SetState, which call these stubs instead.
+    /// Stubs for the Unity native code the time control patches reach (Camera.main, Input, GetComponent, text
+    /// colours), which can't run outside the game. Tests call copies of the patches, the mod's helpers and
+    /// vanilla's Time_SetState that call these stubs. Harmony can't patch the originals in place: it compiles
+    /// them first, and Camera.main can't be compiled.
     /// </summary>
     public static class Seams
     {

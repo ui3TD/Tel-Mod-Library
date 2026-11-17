@@ -59,12 +59,12 @@
 
 	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
 		<ModOutputDir Condition="'$(ModOutputDir)' == ''">$(ModOutputDirRelease)</ModOutputDir>
-		<!--Release builds are what gets published: no warnings allowed-->
+		<!--Release builds treat warnings as errors-->
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 	</PropertyGroup>
 
 	<!--The publicizer also adds IgnoresAccessChecksTo and unsafe code, for accessing private members directly.
-	The mods only use the public copy for names, so leave both out: the DLLs stay as they were.-->
+	This leaves both out: the DLLs are the same as ones built without the publicizer.-->
 	<Target Name="PublicizeNamesOnly" AfterTargets="Publicize">
 		<ItemGroup>
 			<Compile Remove="$(GeneratedIgnoresAccessChecksToFile)" />

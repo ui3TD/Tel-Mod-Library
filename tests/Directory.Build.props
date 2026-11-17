@@ -60,7 +60,7 @@
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
 		<PackageReference Include="xunit" Version="2.9.2" />
 		<PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
-		<!--The mods name game members with nameof, so they compile against a public copy of Assembly-CSharp-->
+		<!--Compiles against a public copy of Assembly-CSharp, as the mod builds do-->
 		<PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" ExcludeAssets="contentFiles" />
 	</ItemGroup>
 

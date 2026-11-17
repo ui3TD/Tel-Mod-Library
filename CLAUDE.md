@@ -38,6 +38,21 @@ under `[h3]Changelog[/h3]` in `assets/steam description.txt`. The changelog is n
 only the 5 newest versions plus every major version (1.0.0, 2.0.0, ...; 0.x versions are not major);
 drop the line that falls out. `tools/check_repo.py` enforces this.
 
+## FastForward template
+
+The IM-FastForward repo (the beginner template, next to this repo) holds the same FastForward mod. After
+changing `mods/FastForward`, `tests/FastForward.Tests`, `tests/Common/PatchTargetAssert.cs`,
+`Mod.BeforeSdk.targets`, `.editorconfig`, `.gitattributes`, `NuGet.Config` or the build settings in either
+`Directory.Build.props`:
+
+1. Run `python tools/sync_fastforward_template.py --apply`. It copies those files to the template
+   (`source/` there holds the mod) and lists build-setting differences in the props files to fix by hand.
+2. Commit in both repos. Push IM-FastForward before this repo: CI compares this repo with the pushed
+   template.
+3. Update by hand what the script doesn't compare: the template's in-game test
+   (`tests/InGameTests.FastForward`, same steps as `tests/InGameTests.TelMods/Mods/FastForwardTests.cs`), its
+   single-mod `tools/` and its README.
+
 ## Shared code
 
 `shared/<Name>/` is compiled into every mod that imports its `.projitems`; each mod ships its own copy.

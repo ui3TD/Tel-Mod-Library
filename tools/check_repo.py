@@ -11,6 +11,9 @@ For every maintained mod:
     version (1.0.0, 2.0.0, ...)
   - the description has no double quote, which SteamCMD can't upload
 
+When the IM-FastForward template repo is next to this repo, it must match mods/FastForward
+(tools/sync_fastforward_template.py).
+
 The game's own JSON files aren't checked: the game's parser accepts unquoted keys,
 which strict JSON doesn't.
 
@@ -23,7 +26,8 @@ import os
 import re
 import sys
 
-from _common import CHANGELOG_HEADING, MODS, changelog_version, read_csproj, trim_changelog
+import sync_fastforward_template
+from _common import CHANGELOG_HEADING, MODS, REPO, changelog_version, read_csproj, trim_changelog
 
 CHANGELOG_LIMIT = 100  # the Workshop change-note box cuts off after this many characters
 
@@ -76,6 +80,13 @@ def main():
         for problem in check_mod(mod_dir):
             print("{}: {}".format(name, problem))
             failed = True
+    template = sync_fastforward_template.DEFAULT_TEMPLATE
+    if os.path.isdir(template):
+        for problem in sync_fastforward_template.differences(REPO, template):
+            print("FastForward template: {} (run tools/sync_fastforward_template.py --apply)".format(problem))
+            failed = True
+    else:
+        print("Skipped the FastForward template check: no {}".format(template))
     if failed:
         sys.exit(1)
     print("All mods OK.")

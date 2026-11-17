@@ -18,5 +18,7 @@ jobs:
         run: |
           pip install pyflakes
           python -m pyflakes tools tests/InGameTests.TelMods
-      - name: Check mods (changelog, descriptions, info.json values)
+      - name: Get the IM-FastForward template
+        run: git clone --depth 1 https://github.com/ui3TD/IM-FastForward ../IM-FastForward
+      - name: Check mods (changelog, descriptions, info.json values, FastForward template)
         run: python tools/check_repo.py

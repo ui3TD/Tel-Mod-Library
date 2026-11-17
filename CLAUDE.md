@@ -14,6 +14,23 @@
    (`Feed/`) or save code change.
 4. Run `python tools/check_repo.py` (changelog line, description, info.json values).
 
+## Code comments
+
+Comments say what is true, never why the code is designed as it is:
+
+- **Allowed:** what the code does, or its inputs and outputs. How the game, the engine or other mods behave,
+  stated as a fact: "The game calls this twice per frame."
+- **Not allowed:** a reason, a purpose, a rejected alternative or a defended risk. Examples from this
+  repo: "on real time so a paused game still pulses", "in case another mod calls this inside another
+  election". Delete such a sentence or rewrite it as a fact; a reason that matters goes in the commit
+  message.
+
+Single words don't decide it: "otherwise the game's value" describes what the code returns.
+
+Old comments are cleaned up one mod at a time. When working on a mod, also rewrite that mod's existing
+reason comments, in a separate comment-only commit. A comment-only change gets no version bump and no
+changelog line; it ships with the mod's next release.
+
 ## Steam changelog
 
 Each version bump adds `- <version>: <statement>` (at most 100 characters after `- `) as the first line
